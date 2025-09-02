@@ -1,0 +1,14 @@
+# Ignore Visual Studio files
+.vs/
+
+# Ignore build output folders
+**/bin/
+**/obj/
+
+# Ignore Visual Studio Code workspace settings
+.vscode/
+
+# Ignore temporary files and logs
+*.log
+*.cache
+*.pdb
