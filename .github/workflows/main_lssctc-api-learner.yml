@@ -1,7 +1,7 @@
 # Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
 # More GitHub Actions for Azure: https://github.com/Azure/actions
 
-name: Build and deploy ASP.Net Core app to Azure Web App - lssctc-api
+name: Build and deploy ASP.Net Core app to Azure Web App - lssctc-api-learner
 
 on:
   push:
@@ -24,10 +24,10 @@ jobs:
           dotnet-version: '8.x'
 
       - name: Build with dotnet
-        run: dotnet build Lssctc/Lssctc.sln --configuration Release
+        run: dotnet build --configuration Release
 
       - name: dotnet publish
-        run: dotnet publish Lssctc/LearnerService/LearnerService.csproj -c Release -o ${{env.DOTNET_ROOT}}/myapp
+        run: dotnet publish -c Release -o ${{env.DOTNET_ROOT}}/myapp
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
@@ -51,15 +51,15 @@ jobs:
       - name: Login to Azure
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_79A57D49FDBA46068444956964FCC8A9 }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_08C59BCAAF3C4FE1848AC641CF8B1606 }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_9F4A08E41879403FAA2C2E0E1D33828A }}
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_6F686A1FFF494A30AB70A15614426615 }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_2CD614FB993740C695ADA0833821544D }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_5F6A9C183DBF42CDBC6AA1CEA8CA8BD0 }}
 
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
-          app-name: 'lssctc-api'
+          app-name: 'lssctc-api-learner'
           slot-name: 'Production'
           package: .
           
