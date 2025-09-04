@@ -4,6 +4,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>7a59d361-e6e5-46ac-8ffc-dd545a316c0e</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
@@ -23,12 +24,6 @@
 	<PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.0.0" />
 	<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0" />
 	
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Domain\Interfaces\" />
-    <Folder Include="Domain\Implements\" />
-    <Folder Include="Application\" />
   </ItemGroup>
 
 </Project>

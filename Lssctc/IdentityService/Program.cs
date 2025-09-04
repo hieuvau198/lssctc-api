@@ -58,7 +58,7 @@ builder.Services.AddAutoMapper(typeof(Program));
 
 #region Register DI
 builder.Services.AddScoped<IIdentityRepository, IdentityRepository>();
-builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IAuthsService, AuthsService>();
 #endregion
 
 #region JWT
