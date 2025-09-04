@@ -24,10 +24,10 @@ jobs:
           dotnet-version: '8.x'
 
       - name: Build with dotnet
-        run: dotnet build Lssctc/Lssctc.sln --configuration Release
+        run: dotnet build --configuration Release
 
       - name: dotnet publish
-        run: dotnet publish Lssctc/IdentityService/IdentityService.csproj -c Release -o ${{env.DOTNET_ROOT}}/myapp
+        run: dotnet publish -c Release -o ${{env.DOTNET_ROOT}}/myapp
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
@@ -51,9 +51,9 @@ jobs:
       - name: Login to Azure
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_79A57D49FDBA46068444956964FCC8A9 }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_08C59BCAAF3C4FE1848AC641CF8B1606 }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_9F4A08E41879403FAA2C2E0E1D33828A }}
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_56A62ED5EE4641F086BA8046FB2DAC9E }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_E201D856C0754788BE757F774134F82C }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_0281B376CBDF418FA72D10C150F0C3A4 }}
 
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
