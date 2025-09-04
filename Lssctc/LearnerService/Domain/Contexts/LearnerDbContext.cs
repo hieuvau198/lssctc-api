@@ -1,17 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
-using IdentityService.Domain.Entities;
+using LearnerService.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
-namespace IdentityService.Domain.Contexts;
+namespace LearnerService.Domain.Contexts;
 
-public partial class IdentityDbContext : DbContext
+public partial class LearnerDbContext : DbContext
 {
-    public IdentityDbContext()
+    public LearnerDbContext()
     {
     }
 
-    public IdentityDbContext(DbContextOptions<IdentityDbContext> options)
+    public LearnerDbContext(DbContextOptions<LearnerDbContext> options)
         : base(options)
     {
     }
@@ -72,6 +72,7 @@ public partial class IdentityDbContext : DbContext
 
     public virtual DbSet<User> Users { get; set; }
 
+    
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.UseCollation("Latin1_General_100_CI_AS_SC_UTF8");

@@ -11,13 +11,13 @@ using System.Text;
 
 namespace IdentityService.Application.Services
 {
-    public class AuthService : IAuthService
+    public class AuthsService : IAuthsService
     {
         private readonly IIdentityRepository _repository;
         private readonly IMapper _mapper;
         private readonly IConfiguration _configuration;
 
-        public AuthService(IIdentityRepository repository, IMapper mapper, IConfiguration configuration)
+        public AuthsService(IIdentityRepository repository, IMapper mapper, IConfiguration configuration)
         {
             _repository = repository;
             _mapper = mapper;
