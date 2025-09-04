@@ -1,4 +1,4 @@
-namespace IdentityService
+namespace LearnerService
 {
     public class WeatherForecast
     {

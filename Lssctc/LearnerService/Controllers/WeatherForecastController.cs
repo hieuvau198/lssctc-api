@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 
-namespace IdentityService.Controllers
+namespace LearnerService.Controllers
 {
     [ApiController]
     [Route("[controller]")]

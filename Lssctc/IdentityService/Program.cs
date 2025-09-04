@@ -14,7 +14,7 @@ var builder = WebApplication.CreateBuilder(args);
 #region DbContext
 
 builder.Services.AddDbContext<IdentityDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("lssctcDbOrder")));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("lssctcDb")));
 #endregion
 
 #region Swagger
