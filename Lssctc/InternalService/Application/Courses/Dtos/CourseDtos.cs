@@ -34,8 +34,8 @@ public class UpdateCourseDto
 {
     public string Title { get; set; } = null!;
     public string? Description { get; set; }
-    public string Category { get; set; } = null!;
-    public string Level { get; set; } = null!;
+    public string? Category { get; set; }
+    public string? Level { get; set; }
     public DateOnly? StartDate { get; set; }
     public DateOnly? EndDate { get; set; }
     public string? Location { get; set; }
