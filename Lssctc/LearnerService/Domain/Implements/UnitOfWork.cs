@@ -9,6 +9,7 @@ namespace LearnerService.Domain.Implements
         private readonly LearnerDbContext _context;
         private IGenericRepository<Learner>? _learnerRepository;
         private IGenericRepository<Course>? _courseRepository;
+        private IGenericRepository<QuestionOption>? _questionOptionRepository;
 
         public UnitOfWork(LearnerDbContext context)
         {
@@ -20,6 +21,9 @@ namespace LearnerService.Domain.Implements
 
         public IGenericRepository<Course> CourseRepository =>
             _courseRepository ??= new GenericRepository<Course>(_context);
+
+        public IGenericRepository<QuestionOption> QuestionOptionRepository =>
+            _questionOptionRepository ??= new GenericRepository<QuestionOption>(_context);
 
         public async Task<int> SaveChangesAsync()
         {

@@ -6,6 +6,7 @@ namespace LearnerService.Domain.Interfaces
     {
         IGenericRepository<Learner> LearnerRepository { get; }
         IGenericRepository<Course> CourseRepository { get; }
+        IGenericRepository<QuestionOption> QuestionOptionRepository { get; }
         Task<int> SaveChangesAsync();
     }
 }
