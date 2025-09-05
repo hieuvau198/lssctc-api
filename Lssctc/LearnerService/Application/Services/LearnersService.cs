@@ -25,7 +25,7 @@ public class LearnersService : ILearnersService
     {
         var query = _unitOfWork.LearnerRepository.GetAllAsQueryable()
             .Include(l => l.User)
-            .Where(l => !l.IsDeleted == false);
+            .Where(l => l.IsDeleted == false);
 
         if (!string.IsNullOrEmpty(parameters.EnrollmentStatus))
         {
@@ -54,7 +54,7 @@ public class LearnersService : ILearnersService
     {
         var learner = await _unitOfWork.LearnerRepository.GetAllAsQueryable()
             .Include(l => l.User)
-            .FirstOrDefaultAsync(l => l.UserId == userId && !l.IsDeleted.GetValueOrDefault());
+            .FirstOrDefaultAsync(l => l.UserId == userId && l.IsDeleted == false);
 
         return learner == null ? null : _mapper.Map<LearnerDto>(learner);
     }
@@ -72,7 +72,7 @@ public class LearnersService : ILearnersService
     public async Task<LearnerDto?> UpdateLearnerAsync(int userId, UpdateLearnerDto updateLearnerDto)
     {
         var learner = await _unitOfWork.LearnerRepository.GetAllAsQueryable()
-            .FirstOrDefaultAsync(l => l.UserId == userId && !l.IsDeleted.GetValueOrDefault());
+            .FirstOrDefaultAsync(l => l.UserId == userId && l.IsDeleted == false);
 
         if (learner == null)
             return null;
@@ -86,7 +86,7 @@ public class LearnersService : ILearnersService
     public async Task<bool> DeleteLearnerAsync(int userId)
     {
         var learner = await _unitOfWork.LearnerRepository.GetAllAsQueryable()
-            .FirstOrDefaultAsync(l => l.UserId == userId && !l.IsDeleted.GetValueOrDefault());
+            .FirstOrDefaultAsync(l => l.UserId == userId && l.IsDeleted == false);
 
         if (learner == null)
             return false;
