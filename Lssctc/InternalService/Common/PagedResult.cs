@@ -1,4 +1,4 @@
-﻿namespace InternalService.Application.Courses.Common
+﻿namespace InternalService.Common
 {
     public class PagedResult<T>
     {

@@ -1,5 +1,5 @@
-﻿using InternalService.Application.Courses.Common;
-using InternalService.Application.Courses.Dtos;
+﻿using InternalService.Application.Courses.Dtos;
+using InternalService.Common;
 
 namespace InternalService.Application.Courses.Interfaces;
 

@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 
-namespace InternalService.Application.Courses.Common
+namespace InternalService.Common
 {
     public static class IQueryableExtensions
     {

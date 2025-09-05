@@ -1,7 +1,7 @@
 ﻿using AutoMapper;
-using InternalService.Application.Courses.Common;
 using InternalService.Application.Courses.Dtos;
 using InternalService.Application.Courses.Interfaces;
+using InternalService.Common;
 using InternalService.Domain.Entities;
 using InternalService.Domain.Interfaces;
 using Microsoft.EntityFrameworkCore;
