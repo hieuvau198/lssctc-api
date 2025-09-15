@@ -1,0 +1,119 @@
+﻿using Lssctc.ProgramManagement.Courses.DTOs;
+using Lssctc.ProgramManagement.Courses.Services;
+using Lssctc.ProgramManagement.HttpCustomResponse;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
+
+namespace Lssctc.ProgramManagement.Courses.Controllers
+{
+    /// <summary>
+    /// API controller for managing courses, including retrieving,
+    /// creating, updating, and deleting course records.
+    /// </summary>
+    [Route("api/[controller]")]
+    [ApiController]
+    public class CoursesController : ControllerBase
+    {
+        private readonly ICourseService _courseService;
+
+        
+        public CoursesController(ICourseService courseService)
+        {
+            _courseService = courseService;
+        }
+
+        /// <summary>
+        /// Retrieves a list of courses with optional query parameters for filtering and pagination.
+        /// </summary>
+        /// <param name="parameters">The query parameters for filtering and pagination.</param>
+        /// <returns>A list of courses.</returns>
+        // GET: api/courses
+        [HttpGet]
+        public async Task<IActionResult> GetCourses([FromQuery] CourseQueryParameters parameters)
+        {
+            var result = await _courseService.GetAllCoursesAsync(parameters);
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// Retrieves a course by its unique identifier.
+        /// </summary>
+        /// <param name="id">The unique identifier of the course.</param>
+        /// <returns>The course details if found; otherwise, 404.</returns>
+        // GET: api/courses/5
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetCourse(int id)
+        {
+            var course = await _courseService.GetCourseByIdAsync(id);
+            if (course == null)
+                return NotFound();
+
+            return Ok(course);
+        }
+
+        /// <summary>
+        /// Creates a new course.
+        /// </summary>
+        /// <param name="dto">The data transfer object containing course details.</param>
+        /// <returns>The newly created course.</returns>
+        // POST: api/courses
+        [HttpPost]
+        public async Task<IActionResult> CreateCourse([FromBody] CreateCourseDto dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            try
+            {
+                var createdCourse = await _courseService.CreateCourseAsync(dto);
+                return CreatedAtAction(nameof(GetCourse), new { id = createdCourse.Id }, createdCourse);
+            }
+            catch (BadRequestException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Updates an existing course by its ID.
+        /// </summary>
+        /// <param name="id">The unique identifier of the course.</param>
+        /// <param name="dto">The data transfer object containing updated course details.</param>
+        /// <returns>The updated course if successful; otherwise, 404 or 400.</returns>
+        // PUT: api/courses/5
+        [HttpPut("{id}")]
+        public async Task<IActionResult> UpdateCourse(int id, [FromBody] UpdateCourseDto dto)
+        {
+
+            try
+            {
+                var updatedCourse = await _courseService.UpdateCourseAsync(id, dto);
+                if (updatedCourse == null)
+                    return NotFound();
+
+                return Ok(updatedCourse);
+            }
+            catch (BadRequestException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Deletes a course by its ID.
+        /// </summary>
+        /// <param name="id">The unique identifier of the course to delete.</param>
+        /// <returns>No content if deletion was successful; otherwise, 404.</returns>
+        // DELETE: api/courses/5
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteCourse(int id)
+        {
+            var deleted = await _courseService.DeleteCourseAsync(id);
+            if (!deleted)
+                return NotFound();
+
+            return NoContent();
+        }
+    }
+}

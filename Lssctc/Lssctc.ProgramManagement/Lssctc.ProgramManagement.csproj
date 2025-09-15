@@ -4,6 +4,9 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>784e0fbd-02cc-4ac1-86d5-1734649d1dfd</UserSecretsId>
+	<GenerateDocumentationFile>true</GenerateDocumentationFile>
+	<NoWarn>1591</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -11,7 +14,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Courses\" />
     <Folder Include="Classes\" />
   </ItemGroup>
 

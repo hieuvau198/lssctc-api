@@ -1,3 +1,5 @@
+using Lssctc.ProgramManagement.Courses.Mappings;
+using Lssctc.ProgramManagement.Courses.Services;
 using Lssctc.Share.Contexts;
 using Lssctc.Share.Implements;
 using Lssctc.Share.Interfaces;
@@ -14,7 +16,12 @@ builder.Services.AddDbContext<LssctcDbContext>(options =>
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(c =>
+{
+    var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    c.IncludeXmlComments(xmlPath);
+});
 
 
 #region Domain
@@ -25,6 +32,8 @@ builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepositor
 #region Application Services
 //builder.Services.AddAutoMapper(typeof(CoursesMappingProfile));
 //builder.Services.AddScoped<ICoursesService, CoursesService>();
+builder.Services.AddAutoMapper(typeof(CourseMapper));
+builder.Services.AddScoped<ICourseService, CourseService>();
 #endregion
 
 var app = builder.Build();

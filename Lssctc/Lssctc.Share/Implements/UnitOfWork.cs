@@ -9,6 +9,9 @@ namespace Lssctc.Share.Implements
         private readonly LssctcDbContext _context;
         private IGenericRepository<TrainingProgram>? _programRepository;
         private IGenericRepository<Course>? _courseRepository;
+        private IGenericRepository<CourseCategory>? _courseCategoryRepository;
+        private IGenericRepository<CourseLevel>? _courseLevelRepository;
+        private IGenericRepository<CourseCode>? _courseCodeRepository;
         private IGenericRepository<LearningMaterial>? _learningMaterialRepository;
 
         public UnitOfWork(LssctcDbContext context)
@@ -21,6 +24,12 @@ namespace Lssctc.Share.Implements
 
         public IGenericRepository<Course> CourseRepository =>
             _courseRepository ??= new GenericRepository<Course>(_context);
+        public IGenericRepository<CourseCategory> CourseCategoryRepository =>
+            _courseCategoryRepository ??= new GenericRepository<CourseCategory>(_context);
+        public IGenericRepository<CourseCode> CourseCodeRepository =>
+            _courseCodeRepository ??= new GenericRepository<CourseCode>(_context);
+        public IGenericRepository<CourseLevel> CourseLevelRepository =>
+            _courseLevelRepository ??= new GenericRepository<CourseLevel>(_context);
 
         public IGenericRepository<LearningMaterial> LearningMaterialRepository =>
             _learningMaterialRepository ??= new GenericRepository<LearningMaterial>(_context);
