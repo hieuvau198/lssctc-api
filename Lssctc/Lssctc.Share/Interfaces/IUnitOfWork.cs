@@ -10,6 +10,7 @@ namespace Lssctc.Share.Interfaces
         IGenericRepository<CourseCategory> CourseCategoryRepository { get; }
         IGenericRepository<CourseLevel> CourseLevelRepository { get; }
         IGenericRepository<CourseCode> CourseCodeRepository { get; }
+        IGenericRepository<TrainingProgram> TrainingProgramRepository { get; }
 
         Task<int> SaveChangesAsync();
     }

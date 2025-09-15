@@ -102,6 +102,11 @@ namespace Lssctc.ProgramManagement.Courses.Services
                 if (codeExists == null)
                     throw new BadRequestException($"CourseCode with Id {dto.CourseCodeId.Value} does not exist.");
             }
+            //validate course price
+            if (!dto.Price.HasValue)
+                throw new BadRequestException("Price is required.");
+            else if (dto.Price < 0)
+                throw new BadRequestException("Price cannot be negative.");
             var entity = _mapper.Map<Course>(dto);
             entity.IsActive = true;
             entity.IsDeleted = false;
@@ -139,6 +144,11 @@ namespace Lssctc.ProgramManagement.Courses.Services
                 if (codeExists == null)
                     throw new BadRequestException($"CourseCode with Id {dto.CourseCodeId.Value} does not exist.");
             }
+            //validate course price
+            if (!dto.Price.HasValue)
+                throw new BadRequestException("Price is required.");
+            else if (dto.Price < 0)
+                throw new BadRequestException("Price cannot be negative.");
             _mapper.Map(dto, course);
             await _unitOfWork.CourseRepository.UpdateAsync(course);
             await _unitOfWork.SaveChangesAsync();

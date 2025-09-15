@@ -13,6 +13,8 @@ namespace Lssctc.Share.Implements
         private IGenericRepository<CourseLevel>? _courseLevelRepository;
         private IGenericRepository<CourseCode>? _courseCodeRepository;
         private IGenericRepository<LearningMaterial>? _learningMaterialRepository;
+        private IGenericRepository<TrainingProgram>? _trainingProgramlRepository;
+
 
         public UnitOfWork(LssctcDbContext context)
         {
@@ -33,6 +35,8 @@ namespace Lssctc.Share.Implements
 
         public IGenericRepository<LearningMaterial> LearningMaterialRepository =>
             _learningMaterialRepository ??= new GenericRepository<LearningMaterial>(_context);
+        public IGenericRepository<TrainingProgram> TrainingProgramRepository =>
+            _trainingProgramlRepository ??= new GenericRepository<TrainingProgram>(_context);
 
         public async Task<int> SaveChangesAsync()
         {
