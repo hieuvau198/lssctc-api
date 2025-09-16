@@ -34,4 +34,8 @@
     <Folder Include="Application\Users\Services\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Lssctc.Share\Lssctc.Share.csproj" />
+  </ItemGroup>
+
 </Project>

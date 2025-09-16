@@ -1,3 +1,5 @@
+using Lssctc.LearningManagement.Quizzes.Services;
+using Lssctc.LearningManagement.Quizzes.Mappings;
 using Lssctc.Share.Contexts;
 using Lssctc.Share.Implements;
 using Lssctc.Share.Interfaces;
@@ -12,6 +14,8 @@ builder.Services.AddDbContext<LssctcDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("lssctcDb")));
 #endregion
 
+builder.Services.AddAutoMapper(typeof(QuizMapper).Assembly);
+
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -25,6 +29,8 @@ builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepositor
 #region Application Services
 //builder.Services.AddAutoMapper(typeof(CoursesMappingProfile));
 //builder.Services.AddScoped<ICoursesService, CoursesService>();
+
+builder.Services.AddScoped<IQuizService, QuizService>();
 #endregion
 
 var app = builder.Build();

@@ -1,6 +1,3 @@
-using InternalService.Application.Courses.Interfaces;
-using InternalService.Application.Courses.Mappings;
-using InternalService.Application.Courses.Services;
 using InternalService.Domain.Contexts;
 using InternalService.Domain.Implements;
 using InternalService.Domain.Interfaces;
@@ -26,8 +23,8 @@ builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepositor
 #endregion
 
 #region Application Services
-builder.Services.AddAutoMapper(typeof(CoursesMappingProfile));
-builder.Services.AddScoped<ICoursesService, CoursesService>();
+//builder.Services.AddAutoMapper(typeof(CoursesMappingProfile));
+//builder.Services.AddScoped<ICoursesService, CoursesService>();
 #endregion
 
 var app = builder.Build();

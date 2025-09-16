@@ -26,4 +26,8 @@
 	
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Lssctc.Share\Lssctc.Share.csproj" />
+  </ItemGroup>
+
 </Project>
