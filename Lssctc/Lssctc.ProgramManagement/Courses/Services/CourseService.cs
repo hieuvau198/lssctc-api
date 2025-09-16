@@ -72,6 +72,43 @@ namespace Lssctc.ProgramManagement.Courses.Services
 
             return course == null ? null : _mapper.Map<CourseDto>(course);
         }
+        public async Task<PagedResult<CourseDto>> GetCoursesByCategoryAsync(int categoryId, int pageNumber, int pageSize)
+        {
+            var query = _unitOfWork.CourseRepository.GetAllAsQueryable()
+                .Include(c => c.Category)
+                .Include(c => c.Level)
+                .Where(c => c.IsDeleted == false && c.CategoryId == categoryId)
+                .OrderBy(c => c.Name);
+
+            var pagedResult = await query.ToPagedResultAsync(pageNumber, pageSize);
+
+            return new PagedResult<CourseDto>
+            {
+                Items = pagedResult.Items.Select(c => _mapper.Map<CourseDto>(c)),
+                TotalCount = pagedResult.TotalCount,
+                Page = pagedResult.Page,
+                PageSize = pagedResult.PageSize
+            };
+        }
+
+        public async Task<PagedResult<CourseDto>> GetCoursesByLevelAsync(int levelId, int pageNumber, int pageSize)
+        {
+            var query = _unitOfWork.CourseRepository.GetAllAsQueryable()
+                .Include(c => c.Category)
+                .Include(c => c.Level)
+                .Where(c => c.IsDeleted == false && c.LevelId == levelId)
+                .OrderBy(c => c.Name);
+
+            var pagedResult = await query.ToPagedResultAsync(pageNumber, pageSize);
+
+            return new PagedResult<CourseDto>
+            {
+                Items = pagedResult.Items.Select(c => _mapper.Map<CourseDto>(c)),
+                TotalCount = pagedResult.TotalCount,
+                Page = pagedResult.Page,
+                PageSize = pagedResult.PageSize
+            };
+        }
 
         public async Task<CourseDto> CreateCourseAsync(CreateCourseDto dto)
         {

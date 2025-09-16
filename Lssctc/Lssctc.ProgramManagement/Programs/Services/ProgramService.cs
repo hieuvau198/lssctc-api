@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using Lssctc.ProgramManagement.HttpCustomResponse;
 using Lssctc.ProgramManagement.Programs.DTOs;
 using Lssctc.Share.Common;
 using Lssctc.Share.Entities;
@@ -76,6 +77,7 @@ namespace Lssctc.ProgramManagement.Programs.Services
         public async Task<ProgramDto?> GetProgramByIdAsync(int id)
         {
             var program = await _unitOfWork.TrainingProgramRepository.GetAllAsQueryable()
+                .Include(p => p.ProgramPrerequisites)
                 .Include(p => p.ProgramCourses)
                 .ThenInclude(pc => pc.Courses)
                 .FirstOrDefaultAsync(p => p.Id == id);
@@ -94,52 +96,111 @@ namespace Lssctc.ProgramManagement.Programs.Services
             var entity = _mapper.Map<TrainingProgram>(dto);
             entity.IsActive = true;
             entity.IsDeleted = false;
-
-            if (dto.Courses != null && dto.Courses.Any())
-            {
-                var courseIds = dto.Courses.Select(c => c.CourseId).ToList();
-
-                var courses = await _unitOfWork.CourseRepository
-                    .GetAllAsQueryable()
-                    .Where(c => courseIds.Contains(c.Id) && c.IsDeleted != true)
-                    .ToListAsync();
-
-                entity.TotalCourses = courses.Count;
-                entity.DurationHours = courses.Sum(c => c.DurationHours ?? 0);
-
-                foreach (var courseOrderDto in dto.Courses)
-                {
-                    var course = courses.FirstOrDefault(c => c.Id == courseOrderDto.CourseId);
-                    if (course != null)
-                    {
-                        entity.ProgramCourses.Add(new ProgramCourse
-                        {
-                            CoursesId = course.Id,
-                            Program = entity,
-                            CourseOrder = courseOrderDto.Order,
-                            Name = dto.Name,
-                            Description = dto.Description
-                        });
-                    }
-                }
-            }
-            else
-            {
-                entity.TotalCourses = 0;
-                entity.DurationHours = 0;
-            }
-
+            entity.TotalCourses = 0;
+            entity.DurationHours = 0;
+            
             await _unitOfWork.TrainingProgramRepository.CreateAsync(entity);
             await _unitOfWork.SaveChangesAsync();
 
             return _mapper.Map<ProgramDto>(entity);
         }
-
-        public async Task<ProgramDto?> UpdateProgramAsync(int id, UpdateProgramDto dto)
+        public async Task<ProgramDto?> AddCoursesToProgramAsync(int programId, List<CourseOrderDto> coursesToAdd)
         {
             var program = await _unitOfWork.TrainingProgramRepository.GetAllAsQueryable()
                 .Include(p => p.ProgramCourses)
                 .ThenInclude(pc => pc.Courses)
+                .FirstOrDefaultAsync(p => p.Id == programId);
+
+            if (program == null || program.IsDeleted == true)
+                return null;
+
+            if (coursesToAdd == null || !coursesToAdd.Any())
+                throw new BadRequestException("At least one course must be provided.");
+
+            var courseIds = coursesToAdd.Select(c => c.CourseId).ToList();
+
+            var validCourses = await _unitOfWork.CourseRepository
+                .GetAllAsQueryable()
+                .Where(c => courseIds.Contains(c.Id) && c.IsDeleted != true)
+                .ToListAsync();
+
+            if (validCourses.Count != coursesToAdd.Count)
+                throw new BadRequestException("Some courses are invalid or deleted.");
+
+            foreach (var courseOrderDto in coursesToAdd)
+            {
+                var course = validCourses.FirstOrDefault(c => c.Id == courseOrderDto.CourseId);
+                if (course != null)
+                {
+                    program.ProgramCourses.Add(new ProgramCourse
+                    {
+                        CoursesId = course.Id,
+                        ProgramId = program.Id,
+                        CourseOrder = courseOrderDto.Order,
+                        Name = program.Name,
+                        Description = program.Description
+                    });
+                }
+            }
+
+            program.TotalCourses = program.ProgramCourses.Count;
+            program.DurationHours = 0;
+            foreach(var pc in program.ProgramCourses)
+            {
+                var course = await _unitOfWork.CourseRepository.GetByIdAsync(pc.CoursesId);
+                if (course != null)
+                {
+                    program.DurationHours += course.DurationHours ?? 0;
+                }
+            }
+
+            await _unitOfWork.TrainingProgramRepository.UpdateAsync(program);
+            await _unitOfWork.SaveChangesAsync();
+
+            var result = _mapper.Map<ProgramDto>(program);
+            result.Courses = result.Courses.OrderBy(c => c.CourseOrder).ToList();
+            return result;
+        }
+        public async Task<ProgramDto?> AddPrerequisitesToProgramAsync(int programId, List<ProgramPrerequisiteDto> prerequisitesToAdd)
+        {
+            var program = await _unitOfWork.TrainingProgramRepository.GetAllAsQueryable()
+                .Include(p => p.ProgramPrerequisites)
+                .FirstOrDefaultAsync(p => p.Id == programId);
+
+            if (program == null || program.IsDeleted == true)
+                return null;
+
+            if (prerequisitesToAdd == null || !prerequisitesToAdd.Any())
+                throw new BadRequestException("At least one prerequisite must be provided.");
+
+            foreach (var prereqDto in prerequisitesToAdd)
+            {
+                program.ProgramPrerequisites.Add(new ProgramPrerequisite
+                {
+                    ProgramId = program.Id,
+                    Name = prereqDto.Name,
+                    Description = prereqDto.Description
+                });
+            }
+
+            await _unitOfWork.TrainingProgramRepository.UpdateAsync(program);
+            await _unitOfWork.SaveChangesAsync();
+
+            var result = _mapper.Map<ProgramDto>(program);
+            result.Courses = result.Courses.OrderBy(c => c.CourseOrder).ToList();
+            // Assuming ProgramDto has a collection of prerequisites too
+            result.Prerequisites = result.Prerequisites.OrderBy(p => p.Name).ToList();
+
+            return result;
+        }
+
+
+
+        public async Task<ProgramDto?> UpdateProgramAsync(int id, UpdateProgramDto dto)
+        {
+            var program = await _unitOfWork.TrainingProgramRepository.GetAllAsQueryable()
+                .Include( p => p.ProgramPrerequisites)
+                .Include(p => p.ProgramCourses)
                 .FirstOrDefaultAsync(p => p.Id == id);
 
             if (program == null || program.IsDeleted == true)
@@ -148,7 +209,18 @@ namespace Lssctc.ProgramManagement.Programs.Services
             _mapper.Map(dto, program);
 
             // Clear the old courses in the program
-            program.ProgramCourses.Clear();
+            var existingProgramCourses = program.ProgramCourses.ToList();
+            if (existingProgramCourses.Any())
+            {
+                foreach (var pc in existingProgramCourses)
+                {
+                    await _unitOfWork.ProgramCourseRepository.DeleteAsync(pc);
+                }
+
+                await _unitOfWork.SaveChangesAsync();
+
+                program.ProgramCourses.Clear();
+            }
 
             if (dto.Courses != null && dto.Courses.Any())
             {
@@ -160,7 +232,11 @@ namespace Lssctc.ProgramManagement.Programs.Services
                     .ToListAsync();
 
                 program.TotalCourses = coursesInProgram.Count;
-                program.DurationHours = coursesInProgram.Sum(c => c.DurationHours ?? 0);
+                program.DurationHours = 0;
+                foreach (var c in coursesInProgram)
+                {
+                    program.DurationHours += c.DurationHours ?? 0;
+                }
 
                 foreach (var courseOrderDto in dto.Courses)
                 {
@@ -183,7 +259,50 @@ namespace Lssctc.ProgramManagement.Programs.Services
                 program.TotalCourses = 0;
                 program.DurationHours = 0;
             }
+            //update prerequisites
+            if (dto.Prerequisites != null)
+            {
+                var dtoPrereqIds = dto.Prerequisites.Where(p => p.Id > 0).Select(p => p.Id).ToList();
 
+                // Remove prerequisites not in DTO
+                var toRemove = program.ProgramPrerequisites
+                    .Where(p => !dtoPrereqIds.Contains(p.Id))
+                    .ToList();
+                if(toRemove != null && toRemove.Count > 0)
+                {
+                    foreach (var rem in toRemove)
+                    {
+                        await _unitOfWork.ProgramPrerequisiteRepository.DeleteAsync(rem);
+                    }
+                    await _unitOfWork.SaveChangesAsync();
+
+                    program.ProgramPrerequisites.Clear();
+                }
+
+
+                // Update existing or add new
+                foreach (var prereqDto in dto.Prerequisites)
+                {
+                    if (prereqDto.Id > 0)
+                    {
+                        var existing = program.ProgramPrerequisites.FirstOrDefault(p => p.Id == prereqDto.Id);
+                        if (existing != null)
+                        {
+                            existing.Name = prereqDto.Name;
+                            existing.Description = prereqDto.Description;
+                        }
+                    }
+                    else
+                    {
+                        program.ProgramPrerequisites.Add(new ProgramPrerequisite
+                        {
+                            ProgramId = program.Id,
+                            Name = prereqDto.Name,
+                            Description = prereqDto.Description,
+                        });
+                    }
+                }
+            }
             await _unitOfWork.TrainingProgramRepository.UpdateAsync(program);
             await _unitOfWork.SaveChangesAsync();
 

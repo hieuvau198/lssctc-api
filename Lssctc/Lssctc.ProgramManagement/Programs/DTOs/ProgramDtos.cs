@@ -22,16 +22,11 @@
             public int? DurationHours { get; set; }
             public string? ImageUrl { get; set; }
 
-            public ICollection<ProgramCourseOrderDto> Courses { get; set; } = new List<ProgramCourseOrderDto>();
-
-            public ICollection<CreateProgramPrerequisiteDto> Prerequisites { get; set; } = new List<CreateProgramPrerequisiteDto>();
         }
         public class UpdateProgramDto
         {
-            public int Id { get; set; }
             public string Name { get; set; } = null!;
             public string? Description { get; set; }
-            public int? DurationHours { get; set; }
             public string? ImageUrl { get; set; }
             public bool? IsActive { get; set; }
 
@@ -47,9 +42,14 @@
             public string? Name { get; set; }
             public string? Description { get; set; }
         }
+        public class CourseOrderDto
+        {
+            public int CourseId { get; set; }
+            public int Order { get; set; }
+        }
         public class ProgramPrerequisiteDto
         {
-            public int Id { get; set; }
+
             public string Name { get; set; } = null!;
             public string? Description { get; set; }
         }
@@ -71,7 +71,7 @@
             public int CourseId { get; set; }
             public int Order { get; set; }
         }
-    public class ProgramQueryParameters
+        public class ProgramQueryParameters
         {
             public int PageNumber { get; set; } = 1;
             public int PageSize { get; set; } = 10;

@@ -1,5 +1,7 @@
 using Lssctc.ProgramManagement.Courses.Mappings;
 using Lssctc.ProgramManagement.Courses.Services;
+using Lssctc.ProgramManagement.Programs.Mappings;
+using Lssctc.ProgramManagement.Programs.Services;
 using Lssctc.Share.Contexts;
 using Lssctc.Share.Implements;
 using Lssctc.Share.Interfaces;
@@ -33,7 +35,10 @@ builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepositor
 //builder.Services.AddAutoMapper(typeof(CoursesMappingProfile));
 //builder.Services.AddScoped<ICoursesService, CoursesService>();
 builder.Services.AddAutoMapper(typeof(CourseMapper));
+builder.Services.AddAutoMapper(typeof(ProgramMapper));
 builder.Services.AddScoped<ICourseService, CourseService>();
+builder.Services.AddScoped<IProgramService, ProgramService>();
+
 #endregion
 
 var app = builder.Build();

@@ -51,7 +51,25 @@ namespace Lssctc.ProgramManagement.Courses.Controllers
 
             return Ok(course);
         }
+        /// <summary>
+        /// Retrieves courses by category with pagination.
+        /// </summary>
+        [HttpGet("by-category/{categoryId}")]
+        public async Task<IActionResult> GetCoursesByCategory(int categoryId, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
+        {
+            var result = await _courseService.GetCoursesByCategoryAsync(categoryId, pageNumber, pageSize);
+            return Ok(result);
+        }
 
+        /// <summary>
+        /// Retrieves courses by level with pagination.
+        /// </summary>
+        [HttpGet("by-level/{levelId}")]
+        public async Task<IActionResult> GetCoursesByLevel(int levelId, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
+        {
+            var result = await _courseService.GetCoursesByLevelAsync(levelId, pageNumber, pageSize);
+            return Ok(result);
+        }
         /// <summary>
         /// Creates a new course.
         /// </summary>
