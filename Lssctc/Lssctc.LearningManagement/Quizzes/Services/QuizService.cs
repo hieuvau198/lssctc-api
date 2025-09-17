@@ -4,6 +4,7 @@ using Lssctc.LearningManagement.Quizzes.DTOs;
 using Lssctc.Share.Entities;
 using Lssctc.Share.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.DataAnnotations;
 
 namespace Lssctc.LearningManagement.Quizzes.Services
 {
@@ -81,6 +82,80 @@ namespace Lssctc.LearningManagement.Quizzes.Services
             await _uow.QuizRepository.DeleteAsync(entity);            
             await _uow.SaveChangesAsync();
             return true;
+        }
+
+        public async Task<int> CreateQuestionsAsync(int quizId, CreateQuizQuestionDto dto)
+        {
+            // 1) Body bắt buộc
+            if (dto == null) throw new ValidationException("Body is required.");
+
+            // 2) Kiểm tra quiz tồn tại
+            var quiz = await _uow.QuizRepository.GetByIdAsync(quizId);
+            if (quiz is null) throw new KeyNotFoundException($"Quiz {quizId} not found.");
+
+            // 3) Validate & chuẩn hoá Name
+            var rawName = (dto.Name ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(rawName))
+                throw new ValidationException("Name is required.");
+
+            if (rawName.Length > 500)
+                throw new ValidationException("Name must be at most 500 characters.");
+
+            // Chuẩn hoá khoảng trắng (gộp nhiều khoảng trắng thành 1)
+            var normalizedName = string.Join(" ", rawName.Split(' ', StringSplitOptions.RemoveEmptyEntries));
+
+            // 4) Tên câu hỏi phải duy nhất trong 1 quiz (so sánh không phân biệt hoa thường)
+            var nameExists = await _uow.QuizQuestionRepository.ExistsAsync(x =>
+                x.QuizId == quizId &&
+                x.Name != null &&
+                x.Name.ToLower() == normalizedName.ToLower());
+
+            if (nameExists)
+                throw new ValidationException("A question with the same name already exists in this quiz.");
+
+            // 5) Validate Description (nếu dùng)
+            if (dto.Description != null && dto.Description.Length > 2000)
+                throw new ValidationException("Description must be at most 2000 characters.");
+
+            // 6) Validate QuestionScore (>= 0, làm tròn 2 chữ số)
+            decimal? score = dto.QuestionScore;
+            if (score.HasValue)
+            {
+                if (score.Value < 0m)
+                    throw new ValidationException("QuestionScore must be greater than or equal to 0.");
+
+                score = Math.Round(score.Value, 2, MidpointRounding.AwayFromZero);
+
+                // 7) Không vượt tổng điểm quiz (nếu quiz.TotalScore có giá trị)
+                if (quiz.TotalScore.HasValue)
+                {
+                    var used = await _uow.QuizQuestionRepository.GetAllAsQueryable()
+                        .Where(q => q.QuizId == quizId && q.QuestionScore != null)
+                        .SumAsync(q => (decimal?)q.QuestionScore) ?? 0m;
+
+                    var willBe = used + score.Value;
+                    if (willBe > quiz.TotalScore.Value + 0.0001m)
+                        throw new ValidationException(
+                            $"Total question scores ({willBe}) would exceed quiz.TotalScore ({quiz.TotalScore.Value}).");
+                }
+            }
+
+            // 8) Tạo entity
+            var entity = _mapper.Map<QuizQuestion>(dto);
+            entity.QuizId = quizId;
+            entity.Name = normalizedName;
+            entity.QuestionScore = score;
+
+            // (Tuỳ chọn) Nếu entity có DisplayOrder, auto gán max+1:
+            // var maxOrder = await _uow.QuizQuestionRepository.GetAllAsQueryable()
+            //     .Where(q => q.QuizId == quizId)
+            //     .Select(q => (int?)q.DisplayOrder)
+            //     .MaxAsync() ?? 0;
+            // entity.DisplayOrder = maxOrder + 1;
+
+            await _uow.QuizQuestionRepository.CreateAsync(entity);
+            await _uow.SaveChangesAsync();
+            return entity.Id;
         }
     }
 }

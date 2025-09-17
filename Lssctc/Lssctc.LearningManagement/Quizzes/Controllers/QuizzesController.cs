@@ -2,6 +2,7 @@
 using Lssctc.LearningManagement.Quizzes.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel.DataAnnotations;
 
 namespace Lssctc.LearningManagement.Quizzes.Controllers
 {
@@ -65,6 +66,27 @@ namespace Lssctc.LearningManagement.Quizzes.Controllers
             var ok = await _quizService.DeleteAsync(id);
             return ok ? NoContent() : NotFound();
         }
+
+
+        // add questions to quiz
+        [HttpPost("{quizId:int}/questions")]
+        public async Task<IActionResult> CreateQuestion([FromRoute] int quizId, [FromBody] CreateQuizQuestionDto dto)
+        {
+            try
+            {
+                var id = await _quizService.CreateQuestionsAsync(quizId, dto);
+                return CreatedAtAction(nameof(GetById), new { quizId, id }, new { id });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { error = ex.Message });
+            }
+            catch (ValidationException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+        }
+
 
     }
 }
