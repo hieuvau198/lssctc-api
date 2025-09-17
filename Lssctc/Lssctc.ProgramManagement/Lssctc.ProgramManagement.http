@@ -1,0 +1,6 @@
+@Lssctc.ProgramManagement_HostAddress = http://localhost:5175
+
+GET {{Lssctc.ProgramManagement_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

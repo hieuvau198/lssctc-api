@@ -11,9 +11,9 @@ namespace IdentityService.Controllers
     [ApiController]
     public class AuthsController : ControllerBase
     {
-        private readonly IAuthService _authService;
+        private readonly IAuthsService _authService;
 
-        public AuthsController(IAuthService authService)
+        public AuthsController(IAuthsService authService)
         {
             _authService = authService;
         }

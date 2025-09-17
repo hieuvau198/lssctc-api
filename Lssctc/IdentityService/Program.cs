@@ -14,7 +14,7 @@ var builder = WebApplication.CreateBuilder(args);
 #region DbContext
 
 builder.Services.AddDbContext<IdentityDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("lssctcDbOrder")));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("lssctcDb")));
 #endregion
 
 #region Swagger
@@ -58,7 +58,7 @@ builder.Services.AddAutoMapper(typeof(Program));
 
 #region Register DI
 builder.Services.AddScoped<IIdentityRepository, IdentityRepository>();
-builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IAuthsService, AuthsService>();
 #endregion
 
 #region JWT
