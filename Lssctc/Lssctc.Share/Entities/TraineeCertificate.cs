@@ -11,7 +11,7 @@ public partial class TraineeCertificate
 
     public string? Description { get; set; }
 
-    public int? CertificateId { get; set; }
+    public int? CourseCertificateId { get; set; }
 
     public DateTime? ValidDateEnd { get; set; }
 
@@ -23,7 +23,7 @@ public partial class TraineeCertificate
 
     public int Status { get; set; }
 
-    public virtual Certificate? Certificate { get; set; }
+    public virtual CourseCertificate? CourseCertificate { get; set; }
 
     public virtual Trainee? Trainee { get; set; }
 }

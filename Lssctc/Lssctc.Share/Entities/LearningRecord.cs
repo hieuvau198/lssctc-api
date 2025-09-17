@@ -11,7 +11,7 @@ public partial class LearningRecord
 
     public string? Name { get; set; }
 
-    public int ClassMemberId { get; set; }
+    public int TrainingProgressId { get; set; }
 
     public string? SectionName { get; set; }
 
@@ -21,9 +21,9 @@ public partial class LearningRecord
 
     public decimal? Progress { get; set; }
 
-    public virtual ClassMember ClassMember { get; set; } = null!;
-
     public virtual ICollection<LearningRecordPartition> LearningRecordPartitions { get; set; } = new List<LearningRecordPartition>();
 
     public virtual Section Section { get; set; } = null!;
+
+    public virtual TrainingProgress TrainingProgress { get; set; } = null!;
 }

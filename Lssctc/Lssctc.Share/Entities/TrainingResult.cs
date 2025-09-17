@@ -9,7 +9,7 @@ public partial class TrainingResult
 
     public int TrainingResultTypeId { get; set; }
 
-    public int TraineeId { get; set; }
+    public int TrainingProgressId { get; set; }
 
     public string? ResultValue { get; set; }
 
@@ -17,9 +17,7 @@ public partial class TrainingResult
 
     public string? Notes { get; set; }
 
-    public virtual Trainee Trainee { get; set; } = null!;
-
-    public virtual ICollection<TrainingProgress> TrainingProgresses { get; set; } = new List<TrainingProgress>();
+    public virtual TrainingProgress TrainingProgress { get; set; } = null!;
 
     public virtual TrainingResultType TrainingResultType { get; set; } = null!;
 }

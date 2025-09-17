@@ -9,7 +9,7 @@ namespace Lssctc.ProgramManagement.Programs.Services
         Task<ProgramDto?> GetProgramByIdAsync(int id);
         Task<ProgramDto> CreateProgramAsync(CreateProgramDto dto);
         Task<ProgramDto?> AddCoursesToProgramAsync(int programId, List<CourseOrderDto> coursesToAdd);
-        Task<ProgramDto?> AddPrerequisitesToProgramAsync(int programId, List<ProgramPrerequisiteDto> prerequisitesToAdd);
+        Task<ProgramDto?> AddPrerequisitesToProgramAsync(int programId, List<EntryRequirementDto> prerequisitesToAdd);
         Task<ProgramDto?> UpdateProgramAsync(int id, UpdateProgramDto dto);
         Task<bool> DeleteProgramAsync(int id);
     }

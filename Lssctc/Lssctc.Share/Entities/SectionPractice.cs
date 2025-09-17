@@ -29,5 +29,7 @@ public partial class SectionPractice
 
     public virtual ICollection<SectionPracticeAttempt> SectionPracticeAttempts { get; set; } = new List<SectionPracticeAttempt>();
 
+    public virtual ICollection<SectionPracticeTimeslot> SectionPracticeTimeslots { get; set; } = new List<SectionPracticeTimeslot>();
+
     public virtual SimulationTimeslot? SimulationTimeslot { get; set; }
 }

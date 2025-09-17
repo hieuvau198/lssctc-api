@@ -14,7 +14,7 @@ namespace Lssctc.Share.Implements
             _context = context;
             _dbSet = context.Set<T>();
         }
-              
+
         public IQueryable<T> GetAllAsQueryable()
         {
             return _dbSet.AsNoTracking();

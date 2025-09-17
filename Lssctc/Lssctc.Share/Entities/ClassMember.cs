@@ -17,8 +17,6 @@ public partial class ClassMember
 
     public virtual Class Class { get; set; } = null!;
 
-    public virtual ICollection<LearningRecord> LearningRecords { get; set; } = new List<LearningRecord>();
-
     public virtual Trainee Trainee { get; set; } = null!;
 
     public virtual ICollection<TrainingProgress> TrainingProgresses { get; set; } = new List<TrainingProgress>();

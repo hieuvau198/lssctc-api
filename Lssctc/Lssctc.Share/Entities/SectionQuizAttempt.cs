@@ -13,7 +13,7 @@ public partial class SectionQuizAttempt
 
     public decimal? AttemptScore { get; set; }
 
-    public int TraineeId { get; set; }
+    public int LearningRecordPartitionId { get; set; }
 
     public decimal? MaxScore { get; set; }
 
@@ -23,9 +23,9 @@ public partial class SectionQuizAttempt
 
     public int? AttemptOrder { get; set; }
 
+    public virtual LearningRecordPartition LearningRecordPartition { get; set; } = null!;
+
     public virtual SectionQuiz SectionQuiz { get; set; } = null!;
 
     public virtual ICollection<SectionQuizAttemptQuestion> SectionQuizAttemptQuestions { get; set; } = new List<SectionQuizAttemptQuestion>();
-
-    public virtual Trainee Trainee { get; set; } = null!;
 }

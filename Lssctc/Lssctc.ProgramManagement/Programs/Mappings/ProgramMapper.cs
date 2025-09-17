@@ -11,22 +11,22 @@ namespace Lssctc.ProgramManagement.Programs.Mappings
             // TrainingProgram → DTO
             CreateMap<TrainingProgram, ProgramDto>()
                 .ForMember(dest => dest.Courses, opt => opt.MapFrom(src => src.ProgramCourses))
-                .ForMember(dest => dest.Prerequisites, opt => opt.MapFrom(src => src.ProgramPrerequisites));
+                .ForMember(dest => dest.Prerequisites, opt => opt.MapFrom(src => src.ProgramEntryRequirements));
 
             CreateMap<ProgramCourse, ProgramCourseDto>();
-            CreateMap<ProgramPrerequisite, ProgramPrerequisiteDto>();
+            CreateMap<ProgramEntryRequirement, EntryRequirementDto>();
 
             // DTO → TrainingProgram
             CreateMap<CreateProgramDto, TrainingProgram>()
                 .ForMember(dest => dest.ProgramCourses, opt => opt.Ignore())
-                .ForMember(dest => dest.ProgramPrerequisites, opt => opt.Ignore());
+                .ForMember(dest => dest.ProgramEntryRequirements, opt => opt.Ignore());
 
             CreateMap<UpdateProgramDto, TrainingProgram>()
                 .ForMember(dest => dest.ProgramCourses, opt => opt.Ignore())
-                .ForMember(dest => dest.ProgramPrerequisites, opt => opt.Ignore());
+                .ForMember(dest => dest.ProgramEntryRequirements, opt => opt.Ignore());
 
-            CreateMap<CreateProgramPrerequisiteDto, ProgramPrerequisite>();
-            CreateMap<UpdateProgramPrerequisiteDto, ProgramPrerequisite>();
+            CreateMap<CreateProgramPrerequisiteDto, ProgramEntryRequirement>();
+            CreateMap<UpdateProgramPrerequisiteDto, ProgramEntryRequirement>();
         }
     }
 }

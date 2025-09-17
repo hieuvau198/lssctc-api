@@ -13,6 +13,8 @@ public partial class Section
 
     public int ClassesId { get; set; }
 
+    public int SyllabusSectionId { get; set; }
+
     public int? DurationMinutes { get; set; }
 
     public int Order { get; set; }
@@ -28,4 +30,6 @@ public partial class Section
     public virtual ICollection<LearningRecord> LearningRecords { get; set; } = new List<LearningRecord>();
 
     public virtual ICollection<SectionPartition> SectionPartitions { get; set; } = new List<SectionPartition>();
+
+    public virtual SyllabusSection SyllabusSection { get; set; } = null!;
 }

@@ -29,7 +29,11 @@ public partial class Course
 
     public virtual CourseCategory? Category { get; set; }
 
+    public virtual ICollection<CourseCertificate> CourseCertificates { get; set; } = new List<CourseCertificate>();
+
     public virtual CourseCode? CourseCode { get; set; }
+
+    public virtual ICollection<CourseSyllabuse> CourseSyllabuses { get; set; } = new List<CourseSyllabuse>();
 
     public virtual CourseLevel? Level { get; set; }
 

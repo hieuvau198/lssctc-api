@@ -9,7 +9,7 @@ public partial class SectionPracticeAttempt
 
     public int SectionPracticeId { get; set; }
 
-    public int TraineeId { get; set; }
+    public int LearningRecordPartitionId { get; set; }
 
     public decimal? Score { get; set; }
 
@@ -23,9 +23,9 @@ public partial class SectionPracticeAttempt
 
     public bool? IsDeleted { get; set; }
 
+    public virtual LearningRecordPartition LearningRecordPartition { get; set; } = null!;
+
     public virtual SectionPractice SectionPractice { get; set; } = null!;
 
     public virtual ICollection<SectionPracticeAttemptStep> SectionPracticeAttemptSteps { get; set; } = new List<SectionPracticeAttemptStep>();
-
-    public virtual Trainee Trainee { get; set; } = null!;
 }
