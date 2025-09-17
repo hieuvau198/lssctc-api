@@ -7,18 +7,12 @@ namespace Lssctc.Share.Interfaces
         IGenericRepository<TrainingProgram> ProgramRepository { get; }
         IGenericRepository<Course> CourseRepository { get; }
         IGenericRepository<LearningMaterial> LearningMaterialRepository { get; }
-        IGenericRepository<CourseCategory> CourseCategoryRepository { get; }
-        IGenericRepository<CourseLevel> CourseLevelRepository { get; }
-        IGenericRepository<CourseCode> CourseCodeRepository { get; }
-        IGenericRepository<TrainingProgram> TrainingProgramRepository { get; }
-        IGenericRepository<ProgramPrerequisite> ProgramPrerequisiteRepository { get; }
-        IGenericRepository<ProgramCourse> ProgramCourseRepository { get; }
-        IGenericRepository<Class> ClassRepository { get; }
-        IGenericRepository<ClassCode> ClassCodeRepository { get; }
-        IGenericRepository<Instructor> InstructorRepository { get; }
-        IGenericRepository<Trainee> TraineeRepository { get; }
-        IGenericRepository<ClassInstructor> ClassInstructorRepository { get; }
-        IGenericRepository<ClassMember> ClassMemberRepository { get; }
+
+        IGenericRepository<Quiz> QuizRepository { get; }
+
+        IGenericRepository<QuizQuestion> QuizQuestionRepository { get; }
+
+        IGenericRepository<QuizQuestionOption> QuizQuestionOptionRepository { get; }
 
         Task<int> SaveChangesAsync();
     }
