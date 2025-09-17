@@ -13,6 +13,12 @@ namespace Lssctc.Share.Interfaces
         IGenericRepository<TrainingProgram> TrainingProgramRepository { get; }
         IGenericRepository<ProgramPrerequisite> ProgramPrerequisiteRepository { get; }
         IGenericRepository<ProgramCourse> ProgramCourseRepository { get; }
+        IGenericRepository<Class> ClassRepository { get; }
+        IGenericRepository<ClassCode> ClassCodeRepository { get; }
+        IGenericRepository<Instructor> InstructorRepository { get; }
+        IGenericRepository<Trainee> TraineeRepository { get; }
+        IGenericRepository<ClassInstructor> ClassInstructorRepository { get; }
+        IGenericRepository<ClassMember> ClassMemberRepository { get; }
 
         Task<int> SaveChangesAsync();
     }

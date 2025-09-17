@@ -16,6 +16,12 @@ namespace Lssctc.Share.Implements
         private IGenericRepository<TrainingProgram>? _trainingProgramlRepository;
         private IGenericRepository<ProgramPrerequisite>? _programPrerequisiteRepository;
         private IGenericRepository<ProgramCourse>? _programCourseRepository;
+        private IGenericRepository<Class>? _classRepository;
+        private IGenericRepository<ClassCode>? _classCodeRepository;
+        private IGenericRepository<Instructor>? _instructorRepository;
+        private IGenericRepository<Trainee>? _TraineeRepository;
+        private IGenericRepository<ClassInstructor>? _classInstructorRepository;
+        private IGenericRepository<ClassMember>? _classmemberRepository;
 
 
 
@@ -45,6 +51,18 @@ namespace Lssctc.Share.Implements
             _programPrerequisiteRepository ??= new GenericRepository<ProgramPrerequisite>(_context);
         public IGenericRepository<ProgramCourse> ProgramCourseRepository =>
             _programCourseRepository ??= new GenericRepository<ProgramCourse>(_context);
+        public IGenericRepository<Class> ClassRepository =>
+            _classRepository ??= new GenericRepository<Class>(_context);
+        public IGenericRepository<ClassCode> ClassCodeRepository =>
+            _classCodeRepository ??= new GenericRepository<ClassCode>(_context);
+        public IGenericRepository<Instructor> InstructorRepository =>
+            _instructorRepository ??= new GenericRepository<Instructor>(_context);
+        public IGenericRepository<Trainee> TraineeRepository =>
+            _TraineeRepository ??= new GenericRepository<Trainee>(_context);
+        public IGenericRepository<ClassMember> ClassMemberRepository =>
+           _classmemberRepository ??= new GenericRepository<ClassMember>(_context);
+        public IGenericRepository<ClassInstructor> ClassInstructorRepository =>
+           _classInstructorRepository ??= new GenericRepository<ClassInstructor>(_context);
         public async Task<int> SaveChangesAsync()
         {
             return await _context.SaveChangesAsync();
