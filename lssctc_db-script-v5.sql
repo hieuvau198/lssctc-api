@@ -73,18 +73,18 @@ CREATE TABLE [dbo].[instructor_profiles] (
 
 CREATE TABLE [dbo].[trainee_profiles] (
     [id] INT PRIMARY KEY, 
-    [gplx_number] NVARCHAR(100),        
-    [gplx_level] NVARCHAR(50),          
-    [gplx_issued_date] DATETIME2(0),
-	[gplx_valid_start_date] DATETIME2(0),
-	[gplx_valid_end_date] DATETIME2(0),
-	[gplx_image_url] NVARCHAR(2000),
+    [driver_license_number] NVARCHAR(100),        
+    [driver_license_level] NVARCHAR(50),          
+    [driver_license_issued_date] DATETIME2(0),
+	[driver_license_valid_start_date] DATETIME2(0),
+	[driver_license_valid_end_date] DATETIME2(0),
+	[driver_license_image_url] NVARCHAR(2000),
     [education_level] NVARCHAR(255),
 	[education_image_url] NVARCHAR(2000),
-    [cccd_number] NVARCHAR(20),         
-    [cccd_issued_date] DATE,            
-    [cccd_place_of_issue] NVARCHAR(255),
-	[cccd_image_url] NVARCHAR(2000),
+    [citizen_card_id] NVARCHAR(20),         
+    [citizen_card_issued_date] DATE,            
+    [citizen_card_place_of_issue] NVARCHAR(255),
+	[citizen_card_image_url] NVARCHAR(2000),
     FOREIGN KEY ([id]) REFERENCES [dbo].[trainees]([id])
 );
 
@@ -277,8 +277,9 @@ CREATE TABLE [dbo].[practice_step_components] (
 
 CREATE TABLE [dbo].[syllabuses] (
     [id] INT IDENTITY(1,1) PRIMARY KEY,
-    [name] NVARCHAR(200) NOT NULL,
-	[course_code] NVARCHAR(200) NOT NULL,
+    [name] NVARCHAR(100) NOT NULL,
+	[course_name] NVARCHAR(100) NOT NULL,
+	[course_code] NVARCHAR(100) NOT NULL,
     [description] NVARCHAR(2000),
     [is_active] BIT DEFAULT 1,
     [is_deleted] BIT DEFAULT 0
@@ -304,35 +305,17 @@ CREATE TABLE [dbo].[syllabus_sections] (
 -- Specific Tables
 -- =========================
 
-CREATE TABLE [dbo].[program_certificates] (
-    [id] INT IDENTITY(1,1) PRIMARY KEY,
-    [program_id] INT,
-    [certificate_id] INT,
-    FOREIGN KEY ([program_id]) REFERENCES [dbo].[training_programs]([id]),
-    FOREIGN KEY ([certificate_id]) REFERENCES [dbo].[certificates]([id])
-);
-
-CREATE TABLE [dbo].[trainee_certificates] (
-    [id] INT IDENTITY(1,1) PRIMARY KEY,
-    [name] NVARCHAR(100) NOT NULL,
-    [description] NVARCHAR(2000),
-    [program_certificate_id] INT,
-    [valid_date_end] DATETIME2(0),
-    [trainee_id] INT,
-    [issued_date_start] DATETIME2(0) NOT NULL DEFAULT SYSDATETIME(),
-    [issued_date_end] DATETIME2(0),
-    [status] INT NOT NULL DEFAULT 1,
-    FOREIGN KEY ([program_certificate_id]) REFERENCES [dbo].[program_certificates]([id]),
-    FOREIGN KEY ([trainee_id]) REFERENCES [dbo].[trainees]([id])
-);
 
 
 
-CREATE TABLE [dbo].[program_prerequisites] (
+
+
+CREATE TABLE [dbo].[program_entry_requirements] (
     [id] INT IDENTITY(1,1) PRIMARY KEY,
     [program_id] INT NOT NULL,
     [name] NVARCHAR(100) NOT NULL,
     [description] NVARCHAR(2000),
+	[document_url] NVARCHAR(2000),
     FOREIGN KEY ([program_id]) REFERENCES [dbo].[training_programs]([id])
 );
 
@@ -364,6 +347,14 @@ CREATE TABLE [dbo].[program_courses] (
     FOREIGN KEY ([courses_id]) REFERENCES [dbo].[courses]([id])
 );
 
+CREATE TABLE [dbo].[course_certificates] (
+    [id] INT IDENTITY(1,1) PRIMARY KEY,
+    [course_id] INT,
+    [certificate_id] INT,
+    FOREIGN KEY ([course_id]) REFERENCES [dbo].[courses]([id]),
+    FOREIGN KEY ([certificate_id]) REFERENCES [dbo].[certificates]([id])
+);
+
 CREATE TABLE [dbo].[course_syllabuses] (
     [id] INT IDENTITY(1,1) PRIMARY KEY,
     [course_id] INT NOT NULL,
@@ -384,6 +375,20 @@ CREATE TABLE [dbo].[classes] (
     [status] INT NOT NULL DEFAULT 1,
     FOREIGN KEY ([program_course_id]) REFERENCES [dbo].[program_courses]([id]),
     FOREIGN KEY ([class_code_id]) REFERENCES [dbo].[class_codes]([id])
+);
+
+CREATE TABLE [dbo].[class_enrollments] (
+    [id] INT IDENTITY(1,1) PRIMARY KEY,
+    [name] NVARCHAR(100) NOT NULL,
+    [created_date] DATETIME2(0) NOT NULL DEFAULT SYSDATETIME(),
+    [approved_date] DATETIME2(0),
+    [class_id] INT NOT NULL,
+	[trainee_id] INT NOT NULL,
+	[trainee_contact] NVARCHAR(100),
+    [description] NVARCHAR(2000) NOT NULL,
+    [status] INT NOT NULL DEFAULT 1,
+    FOREIGN KEY ([class_id]) REFERENCES [dbo].[classes]([id]),
+    FOREIGN KEY ([trainee_id]) REFERENCES [dbo].[trainees]([id])
 );
 
 CREATE TABLE [dbo].[class_instructors] (
@@ -434,7 +439,19 @@ CREATE TABLE [dbo].[training_results] (
     FOREIGN KEY ([training_progress_id]) REFERENCES [dbo].[training_progresses]([id])
 );
 
-
+CREATE TABLE [dbo].[trainee_certificates] (
+    [id] INT IDENTITY(1,1) PRIMARY KEY,
+    [name] NVARCHAR(100) NOT NULL, 
+    [description] NVARCHAR(2000),
+    [course_certificate_id] INT,
+    [valid_date_end] DATETIME2(0),
+    [trainee_id] INT,
+    [issued_date_start] DATETIME2(0) NOT NULL DEFAULT SYSDATETIME(),
+    [issued_date_end] DATETIME2(0),
+    [status] INT NOT NULL DEFAULT 1,
+    FOREIGN KEY ([course_certificate_id]) REFERENCES [dbo].[course_certificates]([id]),
+    FOREIGN KEY ([trainee_id]) REFERENCES [dbo].[trainees]([id])
+);
 
 
 CREATE TABLE [dbo].[sections] (
