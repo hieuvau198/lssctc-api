@@ -1,3 +1,8 @@
+-- Drop Database
+
+ALTER DATABASE [lssctc-db] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+DROP DATABASE [lssctc-db];
+
 -- 1. Drop all Foreign Key Constraints
 DECLARE @sql NVARCHAR(MAX) = N'';
 
