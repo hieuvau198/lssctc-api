@@ -1,4 +1,6 @@
-﻿namespace Lssctc.LearningManagement.Quizzes.DTOs
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace Lssctc.LearningManagement.Quizzes.DTOs
 {
     public class QuizDto
     {
@@ -14,10 +16,20 @@
 
     public class CreateQuizDto
     {
+        [Required(ErrorMessage = "Tên quiz là bắt buộc.")]
+        [StringLength(100, ErrorMessage = "Tên quiz tối đa 100 ký tự.")]
         public string Name { get; set; } = null!;
+
+        [Range(0, 999.99, ErrorMessage = "Điểm đạt phải từ 0 đến 999.99.")]
         public decimal? PassScoreCriteria { get; set; }
+
+        [Range(1, 600, ErrorMessage = "Thời gian làm bài phải từ 1 đến 600 phút.")]
         public int? TimelimitMinute { get; set; }
+
+        [Range(0, 999.99, ErrorMessage = "Tổng điểm phải từ 0 đến 999.99.")]
         public decimal? TotalScore { get; set; }
+
+        [StringLength(2000, ErrorMessage = "Mô tả tối đa 2000 ký tự.")]
         public string? Description { get; set; }
     }
 
