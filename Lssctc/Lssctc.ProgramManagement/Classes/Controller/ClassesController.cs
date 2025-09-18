@@ -17,7 +17,7 @@ namespace Lssctc.ProgramManagement.Classes.Controller
         }
 
         /// <summary>
-        /// Create a new Class
+        /// Create a new empty Class
         /// </summary>
         [HttpPost("create")]
         public async Task<IActionResult> CreateClass([FromBody] ClassCreateDto dto)
@@ -46,12 +46,58 @@ namespace Lssctc.ProgramManagement.Classes.Controller
         /// Assign a Trainee to a Class
         /// </summary>
         [HttpPost("assign-trainee")]
-        public async Task<IActionResult> AssignTrainee([FromBody] AssignTraineeDto dto)
+        public async Task<IActionResult> AssignTrainee([FromBody] ClassEnrollmentCreateDto dto)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var result = await _classService.AssignTraineeAsync(dto);
+            var result = await _classService.EnrollTraineeAsync(dto);
+            return Ok(result);
+        }
+        /// <summary>
+        /// Get enrollment by ClassId (returns first enrollment if multiple exist)
+        /// </summary>
+        [HttpGet("{classId}/enrollment")]
+        public async Task<IActionResult> GetEnrollmentByClassId(int classId)
+        {
+            var result = await _classService.GetClassEnrollmentById(classId);
+            if (result == null)
+                return NotFound("No enrollment found for this class.");
+
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// Approve an enrollment and add to ClassMembers
+        /// </summary>
+        [HttpPost("approve-enrollment")]
+        public async Task<IActionResult> ApproveEnrollment([FromBody] ApproveEnrollmentDto dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            try
+            {
+                var result = await _classService.ApproveEnrollmentAsync(dto);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Get all members of a class by ClassId
+        /// </summary>
+        [HttpGet("{classId}/members")]
+        public async Task<IActionResult> GetClassMembers(int classId)
+        {
+            var result = await _classService.GetClassMembersByClassIdAsync(classId);
+
+            if (result == null || !result.Any())
+                return NotFound("No members found for this class.");
+
             return Ok(result);
         }
     }

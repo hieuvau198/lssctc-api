@@ -54,7 +54,7 @@
         public DateTime? EndDate { get; set; }
         public int? Capacity { get; set; }
         public int ProgramCourseId { get; set; }
-        public ClassCodeDto? ClassCode { get; set; }
+        public int ClassCodeId { get; set; }
         public string Description { get; set; } = null!;
         public int Status { get; set; }
     }
@@ -74,5 +74,45 @@
         public List<ClassInstructorDto> Instructors { get; set; } = new();
         public List<ClassMemberDto> Members { get; set; } = new();
     }
-    
+
+    //Enrollment
+    public class ClassEnrollmentCreateDto
+    {
+        public int ClassId { get; set; }
+        public int TraineeId { get; set; }
+        public string Name { get; set; } = null!;
+        public string Description { get; set; } = null!;
+        public string? TraineeContact { get; set; }
+    }
+
+    public class ClassEnrollmentDto
+    {
+        public int Id { get; set; }
+        public int ClassId { get; set; }
+        public int TraineeId { get; set; }
+        public string Name { get; set; } = null!;
+        public string Description { get; set; } = null!;
+        public int Status { get; set; }
+        public DateTime CreatedDate { get; set; }
+        public DateTime? ApprovedDate { get; set; }
+
+        public string? TraineeContact { get; set; }
+
+        // Navigation
+        public string ClassName { get; set; } = null!;
+        public string TraineeCode { get; set; } = null!;
+    }
+
+    //
+
+
+    //Approve enrollment
+    public class ApproveEnrollmentDto
+    {
+        public int EnrollmentId { get; set; }
+        public string? Description { get; set; }
+    }
+
+
+    //
 }

@@ -207,5 +207,80 @@ namespace Lssctc.ProgramManagement.Courses.Services
 
             return true;
         }
+
+        public async Task<CourseSyllabusDto> CreateCourseSyllabusAsync(CourseSyllabusCreateDto dto)
+        {
+            // check for existence of coursesyllabus
+            var exists = await _unitOfWork.CourseSyllabuseRepository
+                .GetAllAsQueryable().FirstOrDefaultAsync(x => x.CourseId == dto.CourseId);
+
+            if (exists != null)
+                throw new InvalidOperationException("This course already contains the syllabus.");
+
+            //get course 
+            var course = await _unitOfWork.CourseRepository.GetAllAsQueryable()
+                .Include(c => c.CourseCode)
+                .FirstOrDefaultAsync(c => c.Id == dto.CourseId);
+
+            var entity = _mapper.Map<CourseSyllabuse>(dto);
+            //create syllabus
+            var sysllbus = new Syllabuse
+            {
+                Description = dto.SyllabusDescription,
+                Name = dto.SyllabusName,
+                CourseCode = course.CourseCode.Name,
+                CourseName = course.Name,
+                IsActive = true,
+                IsDeleted = false
+            };
+            await _unitOfWork.SyllabuseRepository.CreateAsync(sysllbus);
+
+            await _unitOfWork.SaveChangesAsync();
+            //create coursesyllabus
+            entity.SyllabusId = sysllbus.Id;
+            await _unitOfWork.CourseSyllabuseRepository.CreateAsync(entity);
+            await _unitOfWork.SaveChangesAsync();
+
+            // reload with navigation props
+            entity = await _unitOfWork.CourseSyllabuseRepository
+                .GetAllAsQueryable()
+                .Include(cl => cl.Course)
+                .Include(cl => cl.Syllabus)
+                .FirstOrDefaultAsync(cl => cl.Id == entity.Id);
+                
+
+            return _mapper.Map<CourseSyllabusDto>(entity);
+        }
+        public async Task<CourseSyllabusDto?> UpdateCourseSyllabusAsync(int courseSyllabusId, UpdateCourseSyllabusDto dto)
+        {
+            var courseSyllabus = await _unitOfWork.CourseSyllabuseRepository
+                .GetAllAsQueryable()
+                .Include(cs => cs.Syllabus)
+                .Include(cs => cs.Course)
+                .FirstOrDefaultAsync(cs => cs.Id == courseSyllabusId);
+
+            if (courseSyllabus == null)
+                return null;
+
+            courseSyllabus.Syllabus.Name = dto.Name;
+            courseSyllabus.Syllabus.Description = dto.Description;
+
+            await _unitOfWork.SyllabuseRepository.UpdateAsync(courseSyllabus.Syllabus);
+            await _unitOfWork.SaveChangesAsync();
+
+            return _mapper.Map<CourseSyllabusDto>(courseSyllabus);
+        }
+        public async Task<IEnumerable<CourseSyllabusDto>> GetCourseSyllabusesByCourseIdAsync(int courseId)
+        {
+            var courseSyllabuses = await _unitOfWork.CourseSyllabuseRepository
+                .GetAllAsQueryable()
+                .Where(cs => cs.CourseId == courseId)
+                .Include(cs => cs.Syllabus)
+                .Include(cs => cs.Course)
+                .ToListAsync();
+
+            return _mapper.Map<IEnumerable<CourseSyllabusDto>>(courseSyllabuses);
+        }
+
     }
 }

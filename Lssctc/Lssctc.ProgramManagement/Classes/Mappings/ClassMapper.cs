@@ -30,6 +30,15 @@ namespace Lssctc.ProgramManagement.Classes.Mappings
 
             // Instructor mapping
             CreateMap<Instructor, InstructorDto>().ReverseMap();
+
+            //ClassEnrollment mapping
+            CreateMap<ClassEnrollmentCreateDto, ClassEnrollment>()
+                .ForMember(dest => dest.CreatedDate, opt => opt.MapFrom(_ => DateTime.UtcNow))
+                .ForMember(dest => dest.Status, opt => opt.MapFrom(_ => 0)); 
+
+            CreateMap<ClassEnrollment, ClassEnrollmentDto>()
+                .ForMember(dest => dest.ClassName, opt => opt.MapFrom(src => src.Class.Name))
+                .ForMember(dest => dest.TraineeCode, opt => opt.MapFrom(src => src.Trainee.TraineeCode));
         }
     }
 }

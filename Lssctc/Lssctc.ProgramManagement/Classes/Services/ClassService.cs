@@ -25,30 +25,17 @@ namespace Lssctc.ProgramManagement.Classes.Services
 
             if (programCourse == null)
                 throw new Exception("Invalid ProgramCourseId");
-            ClassCode? classCode = null;
 
-            if (dto.ClassCode != null)
+            
+            if (dto.ClassCodeId != null)
             {
-                if (dto.ClassCode.Id.HasValue)
-                {
-                    // Use existing ClassCode
-                    classCode = await _unitOfWork.ClassCodeRepository.GetByIdAsync(dto.ClassCode.Id.Value);
-
-                    if (classCode == null)
-                        throw new Exception("Invalid ClassCodeId");
-                }
-                else if (!string.IsNullOrWhiteSpace(dto.ClassCode.Name))
-                {
-                    // Create new ClassCode
-                    classCode = new ClassCode { Name = dto.ClassCode.Name };
-                    await _unitOfWork.ClassCodeRepository.CreateAsync(classCode);
-                }
+                // Use existing ClassCode
+                var classCode = await _unitOfWork.ClassCodeRepository.GetByIdAsync(dto.ClassCodeId);
+                if (classCode == null)
+                    throw new Exception("Invalid ClassCodeId, Class code doesnt exist");
             }
 
             var entity = _mapper.Map<Class>(dto);
-
-            if (classCode != null)
-                entity.ClassCode = classCode;
 
             await _unitOfWork.ClassRepository.CreateAsync(entity);
             await _unitOfWork.SaveChangesAsync();
@@ -91,33 +78,124 @@ namespace Lssctc.ProgramManagement.Classes.Services
             return _mapper.Map<ClassDto>(updatedClass);
         }
 
-        public async Task<ClassDto?> AssignTraineeAsync(AssignTraineeDto dto)
+        //public async Task<ClassDto?> AssignTraineeAsync(AssignTraineeDto dto)
+        //{
+        //    var classEntity = await _unitOfWork.ClassRepository
+        //        .GetAllAsQueryable()
+        //        .Include(c => c.ClassMembers)
+        //        .FirstOrDefaultAsync(c => c.Id == dto.ClassId);
+
+        //    if (classEntity == null)
+        //        throw new Exception("Class not found");
+
+        //    // Check if trainee already assigned
+        //    if (classEntity.ClassMembers.Any(cm => cm.TraineeId == dto.TraineeId))
+        //        throw new Exception("Trainee already assigned to this class");
+
+        //    var newMember = new ClassMember
+        //    {
+        //        ClassId = dto.ClassId,
+        //        TraineeId = dto.TraineeId,
+        //        AssignedDate = DateTime.UtcNow,
+        //        Status = 1 ,
+        //    };
+
+        //    classEntity.ClassMembers.Add(newMember);
+        //    await _unitOfWork.SaveChangesAsync();
+
+        //    return _mapper.Map<ClassDto>(classEntity);
+        //}
+
+        //create class enrollment
+        public async Task<ClassEnrollmentDto> EnrollTraineeAsync(ClassEnrollmentCreateDto dto)
         {
+            // validate class
             var classEntity = await _unitOfWork.ClassRepository
                 .GetAllAsQueryable()
-                .Include(c => c.ClassMembers)
+                .Include(c => c.ClassEnrollments)
                 .FirstOrDefaultAsync(c => c.Id == dto.ClassId);
 
             if (classEntity == null)
                 throw new Exception("Class not found");
 
-            // Check if trainee already assigned
-            if (classEntity.ClassMembers.Any(cm => cm.TraineeId == dto.TraineeId))
-                throw new Exception("Trainee already assigned to this class");
+            // validate trainee
+            var trainee = await _unitOfWork.TraineeRepository.GetByIdAsync(dto.TraineeId);
+            if (trainee == null)
+                throw new Exception("Trainee not found");
 
-            var newMember = new ClassMember
-            {
-                ClassId = dto.ClassId,
-                TraineeId = dto.TraineeId,
-                AssignedDate = DateTime.UtcNow,
-                Status = 1 ,
-            };
+            // check if already enrolled
+            if (classEntity.ClassEnrollments.Any(e => e.TraineeId == dto.TraineeId))
+                throw new Exception("Trainee already enrolled in this class");
 
-            classEntity.ClassMembers.Add(newMember);
+            // map to entity
+            var enrollment = _mapper.Map<ClassEnrollment>(dto);
+            enrollment.Status = 0; // 0 = Pending
+
+            await _unitOfWork.ClassEnrollmentRepository.CreateAsync(enrollment);
             await _unitOfWork.SaveChangesAsync();
 
-            return _mapper.Map<ClassDto>(classEntity);
+            // reload with nav props
+            enrollment = await _unitOfWork.ClassEnrollmentRepository
+                .GetAllAsQueryable()
+                .Include(e => e.Class)
+                .Include(e => e.Trainee)
+                .FirstOrDefaultAsync(e => e.Id == enrollment.Id);
+
+            return _mapper.Map<ClassEnrollmentDto>(enrollment);
         }
 
+        public async Task<ClassEnrollmentDto> GetClassEnrollmentById(int classid)
+        {
+            return _mapper.Map<ClassEnrollmentDto>(await _unitOfWork.ClassEnrollmentRepository.GetAllAsQueryable().FirstOrDefaultAsync(ce => ce.ClassId == classid));
+        }
+
+        public async Task<ClassMemberDto> ApproveEnrollmentAsync(ApproveEnrollmentDto dto)
+        {
+            // get enrollment
+            var enrollment = await _unitOfWork.ClassEnrollmentRepository
+                .GetAllAsQueryable()
+                .Include(e => e.Class)
+                .Include(e => e.Trainee)
+                .FirstOrDefaultAsync(e => e.Id == dto.EnrollmentId);
+
+            if (enrollment == null)
+                throw new Exception("Enrollment not found");
+
+            if (enrollment.Status == 1) // already approved
+                throw new Exception("Enrollment already approved");
+
+            // update enrollment
+            enrollment.Status = 1; // 1 = Approved
+            enrollment.ApprovedDate = DateTime.UtcNow;
+            enrollment.Description = dto.Description ?? enrollment.Description;
+
+            _unitOfWork.ClassEnrollmentRepository.UpdateAsync(enrollment);
+
+            // create class member
+            var member = new ClassMember
+            {
+                
+                ClassId = enrollment.ClassId,
+                TraineeId = enrollment.TraineeId,
+                AssignedDate = DateTime.UtcNow,
+                Status = 1 // Active
+            };
+
+            await _unitOfWork.ClassMemberRepository.CreateAsync(member);
+            await _unitOfWork.SaveChangesAsync();
+
+            return _mapper.Map<ClassMemberDto>(member);
+        }
+
+        public async Task<IEnumerable<ClassMemberDto>> GetClassMembersByClassIdAsync(int classId)
+        {
+            var members = await _unitOfWork.ClassMemberRepository
+                .GetAllAsQueryable()
+                .Include(cm => cm.Trainee)
+                .Where(cm => cm.ClassId == classId)
+                .ToListAsync();
+
+            return _mapper.Map<IEnumerable<ClassMemberDto>>(members);
+        }
     }
 }
