@@ -21,6 +21,7 @@ CREATE TABLE [dbo].[users] (
     [password] NVARCHAR(2000) NOT NULL,
     [email] NVARCHAR(255) NOT NULL,
     [fullname] NVARCHAR(2000),
+	[role] INT DEFAULT 5,	-- Admin=1, ProgramManager=2, SimulationManager=3, Instructor=4, Trainee=5
     [phone_number] NVARCHAR(2000),
     [avatar_url] NVARCHAR(2000),
     [is_active] BIT NOT NULL DEFAULT 1,
@@ -100,7 +101,7 @@ CREATE TABLE [dbo].[training_programs] (
     [duration_hours] INT,
     [total_courses] INT,
     [image_url] NVARCHAR(2000)
-);
+);	-- need seed data
 
 CREATE TABLE [dbo].[certificates] (
     [id] INT IDENTITY(1,1) PRIMARY KEY,
@@ -110,34 +111,34 @@ CREATE TABLE [dbo].[certificates] (
     [requirement] NVARCHAR(2000),
     [certifying_authority] NVARCHAR(2000),
     [image_url] NVARCHAR(2000)
-);
+);	-- need seed data
 
 CREATE TABLE [dbo].[course_categories] (
     [id] INT IDENTITY(1,1) PRIMARY KEY,
     [name] NVARCHAR(100) NOT NULL UNIQUE,
     [description] NVARCHAR(2000)
-);
+);	-- need seed data: Safety & Regulations, Basic Operation, Advanced Operation, Equipment Maintenance, Certification Preparation 
 
 CREATE TABLE [dbo].[course_levels] (
     [id] INT IDENTITY(1,1) PRIMARY KEY,
     [name] NVARCHAR(100) NOT NULL UNIQUE,
     [description] NVARCHAR(2000)
-);
+);	-- need seed data: Entry, Standard, Expert
 
 CREATE TABLE [dbo].[course_codes] (
     [id] INT IDENTITY(1,1) PRIMARY KEY,
     [name] NVARCHAR(100) NOT NULL UNIQUE
-);
+);	-- need seed data, CO000001, CO000002, CO000003, CO000004, CO000005
 
 CREATE TABLE [dbo].[class_codes] (
     [id] INT IDENTITY(1,1) PRIMARY KEY,
     [name] NVARCHAR(100) NOT NULL UNIQUE
-);
+); -- need seed data, CL000001, CL000002, CL000003, CL000004, CL000005
 
 CREATE TABLE [dbo].[learning_material_types] (
     [id] INT IDENTITY(1,1) PRIMARY KEY,
     [name] NVARCHAR(100) NOT NULL
-);
+); -- need seed data: PDF, Video, Image, URL
 
 CREATE TABLE [dbo].[learning_materials] (
     [id] INT IDENTITY(1,1) PRIMARY KEY,
@@ -146,7 +147,7 @@ CREATE TABLE [dbo].[learning_materials] (
 	[description] NVARCHAR(2000) NOT NULL,
 	[material_url] NVARCHAR(2000) NOT NULL,
     FOREIGN KEY ([learning_material_type_id]) REFERENCES [dbo].[learning_material_types]([id])
-);
+); -- need seed data
 
 CREATE TABLE [dbo].[quizzes] (
     [id] INT IDENTITY(1,1) PRIMARY KEY,
@@ -157,7 +158,7 @@ CREATE TABLE [dbo].[quizzes] (
     [timelimit_minute] INT,
     [total_score] DECIMAL(5,2),
     [description] NVARCHAR(2000)
-);
+); 
 
 CREATE TABLE [dbo].[quiz_questions] (
     [id] INT IDENTITY(1,1) PRIMARY KEY,
@@ -167,7 +168,7 @@ CREATE TABLE [dbo].[quiz_questions] (
     [description] NVARCHAR(2000),
     [is_multiple_answers] BIT NOT NULL DEFAULT 1,
     FOREIGN KEY ([quiz_id]) REFERENCES [dbo].[quizzes]([id])
-);
+); 
 
 CREATE TABLE [dbo].[quiz_question_options] (
     [id] INT IDENTITY(1,1) PRIMARY KEY,
@@ -178,7 +179,7 @@ CREATE TABLE [dbo].[quiz_question_options] (
     [option_score] DECIMAL(5,2),
     [name] NVARCHAR(100) NOT NULL,
     FOREIGN KEY ([quiz_question_id]) REFERENCES [dbo].[quiz_questions]([id])
-);
+); 
 
 CREATE TABLE [dbo].[simulation_settings] (
     [id] INT IDENTITY(1,1) PRIMARY KEY,
@@ -186,7 +187,7 @@ CREATE TABLE [dbo].[simulation_settings] (
     [description] NVARCHAR(2000),
     [is_active] BIT DEFAULT 1,
     [is_deleted] BIT DEFAULT 0
-);
+); 
 
 CREATE TABLE [dbo].[simulation_timeslots] (
     [id] INT IDENTITY(1,1) PRIMARY KEY,
@@ -197,14 +198,14 @@ CREATE TABLE [dbo].[simulation_timeslots] (
     [status] INT DEFAULT 1,
     [is_active] BIT DEFAULT 1,
     [is_deleted] BIT DEFAULT 0,
-);
+); 
 
 CREATE TABLE [dbo].[simulation_component_types] (
     [id] INT IDENTITY(1,1) PRIMARY KEY,
     [name] NVARCHAR(100) NOT NULL,
     [description] NVARCHAR(2000),
     [is_deleted] BIT DEFAULT 0
-);
+); 
 
 CREATE TABLE [dbo].[simulation_components] (
     [id] INT IDENTITY(1,1) PRIMARY KEY,
@@ -297,17 +298,9 @@ CREATE TABLE [dbo].[syllabus_sections] (
 );
 
 
-
-
-
-
 -- =========================
 -- Specific Tables
 -- =========================
-
-
-
-
 
 
 CREATE TABLE [dbo].[program_entry_requirements] (
