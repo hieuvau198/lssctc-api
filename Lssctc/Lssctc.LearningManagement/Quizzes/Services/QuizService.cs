@@ -27,7 +27,8 @@ namespace Lssctc.LearningManagement.Quizzes.Services
             return entity == null ? null : _mapper.Map<QuizDto>(entity);
         }
 
-        public async Task<(IReadOnlyList<QuizDto> Items, int Total)> GetQuizzes(int pageIndex, int pageSize, string? search)
+        public async Task<(IReadOnlyList<QuizDetailDto> Items, int Total)> GetDetailQuizzes(
+      int pageIndex, int pageSize, string? search)
         {
             if (pageIndex < 1) pageIndex = 1;
             if (pageSize <= 0 || pageSize > 200) pageSize = 20;
@@ -45,15 +46,16 @@ namespace Lssctc.LearningManagement.Quizzes.Services
             var total = await query.CountAsync();
 
             var items = await query
-                .OrderByDescending(q => q.UpdatedAt)   // ưu tiên bản cập nhật mới
-                .ThenByDescending(q => q.Id)           // ổn định thứ tự
+                .OrderByDescending(q => q.UpdatedAt)
+                .ThenByDescending(q => q.Id)
                 .Skip((pageIndex - 1) * pageSize)
                 .Take(pageSize)
-                .ProjectTo<QuizDto>(_mapper.ConfigurationProvider)
+                .ProjectTo<QuizDetailDto>(_mapper.ConfigurationProvider)
                 .ToListAsync();
 
             return (items, total);
         }
+
 
         public async Task<int> CreateQuiz(CreateQuizDto dto)
         {

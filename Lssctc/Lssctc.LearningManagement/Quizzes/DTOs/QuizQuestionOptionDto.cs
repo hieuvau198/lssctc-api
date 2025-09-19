@@ -19,8 +19,37 @@ namespace Lssctc.LearningManagement.Quizzes.DTOs
         public string Name { get; set; } = null!;
     }
 
-  // DTO tạo mới
- public class CreateQuizQuestionOptionDto
+
+    public class QuizDetailQuestionOptionDto
+    {
+        public int Id { get; set; }
+        public int QuizQuestionId { get; set; }
+        public string? Description { get; set; }
+        public bool IsCorrect { get; set; }
+        public int DisplayOrder { get; set; }      // DB đang NOT NULL theo use-case của bạn
+        public decimal? OptionScore { get; set; }
+        public string Name { get; set; } = null!;
+    }
+
+    public class QuizOptionForTraineeDto
+    {
+        public int Id { get; set; }
+
+        public int QuizQuestionId { get; set; }
+
+        public string? Description { get; set; }
+
+        
+
+        public int? DisplayOrder { get; set; }
+
+        public decimal? OptionScore { get; set; }
+
+        public string Name { get; set; } = null!;
+    }
+
+    // DTO tạo mới
+    public class CreateQuizQuestionOptionDto
  {
      [Required(ErrorMessage = "Name is required.")]
      [StringLength(100, ErrorMessage = "Name must be at most 100 characters.")]
@@ -43,12 +72,7 @@ namespace Lssctc.LearningManagement.Quizzes.DTOs
  }
 
 
-    // Bulk theo payload nhiều item
-    public class CreateQuizQuestionOptionBulkDto
-    {
-        [MinLength(1)]
-        public List<CreateQuizQuestionOptionDto> Items { get; set; } = new();
-    }
+   
 
     public class UpdateQuizQuestionOptionDto
     {

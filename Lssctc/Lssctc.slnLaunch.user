@@ -1,0 +1,11 @@
+[
+  {
+    "Name": "New Profile",
+    "Projects": [
+      {
+        "Path": "Lssctc.LearningManagement\\Lssctc.LearningManagement.csproj",
+        "Action": "Start"
+      }
+    ]
+  }
+]

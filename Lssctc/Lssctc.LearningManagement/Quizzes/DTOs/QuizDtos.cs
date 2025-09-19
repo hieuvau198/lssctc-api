@@ -14,6 +14,18 @@ namespace Lssctc.LearningManagement.Quizzes.DTOs
         public DateTime UpdatedAt { get; set; }
     }
 
+    public class QuizDetailDto
+    {
+        public int Id { get; set; }
+        public string? Name { get; set; }
+        public decimal? PassScoreCriteria { get; set; }
+        public int? TimelimitMinute { get; set; }
+        public decimal? TotalScore { get; set; }
+        public string? Description { get; set; }
+
+        public List<QuizDetailQuestionDto> Questions { get; set; } = new();
+    }
+
     public class CreateQuizDto
     {
         [Required(ErrorMessage = "Tên quiz là bắt buộc.")]

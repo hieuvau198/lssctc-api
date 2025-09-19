@@ -12,6 +12,18 @@ namespace Lssctc.LearningManagement.Quizzes.DTOs
         // Nếu entity có thêm trường (IsMultipleChoice, etc.) bạn có thể bổ sung vào đây
     }
 
+    public class QuizDetailQuestionDto
+    {
+        public int Id { get; set; }
+        public int QuizId { get; set; }
+        public string Name { get; set; } = null!;
+        public decimal? QuestionScore { get; set; }
+        public string? Description { get; set; }
+        public bool IsMultipleAnswers { get; set; }
+
+        public List<QuizDetailQuestionOptionDto> Options { get; set; } = new();
+    }
+
     public class CreateQuizQuestionDto
     {
         [Required(ErrorMessage = "Name is required.")]

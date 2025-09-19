@@ -19,15 +19,25 @@ namespace Lssctc.LearningManagement.Quizzes.Controllers
 
         // GET: /api/quizzes?pageIndex=1&pageSize=20&search=an%20toan
         [HttpGet]
-        public async Task<IActionResult> GetPaged(
+        public async Task<IActionResult> GetDetailQuizzes(
             [FromQuery] int pageIndex = 1,
             [FromQuery] int pageSize = 20,
-            [FromQuery] string? search = null)
+            [FromQuery] string? search = null,
+            CancellationToken ct = default)
         {
-            var (items, total) = await _quizService.GetQuizzes(pageIndex, pageSize, search);
+            if (pageIndex < 1) return BadRequest("pageIndex must be >= 1.");
+            if (pageSize < 1 || pageSize > 200) return BadRequest("pageSize must be between 1 and 200.");
 
-            // (Tuỳ chọn) đưa tổng vào header để client dễ đọc
+            //chuẩn hoá search trước khi gửi xuống service
+            search = string.IsNullOrWhiteSpace(search) ? null : string.Join(" ",
+                search.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries));
+
+           
+            var (items, total) = await _quizService.GetDetailQuizzes(pageIndex, pageSize, search);
+
+            // Cho phép FE (trình duyệt) đọc header này qua CORS
             Response.Headers["X-Total-Count"] = total.ToString();
+            Response.Headers["Access-Control-Expose-Headers"] = "X-Total-Count";
 
             return Ok(new
             {

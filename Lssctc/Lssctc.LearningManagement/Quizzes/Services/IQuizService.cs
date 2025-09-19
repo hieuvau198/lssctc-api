@@ -4,7 +4,8 @@ namespace Lssctc.LearningManagement.Quizzes.Services
 {
     public interface IQuizService
     {
-        Task<(IReadOnlyList<QuizDto> Items, int Total)> GetQuizzes(int pageIndex, int pageSize, string? search);
+        Task<(IReadOnlyList<QuizDetailDto> Items, int Total)> GetDetailQuizzes(
+      int pageIndex, int pageSize, string? search);
         Task<QuizDto?> GetQuizById(int id);
         Task<int> CreateQuiz(CreateQuizDto dto);
         Task<bool> UpdateQuizById(int id, UpdateQuizDto dto);
