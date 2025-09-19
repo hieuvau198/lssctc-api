@@ -152,5 +152,208 @@ namespace Lssctc.LearningManagement.Quizzes.Services
             await _uow.SaveChangesAsync();
             return entity.Id;
         }
+
+
+        //=========== create question option =============
+
+
+        // ---- SINGLE ----
+        public async Task<int> CreateQuizQuestionOptionAsync(int questionId, CreateQuizQuestionOptionDto dto)
+        {
+            if (dto == null) throw new ValidationException("Body is required.");
+
+            var qq = await _uow.QuizQuestionRepository.GetAllAsQueryable()
+                .Where(x => x.Id == questionId)
+                .Select(x => new { x.Id, x.QuizId, x.QuestionScore })
+                .FirstOrDefaultAsync();
+            if (qq is null) throw new KeyNotFoundException($"Question {questionId} not found.");
+            if (await _uow.QuizRepository.GetByIdAsync(qq.QuizId) is null)
+                throw new KeyNotFoundException($"Quiz {qq.QuizId} not found.");
+
+            // Validate name/desc
+            var name = dto.Name?.Trim();
+            if (string.IsNullOrWhiteSpace(name)) throw new ValidationException("Name is required.");
+            name = string.Join(" ", name.Split(' ', StringSplitOptions.RemoveEmptyEntries));
+            if (name.Length > 100) throw new ValidationException("Name must be at most 100 characters.");
+            if (!string.IsNullOrEmpty(dto.Description) && dto.Description.Length > 2000)
+                throw new ValidationException("Description must be at most 2000 characters.");
+
+            // Tránh trùng tên trong cùng question
+            var dup = await _uow.QuizQuestionOptionRepository.ExistsAsync(o =>
+                o.QuizQuestionId == questionId &&
+                o.Name != null && o.Name.ToLower() == name.ToLower());
+            if (dup) throw new ValidationException("An option with the same name already exists in this question.");
+
+            // Điểm
+            decimal? score = dto.OptionScore;
+            if (score.HasValue)
+            {
+                if (score.Value < 0m) throw new ValidationException("OptionScore must be >= 0.");
+                score = Math.Round(score.Value, 2, MidpointRounding.AwayFromZero);
+            }
+
+            // BẮT BUỘC: display_order phải đúng số tiếp theo trong phạm vi question
+            var currentMax = await _uow.QuizQuestionOptionRepository.GetAllAsQueryable()
+                .Where(o => o.QuizQuestionId == questionId)
+                .Select(o => (int?)o.DisplayOrder)
+                .MaxAsync() ?? 0;
+
+            var expected = currentMax + 1;
+            if (dto.DisplayOrder != expected)
+                throw new ValidationException($"DisplayOrder must be exactly {expected} for this question.");
+
+            // (Tuỳ yêu cầu) Nếu bạn đang enforce tổng OptionScore = QuestionScore:
+            if (qq.QuestionScore.HasValue)
+            {
+                if (!score.HasValue)
+                    throw new ValidationException("OptionScore is required because total must equal QuestionScore.");
+
+                var sumExisting = await _uow.QuizQuestionOptionRepository.GetAllAsQueryable()
+                    .Where(o => o.QuizQuestionId == questionId)
+                    .Select(o => (decimal?)o.OptionScore)
+                    .SumAsync() ?? 0m;
+
+                var sumFinal = Math.Round(sumExisting + score.Value, 2, MidpointRounding.AwayFromZero);
+                var target = Math.Round(qq.QuestionScore.Value, 2, MidpointRounding.AwayFromZero);
+                if (sumFinal != target)
+                    throw new ValidationException($"Total OptionScore must equal {target}. Current after add: {sumFinal}.");
+            }
+
+            var entity = new QuizQuestionOption
+            {
+                QuizQuestionId = questionId,
+                Name = name,
+                Description = dto.Description,
+                IsCorrect = dto.IsCorrect,
+                OptionScore = score,
+                DisplayOrder = dto.DisplayOrder // lưu đúng số client gửi (đã check)
+            };
+
+            await _uow.QuizQuestionOptionRepository.CreateAsync(entity);
+            await _uow.SaveChangesAsync();
+            return entity.Id;
+        }
+
+
+        // ---- BULK ----
+        public async Task<IReadOnlyList<int>> CreateQuizQuestionOptionsBulkAsync(int questionId, CreateQuizQuestionOptionBulkDto dto)
+        {
+            if (dto == null || dto.Items == null || dto.Items.Count == 0)
+                throw new ValidationException("Danh sách option rỗng.");
+
+            // 1) Lấy QuizId + QuestionScore, validate tồn tại
+            var qq = await _uow.QuizQuestionRepository.GetAllAsQueryable()
+                .Where(x => x.Id == questionId)
+                .Select(x => new { x.Id, x.QuizId, x.QuestionScore })
+                .FirstOrDefaultAsync();
+            if (qq is null) throw new KeyNotFoundException($"Question {questionId} not found.");
+            if (await _uow.QuizRepository.GetByIdAsync(qq.QuizId) is null)
+                throw new KeyNotFoundException($"Quiz {qq.QuizId} not found.");
+
+            // 2) Chuẩn hóa & validate từng item
+            for (int idx = 0; idx < dto.Items.Count; idx++)
+            {
+                var it = dto.Items[idx];
+
+                it.Name = it.Name?.Trim() ?? "";
+                if (string.IsNullOrWhiteSpace(it.Name))
+                    throw new ValidationException($"Tên option (item #{idx + 1}) không được rỗng.");
+
+                it.Name = string.Join(" ", it.Name.Split(' ', StringSplitOptions.RemoveEmptyEntries));
+                if (it.Name.Length > 100)
+                    throw new ValidationException($"Tên option (item #{idx + 1}) tối đa 100 ký tự.");
+
+                if (!string.IsNullOrEmpty(it.Description) && it.Description.Length > 2000)
+                    throw new ValidationException($"Description (item #{idx + 1}) tối đa 2000 ký tự.");
+
+                if (it.OptionScore.HasValue)
+                {
+                    if (it.OptionScore.Value < 0m)
+                        throw new ValidationException($"OptionScore (item #{idx + 1}) phải >= 0.");
+                    it.OptionScore = R2(it.OptionScore.Value); // làm tròn 2 số
+                }
+            }
+
+            // 3) Trùng tên trong batch
+            var namesLower = dto.Items.Select(x => x.Name.ToLower()).ToList();
+            var dupInBatch = namesLower.GroupBy(x => x).Where(g => g.Count() > 1).Select(g => g.Key).ToList();
+            if (dupInBatch.Any())
+                throw new ValidationException($"Duplicated names in request: {string.Join(", ", dupInBatch)}");
+
+            // 4) Trùng tên với dữ liệu hiện có (trên cùng question)
+            var existedNames = await _uow.QuizQuestionOptionRepository.GetAllAsQueryable()
+                .Where(o => o.QuizQuestionId == questionId && o.Name != null)
+                .Select(o => o.Name!.ToLower())
+                .ToListAsync();
+            var dupWithDb = namesLower.Intersect(existedNames).ToList();
+            if (dupWithDb.Any())
+                throw new ValidationException($"Option name duplicated with existing: {string.Join(", ", dupWithDb)}");
+
+            // 5) Validate tổng điểm: (existing + new) = QuestionScore
+            if (qq.QuestionScore.HasValue)
+            {
+                var missingScoreIdx = dto.Items
+                    .Select((x, i) => (x, i))
+                    .Where(t => !t.x.OptionScore.HasValue)
+                    .Select(t => t.i + 1)
+                    .FirstOrDefault();
+                if (missingScoreIdx > 0)
+                    throw new ValidationException($"OptionScore (item #{missingScoreIdx}) is required because this question enforces total OptionScore = QuestionScore.");
+
+                var sumExisting = await _uow.QuizQuestionOptionRepository.GetAllAsQueryable()
+                    .Where(o => o.QuizQuestionId == questionId)
+                    .Select(o => (decimal?)o.OptionScore)
+                    .SumAsync() ?? 0m;
+
+                var sumNew = dto.Items.Sum(x => R2(x.OptionScore!.Value));
+                var sumFinal = R2(sumExisting + sumNew);
+                var target = R2(qq.QuestionScore.Value);
+
+                if (sumFinal != target)
+                    throw new ValidationException($"Tổng điểm option sau khi thêm phải = {target}. Hiện tại: {sumFinal}.");
+            }
+
+            // 6) Lấy currentMax của questionId
+            var currentMax = await _uow.QuizQuestionOptionRepository.GetAllAsQueryable()
+                .Where(o => o.QuizQuestionId == questionId)
+                .Select(o => (int?)o.DisplayOrder)
+                .MaxAsync() ?? 0;
+
+            // 7) Giữ nguyên thứ tự mảng payload (KHÔNG dùng dto.DisplayOrder)
+            var ordered = dto.Items; // theo đúng thứ tự người dùng gửi
+
+            // 8) Tạo entity: DisplayOrder = currentMax + 1..n
+            var displayCursor = currentMax;
+            var entities = new List<QuizQuestionOption>(ordered.Count);
+
+            foreach (var it in ordered)
+            {
+                var entity = new QuizQuestionOption
+                {
+                    QuizQuestionId = questionId,
+                    Name = it.Name,
+                    Description = it.Description,
+                    IsCorrect = it.IsCorrect,
+                    OptionScore = it.OptionScore,
+                    DisplayOrder = ++displayCursor
+                };
+                await _uow.QuizQuestionOptionRepository.CreateAsync(entity);
+                entities.Add(entity);
+            }
+
+            // 9) Lưu 1 lần, sau đó mới đọc Id
+            await _uow.SaveChangesAsync();
+
+            var createdIds = entities.Select(e => e.Id).ToList();
+            return createdIds;
+        }
+
+        // Helper làm tròn 2 chữ số
+        private static decimal R2(decimal v)
+            => Math.Round(v, 2, MidpointRounding.AwayFromZero);
+
+
+
+        //========= end create question option =========
     }
 }

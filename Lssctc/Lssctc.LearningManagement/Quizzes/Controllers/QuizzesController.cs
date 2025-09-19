@@ -88,5 +88,41 @@ namespace Lssctc.LearningManagement.Quizzes.Controllers
         }
 
 
+        // create question options in bulk
+
+
+        // SINGLE (append 1 item): bỏ qua DisplayOrder client, luôn nối tiếp currentMax
+        [HttpPost("{questionId:int}/options")]
+        public async Task<IActionResult> Create([FromRoute] int questionId, [FromBody] CreateQuizQuestionOptionDto dto)
+        {
+            if (!ModelState.IsValid) return ValidationProblem(ModelState);
+            try
+            {
+                var id = await _quizService.CreateQuizQuestionOptionAsync(questionId, dto);
+                return CreatedAtAction(nameof(GetById), new { questionId, id }, new { id });
+            }
+            catch (KeyNotFoundException ex) { return NotFound(new { error = ex.Message }); }
+            catch (ValidationException ex) { return BadRequest(new { error = ex.Message }); }
+        }
+
+        // BULK: giữ thứ tự payload (1..n), nhưng gán DisplayOrder = currentMax + 1..n
+        [HttpPost("{questionId:int}/options/bulk")]
+        public async Task<IActionResult> CreateBulk([FromRoute] int questionId, [FromBody] CreateQuizQuestionOptionBulkDto dto)
+        {
+            if (!ModelState.IsValid) return ValidationProblem(ModelState);
+            try
+            {
+                var ids = await _quizService.CreateQuizQuestionOptionsBulkAsync(questionId, dto);
+                return Ok(new { count = ids.Count, ids });
+            }
+            catch (KeyNotFoundException ex) { return NotFound(new { error = ex.Message }); }
+            catch (ValidationException ex) { return BadRequest(new { error = ex.Message }); }
+        }
+
+        // stub để CreatedAtAction dùng được
+        [HttpGet("{questionId:int}/options/{id:int}")]
+        public IActionResult GetById(int questionId, int id) => Ok();
+
+
     }
 }

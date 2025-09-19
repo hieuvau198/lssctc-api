@@ -11,5 +11,7 @@ namespace Lssctc.LearningManagement.Quizzes.Services
         Task<bool> DeleteAsync(int id);
         Task<int> CreateQuestionsAsync(int quizId, CreateQuizQuestionDto dto);
 
+        Task<int> CreateQuizQuestionOptionAsync(int questionId, CreateQuizQuestionOptionDto dto);
+        Task<IReadOnlyList<int>> CreateQuizQuestionOptionsBulkAsync(int questionId, CreateQuizQuestionOptionBulkDto dto);
     }
 }
