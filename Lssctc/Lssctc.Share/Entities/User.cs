@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Lssctc.Share.Entities;
 
@@ -15,6 +14,7 @@ public partial class User
     public string Email { get; set; } = null!;
 
     public string? Fullname { get; set; }
+
     public int? Role { get; set; }
 
     public string? PhoneNumber { get; set; }

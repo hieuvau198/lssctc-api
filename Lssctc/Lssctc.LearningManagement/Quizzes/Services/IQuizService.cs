@@ -17,5 +17,6 @@ namespace Lssctc.LearningManagement.Quizzes.Services
         Task<QuizQuestionOptionDto?> GetOptionById(int optionId);
         // Get quiz by quizId with questions and options
         // Create quiz with questions and options
+        // Get options for trainee without correct value
     }
 }
