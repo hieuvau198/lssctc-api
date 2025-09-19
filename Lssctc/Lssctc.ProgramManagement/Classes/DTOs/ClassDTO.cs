@@ -10,14 +10,14 @@
         public int Id { get; set; }
         public int ClassId { get; set; }
         public int InstructorId { get; set; }
-        public string Position { get; set; } = null!;
+        public string Position { get; set; } 
     }
 
     public class AssignInstructorDto
     {
         public int ClassId { get; set; }
         public int InstructorId { get; set; }
-        public string Position { get; set; } = null!;
+        public string Position { get; set; } 
     }
     public class ClassMemberDto
     {
@@ -26,6 +26,8 @@
         public int ClassId { get; set; }
         public DateTime AssignedDate { get; set; }
         public int Status { get; set; }
+
+        public List<TrainingProgressDto> TrainingProgresses { get; set; } = new();
     }
 
     public class AssignTraineeDto
@@ -46,29 +48,42 @@
         public string? InstructorCode { get; set; }
         public bool? IsActive { get; set; }
         public DateTime? HireDate { get; set; }
+
+        public int? ExperienceYears { get; set; }
+
+        public string? Biography { get; set; }
+
+        public string? ProfessionalProfileUrl { get; set; }
+
+        public string? Specialization { get; set; }
+
+
     }
+
+
     public class ClassCreateDto
     {
-        public string Name { get; set; } = null!;
+        public string ClassCode { get; set; } 
+        public string Name { get; set; } 
         public DateTime StartDate { get; set; }
         public DateTime? EndDate { get; set; }
         public int? Capacity { get; set; }
         public int ProgramCourseId { get; set; }
         public int ClassCodeId { get; set; }
-        public string Description { get; set; } = null!;
+        public string Description { get; set; } 
         public int Status { get; set; }
     }
 
     public class ClassDto
     {
         public int Id { get; set; }
-        public string Name { get; set; } = null!;
+        public string Name { get; set; } 
         public DateTime StartDate { get; set; }
         public DateTime? EndDate { get; set; }
         public int? Capacity { get; set; }
         public int ProgramCourseId { get; set; }
         public ClassCodeDto? ClassCode { get; set; }
-        public string Description { get; set; } = null!;
+        public string Description { get; set; } 
         public int Status { get; set; }
 
         public List<ClassInstructorDto> Instructors { get; set; } = new();
@@ -80,8 +95,8 @@
     {
         public int ClassId { get; set; }
         public int TraineeId { get; set; }
-        public string Name { get; set; } = null!;
-        public string Description { get; set; } = null!;
+        public string Name { get; set; } 
+        public string Description { get; set; } 
         public string? TraineeContact { get; set; }
     }
 
@@ -90,8 +105,8 @@
         public int Id { get; set; }
         public int ClassId { get; set; }
         public int TraineeId { get; set; }
-        public string Name { get; set; } = null!;
-        public string Description { get; set; } = null!;
+        public string Name { get; set; } 
+        public string Description { get; set; } 
         public int Status { get; set; }
         public DateTime CreatedDate { get; set; }
         public DateTime? ApprovedDate { get; set; }
@@ -99,8 +114,8 @@
         public string? TraineeContact { get; set; }
 
         // Navigation
-        public string ClassName { get; set; } = null!;
-        public string TraineeCode { get; set; } = null!;
+        public string ClassName { get; set; } 
+        public string TraineeCode { get; set; } 
     }
 
     //
@@ -114,5 +129,73 @@
     }
 
 
-    //
+    // training progress, results,
+    public class TrainingProgressDto
+    {
+        public int Id { get; set; }
+        public int CourseMemberId { get; set; }
+        public int Status { get; set; }
+        public double? ProgressPercentage { get; set; }
+        public DateTime StartDate { get; set; }
+        public DateTime? LastUpdated { get; set; }
+        public string? Name { get; set; }
+        public string? Description { get; set; }
+
+        public List<TrainingResultDto> TrainingResults { get; set; } = new();
+    }
+
+    public class CreateTrainingProgressDto
+    {
+        public int CourseMemberId { get; set; }
+        public int Status { get; set; }
+        public string? Name { get; set; }
+        public string? Description { get; set; }
+        public double? ProgressPercentage { get; set; }
+        public DateTime StartDate { get; set; } = DateTime.UtcNow;
+        public DateTime? LastUpdated { get; set; } = DateTime.UtcNow;
+    }
+
+    public class UpdateTrainingProgressDto
+    {
+        public int Id { get; set; }
+        public int Status { get; set; }
+        public double? ProgressPercentage { get; set; }
+        public string? Description { get; set; }
+    }
+
+    // Training Result 
+    public class TrainingResultDto
+    {
+        public int Id { get; set; }
+        public int TrainingResultTypeId { get; set; }
+        public string? ResultValue { get; set; }
+        public DateTime ResultDate { get; set; }
+        public string? Notes { get; set; }
+
+        public TrainingResultTypeDto TrainingResultType { get; set; }
+    }
+
+    public class CreateTrainingResultDto
+    {
+        public int TrainingProgressId { get; set; }
+        public int TrainingResultTypeId { get; set; }
+        public string? ResultValue { get; set; }
+        public DateTime ResultDate { get; set; }
+        public string? Notes { get; set; }
+    }
+
+    public class UpdateTrainingResultDto
+    {
+        public int Id { get; set; }
+        public string? ResultValue { get; set; }
+        public string? Notes { get; set; }
+    }
+
+    // Training Result Type
+    public class TrainingResultTypeDto
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = null!;
+        public string? Description { get; set; }
+    }
 }

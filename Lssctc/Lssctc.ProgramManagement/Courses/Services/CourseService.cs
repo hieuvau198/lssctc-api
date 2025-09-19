@@ -144,14 +144,14 @@ namespace Lssctc.ProgramManagement.Courses.Services
                 throw new BadRequestException("Price is required.");
             else if (dto.Price < 0)
                 throw new BadRequestException("Price cannot be negative.");
-            var entity = _mapper.Map<Course>(dto);
-            entity.IsActive = true;
-            entity.IsDeleted = false;
+            var newCourse = _mapper.Map<Course>(dto);
+            newCourse.IsActive = true;
+            newCourse.IsDeleted = false;
 
-            await _unitOfWork.CourseRepository.CreateAsync(entity);
+            await _unitOfWork.CourseRepository.CreateAsync(newCourse);
             await _unitOfWork.SaveChangesAsync();
 
-            return _mapper.Map<CourseDto>(entity);
+            return _mapper.Map<CourseDto>(newCourse);
         }
 
         public async Task<CourseDto?> UpdateCourseAsync(int id, UpdateCourseDto dto)
@@ -222,7 +222,7 @@ namespace Lssctc.ProgramManagement.Courses.Services
                 .Include(c => c.CourseCode)
                 .FirstOrDefaultAsync(c => c.Id == dto.CourseId);
 
-            var entity = _mapper.Map<CourseSyllabuse>(dto);
+            var newCourseSyllabus = _mapper.Map<CourseSyllabuse>(dto);
             //create syllabus
             var sysllbus = new Syllabuse
             {
@@ -237,19 +237,19 @@ namespace Lssctc.ProgramManagement.Courses.Services
 
             await _unitOfWork.SaveChangesAsync();
             //create coursesyllabus
-            entity.SyllabusId = sysllbus.Id;
-            await _unitOfWork.CourseSyllabuseRepository.CreateAsync(entity);
+            newCourseSyllabus.SyllabusId = sysllbus.Id;
+            await _unitOfWork.CourseSyllabuseRepository.CreateAsync(newCourseSyllabus);
             await _unitOfWork.SaveChangesAsync();
 
             // reload with navigation props
-            entity = await _unitOfWork.CourseSyllabuseRepository
+            newCourseSyllabus = await _unitOfWork.CourseSyllabuseRepository
                 .GetAllAsQueryable()
                 .Include(cl => cl.Course)
                 .Include(cl => cl.Syllabus)
-                .FirstOrDefaultAsync(cl => cl.Id == entity.Id);
+                .FirstOrDefaultAsync(cl => cl.Id == newCourseSyllabus.Id);
                 
 
-            return _mapper.Map<CourseSyllabusDto>(entity);
+            return _mapper.Map<CourseSyllabusDto>(newCourseSyllabus);
         }
         public async Task<CourseSyllabusDto?> UpdateCourseSyllabusAsync(int courseSyllabusId, UpdateCourseSyllabusDto dto)
         {
@@ -261,6 +261,9 @@ namespace Lssctc.ProgramManagement.Courses.Services
 
             if (courseSyllabus == null)
                 return null;
+
+
+            // Update syllabus details
 
             courseSyllabus.Syllabus.Name = dto.Name;
             courseSyllabus.Syllabus.Description = dto.Description;
