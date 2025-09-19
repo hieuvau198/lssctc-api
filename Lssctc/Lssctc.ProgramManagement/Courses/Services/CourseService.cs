@@ -19,7 +19,7 @@ namespace Lssctc.ProgramManagement.Courses.Services
             _mapper = mapper;
         }
 
-        public async Task<PagedResult<CourseDto>> GetAllCoursesAsync(CourseQueryParameters parameters)
+        public async Task<PagedResult<CourseDto>> GetCourses(CourseQueryParameters parameters)
         {
             var query = _unitOfWork.CourseRepository.GetAllAsQueryable()
                 .Include(c => c.Category)
@@ -62,7 +62,7 @@ namespace Lssctc.ProgramManagement.Courses.Services
             };
         }
 
-        public async Task<CourseDto?> GetCourseByIdAsync(int id)
+        public async Task<CourseDto?> GetCourseById(int id)
         {
             var course = await _unitOfWork.CourseRepository
                 .GetAllAsQueryable()
@@ -72,7 +72,7 @@ namespace Lssctc.ProgramManagement.Courses.Services
 
             return course == null ? null : _mapper.Map<CourseDto>(course);
         }
-        public async Task<PagedResult<CourseDto>> GetCoursesByCategoryAsync(int categoryId, int pageNumber, int pageSize)
+        public async Task<PagedResult<CourseDto>> GetCoursesByCategoryId(int categoryId, int pageNumber, int pageSize)
         {
             var query = _unitOfWork.CourseRepository.GetAllAsQueryable()
                 .Include(c => c.Category)
@@ -91,7 +91,7 @@ namespace Lssctc.ProgramManagement.Courses.Services
             };
         }
 
-        public async Task<PagedResult<CourseDto>> GetCoursesByLevelAsync(int levelId, int pageNumber, int pageSize)
+        public async Task<PagedResult<CourseDto>> GetCoursesByLevelId(int levelId, int pageNumber, int pageSize)
         {
             var query = _unitOfWork.CourseRepository.GetAllAsQueryable()
                 .Include(c => c.Category)
@@ -110,7 +110,7 @@ namespace Lssctc.ProgramManagement.Courses.Services
             };
         }
 
-        public async Task<CourseDto> CreateCourseAsync(CreateCourseDto dto)
+        public async Task<CourseDto> CreateCourse(CreateCourseDto dto)
         {
             //validate course category
             if (!dto.CategoryId.HasValue)
@@ -154,7 +154,7 @@ namespace Lssctc.ProgramManagement.Courses.Services
             return _mapper.Map<CourseDto>(newCourse);
         }
 
-        public async Task<CourseDto?> UpdateCourseAsync(int id, UpdateCourseDto dto)
+        public async Task<CourseDto?> UpdateCourseById(int id, UpdateCourseDto dto)
         {
             var course = await _unitOfWork.CourseRepository.GetByIdAsync(id);
             if (course == null || course.IsDeleted == true) return null;
@@ -193,7 +193,7 @@ namespace Lssctc.ProgramManagement.Courses.Services
             return _mapper.Map<CourseDto>(course);
         }
 
-        public async Task<bool> DeleteCourseAsync(int id)
+        public async Task<bool> DeleteCourseById(int id)
         {
             var course = await _unitOfWork.CourseRepository.GetByIdAsync(id);
             if (course == null || course.IsDeleted == true) return false;
@@ -208,7 +208,7 @@ namespace Lssctc.ProgramManagement.Courses.Services
             return true;
         }
 
-        public async Task<CourseSyllabusDto> CreateCourseSyllabusAsync(CourseSyllabusCreateDto dto)
+        public async Task<CourseSyllabusDto> CreateSyllabus(CourseSyllabusCreateDto dto)
         {
             // check for existence of coursesyllabus
             var exists = await _unitOfWork.CourseSyllabuseRepository
@@ -251,7 +251,7 @@ namespace Lssctc.ProgramManagement.Courses.Services
 
             return _mapper.Map<CourseSyllabusDto>(newCourseSyllabus);
         }
-        public async Task<CourseSyllabusDto?> UpdateCourseSyllabusAsync(int courseSyllabusId, UpdateCourseSyllabusDto dto)
+        public async Task<CourseSyllabusDto?> UpdateSyllabusById(int courseSyllabusId, UpdateCourseSyllabusDto dto)
         {
             var courseSyllabus = await _unitOfWork.CourseSyllabuseRepository
                 .GetAllAsQueryable()
@@ -267,13 +267,14 @@ namespace Lssctc.ProgramManagement.Courses.Services
 
             courseSyllabus.Syllabus.Name = dto.Name;
             courseSyllabus.Syllabus.Description = dto.Description;
+            // for test: courseSyllabus.SyllabusId = another
 
             await _unitOfWork.SyllabuseRepository.UpdateAsync(courseSyllabus.Syllabus);
             await _unitOfWork.SaveChangesAsync();
 
             return _mapper.Map<CourseSyllabusDto>(courseSyllabus);
         }
-        public async Task<IEnumerable<CourseSyllabusDto>> GetCourseSyllabusesByCourseIdAsync(int courseId)
+        public async Task<IEnumerable<CourseSyllabusDto>> GetSyllabusByCourseId(int courseId)
         {
             var courseSyllabuses = await _unitOfWork.CourseSyllabuseRepository
                 .GetAllAsQueryable()

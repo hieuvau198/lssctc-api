@@ -32,7 +32,7 @@ namespace Lssctc.ProgramManagement.Courses.Controllers
         [HttpGet]
         public async Task<IActionResult> GetCourses([FromQuery] CourseQueryParameters parameters)
         {
-            var result = await _courseService.GetAllCoursesAsync(parameters);
+            var result = await _courseService.GetCourses(parameters);
             return Ok(result);
         }
 
@@ -45,7 +45,7 @@ namespace Lssctc.ProgramManagement.Courses.Controllers
         [HttpGet("{id}")]
         public async Task<IActionResult> GetCourse(int id)
         {
-            var course = await _courseService.GetCourseByIdAsync(id);
+            var course = await _courseService.GetCourseById(id);
             if (course == null)
                 return NotFound();
 
@@ -57,7 +57,7 @@ namespace Lssctc.ProgramManagement.Courses.Controllers
         [HttpGet("by-category/{categoryId}")]
         public async Task<IActionResult> GetCoursesByCategory(int categoryId, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
-            var result = await _courseService.GetCoursesByCategoryAsync(categoryId, pageNumber, pageSize);
+            var result = await _courseService.GetCoursesByCategoryId(categoryId, pageNumber, pageSize);
             return Ok(result);
         }
 
@@ -67,7 +67,7 @@ namespace Lssctc.ProgramManagement.Courses.Controllers
         [HttpGet("by-level/{levelId}")]
         public async Task<IActionResult> GetCoursesByLevel(int levelId, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
-            var result = await _courseService.GetCoursesByLevelAsync(levelId, pageNumber, pageSize);
+            var result = await _courseService.GetCoursesByLevelId(levelId, pageNumber, pageSize);
             return Ok(result);
         }
         /// <summary>
@@ -84,7 +84,7 @@ namespace Lssctc.ProgramManagement.Courses.Controllers
 
             try
             {
-                var createdCourse = await _courseService.CreateCourseAsync(dto);
+                var createdCourse = await _courseService.CreateCourse(dto);
                 return CreatedAtAction(nameof(GetCourse), new { id = createdCourse.Id }, createdCourse);
             }
             catch (BadRequestException ex)
@@ -103,7 +103,7 @@ namespace Lssctc.ProgramManagement.Courses.Controllers
 
             try
             {
-                var result = await _courseService.CreateCourseSyllabusAsync(dto);
+                var result = await _courseService.CreateSyllabus(dto);
                 return Ok(result);
             }
             catch (InvalidOperationException ex)
@@ -117,7 +117,7 @@ namespace Lssctc.ProgramManagement.Courses.Controllers
         [HttpGet("{courseId}/syllabuses")]
         public async Task<ActionResult<IEnumerable<CourseSyllabusDto>>> GetCourseSyllabuses(int courseId)
         {
-            var result = await _courseService.GetCourseSyllabusesByCourseIdAsync(courseId);
+            var result = await _courseService.GetSyllabusByCourseId(courseId);
 
             if (result == null || !result.Any())
                 return NotFound(new { message = "No syllabuses found for this course." });
@@ -134,7 +134,7 @@ namespace Lssctc.ProgramManagement.Courses.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var updated = await _courseService.UpdateCourseSyllabusAsync(courseSyllabusId, dto);
+            var updated = await _courseService.UpdateSyllabusById(courseSyllabusId, dto);
 
             if (updated == null)
                 return NotFound(new { message = "Course syllabus not found." });
@@ -154,7 +154,7 @@ namespace Lssctc.ProgramManagement.Courses.Controllers
 
             try
             {
-                var updatedCourse = await _courseService.UpdateCourseAsync(id, dto);
+                var updatedCourse = await _courseService.UpdateCourseById(id, dto);
                 if (updatedCourse == null)
                     return NotFound();
 
@@ -175,7 +175,7 @@ namespace Lssctc.ProgramManagement.Courses.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteCourse(int id)
         {
-            var deleted = await _courseService.DeleteCourseAsync(id);
+            var deleted = await _courseService.DeleteCourseById(id);
             if (!deleted)
                 return NotFound();
 

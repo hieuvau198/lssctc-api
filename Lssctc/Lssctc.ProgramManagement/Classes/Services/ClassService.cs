@@ -17,7 +17,7 @@ namespace Lssctc.ProgramManagement.Classes.Services
             _mapper = mapper;
         }
 
-        public async Task<ClassDto> CreateClassAsync(ClassCreateDto dto)
+        public async Task<ClassDto> CreateClassByProgramCourseId(ClassCreateDto dto)
         {
             // Validate ProgramCourse
             var programCourse = await _unitOfWork.ProgramCourseRepository.GetByIdAsync(dto.ProgramCourseId);
@@ -52,12 +52,8 @@ namespace Lssctc.ProgramManagement.Classes.Services
 
             return _mapper.Map<ClassDto>(newClass);
         }
-        public async Task<ClassDto> AssignInstructorAsync(AssignInstructorDto dto)
+        public async Task<ClassDto> AssignInstructorToClass(AssignInstructorDto dto)
         {
-
-            if (dto.ClassId <= 0) throw new Exception("Invalid ClassId");
-            if (dto.InstructorId <= 0) throw new Exception("Invalid InstructorId");
-
             // Validate Class
             var classEntity = await _unitOfWork.ClassRepository.GetByIdAsync(dto.ClassId);
             if (classEntity == null) throw new Exception("Class not found");
@@ -65,6 +61,8 @@ namespace Lssctc.ProgramManagement.Classes.Services
             // Validate Instructor
             var instructor = await _unitOfWork.InstructorRepository.GetByIdAsync(dto.InstructorId);
             if (instructor == null) throw new Exception("Instructor not found");
+            if (instructor.IsActive == false)
+                throw new Exception("Instructor is not active");
 
             // Check if already assigned
             var existing = classEntity.ClassInstructors
@@ -73,8 +71,6 @@ namespace Lssctc.ProgramManagement.Classes.Services
             if (existing != null)
                 throw new Exception("Instructor already assigned to this class");
 
-            //if (!instructor.IsActive)
-            //    throw new Exception("Instructor is not active");
 
             // Create ClassInstructor
             var classInstructor = new ClassInstructor
@@ -92,36 +88,9 @@ namespace Lssctc.ProgramManagement.Classes.Services
             return _mapper.Map<ClassDto>(updatedClass);
         }
 
-        //public async Task<ClassDto?> AssignTraineeAsync(AssignTraineeDto dto)
-        //{
-        //    var classEntity = await _unitOfWork.ClassRepository
-        //        .GetAllAsQueryable()
-        //        .Include(c => c.ClassMembers)
-        //        .FirstOrDefaultAsync(c => c.Id == dto.ClassId);
-
-        //    if (classEntity == null)
-        //        throw new Exception("Class not found");
-
-        //    // Check if trainee already assigned
-        //    if (classEntity.ClassMembers.Any(cm => cm.TraineeId == dto.TraineeId))
-        //        throw new Exception("Trainee already assigned to this class");
-
-        //    var newMember = new ClassMember
-        //    {
-        //        ClassId = dto.ClassId,
-        //        TraineeId = dto.TraineeId,
-        //        AssignedDate = DateTime.UtcNow,
-        //        Status = 1 ,
-        //    };
-
-        //    classEntity.ClassMembers.Add(newMember);
-        //    await _unitOfWork.SaveChangesAsync();
-
-        //    return _mapper.Map<ClassDto>(classEntity);
-        //}
 
         //create class enrollment
-        public async Task<ClassEnrollmentDto> EnrollTraineeAsync(ClassEnrollmentCreateDto dto)
+        public async Task<ClassEnrollmentDto> EnrollTrainee(ClassEnrollmentCreateDto dto)
         {
             if (dto.ClassId <= 0) throw new Exception("Invalid ClassId");
             if (dto.TraineeId <= 0) throw new Exception("Invalid TraineeId");
@@ -167,7 +136,7 @@ namespace Lssctc.ProgramManagement.Classes.Services
                 .FirstOrDefaultAsync(ce => ce.ClassId == classid));
         }
 
-        public async Task<ClassMemberDto> ApproveEnrollmentAsync(ApproveEnrollmentDto dto)
+        public async Task<ClassMemberDto> ApproveEnrollment(ApproveEnrollmentDto dto)
         {
             // get enrollment
             var enrollment = await _unitOfWork.ClassEnrollmentRepository
@@ -192,7 +161,6 @@ namespace Lssctc.ProgramManagement.Classes.Services
             // create class member
             var member = new ClassMember
             {
-                
                 ClassId = enrollment.ClassId,
                 TraineeId = enrollment.TraineeId,
                 AssignedDate = DateTime.UtcNow,
@@ -205,7 +173,7 @@ namespace Lssctc.ProgramManagement.Classes.Services
             return _mapper.Map<ClassMemberDto>(member);
         }
 
-        public async Task<IEnumerable<ClassMemberDto>> GetClassMembersByClassIdAsync(int classId)
+        public async Task<IEnumerable<ClassMemberDto>> GetMembersByClassId(int classId)
         {
             var members = await _unitOfWork.ClassMemberRepository
                 .GetAllAsQueryable()
@@ -216,7 +184,7 @@ namespace Lssctc.ProgramManagement.Classes.Services
             return _mapper.Map<IEnumerable<ClassMemberDto>>(members);
         }
 
-        public async Task<InstructorDto> GetInstructorByClassIdAsync(int classId)
+        public async Task<InstructorDto> GetInstructorByClassId(int classId)
         {
             if (classId <= 0) throw new Exception("Invalid classId");
             if( _unitOfWork.ClassRepository.GetByIdAsync(classId) == null)
@@ -251,7 +219,7 @@ namespace Lssctc.ProgramManagement.Classes.Services
 
         // TRAINGING PROGRESS & RESULTS
 
-        public async Task<List<TrainingProgressDto>> GetTrainingProgressByClassMemberAsync(int memberId)
+        public async Task<List<TrainingProgressDto>> GetProgressByMember(int memberId)
         {
             var progresses = await _unitOfWork.TrainingProgressRepository
                 .GetAllAsQueryable()
@@ -263,7 +231,7 @@ namespace Lssctc.ProgramManagement.Classes.Services
             return _mapper.Map<List<TrainingProgressDto>>(progresses);
         }
 
-        public async Task<TrainingProgressDto> AddTrainingProgressAsync(CreateTrainingProgressDto dto)
+        public async Task<TrainingProgressDto> CreateProgress(CreateTrainingProgressDto dto)
         {
             if (dto.CourseMemberId <= 0) throw new Exception("Invalid CourseMemberId");
             if (dto.ProgressPercentage < 0 || dto.ProgressPercentage > 100)
@@ -277,7 +245,7 @@ namespace Lssctc.ProgramManagement.Classes.Services
             return _mapper.Map<TrainingProgressDto>(entity);
         }
 
-        public async Task<TrainingProgressDto> UpdateTrainingProgressAsync(UpdateTrainingProgressDto dto)
+        public async Task<TrainingProgressDto> UpdateProgress(UpdateTrainingProgressDto dto)
         {
             var entity = await _unitOfWork.TrainingProgressRepository.GetByIdAsync(dto.Id);
             if (entity == null) throw new Exception("Training progress not found");
@@ -289,7 +257,7 @@ namespace Lssctc.ProgramManagement.Classes.Services
             return _mapper.Map<TrainingProgressDto>(entity);
         }
 
-        public async Task<bool> DeleteTrainingProgressAsync(int id)
+        public async Task<bool> DeleteProgress(int id)
         {
             var entity = await _unitOfWork.TrainingProgressRepository.GetByIdAsync(id);
             if (entity == null) return false;
@@ -301,7 +269,7 @@ namespace Lssctc.ProgramManagement.Classes.Services
 
         // Training Results 
 
-        public async Task<List<TrainingResultDto>> GetTrainingResultsByProgressAsync(int progressId)
+        public async Task<List<TrainingResultDto>> GetResultsByProgress(int progressId)
         {
             var results = await _unitOfWork.TrainingResultRepository
                 .GetAllAsQueryable()
@@ -312,7 +280,7 @@ namespace Lssctc.ProgramManagement.Classes.Services
             return _mapper.Map<List<TrainingResultDto>>(results);
         }
 
-        public async Task<TrainingResultDto> AddTrainingResultAsync(CreateTrainingResultDto dto)
+        public async Task<TrainingResultDto> CreateResult(CreateTrainingResultDto dto)
         {
             if (dto.TrainingProgressId <= 0) throw new Exception("Invalid TrainingProgressId");
             if (dto.TrainingResultTypeId <= 0) throw new Exception("Invalid TrainingResultTypeId");
@@ -332,7 +300,7 @@ namespace Lssctc.ProgramManagement.Classes.Services
             return _mapper.Map<TrainingResultDto>(entity);
         }
 
-        public async Task<TrainingResultDto> UpdateTrainingResultAsync(UpdateTrainingResultDto dto)
+        public async Task<TrainingResultDto> UpdateResult(UpdateTrainingResultDto dto)
         {
 
             var entity = await _unitOfWork.TrainingResultRepository.GetByIdAsync(dto.Id);
@@ -345,7 +313,7 @@ namespace Lssctc.ProgramManagement.Classes.Services
             return _mapper.Map<TrainingResultDto>(entity);
         }
 
-        public async Task<bool> DeleteTrainingResultAsync(int id)
+        public async Task<bool> DeleteResult(int id)
         {
             var entity = await _unitOfWork.TrainingResultRepository.GetByIdAsync(id);
             if (entity == null) return false;

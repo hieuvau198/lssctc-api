@@ -25,7 +25,7 @@ namespace Lssctc.ProgramManagement.Classes.Controller
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var result = await _classService.CreateClassAsync(dto);
+            var result = await _classService.CreateClassByProgramCourseId(dto);
             return Ok(result);
         }
 
@@ -38,7 +38,7 @@ namespace Lssctc.ProgramManagement.Classes.Controller
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var result = await _classService.AssignInstructorAsync(dto);
+            var result = await _classService.AssignInstructorToClass(dto);
             return Ok(result);
         }
 
@@ -51,7 +51,7 @@ namespace Lssctc.ProgramManagement.Classes.Controller
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var result = await _classService.EnrollTraineeAsync(dto);
+            var result = await _classService.EnrollTrainee(dto);
             return Ok(result);
         }
         /// <summary>
@@ -78,7 +78,7 @@ namespace Lssctc.ProgramManagement.Classes.Controller
 
             try
             {
-                var result = await _classService.ApproveEnrollmentAsync(dto);
+                var result = await _classService.ApproveEnrollment(dto);
                 return Ok(result);
             }
             catch (Exception ex)
@@ -93,7 +93,7 @@ namespace Lssctc.ProgramManagement.Classes.Controller
         [HttpGet("{classId}/members")]
         public async Task<IActionResult> GetClassMembers(int classId)
         {
-            var result = await _classService.GetClassMembersByClassIdAsync(classId);
+            var result = await _classService.GetMembersByClassId(classId);
 
             if (result == null || !result.Any())
                 return NotFound("No members found for this class.");
@@ -107,7 +107,7 @@ namespace Lssctc.ProgramManagement.Classes.Controller
         [HttpGet("{classId}/instructor")]
         public async Task<IActionResult> GetInstructor(int classId)
         {
-            var result = await _classService.GetInstructorByClassIdAsync(classId);
+            var result = await _classService.GetInstructorByClassId(classId);
             if (result == null)
                 return NotFound("No instructor found for this class.");
             return Ok(result);
@@ -125,7 +125,7 @@ namespace Lssctc.ProgramManagement.Classes.Controller
         [HttpGet("members/{memberId}/progress")]
         public async Task<IActionResult> GetTrainingProgressByMember(int memberId)
         {
-            var result = await _classService.GetTrainingProgressByClassMemberAsync(memberId);
+            var result = await _classService.GetProgressByMember(memberId);
             if (result == null || !result.Any())
                 return NotFound("No training progress found for this member.");
             return Ok(result);
@@ -140,7 +140,7 @@ namespace Lssctc.ProgramManagement.Classes.Controller
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var result = await _classService.AddTrainingProgressAsync(dto);
+            var result = await _classService.CreateProgress(dto);
             return Ok(result);
         }
 
@@ -153,7 +153,7 @@ namespace Lssctc.ProgramManagement.Classes.Controller
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var result = await _classService.UpdateTrainingProgressAsync(dto);
+            var result = await _classService.UpdateProgress(dto);
             return Ok(result);
         }
 
@@ -182,7 +182,7 @@ namespace Lssctc.ProgramManagement.Classes.Controller
         [HttpGet("progress/{progressId}/results")]
         public async Task<IActionResult> GetTrainingResults(int progressId)
         {
-            var result = await _classService.GetTrainingResultsByProgressAsync(progressId);
+            var result = await _classService.GetResultsByProgress(progressId);
             if (result == null || !result.Any())
                 return NotFound("No results found for this training progress.");
             return Ok(result);
@@ -197,7 +197,7 @@ namespace Lssctc.ProgramManagement.Classes.Controller
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var result = await _classService.AddTrainingResultAsync(dto);
+            var result = await _classService.CreateResult(dto);
             return Ok(result);
         }
 
@@ -210,7 +210,7 @@ namespace Lssctc.ProgramManagement.Classes.Controller
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var result = await _classService.UpdateTrainingResultAsync(dto);
+            var result = await _classService.UpdateResult(dto);
             return Ok(result);
         }
 
