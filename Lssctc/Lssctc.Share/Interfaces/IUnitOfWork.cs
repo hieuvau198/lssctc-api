@@ -12,7 +12,6 @@ namespace Lssctc.Share.Interfaces
         IGenericRepository<ClassInstructor> ClassInstructorRepository { get; }
         IGenericRepository<ClassMember> ClassMemberRepository { get; }
         IGenericRepository<Course> CourseRepository { get; }
-
         IGenericRepository<CourseCategory> CourseCategoryRepository { get; }
         IGenericRepository<CourseCertificate> CourseCertificateRepository { get; }
         IGenericRepository<CourseCode> CourseCodeRepository { get; }
@@ -67,7 +66,6 @@ namespace Lssctc.Share.Interfaces
         IGenericRepository<Transaction> TransactionRepository { get; }
         IGenericRepository<TransactionProgram> TransactionProgramRepository { get; }
         IGenericRepository<User> UserRepository { get; }
-
 
         Task<int> SaveChangesAsync();
     }
