@@ -10,6 +10,8 @@ namespace Lssctc.LearningManagement.Quizzes.Services
         Task<bool> UpdateAsync(int id, UpdateQuizDto dto);
         Task<bool> DeleteAsync(int id);
         Task<int> CreateQuestionsAsync(int quizId, CreateQuizQuestionDto dto);
+        Task<int> CreateQuizQuestionOptionAsync(int quizId, int questionId, CreateQuizQuestionOptionDto dto);
+        Task<QuizQuestionOptionDto?> GetQuizQuestionOptionByIdAsync(int quizId, int questionId, int optionId);
 
         Task<int> CreateQuizQuestionOptionAsync(int questionId, CreateQuizQuestionOptionDto dto);
         Task<IReadOnlyList<int>> CreateQuizQuestionOptionsBulkAsync(int questionId, CreateQuizQuestionOptionBulkDto dto);

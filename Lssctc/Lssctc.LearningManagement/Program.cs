@@ -10,8 +10,9 @@ var builder = WebApplication.CreateBuilder(args);
 
 #region DbContext
 
-builder.Services.AddDbContext<LssctcDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("lssctcDb")));
+builder.Services.AddDbContext<LssctcDbContext>(opt =>
+    opt.UseSqlServer(builder.Configuration.GetConnectionString("lssctcDb")));
+
 #endregion
 
 //auto maper
