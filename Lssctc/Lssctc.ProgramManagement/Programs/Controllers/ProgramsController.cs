@@ -79,7 +79,7 @@ namespace Lssctc.ProgramManagement.Programs.Controllers
         [HttpPost("{programId}/prerequisites")]
         public async Task<IActionResult> AddPrerequisitesToProgram(
             int programId,
-            [FromBody] List<ProgramPrerequisiteDto> prerequisites)
+            [FromBody] List<EntryRequirementDto> prerequisites)
         {
             if (prerequisites == null || prerequisites.Count == 0)
                 return BadRequest("At least one prerequisite must be provided.");

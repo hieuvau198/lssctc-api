@@ -28,4 +28,8 @@ public partial class LearningRecordPartition
     public virtual LearningRecord LearningRecord { get; set; } = null!;
 
     public virtual SectionPartition SectionPartition { get; set; } = null!;
+
+    public virtual ICollection<SectionPracticeAttempt> SectionPracticeAttempts { get; set; } = new List<SectionPracticeAttempt>();
+
+    public virtual ICollection<SectionQuizAttempt> SectionQuizAttempts { get; set; } = new List<SectionQuizAttempt>();
 }

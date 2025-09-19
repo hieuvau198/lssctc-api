@@ -21,11 +21,9 @@ public partial class TrainingProgram
 
     public string? ImageUrl { get; set; }
 
-    public virtual ICollection<ProgramCertificate> ProgramCertificates { get; set; } = new List<ProgramCertificate>();
-
     public virtual ICollection<ProgramCourse> ProgramCourses { get; set; } = new List<ProgramCourse>();
 
-    public virtual ICollection<ProgramPrerequisite> ProgramPrerequisites { get; set; } = new List<ProgramPrerequisite>();
+    public virtual ICollection<ProgramEntryRequirement> ProgramEntryRequirements { get; set; } = new List<ProgramEntryRequirement>();
 
     public virtual ICollection<TransactionProgram> TransactionPrograms { get; set; } = new List<TransactionProgram>();
 }

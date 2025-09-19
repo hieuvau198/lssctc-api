@@ -9,8 +9,6 @@ public partial class SimulationTimeslot
 
     public string Name { get; set; } = null!;
 
-    public int SectionPartitionId { get; set; }
-
     public DateTime StartTime { get; set; }
 
     public DateTime EndTime { get; set; }
@@ -23,7 +21,7 @@ public partial class SimulationTimeslot
 
     public bool? IsDeleted { get; set; }
 
-    public virtual SectionPartition SectionPartition { get; set; } = null!;
+    public virtual ICollection<SectionPracticeTimeslot> SectionPracticeTimeslots { get; set; } = new List<SectionPracticeTimeslot>();
 
     public virtual ICollection<SectionPractice> SectionPractices { get; set; } = new List<SectionPractice>();
 }

@@ -19,7 +19,5 @@ public partial class Certificate
 
     public string? ImageUrl { get; set; }
 
-    public virtual ICollection<ProgramCertificate> ProgramCertificates { get; set; } = new List<ProgramCertificate>();
-
-    public virtual ICollection<TraineeCertificate> TraineeCertificates { get; set; } = new List<TraineeCertificate>();
+    public virtual ICollection<CourseCertificate> CourseCertificates { get; set; } = new List<CourseCertificate>();
 }

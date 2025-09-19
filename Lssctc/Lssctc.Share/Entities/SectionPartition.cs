@@ -26,6 +26,4 @@ public partial class SectionPartition
     public virtual ICollection<SectionPractice> SectionPractices { get; set; } = new List<SectionPractice>();
 
     public virtual ICollection<SectionQuiz> SectionQuizzes { get; set; } = new List<SectionQuiz>();
-
-    public virtual ICollection<SimulationTimeslot> SimulationTimeslots { get; set; } = new List<SimulationTimeslot>();
 }

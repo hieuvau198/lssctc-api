@@ -13,7 +13,7 @@
             public string? ImageUrl { get; set; }
 
             public ICollection<ProgramCourseDto> Courses { get; set; } = new List<ProgramCourseDto>();
-            public ICollection<ProgramPrerequisiteDto> Prerequisites { get; set; } = new List<ProgramPrerequisiteDto>();
+            public ICollection<EntryRequirementDto> Prerequisites { get; set; } = new List<EntryRequirementDto>();
         }
         public class CreateProgramDto
         {
@@ -47,7 +47,7 @@
             public int CourseId { get; set; }
             public int Order { get; set; }
         }
-        public class ProgramPrerequisiteDto
+        public class EntryRequirementDto
         {
 
             public string Name { get; set; } = null!;

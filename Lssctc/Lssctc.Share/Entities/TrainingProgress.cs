@@ -9,8 +9,6 @@ public partial class TrainingProgress
 
     public int CourseMemberId { get; set; }
 
-    public int TrainingResultId { get; set; }
-
     public int Status { get; set; }
 
     public double? ProgressPercentage { get; set; }
@@ -25,5 +23,7 @@ public partial class TrainingProgress
 
     public virtual ClassMember CourseMember { get; set; } = null!;
 
-    public virtual TrainingResult TrainingResult { get; set; } = null!;
+    public virtual ICollection<LearningRecord> LearningRecords { get; set; } = new List<LearningRecord>();
+
+    public virtual ICollection<TrainingResult> TrainingResults { get; set; } = new List<TrainingResult>();
 }
