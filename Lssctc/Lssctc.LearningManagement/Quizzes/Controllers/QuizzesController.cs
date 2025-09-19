@@ -24,7 +24,7 @@ namespace Lssctc.LearningManagement.Quizzes.Controllers
             [FromQuery] int pageSize = 20,
             [FromQuery] string? search = null)
         {
-            var (items, total) = await _quizService.GetPagedAsync(pageIndex, pageSize, search);
+            var (items, total) = await _quizService.GetQuizzes(pageIndex, pageSize, search);
 
             // (Tuỳ chọn) đưa tổng vào header để client dễ đọc
             Response.Headers["X-Total-Count"] = total.ToString();
@@ -41,21 +41,21 @@ namespace Lssctc.LearningManagement.Quizzes.Controllers
         [HttpGet("{id:int}")]
         public async Task<IActionResult> GetById([FromRoute] int id)
         {
-            var quiz = await _quizService.GetByIdAsync(id);
+            var quiz = await _quizService.GetQuizById(id);
             return quiz is null ? NotFound() : Ok(quiz);
         }
 
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] CreateQuizDto dto)
         {
-            var id = await _quizService.CreateAsync(dto);
+            var id = await _quizService.CreateQuiz(dto);
             return CreatedAtAction(nameof(GetById), new { id }, new { id });
         }
 
         [HttpPut("{id:int}")]
         public async Task<IActionResult> Update([FromRoute] int id, [FromBody] UpdateQuizDto dto)
         {
-            var ok = await _quizService.UpdateAsync(id, dto);
+            var ok = await _quizService.UpdateQuizById(id, dto);
             return ok ? NoContent() : NotFound();
         }
 
@@ -63,7 +63,7 @@ namespace Lssctc.LearningManagement.Quizzes.Controllers
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete([FromRoute] int id)
         {
-            var ok = await _quizService.DeleteAsync(id);
+            var ok = await _quizService.DeleteQuizById(id);
             return ok ? NoContent() : NotFound();
         }
 
@@ -74,7 +74,7 @@ namespace Lssctc.LearningManagement.Quizzes.Controllers
         {
             try
             {
-                var id = await _quizService.CreateQuestionsAsync(quizId, dto);
+                var id = await _quizService.CreateQuestionByQuizId(quizId, dto);
                 return CreatedAtAction(nameof(GetById), new { quizId, id }, new { id });
             }
             catch (KeyNotFoundException ex)
@@ -98,7 +98,7 @@ namespace Lssctc.LearningManagement.Quizzes.Controllers
         {
             try
             {
-                var id = await _quizService.CreateQuizQuestionOptionAsync(quizId, questionId, dto);
+                var id = await _quizService.CreateOption(quizId, questionId, dto);
                 return CreatedAtAction(nameof(GetOptionById), new { quizId, questionId, optionId = id }, new { id });
             }
             catch (KeyNotFoundException ex)
@@ -121,7 +121,7 @@ namespace Lssctc.LearningManagement.Quizzes.Controllers
         {
             try
             {
-                var dto = await _quizService.GetQuizQuestionOptionByIdAsync(quizId, questionId, optionId);
+                var dto = await _quizService.GetOptionById(optionId);
                 return dto is null ? NotFound() : Ok(dto);
             }
             catch (KeyNotFoundException ex)
@@ -130,43 +130,8 @@ namespace Lssctc.LearningManagement.Quizzes.Controllers
             }
         }
 
-
-
-        // create question options in bulk
-
-
-        // SINGLE (append 1 item): bỏ qua DisplayOrder client, luôn nối tiếp currentMax
-        [HttpPost("{questionId:int}/options")]
-        public async Task<IActionResult> Create([FromRoute] int questionId, [FromBody] CreateQuizQuestionOptionDto dto)
-        {
-            if (!ModelState.IsValid) return ValidationProblem(ModelState);
-            try
-            {
-                var id = await _quizService.CreateQuizQuestionOptionAsync(questionId, dto);
-                return CreatedAtAction(nameof(GetById), new { questionId, id }, new { id });
-            }
-            catch (KeyNotFoundException ex) { return NotFound(new { error = ex.Message }); }
-            catch (ValidationException ex) { return BadRequest(new { error = ex.Message }); }
-        }
-
-        // BULK: giữ thứ tự payload (1..n), nhưng gán DisplayOrder = currentMax + 1..n
-        [HttpPost("{questionId:int}/options/bulk")]
-        public async Task<IActionResult> CreateBulk([FromRoute] int questionId, [FromBody] CreateQuizQuestionOptionBulkDto dto)
-        {
-            if (!ModelState.IsValid) return ValidationProblem(ModelState);
-            try
-            {
-                var ids = await _quizService.CreateQuizQuestionOptionsBulkAsync(questionId, dto);
-                return Ok(new { count = ids.Count, ids });
-            }
-            catch (KeyNotFoundException ex) { return NotFound(new { error = ex.Message }); }
-            catch (ValidationException ex) { return BadRequest(new { error = ex.Message }); }
-        }
-
         // stub để CreatedAtAction dùng được
         [HttpGet("{questionId:int}/options/{id:int}")]
         public IActionResult GetById(int questionId, int id) => Ok();
-
-
     }
 }

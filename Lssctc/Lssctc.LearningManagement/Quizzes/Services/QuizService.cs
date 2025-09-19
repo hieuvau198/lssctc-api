@@ -21,13 +21,13 @@ namespace Lssctc.LearningManagement.Quizzes.Services
 
       
 
-        public async Task<QuizDto?> GetByIdAsync(int id)
+        public async Task<QuizDto?> GetQuizById(int id)
         {
             var entity = await _uow.QuizRepository.GetByIdAsync(id); 
             return entity == null ? null : _mapper.Map<QuizDto>(entity);
         }
 
-        public async Task<(IReadOnlyList<QuizDto> Items, int Total)> GetPagedAsync(int pageIndex, int pageSize, string? search)
+        public async Task<(IReadOnlyList<QuizDto> Items, int Total)> GetQuizzes(int pageIndex, int pageSize, string? search)
         {
             if (pageIndex < 1) pageIndex = 1;
             if (pageSize <= 0 || pageSize > 200) pageSize = 20;
@@ -55,7 +55,7 @@ namespace Lssctc.LearningManagement.Quizzes.Services
             return (items, total);
         }
 
-        public async Task<int> CreateAsync(CreateQuizDto dto)
+        public async Task<int> CreateQuiz(CreateQuizDto dto)
         {
             var entity = _mapper.Map<Quiz>(dto);
             await _uow.QuizRepository.CreateAsync(entity);           
@@ -63,7 +63,7 @@ namespace Lssctc.LearningManagement.Quizzes.Services
             return entity.Id;
         }
 
-        public async Task<bool> UpdateAsync(int id, UpdateQuizDto dto)
+        public async Task<bool> UpdateQuizById(int id, UpdateQuizDto dto)
         {
             var entity = await _uow.QuizRepository.GetByIdAsync(id);  
             if (entity == null) return false;
@@ -74,7 +74,7 @@ namespace Lssctc.LearningManagement.Quizzes.Services
             return true;
         }
 
-        public async Task<bool> DeleteAsync(int id)
+        public async Task<bool> DeleteQuizById(int id)
         {
             var entity = await _uow.QuizRepository.GetByIdAsync(id);  
             if (entity == null) return false;
@@ -84,16 +84,14 @@ namespace Lssctc.LearningManagement.Quizzes.Services
             return true;
         }
 
-        public async Task<int> CreateQuestionsAsync(int quizId, CreateQuizQuestionDto dto)
+        public async Task<int> CreateQuestionByQuizId(int quizId, CreateQuizQuestionDto dto)
         {
-            //  Body bắt buộc
+            //  Validate question input data
             if (dto == null) throw new ValidationException("Body is required.");
 
-            //  Kiểm tra quiz tồn tại
             var quiz = await _uow.QuizRepository.GetByIdAsync(quizId);
             if (quiz is null) throw new KeyNotFoundException($"Quiz {quizId} not found.");
 
-            //  Validate & chuẩn hoá Name
             var rawName = (dto.Name ?? string.Empty).Trim();
             if (string.IsNullOrWhiteSpace(rawName))
                 throw new ValidationException("Name is required.");
@@ -140,7 +138,7 @@ namespace Lssctc.LearningManagement.Quizzes.Services
                 }
             }
 
-            // Tạo entity
+            // Create question
             var entity = _mapper.Map<QuizQuestion>(dto);
             entity.QuizId = quizId;
             entity.Name = normalizedName;
@@ -157,7 +155,7 @@ namespace Lssctc.LearningManagement.Quizzes.Services
         /// <summary>
         /// Tạo Option theo quizId + questionId (validate đủ: tên/điểm/thứ tự/single-multi)
         /// </summary>
-        public async Task<int> CreateQuizQuestionOptionAsync(int quizId, int questionId, CreateQuizQuestionOptionDto dto)
+        public async Task<int> CreateOption(int quizId, int questionId, CreateQuizQuestionOptionDto dto)
         {
             if (dto == null) throw new ValidationException("Body is required.");
 
@@ -259,20 +257,13 @@ namespace Lssctc.LearningManagement.Quizzes.Services
         /// <summary>
         /// Lấy Option theo quizId + questionId + optionId
         /// </summary>
-        public async Task<QuizQuestionOptionDto?> GetQuizQuestionOptionByIdAsync(int quizId, int questionId, int optionId)
+        public async Task<QuizQuestionOptionDto?> GetOptionById(int optionId)
         {
-            // Xác thực mối quan hệ quiz-question
-            var exists = await _uow.QuizQuestionRepository
-                .GetAllAsQueryable()
-                .AnyAsync(q => q.Id == questionId && q.QuizId == quizId);
-
-            if (!exists)
-                throw new KeyNotFoundException($"Question {questionId} not found in Quiz {quizId}.");
-
+            
             // Trả về DTO (không trừ offset)
             var dto = await _uow.QuizQuestionOptionRepository
                 .GetAllAsQueryable()
-                .Where(o => o.Id == optionId && o.QuizQuestionId == questionId)
+                .Where(o => o.Id == optionId)
                 .Select(o => new QuizQuestionOptionDto
                 {
                     Id = o.Id,
