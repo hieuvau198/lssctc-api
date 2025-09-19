@@ -16,6 +16,7 @@ namespace Lssctc.Share.Implements
         private IGenericRepository<ClassInstructor>? _classInstructorRepository;
         private IGenericRepository<ClassMember>? _classMemberRepository;
         private IGenericRepository<Course>? _courseRepository;
+
         private IGenericRepository<CourseCategory>? _courseCategoryRepository;
         private IGenericRepository<CourseCertificate>? _courseCertificateRepository;
         private IGenericRepository<CourseCode>? _courseCodeRepository;
@@ -71,6 +72,7 @@ namespace Lssctc.Share.Implements
         private IGenericRepository<TransactionProgram>? _transactionProgramRepository;
         private IGenericRepository<User>? _userRepository;
 
+
         public UnitOfWork(LssctcDbContext context)
         {
             _context = context;
@@ -100,6 +102,7 @@ namespace Lssctc.Share.Implements
         public IGenericRepository<Course> CourseRepository =>
             _courseRepository ??= new GenericRepository<Course>(_context);
 
+
         public IGenericRepository<CourseCategory> CourseCategoryRepository =>
             _courseCategoryRepository ??= new GenericRepository<CourseCategory>(_context);
 
@@ -111,6 +114,7 @@ namespace Lssctc.Share.Implements
 
         public IGenericRepository<CourseLevel> CourseLevelRepository =>
             _courseLevelRepository ??= new GenericRepository<CourseLevel>(_context);
+
 
         public IGenericRepository<CourseSyllabuse> CourseSyllabuseRepository =>
             _courseSyllabuseRepository ??= new GenericRepository<CourseSyllabuse>(_context);
@@ -261,6 +265,7 @@ namespace Lssctc.Share.Implements
 
         public IGenericRepository<User> UserRepository =>
             _userRepository ??= new GenericRepository<User>(_context);
+
 
         public async Task<int> SaveChangesAsync()
         {

@@ -1,6 +1,19 @@
-﻿namespace Lssctc.LearningManagement.Quizzes.Services
+﻿using Lssctc.LearningManagement.Quizzes.DTOs;
+
+namespace Lssctc.LearningManagement.Quizzes.Services
 {
-    public class IQuizService
+    public interface IQuizService
     {
+        Task<(IReadOnlyList<QuizDto> Items, int Total)> GetPagedAsync(int pageIndex, int pageSize, string? search);
+        Task<QuizDto?> GetByIdAsync(int id);
+        Task<int> CreateAsync(CreateQuizDto dto);
+        Task<bool> UpdateAsync(int id, UpdateQuizDto dto);
+        Task<bool> DeleteAsync(int id);
+        Task<int> CreateQuestionsAsync(int quizId, CreateQuizQuestionDto dto);
+        Task<int> CreateQuizQuestionOptionAsync(int quizId, int questionId, CreateQuizQuestionOptionDto dto);
+        Task<QuizQuestionOptionDto?> GetQuizQuestionOptionByIdAsync(int quizId, int questionId, int optionId);
+
+        Task<int> CreateQuizQuestionOptionAsync(int questionId, CreateQuizQuestionOptionDto dto);
+        Task<IReadOnlyList<int>> CreateQuizQuestionOptionsBulkAsync(int questionId, CreateQuizQuestionOptionBulkDto dto);
     }
 }
