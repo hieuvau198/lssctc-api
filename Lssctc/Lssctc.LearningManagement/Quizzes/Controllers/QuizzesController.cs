@@ -87,6 +87,50 @@ namespace Lssctc.LearningManagement.Quizzes.Controllers
             }
         }
 
+        //==== add options to question
+
+        // add option to a question
+        [HttpPost("{quizId:int}/questions/{questionId:int}/options")]
+        public async Task<IActionResult> CreateOption(
+            [FromRoute] int quizId,
+            [FromRoute] int questionId,
+            [FromBody] CreateQuizQuestionOptionDto dto)
+        {
+            try
+            {
+                var id = await _quizService.CreateQuizQuestionOptionAsync(quizId, questionId, dto);
+                return CreatedAtAction(nameof(GetOptionById), new { quizId, questionId, optionId = id }, new { id });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { error = ex.Message });
+            }
+            catch (ValidationException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+        }
+
+        //=== = get option by id (for CreatedAtAction above)
+        // get option by id
+        [HttpGet("{quizId:int}/questions/{questionId:int}/options/{optionId:int}")]
+        public async Task<IActionResult> GetOptionById(
+            [FromRoute] int quizId,
+            [FromRoute] int questionId,
+            [FromRoute] int optionId)
+        {
+            try
+            {
+                var dto = await _quizService.GetQuizQuestionOptionByIdAsync(quizId, questionId, optionId);
+                return dto is null ? NotFound() : Ok(dto);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { error = ex.Message });
+            }
+        }
+
+
 
     }
 }
