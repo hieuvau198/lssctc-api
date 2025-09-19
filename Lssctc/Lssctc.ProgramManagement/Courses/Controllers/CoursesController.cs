@@ -17,7 +17,7 @@ namespace Lssctc.ProgramManagement.Courses.Controllers
     {
         private readonly ICourseService _courseService;
 
-        
+
         public CoursesController(ICourseService courseService)
         {
             _courseService = courseService;
@@ -92,7 +92,55 @@ namespace Lssctc.ProgramManagement.Courses.Controllers
                 return BadRequest(new { message = ex.Message });
             }
         }
+        /// <summary>
+        /// Create a new syllabus and attach it to a course.
+        /// </summary>
+        [HttpPost("course-syllabus")]
+        public async Task<ActionResult<CourseSyllabusDto>> CreateCourseSyllabus([FromBody] CourseSyllabusCreateDto dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
 
+            try
+            {
+                var result = await _courseService.CreateCourseSyllabusAsync(dto);
+                return Ok(result);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+        /// <summary>
+        /// Get all syllabuses of a given course.
+        /// </summary>
+        [HttpGet("{courseId}/syllabuses")]
+        public async Task<ActionResult<IEnumerable<CourseSyllabusDto>>> GetCourseSyllabuses(int courseId)
+        {
+            var result = await _courseService.GetCourseSyllabusesByCourseIdAsync(courseId);
+
+            if (result == null || !result.Any())
+                return NotFound(new { message = "No syllabuses found for this course." });
+
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// Update a course syllabus (updates syllabus details).
+        /// </summary>
+        [HttpPut("course-syllabus/{courseSyllabusId}")]
+        public async Task<ActionResult<CourseSyllabusDto>> UpdateCourseSyllabus(int courseSyllabusId, [FromBody] UpdateCourseSyllabusDto dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var updated = await _courseService.UpdateCourseSyllabusAsync(courseSyllabusId, dto);
+
+            if (updated == null)
+                return NotFound(new { message = "Course syllabus not found." });
+
+            return Ok(updated);
+        }
         /// <summary>
         /// Updates an existing course by its ID.
         /// </summary>

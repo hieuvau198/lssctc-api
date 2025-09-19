@@ -76,7 +76,10 @@ namespace Lssctc.ProgramManagement.Programs.Controllers
                 return BadRequest(new { message = ex.Message });
             }
         }
-        [HttpPost("{programId}/prerequisites")]
+        /// <summary>
+        /// adds entry requirements to an existing program.
+        /// </summary>
+        [HttpPost("{programId}/entry-requirements")]
         public async Task<IActionResult> AddPrerequisitesToProgram(
             int programId,
             [FromBody] List<EntryRequirementDto> prerequisites)
