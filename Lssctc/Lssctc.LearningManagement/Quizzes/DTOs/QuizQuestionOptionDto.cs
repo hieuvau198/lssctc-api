@@ -72,9 +72,7 @@ namespace Lssctc.LearningManagement.Quizzes.DTOs
      // DB đang default = 1, để đồng bộ thì để true
      public bool IsCorrect { get; set; } = true;
 
-     // Khuyến nghị: bắt buộc gửi, >=1, tăng dần/không trùng trong cùng câu hỏi
-     [Required(ErrorMessage = "DisplayOrder is required.")]
-     [Range(1, int.MaxValue, ErrorMessage = "DisplayOrder must be >= 1.")]
+  
      public int? DisplayOrder { get; set; }
 
      // DECIMAL(5,2)

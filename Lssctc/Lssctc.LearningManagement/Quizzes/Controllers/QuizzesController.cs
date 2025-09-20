@@ -100,16 +100,21 @@ namespace Lssctc.LearningManagement.Quizzes.Controllers
         //==== add options to question
 
         // add option to a question
-        [HttpPost("{quizId:int}/questions/{questionId:int}/options")]
+        [HttpPost("questions/{questionId:int}/options")]
         public async Task<IActionResult> CreateOption(
-            [FromRoute] int quizId,
-            [FromRoute] int questionId,
-            [FromBody] CreateQuizQuestionOptionDto dto)
+     [FromRoute] int questionId,
+     [FromBody] CreateQuizQuestionOptionDto dto)
         {
             try
             {
-                var id = await _quizService.CreateOption(quizId, questionId, dto);
-                return CreatedAtAction(nameof(GetOptionById), new { quizId, questionId, optionId = id }, new { id });
+                var id = await _quizService.CreateOption(questionId, dto);
+
+                // Trả về CreatedAtAction với route: GetOptionById
+                return CreatedAtAction(
+                    nameof(GetOptionById),
+                    new { questionId, optionId = id },
+                    new { id }
+                );
             }
             catch (KeyNotFoundException ex)
             {
@@ -121,24 +126,17 @@ namespace Lssctc.LearningManagement.Quizzes.Controllers
             }
         }
 
+
         //=== = get option by id (for CreatedAtAction above)
-        // get option by id
-        [HttpGet("{quizId:int}/questions/{questionId:int}/options/{optionId:int}")]
+        [HttpGet("questions/{questionId:int}/options/{optionId:int}")]
         public async Task<IActionResult> GetOptionById(
-            [FromRoute] int quizId,
-            [FromRoute] int questionId,
-            [FromRoute] int optionId)
+    [FromRoute] int questionId,
+    [FromRoute] int optionId)
         {
-            try
-            {
-                var dto = await _quizService.GetOptionById(optionId);
-                return dto is null ? NotFound() : Ok(dto);
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new { error = ex.Message });
-            }
+            var dto = await _quizService.GetOptionById(optionId);
+            return dto is null ? NotFound() : Ok(dto);
         }
+
 
         // stub để CreatedAtAction dùng được
         [HttpGet("{questionId:int}/options/{id:int}")]

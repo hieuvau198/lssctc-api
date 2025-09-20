@@ -16,14 +16,12 @@ namespace Lssctc.LearningManagement.Quizzes.Services
     int quizId, CancellationToken ct = default);
 
         Task<int> CreateQuestionByQuizId(int quizId, CreateQuizQuestionDto dto);
-        // no need for quizId here, option is linked to question which is linked to quiz
-        Task<int> CreateOption(int quizId, int questionId, CreateQuizQuestionOptionDto dto);
-        // Add method: Get options by questionId
+        
+        Task<int> CreateOption(int questionId, CreateQuizQuestionOptionDto dto);
+        
         Task<IReadOnlyList<QuizDetailQuestionOptionDto>> GetOptionsByQuestionId(
         int questionId, CancellationToken ct = default);
         Task<QuizQuestionOptionDto?> GetOptionById(int optionId);
-        // Get quiz by quizId with questions and options
-        // Create quiz with questions and options
-        // Get options for trainee without correct value
+       
     }
 }
