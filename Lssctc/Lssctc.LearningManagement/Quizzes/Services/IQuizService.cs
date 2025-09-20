@@ -19,6 +19,8 @@ namespace Lssctc.LearningManagement.Quizzes.Services
         // no need for quizId here, option is linked to question which is linked to quiz
         Task<int> CreateOption(int quizId, int questionId, CreateQuizQuestionOptionDto dto);
         // Add method: Get options by questionId
+        Task<IReadOnlyList<QuizDetailQuestionOptionDto>> GetOptionsByQuestionId(
+        int questionId, CancellationToken ct = default);
         Task<QuizQuestionOptionDto?> GetOptionById(int optionId);
         // Get quiz by quizId with questions and options
         // Create quiz with questions and options

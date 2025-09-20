@@ -315,5 +315,30 @@ namespace Lssctc.LearningManagement.Quizzes.Services
 
             return quizDetail;
         }
+
+        //=== get options by questionId
+        public async Task<IReadOnlyList<QuizDetailQuestionOptionDto>> GetOptionsByQuestionId(
+    int questionId, CancellationToken ct = default)
+        {
+            if (questionId <= 0) throw new ValidationException("questionId must be > 0.");
+
+            // Đảm bảo question tồn tại
+            var exists = await _uow.QuizQuestionRepository.ExistsAsync(q => q.Id == questionId);
+            if (!exists) throw new KeyNotFoundException($"Question {questionId} not found.");
+
+            // Lấy toàn bộ options của câu hỏi, sắp theo DisplayOrder (null sẽ đẩy về cuối)
+            var items = await _uow.QuizQuestionOptionRepository.GetAllAsQueryable()
+                .Where(o => o.QuizQuestionId == questionId)
+                .OrderBy(o => o.DisplayOrder) // nếu DisplayOrder có thể null: .OrderBy(o => o.DisplayOrder ?? int.MaxValue)
+                .ProjectTo<QuizDetailQuestionOptionDto>(_mapper.ConfigurationProvider)
+                .AsNoTracking()
+                .ToListAsync(ct);
+
+            if (items.Count == 0)
+                throw new ValidationException($"Question {questionId} has no options.");
+
+
+            return items;
+        }
     }
 }

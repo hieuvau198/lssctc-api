@@ -159,5 +159,19 @@ namespace Lssctc.LearningManagement.Quizzes.Controllers
             var dto = await _quizService.GetQuizDetailForTrainee(id, ct);
             return dto is null ? NotFound() : Ok(dto);
         }
+
+        // GET: /api/quizzes/questions/{questionId}/options  (get option by question id)
+        [HttpGet("questions/{questionId:int}/options")]
+        public async Task<IActionResult> GetOptionsByQuestionIdFlat(int questionId, CancellationToken ct = default)
+        {
+            try
+            {
+                var items = await _quizService.GetOptionsByQuestionId(questionId, ct);
+                return Ok(new { questionId, total = items.Count, items });
+            }
+            catch (KeyNotFoundException ex) { return NotFound(new { error = ex.Message }); }
+            catch (ValidationException ex) { return BadRequest(new { error = ex.Message }); }
+        }
+
     }
 }
