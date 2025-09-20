@@ -109,42 +109,65 @@ namespace Lssctc.ProgramManagement.Courses.Services
                 PageSize = pagedResult.PageSize
             };
         }
+        public async Task<PagedResult<CourseDto>> GetCoursesByFilter(int? categoryId, int? levelId, int pageNumber, int pageSize)
+        {
+            var query = _unitOfWork.CourseRepository.GetAllAsQueryable()
+                .Include(c => c.Category)
+                .Include(c => c.Level)
+                .Where(c => c.IsDeleted == false);
+
+            if (categoryId.HasValue)
+                query = query.Where(c => c.CategoryId == categoryId.Value);
+
+            if (levelId.HasValue)
+                query = query.Where(c => c.LevelId == levelId.Value);
+
+            query = query.OrderBy(c => c.Name);
+
+            var pagedResult = await query.ToPagedResultAsync(pageNumber, pageSize);
+
+            return new PagedResult<CourseDto>
+            {
+                Items = pagedResult.Items.Select(c => _mapper.Map<CourseDto>(c)),
+                TotalCount = pagedResult.TotalCount,
+                Page = pagedResult.Page,
+                PageSize = pagedResult.PageSize
+            };
+        }
 
         public async Task<CourseDto> CreateCourse(CreateCourseDto dto)
         {
-            //validate course category
+            // validate category
             if (!dto.CategoryId.HasValue)
                 throw new BadRequestException("CategoryId is required.");
-            else
-            {
-                var categoryExists = await _unitOfWork.CourseCategoryRepository.GetByIdAsync(dto.CategoryId.Value);
-                if (categoryExists == null)
-                    throw new BadRequestException($"Category with Id {dto.CategoryId.Value} does not exist.");
-            }
-            //validate course level
+            var categoryExists = await _unitOfWork.CourseCategoryRepository.GetByIdAsync(dto.CategoryId.Value);
+            if (categoryExists == null)
+                throw new BadRequestException($"Category with Id {dto.CategoryId.Value} does not exist.");
+
+            // validate level
             if (!dto.LevelId.HasValue)
                 throw new BadRequestException("LevelId is required.");
-            else
-            {
-                var levelExists = await _unitOfWork.CourseLevelRepository.GetByIdAsync(dto.LevelId.Value);
-                if (levelExists == null)
-                    throw new BadRequestException($"Level with Id {dto.LevelId.Value} does not exist.");
-            }
-            //validate course code
-            if (!dto.CourseCodeId.HasValue)
-                throw new BadRequestException("CourseCodeId is required.");
-            else
-            {
-                var codeExists = await _unitOfWork.CourseCodeRepository.GetByIdAsync(dto.CourseCodeId.Value);
-                if (codeExists == null)
-                    throw new BadRequestException($"CourseCode with Id {dto.CourseCodeId.Value} does not exist.");
-            }
-            //validate course price
+            var levelExists = await _unitOfWork.CourseLevelRepository.GetByIdAsync(dto.LevelId.Value);
+            if (levelExists == null)
+                throw new BadRequestException($"Level with Id {dto.LevelId.Value} does not exist.");
+
+            // validate price
             if (!dto.Price.HasValue)
                 throw new BadRequestException("Price is required.");
-            else if (dto.Price < 0)
+            if (dto.Price < 0)
                 throw new BadRequestException("Price cannot be negative.");
+
+            // ✅ create course code
+            var newCourseCode = new CourseCode
+            {
+                Name = dto.CourseCodeName
+            };
+            await _unitOfWork.CourseCodeRepository.CreateAsync(newCourseCode);
+            await _unitOfWork.SaveChangesAsync();
+
+            // map dto → entity
             var newCourse = _mapper.Map<Course>(dto);
+            newCourse.CourseCodeId = newCourseCode.Id;
             newCourse.IsActive = true;
             newCourse.IsDeleted = false;
 
@@ -153,6 +176,7 @@ namespace Lssctc.ProgramManagement.Courses.Services
 
             return _mapper.Map<CourseDto>(newCourse);
         }
+
 
         public async Task<CourseDto?> UpdateCourseById(int id, UpdateCourseDto dto)
         {
@@ -174,13 +198,6 @@ namespace Lssctc.ProgramManagement.Courses.Services
                     throw new BadRequestException($"Level with Id {dto.LevelId.Value} does not exist.");
             }
 
-            //  Validate CourseCodeId
-            if (dto.CourseCodeId.HasValue)
-            {
-                var codeExists = await _unitOfWork.CourseCodeRepository.GetByIdAsync(dto.CourseCodeId.Value);
-                if (codeExists == null)
-                    throw new BadRequestException($"CourseCode with Id {dto.CourseCodeId.Value} does not exist.");
-            }
             //validate course price
             if (!dto.Price.HasValue)
                 throw new BadRequestException("Price is required.");
@@ -274,16 +291,15 @@ namespace Lssctc.ProgramManagement.Courses.Services
 
             return _mapper.Map<CourseSyllabusDto>(courseSyllabus);
         }
-        public async Task<IEnumerable<CourseSyllabusDto>> GetSyllabusByCourseId(int courseId)
+        public async Task<CourseSyllabusDto> GetSyllabusByCourseId(int courseId)
         {
             var courseSyllabuses = await _unitOfWork.CourseSyllabuseRepository
                 .GetAllAsQueryable()
                 .Where(cs => cs.CourseId == courseId)
                 .Include(cs => cs.Syllabus)
-                .Include(cs => cs.Course)
-                .ToListAsync();
+                .Include(cs => cs.Course).FirstOrDefaultAsync();
 
-            return _mapper.Map<IEnumerable<CourseSyllabusDto>>(courseSyllabuses);
+            return _mapper.Map<CourseSyllabusDto>(courseSyllabuses);
         }
 
     }

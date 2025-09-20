@@ -25,7 +25,7 @@
         public int TraineeId { get; set; }
         public int ClassId { get; set; }
         public DateTime AssignedDate { get; set; }
-        public int Status { get; set; }
+        public string Status { get; set; }
 
         public List<TrainingProgressDto> TrainingProgresses { get; set; } = new();
     }
@@ -69,9 +69,8 @@
         public DateTime? EndDate { get; set; }
         public int? Capacity { get; set; }
         public int ProgramCourseId { get; set; }
-        public int ClassCodeId { get; set; }
         public string Description { get; set; } 
-        public int Status { get; set; }
+        public string Status { get; set; }
     }
 
     public class ClassDto
@@ -84,7 +83,7 @@
         public int ProgramCourseId { get; set; }
         public ClassCodeDto? ClassCode { get; set; }
         public string Description { get; set; } 
-        public int Status { get; set; }
+        public string Status { get; set; }
 
         public List<ClassInstructorDto> Instructors { get; set; } = new();
         public List<ClassMemberDto> Members { get; set; } = new();
@@ -107,7 +106,7 @@
         public int TraineeId { get; set; }
         public string Name { get; set; } 
         public string Description { get; set; } 
-        public int Status { get; set; }
+        public string Status { get; set; }
         public DateTime CreatedDate { get; set; }
         public DateTime? ApprovedDate { get; set; }
 
@@ -134,7 +133,7 @@
     {
         public int Id { get; set; }
         public int CourseMemberId { get; set; }
-        public int Status { get; set; }
+        public string Status { get; set; }
         public double? ProgressPercentage { get; set; }
         public DateTime StartDate { get; set; }
         public DateTime? LastUpdated { get; set; }
@@ -147,7 +146,7 @@
     public class CreateTrainingProgressDto
     {
         public int CourseMemberId { get; set; }
-        public int Status { get; set; }
+        public string Status { get; set; }
         public string? Name { get; set; }
         public string? Description { get; set; }
         public double? ProgressPercentage { get; set; }
@@ -158,7 +157,7 @@
     public class UpdateTrainingProgressDto
     {
         public int Id { get; set; }
-        public int Status { get; set; }
+        public string Status { get; set; }
         public double? ProgressPercentage { get; set; }
         public string? Description { get; set; }
     }
