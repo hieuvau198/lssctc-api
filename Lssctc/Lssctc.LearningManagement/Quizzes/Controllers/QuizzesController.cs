@@ -143,5 +143,21 @@ namespace Lssctc.LearningManagement.Quizzes.Controllers
         // stub để CreatedAtAction dùng được
         [HttpGet("{questionId:int}/options/{id:int}")]
         public IActionResult GetById(int questionId, int id) => Ok();
+
+        // get only in4 of quiz for teacher 
+        [HttpGet("{id:int}/questions")]
+        public async Task<IActionResult> GetDetail(int id, CancellationToken ct = default)
+        {
+            var dto = await _quizService.GetQuizDetail(id, ct);
+            return dto is null ? NotFound() : Ok(dto);
+        }
+
+        // get quiz detail for trainee (no correct option info)
+        [HttpGet("{id:int}/traineequiz-view")]
+        public async Task<IActionResult> GetQuizForTrainee(int id, CancellationToken ct = default)
+        {
+            var dto = await _quizService.GetQuizDetailForTrainee(id, ct);
+            return dto is null ? NotFound() : Ok(dto);
+        }
     }
 }

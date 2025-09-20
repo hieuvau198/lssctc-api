@@ -26,9 +26,20 @@ namespace Lssctc.LearningManagement.Quizzes.DTOs
         public int QuizQuestionId { get; set; }
         public string? Description { get; set; }
         public bool IsCorrect { get; set; }
-        public int DisplayOrder { get; set; }      // DB đang NOT NULL theo use-case của bạn
+        public int? DisplayOrder { get; set; }    
         public decimal? OptionScore { get; set; }
         public string Name { get; set; } = null!;
+    }
+
+    public class QuizTraineeQuestionOptionDto
+    {
+        public int Id { get; set; }
+        public int QuizQuestionId { get; set; }
+        public string Name { get; set; } = null!;
+        public string? Description { get; set; }
+        public int? DisplayOrder { get; set; }
+        public decimal? OptionScore { get; set; }
+        // KHÔNG có IsCorrect
     }
 
     public class QuizOptionForTraineeDto

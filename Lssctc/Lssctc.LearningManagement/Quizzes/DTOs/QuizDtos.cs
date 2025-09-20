@@ -12,6 +12,7 @@ namespace Lssctc.LearningManagement.Quizzes.DTOs
         public string? Description { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
+        public List<QuizQuestionDto> Questions { get; set; } = new();
     }
 
     public class QuizDetailDto
@@ -25,6 +26,18 @@ namespace Lssctc.LearningManagement.Quizzes.DTOs
 
         public List<QuizDetailQuestionDto> Questions { get; set; } = new();
     }
+
+    public class QuizTraineeDetailDto
+    {
+        public int Id { get; set; }
+        public string? Name { get; set; }
+        public decimal? PassScoreCriteria { get; set; }
+        public int? TimelimitMinute { get; set; }
+        public decimal? TotalScore { get; set; }
+        public string? Description { get; set; }
+        public List<QuizTraineeQuestionDto> Questions { get; set; } = new();
+    }
+
 
     public class CreateQuizDto
     {

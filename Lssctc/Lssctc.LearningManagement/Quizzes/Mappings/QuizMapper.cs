@@ -46,9 +46,40 @@ namespace Lssctc.LearningManagement.Quizzes.Mappings
             CreateMap<UpdateQuizQuestionOptionDto, QuizQuestionOption>()
                 .ForAllMembers(opt => opt.Condition((src, dest, val) => val != null));
 
+
+            CreateMap<Quiz, QuizDetailDto>()
+    .ForMember(d => d.Questions,
+        o => o.MapFrom(s => s.QuizQuestions.OrderBy(q => q.Id)));
+
+            CreateMap<QuizQuestion, QuizDetailQuestionDto>()
+                .ForMember(d => d.Options,
+                    o => o.MapFrom(s => s.QuizQuestionOptions.OrderBy(opt => opt.DisplayOrder)));
+
+            CreateMap<QuizQuestionOption, QuizDetailQuestionOptionDto>();
+
+
+
             //== Quiz option detail
 
             CreateMap<QuizQuestionOption, QuizDetailQuestionOptionDto>();
+
+
+            //==== quiz trainee detail
+            // Quiz -> QuizTraineeDetailDto
+            CreateMap<Quiz, QuizTraineeDetailDto>()
+                .ForMember(d => d.Questions,
+                    o => o.MapFrom(s => s.QuizQuestions.OrderBy(q => q.Id)));
+
+            // QuizQuestion -> QuizTraineeQuestionDto
+            CreateMap<QuizQuestion, QuizTraineeQuestionDto>()
+                .ForMember(d => d.Options,
+                    o => o.MapFrom(s => s.QuizQuestionOptions.OrderBy(opt => opt.DisplayOrder)));
+
+            // QuizQuestionOption -> QuizTraineeQuestionOptionDto (không map IsCorrect)
+            CreateMap<QuizQuestionOption, QuizTraineeQuestionOptionDto>();
+
+
+            //====
 
         }
 

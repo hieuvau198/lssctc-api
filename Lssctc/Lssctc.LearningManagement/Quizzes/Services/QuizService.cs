@@ -203,14 +203,6 @@ namespace Lssctc.LearningManagement.Quizzes.Services
             if (orderDup)
                 throw new ValidationException($"DisplayOrder {dto.DisplayOrder} already exists in this question.");
 
-            // Nếu muốn ép tăng dần liên tục thì mở đoạn dưới:
-            // var maxOrder = await _uow.QuizQuestionOptionRepository.GetAllAsQueryable()
-            //     .Where(o => o.QuizQuestionId == questionId)
-            //     .Select(o => (int?)o.DisplayOrder)
-            //     .MaxAsync() ?? 0;
-            // if (dto.DisplayOrder != maxOrder + 1)
-            //     throw new ValidationException($"DisplayOrder must be {maxOrder + 1}.");
-
             // 4) Single/multi answers
             if (!question.IsMultipleAnswers && dto.IsCorrect)
             {
@@ -279,6 +271,49 @@ namespace Lssctc.LearningManagement.Quizzes.Services
                 .FirstOrDefaultAsync();
 
             return dto;
+        }
+
+
+        //====== get quiz with questions and options for teacher
+        public async Task<QuizDetailDto?> GetQuizDetail(int quizId, CancellationToken ct = default)
+        {
+            //CancellationToken dùng để huỷ truy vấn bất đồng bộ nếu client hủy request
+            var quizDetail = await _uow.QuizRepository.GetAllAsQueryable()
+        .Where(q => q.Id == quizId)
+        .ProjectTo<QuizDetailDto>(_mapper.ConfigurationProvider)
+        .AsNoTracking()
+        .FirstOrDefaultAsync(ct);
+
+            if (quizDetail == null)
+            {
+                return null;
+                throw new KeyNotFoundException($"Quiz {quizId} not found.");
+            }
+
+            return quizDetail;
+        }
+
+
+        //====== get quiz with questions and options for trainee
+        public async Task<QuizTraineeDetailDto?> GetQuizDetailForTrainee(
+    int quizId, CancellationToken ct = default)
+        {
+            if (ct.IsCancellationRequested)
+                ct.ThrowIfCancellationRequested();
+
+            var quizDetail = await _uow.QuizRepository.GetAllAsQueryable()
+       .Where(q => q.Id == quizId)
+       .ProjectTo<QuizTraineeDetailDto>(_mapper.ConfigurationProvider)
+       .AsNoTracking()
+       .FirstOrDefaultAsync(ct);
+
+            if (quizDetail == null)
+            {
+              return null; 
+                throw new KeyNotFoundException($"Quiz {quizId} not found.");
+            }
+
+            return quizDetail;
         }
     }
 }

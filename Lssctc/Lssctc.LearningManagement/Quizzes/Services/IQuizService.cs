@@ -11,6 +11,10 @@ namespace Lssctc.LearningManagement.Quizzes.Services
         Task<bool> UpdateQuizById(int id, UpdateQuizDto dto);
         Task<bool> DeleteQuizById(int id);
         // Add method: Get questions by quizId
+        Task<QuizDetailDto?> GetQuizDetail(int quizId, CancellationToken ct = default);
+        Task<QuizTraineeDetailDto?> GetQuizDetailForTrainee(
+    int quizId, CancellationToken ct = default);
+
         Task<int> CreateQuestionByQuizId(int quizId, CreateQuizQuestionDto dto);
         // no need for quizId here, option is linked to question which is linked to quiz
         Task<int> CreateOption(int quizId, int questionId, CreateQuizQuestionOptionDto dto);
