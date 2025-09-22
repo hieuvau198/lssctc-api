@@ -29,6 +29,21 @@ builder.Services.AddScoped<IComponentService, ComponentService>();
 
 #endregion
 
+#region Cors
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowClients",
+        policy => policy
+            .WithOrigins("http://localhost:5173")
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials() // If use cookies/auth, else remove this line
+    );
+});
+#endregion
+
+
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -38,6 +53,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseCors("AllowClients");
 
 app.UseAuthorization();
 
