@@ -37,16 +37,14 @@ builder.Services.AddCors(options =>
             .WithOrigins("http://localhost:5173")
             .AllowAnyHeader()
             .AllowAnyMethod()
-            .AllowCredentials() // If use cookies/auth, else remove this line
+            .AllowCredentials()
     );
 });
 #endregion
 
-
-
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
+if (true)
 {
     app.UseSwagger();
     app.UseSwaggerUI();
