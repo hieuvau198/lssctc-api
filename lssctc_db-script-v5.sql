@@ -1,9 +1,6 @@
 
-USE [master]
-ALTER DATABASE [lssctc-db] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
-DROP DATABASE [lssctc-db];
 
-CREATE DATABASE [lssctc-db]
+
 USE [lssctc-db]
 
 
@@ -212,7 +209,7 @@ CREATE TABLE [dbo].[simulation_components] (
     [name] NVARCHAR(100) NOT NULL,
     [description] NVARCHAR(2000),
     [image_url] NVARCHAR(2000),
-    [is_active] BIT DEFAULT 1
+    [is_active] BIT DEFAULT 1,
     [created_date] DATETIME2(0) NOT NULL DEFAULT SYSDATETIME(),
     [is_deleted] BIT DEFAULT 0
 );

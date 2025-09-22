@@ -1,3 +1,5 @@
+
+
 -- Drop Database
 
 ALTER DATABASE [lssctc-db] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
