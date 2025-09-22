@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lssctc.ProgramManagement", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lssctc.LearningManagement", "Lssctc.LearningManagement\Lssctc.LearningManagement.csproj", "{3790C5CB-5AD9-4F49-8BCC-64C1D9019E0A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lssctc.SimulationManagement", "Lssctc.SimulationManagement\Lssctc.SimulationManagement.csproj", "{696DB508-BAE6-4542-8C14-A843D189A2C4}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -33,6 +35,10 @@ Global
 		{3790C5CB-5AD9-4F49-8BCC-64C1D9019E0A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3790C5CB-5AD9-4F49-8BCC-64C1D9019E0A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3790C5CB-5AD9-4F49-8BCC-64C1D9019E0A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{696DB508-BAE6-4542-8C14-A843D189A2C4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{696DB508-BAE6-4542-8C14-A843D189A2C4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{696DB508-BAE6-4542-8C14-A843D189A2C4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{696DB508-BAE6-4542-8C14-A843D189A2C4}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
