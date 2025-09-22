@@ -70,7 +70,6 @@
         public int? Capacity { get; set; }
         public int ProgramCourseId { get; set; }
         public string Description { get; set; } 
-        public string Status { get; set; }
     }
 
     public class ClassDto
@@ -194,7 +193,61 @@
     public class TrainingResultTypeDto
     {
         public int Id { get; set; }
+        public string Name { get; set; } 
+        public string? Description { get; set; }
+    }
+
+
+
+    /// <summary>
+    /// Section
+    /// </summary>
+    public class SectionDto
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } 
+        public string? Description { get; set; }
+        public int Order { get; set; }
+        public int? DurationMinutes { get; set; }
+        public DateTime StartDate { get; set; }
+        public DateTime? EndDate { get; set; }
+        public string Status { get; set; } 
+    }
+
+    public class SectionCreateDto
+    {
+        public int ClassId { get; set; }
         public string Name { get; set; } = null!;
         public string? Description { get; set; }
+        public int SyllabusSectionId { get; set; }
+        public int? DurationMinutes { get; set; }
+        public int Order { get; set; }
+        public DateTime StartDate { get; set; }
+        public DateTime? EndDate { get; set; }
+    }
+
+
+    // Syllabus Section DTOs
+    public class SyllabusSectionCreateDto
+    {
+        public string SyllabusName { get; set; } = null!;
+        public string CourseName { get; set; } = null!;
+        public string CourseCode { get; set; } = null!;
+        public string SectionTitle { get; set; } = null!;
+        public string? SectionDescription { get; set; }
+        public int SectionOrder { get; set; }
+        public int? EstimatedDurationMinutes { get; set; }
+    }
+
+    public class SyllabusSectionDto
+    {
+        public int Id { get; set; }
+        public string SectionTitle { get; set; } = null!;
+        public string? SectionDescription { get; set; }
+        public int SectionOrder { get; set; }
+        public int? EstimatedDurationMinutes { get; set; }
+        public string SyllabusName { get; set; } = null!;
+        public string CourseName { get; set; } = null!;
+        public string CourseCode { get; set; } = null!;
     }
 }

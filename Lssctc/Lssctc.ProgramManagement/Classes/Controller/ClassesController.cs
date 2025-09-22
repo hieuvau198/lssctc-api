@@ -25,8 +25,15 @@ namespace Lssctc.ProgramManagement.Classes.Controller
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var result = await _classService.CreateClassByProgramCourseId(dto);
-            return Ok(result);
+            try
+            {
+                var result = await _classService.CreateClassByProgramCourseId(dto);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
         /// <summary>
@@ -38,8 +45,15 @@ namespace Lssctc.ProgramManagement.Classes.Controller
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var result = await _classService.AssignInstructorToClass(dto);
-            return Ok(result);
+            try
+            {
+                var result = await _classService.AssignInstructorToClass(dto);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
         /// <summary>
@@ -51,20 +65,35 @@ namespace Lssctc.ProgramManagement.Classes.Controller
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var result = await _classService.EnrollTrainee(dto);
-            return Ok(result);
+            try
+            {
+                var result = await _classService.EnrollTrainee(dto);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
+
         /// <summary>
         /// Get enrollment by ClassId (returns first enrollment if multiple exist)
         /// </summary>
         [HttpGet("{classId}/enrollment")]
         public async Task<IActionResult> GetEnrollmentByClassId(int classId)
         {
-            var result = await _classService.GetClassEnrollmentById(classId);
-            if (result == null)
-                return NotFound("No enrollment found for this class.");
+            try
+            {
+                var result = await _classService.GetClassEnrollmentById(classId);
+                if (result == null)
+                    return NotFound("No enrollment found for this class.");
 
-            return Ok(result);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
         /// <summary>
@@ -93,12 +122,18 @@ namespace Lssctc.ProgramManagement.Classes.Controller
         [HttpGet("{classId}/members")]
         public async Task<IActionResult> GetClassMembers(int classId)
         {
-            var result = await _classService.GetMembersByClassId(classId);
+            try
+            {
+                var result = await _classService.GetMembersByClassId(classId);
+                if (result == null || !result.Any())
+                    return NotFound("No members found for this class.");
 
-            if (result == null || !result.Any())
-                return NotFound("No members found for this class.");
-
-            return Ok(result);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
         /// <summary>
@@ -107,13 +142,18 @@ namespace Lssctc.ProgramManagement.Classes.Controller
         [HttpGet("{classId}/instructor")]
         public async Task<IActionResult> GetInstructor(int classId)
         {
-            var result = await _classService.GetInstructorByClassId(classId);
-            if (result == null)
-                return NotFound("No instructor found for this class.");
-            return Ok(result);
+            try
+            {
+                var result = await _classService.GetInstructorByClassId(classId);
+                if (result == null)
+                    return NotFound("No instructor found for this class.");
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
-
-
 
         //
         // TRAINING PROGRESS
@@ -125,10 +165,17 @@ namespace Lssctc.ProgramManagement.Classes.Controller
         [HttpGet("members/{memberId}/progress")]
         public async Task<IActionResult> GetTrainingProgressByMember(int memberId)
         {
-            var result = await _classService.GetProgressByMember(memberId);
-            if (result == null || !result.Any())
-                return NotFound("No training progress found for this member.");
-            return Ok(result);
+            try
+            {
+                var result = await _classService.GetProgressByMember(memberId);
+                if (result == null || !result.Any())
+                    return NotFound("No training progress found for this member.");
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
         /// <summary>
@@ -140,8 +187,15 @@ namespace Lssctc.ProgramManagement.Classes.Controller
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var result = await _classService.CreateProgress(dto);
-            return Ok(result);
+            try
+            {
+                var result = await _classService.CreateProgress(dto);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
         /// <summary>
@@ -153,28 +207,20 @@ namespace Lssctc.ProgramManagement.Classes.Controller
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var result = await _classService.UpdateProgress(dto);
-            return Ok(result);
+            try
+            {
+                var result = await _classService.UpdateProgress(dto);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
-        /// <summary>
-        /// Delete training progress
-        /// </summary>
-        //[HttpDelete("progress/{id}")]
-        //public async Task<IActionResult> DeleteTrainingProgress(int id)
-        //{
-        //    var success = await _classService.DeleteTrainingProgressAsync(id);
-        //    if (!success)
-        //        return NotFound("Training progress not found.");
-        //    return NoContent();
-        //}
-
-
-
-
-        // 
-        // TRAINING RESULT 
-        // 
+        //
+        // TRAINING RESULT
+        //
 
         /// <summary>
         /// Get all training results by TrainingProgressId
@@ -182,10 +228,17 @@ namespace Lssctc.ProgramManagement.Classes.Controller
         [HttpGet("progress/{progressId}/results")]
         public async Task<IActionResult> GetTrainingResults(int progressId)
         {
-            var result = await _classService.GetResultsByProgress(progressId);
-            if (result == null || !result.Any())
-                return NotFound("No results found for this training progress.");
-            return Ok(result);
+            try
+            {
+                var result = await _classService.GetResultsByProgress(progressId);
+                if (result == null || !result.Any())
+                    return NotFound("No results found for this training progress.");
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
         /// <summary>
@@ -197,8 +250,15 @@ namespace Lssctc.ProgramManagement.Classes.Controller
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var result = await _classService.CreateResult(dto);
-            return Ok(result);
+            try
+            {
+                var result = await _classService.CreateResult(dto);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
         /// <summary>
@@ -210,8 +270,15 @@ namespace Lssctc.ProgramManagement.Classes.Controller
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var result = await _classService.UpdateResult(dto);
-            return Ok(result);
+            try
+            {
+                var result = await _classService.UpdateResult(dto);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
         /// <summary>
@@ -225,5 +292,49 @@ namespace Lssctc.ProgramManagement.Classes.Controller
         //        return NotFound("Training result not found.");
         //    return NoContent();
         //}
+
+        /// <summary>
+        /// Create a new Section for a Class
+        /// </summary>
+        [HttpPost("sections")]
+        public async Task<IActionResult> CreateSection([FromBody] SectionCreateDto dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            try
+            {
+                var result = await _classService.CreateSectionAsync(dto);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        //
+        // SYLLABUS SECTION
+        //
+
+        /// <summary>
+        /// Create a new Syllabus Section
+        /// </summary>
+        [HttpPost("syllabus-sections")]
+        public async Task<IActionResult> CreateSyllabusSection([FromBody] SyllabusSectionCreateDto dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            try
+            {
+                var result = await _classService.CreateSyllabusSectionAsync(dto);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
     }
 }

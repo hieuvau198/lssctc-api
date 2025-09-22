@@ -24,7 +24,10 @@ namespace Lssctc.ProgramManagement.Classes.Services
         Task<TrainingResultDto> CreateResult(CreateTrainingResultDto dto);
         Task<TrainingResultDto> UpdateResult(UpdateTrainingResultDto dto);
         Task<bool> DeleteResult(int resultId);
+        //section
+        Task<SectionDto> CreateSectionAsync(SectionCreateDto dto);
+        Task<SyllabusSectionDto> CreateSyllabusSectionAsync(SyllabusSectionCreateDto dto);
 
-        
+
     }
 }

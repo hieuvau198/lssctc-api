@@ -1,7 +1,6 @@
 ﻿using AutoMapper;
 using Lssctc.ProgramManagement.Classes.DTOs;
 using Lssctc.Share.Entities;
-using Lssctc.Share.Enum;
 using Lssctc.Share.Enums;
 using Lssctc.Share.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -24,17 +23,19 @@ namespace Lssctc.ProgramManagement.Classes.Services
             // Validate ProgramCourse
             var programCourse = await _unitOfWork.ProgramCourseRepository.GetByIdAsync(dto.ProgramCourseId);
 
+            if (programCourse == null)
+                throw new Exception("Invalid ProgramCourseId");
+
             if (string.IsNullOrWhiteSpace(dto.ClassCode))
                 throw new Exception("ClassCode is required");
 
             if (dto.ClassCode.Length > 50) 
                 throw new Exception("ClassCode too long");
 
-            if (programCourse == null)
-                throw new Exception("Invalid ProgramCourseId");
+            
 
 
-            if(_unitOfWork.ClassCodeRepository.GetAllAsQueryable().Any(cc => cc.Name == dto.ClassCode))
+            if(await _unitOfWork.ClassCodeRepository.GetAllAsQueryable().AnyAsync(cc => cc.Name == dto.ClassCode))
             {
                 throw new Exception("ClassCode already exists");
             }
@@ -44,11 +45,12 @@ namespace Lssctc.ProgramManagement.Classes.Services
                 Name = dto.ClassCode,
             };
 
-            _unitOfWork.ClassCodeRepository.CreateAsync(newClasscode);
-            _unitOfWork.SaveChangesAsync();
+            await _unitOfWork.ClassCodeRepository.CreateAsync(newClasscode);
+            await _unitOfWork.SaveChangesAsync();
             
             var newClass = _mapper.Map<Class>(dto);
             newClass.ClassCodeId = newClasscode.Id;
+            newClass.Status = (int)ClassStatus.Draft;
             await _unitOfWork.ClassRepository.CreateAsync(newClass);
             await _unitOfWork.SaveChangesAsync();
 
@@ -85,8 +87,9 @@ namespace Lssctc.ProgramManagement.Classes.Services
             await _unitOfWork.SaveChangesAsync();
 
             // Reload class with instructors
-            var updatedClass =  _unitOfWork.ClassRepository.GetAllAsQueryable()
+            var updatedClass = await _unitOfWork.ClassRepository.GetAllAsQueryable()
                 .Include(c => c.ClassInstructors)
+                .Include(c => c.ClassMembers)
                 .FirstOrDefaultAsync(c => c.Id == dto.ClassId);
 
             return _mapper.Map<ClassDto>(updatedClass);
@@ -118,7 +121,7 @@ namespace Lssctc.ProgramManagement.Classes.Services
 
             // map to entity
             var enrollment = _mapper.Map<ClassRegistration>(dto);
-            enrollment.Status = 0; // 0 = Pending
+            enrollment.Status = 1; // 1 = Pending
 
             await _unitOfWork.ClassRegisRepository.CreateAsync(enrollment);
             await _unitOfWork.SaveChangesAsync();
@@ -156,7 +159,7 @@ namespace Lssctc.ProgramManagement.Classes.Services
                 throw new Exception("Enrollment already approved");
 
             // update enrollment
-            enrollment.Status = ((int)ClassRegistrationStatus.Approved); // 1 = Approved
+            enrollment.Status = ((int)ClassRegistrationStatus.Approved); // 2 = Approved
             enrollment.ApprovedDate = DateTime.UtcNow;
             enrollment.Description = dto.Description ?? enrollment.Description;
 
@@ -325,5 +328,52 @@ namespace Lssctc.ProgramManagement.Classes.Services
             await _unitOfWork.SaveChangesAsync();
             return true;
         }
+
+
+
+        //section
+
+        public async Task<SectionDto> CreateSectionAsync(SectionCreateDto dto)
+        {
+            var classEntity = await _unitOfWork.ClassRepository.GetByIdAsync(dto.ClassId);
+            if (classEntity == null) throw new Exception("Class not found");
+
+            var syllabusSection = await _unitOfWork.SyllabusSectionRepository.GetByIdAsync(dto.SyllabusSectionId);
+            if (syllabusSection == null) throw new Exception("Syllabus section not found");
+
+            var entity = _mapper.Map<Section>(dto);
+
+            await _unitOfWork.SectionRepository.CreateAsync(entity);
+            await _unitOfWork.SaveChangesAsync();
+
+            return _mapper.Map<SectionDto>(entity);
+        }
+
+        public async Task<SyllabusSectionDto> CreateSyllabusSectionAsync(SyllabusSectionCreateDto dto)
+        {
+            // Create Syllabus
+            var syllabus = _mapper.Map<Syllabuse>(dto);
+            syllabus.IsActive = true;
+            syllabus.IsDeleted = false;
+
+            await _unitOfWork.SyllabuseRepository.CreateAsync(syllabus);
+            await _unitOfWork.SaveChangesAsync();
+
+            // Create Section linked to Syllabus
+            var section = _mapper.Map<SyllabusSection>(dto);
+            section.SyllabusId = syllabus.Id;
+
+            await _unitOfWork.SyllabusSectionRepository.CreateAsync(section);
+            await _unitOfWork.SaveChangesAsync();
+
+            // Reload with navigation
+            section = await _unitOfWork.SyllabusSectionRepository
+                .GetAllAsQueryable()
+                .Include(s => s.Syllabus)
+                .FirstOrDefaultAsync(s => s.Id == section.Id);
+
+            return _mapper.Map<SyllabusSectionDto>(section);
+        }
+
     }
 }

@@ -2,21 +2,16 @@
 using Lssctc.ProgramManagement.Courses.Services;
 using Lssctc.ProgramManagement.HttpCustomResponse;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Lssctc.ProgramManagement.Courses.Controllers
 {
-    /// <summary>
-    /// API controller for managing courses, including retrieving,
-    /// creating, updating, and deleting course records.
-    /// </summary>
+    
     [Route("api/[controller]")]
     [ApiController]
     public class CoursesController : ControllerBase
     {
         private readonly ICourseService _courseService;
-
 
         public CoursesController(ICourseService courseService)
         {
@@ -26,39 +21,55 @@ namespace Lssctc.ProgramManagement.Courses.Controllers
         /// <summary>
         /// Retrieves a list of courses with optional query parameters for filtering and pagination.
         /// </summary>
-        /// <param name="parameters">The query parameters for filtering and pagination.</param>
-        /// <returns>A list of courses.</returns>
-        // GET: api/courses
         [HttpGet]
         public async Task<IActionResult> GetCourses([FromQuery] CourseQueryParameters parameters)
         {
-            var result = await _courseService.GetCourses(parameters);
-            return Ok(result);
+            try
+            {
+                var result = await _courseService.GetCourses(parameters);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
+            }
         }
 
         /// <summary>
         /// Retrieves a course by its unique identifier.
         /// </summary>
-        /// <param name="id">The unique identifier of the course.</param>
-        /// <returns>The course details if found; otherwise, 404.</returns>
-        // GET: api/courses/5
         [HttpGet("{id}")]
         public async Task<IActionResult> GetCourse(int id)
         {
-            var course = await _courseService.GetCourseById(id);
-            if (course == null)
-                return NotFound();
+            try
+            {
+                var course = await _courseService.GetCourseById(id);
+                if (course == null)
+                    return NotFound(new { message = "Course not found." });
 
-            return Ok(course);
+                return Ok(course);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
+            }
         }
+
         /// <summary>
         /// Retrieves courses by category with pagination.
         /// </summary>
         [HttpGet("by-category/{categoryId}")]
         public async Task<IActionResult> GetCoursesByCategory(int categoryId, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
-            var result = await _courseService.GetCoursesByCategoryId(categoryId, pageNumber, pageSize);
-            return Ok(result);
+            try
+            {
+                var result = await _courseService.GetCoursesByCategoryId(categoryId, pageNumber, pageSize);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
+            }
         }
 
         /// <summary>
@@ -67,17 +78,20 @@ namespace Lssctc.ProgramManagement.Courses.Controllers
         [HttpGet("by-level/{levelId}")]
         public async Task<IActionResult> GetCoursesByLevel(int levelId, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
-            var result = await _courseService.GetCoursesByLevelId(levelId, pageNumber, pageSize);
-            return Ok(result);
+            try
+            {
+                var result = await _courseService.GetCoursesByLevelId(levelId, pageNumber, pageSize);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
+            }
         }
+
         /// <summary>
         /// Retrieves courses by optional category and/or level with pagination.
         /// </summary>
-        /// <param name="categoryId">Optional category filter.</param>
-        /// <param name="levelId">Optional level filter.</param>
-        /// <param name="pageNumber">Page number (default: 1).</param>
-        /// <param name="pageSize">Page size (default: 10).</param>
-        /// <returns>Paged list of filtered courses.</returns>
         [HttpGet("filter")]
         public async Task<IActionResult> GetCoursesByFilter(
             [FromQuery] int? categoryId,
@@ -85,16 +99,20 @@ namespace Lssctc.ProgramManagement.Courses.Controllers
             [FromQuery] int pageNumber = 1,
             [FromQuery] int pageSize = 10)
         {
-            var result = await _courseService.GetCoursesByFilter(categoryId, levelId, pageNumber, pageSize);
-            return Ok(result);
+            try
+            {
+                var result = await _courseService.GetCoursesByFilter(categoryId, levelId, pageNumber, pageSize);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
+            }
         }
 
         /// <summary>
         /// Creates a new course.
         /// </summary>
-        /// <param name="dto">The data transfer object containing course details.</param>
-        /// <returns>The newly created course.</returns>
-        // POST: api/courses
         [HttpPost]
         public async Task<IActionResult> CreateCourse([FromBody] CreateCourseDto dto)
         {
@@ -110,7 +128,12 @@ namespace Lssctc.ProgramManagement.Courses.Controllers
             {
                 return BadRequest(new { message = ex.Message });
             }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
+            }
         }
+
         /// <summary>
         /// Create a new syllabus and attach it to a course.
         /// </summary>
@@ -129,19 +152,30 @@ namespace Lssctc.ProgramManagement.Courses.Controllers
             {
                 return BadRequest(new { message = ex.Message });
             }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
+            }
         }
+
         /// <summary>
         /// Get all syllabuses of a given course.
         /// </summary>
         [HttpGet("{courseId}/syllabuses")]
         public async Task<ActionResult<IEnumerable<CourseSyllabusDto>>> GetCourseSyllabuses(int courseId)
         {
-            var result = await _courseService.GetSyllabusByCourseId(courseId);
+            try
+            {
+                var result = await _courseService.GetSyllabusByCourseId(courseId);
+                if (result == null)
+                    return NotFound(new { message = "No syllabuses found for this course." });
 
-            if (result == null )
-                return NotFound(new { message = "No syllabuses found for this course." });
-
-            return Ok(result);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
+            }
         }
 
         /// <summary>
@@ -153,29 +187,31 @@ namespace Lssctc.ProgramManagement.Courses.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var updated = await _courseService.UpdateSyllabusById(courseSyllabusId, dto);
+            try
+            {
+                var updated = await _courseService.UpdateSyllabusById(courseSyllabusId, dto);
+                if (updated == null)
+                    return NotFound(new { message = "Course syllabus not found." });
 
-            if (updated == null)
-                return NotFound(new { message = "Course syllabus not found." });
-
-            return Ok(updated);
+                return Ok(updated);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
+            }
         }
+
         /// <summary>
         /// Updates an existing course by its ID.
         /// </summary>
-        /// <param name="id">The unique identifier of the course.</param>
-        /// <param name="dto">The data transfer object containing updated course details.</param>
-        /// <returns>The updated course if successful; otherwise, 404 or 400.</returns>
-        // PUT: api/courses/5
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateCourse(int id, [FromBody] UpdateCourseDto dto)
         {
-
             try
             {
                 var updatedCourse = await _courseService.UpdateCourseById(id, dto);
                 if (updatedCourse == null)
-                    return NotFound();
+                    return NotFound(new { message = "Course not found." });
 
                 return Ok(updatedCourse);
             }
@@ -183,22 +219,30 @@ namespace Lssctc.ProgramManagement.Courses.Controllers
             {
                 return BadRequest(new { message = ex.Message });
             }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
+            }
         }
 
         /// <summary>
         /// Deletes a course by its ID.
         /// </summary>
-        /// <param name="id">The unique identifier of the course to delete.</param>
-        /// <returns>No content if deletion was successful; otherwise, 404.</returns>
-        // DELETE: api/courses/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteCourse(int id)
         {
-            var deleted = await _courseService.DeleteCourseById(id);
-            if (!deleted)
-                return NotFound();
+            try
+            {
+                var deleted = await _courseService.DeleteCourseById(id);
+                if (!deleted)
+                    return NotFound(new { message = "Course not found." });
 
-            return NoContent();
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
+            }
         }
     }
 }
