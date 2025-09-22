@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using Lssctc.ProgramManagement.Classes.DTOs;
 using Lssctc.Share.Entities;
+using Lssctc.Share.Enum;
 using Lssctc.Share.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
@@ -83,7 +84,9 @@ namespace Lssctc.ProgramManagement.Classes.Services
             await _unitOfWork.SaveChangesAsync();
 
             // Reload class with instructors
-            var updatedClass =  _unitOfWork.ClassRepository.GetAllAsQueryable().Include(c => c.ClassInstructors).Where(c => c.Id == dto.ClassId);
+            var updatedClass =  _unitOfWork.ClassRepository.GetAllAsQueryable()
+                .Include(c => c.ClassInstructors)
+                .FirstOrDefaultAsync(c => c.Id == dto.ClassId);
 
             return _mapper.Map<ClassDto>(updatedClass);
         }
@@ -148,11 +151,11 @@ namespace Lssctc.ProgramManagement.Classes.Services
             if (enrollment == null)
                 throw new Exception("Enrollment not found");
 
-            if (enrollment.Status == 1) // already approved
+            if (enrollment.Status == ClassEnrollmentStatus.Approved) // already approved
                 throw new Exception("Enrollment already approved");
 
             // update enrollment
-            enrollment.Status = 1; // 1 = Approved
+            enrollment.Status = ClassEnrollmentStatus.Approved; // 1 = Approved
             enrollment.ApprovedDate = DateTime.UtcNow;
             enrollment.Description = dto.Description ?? enrollment.Description;
 
@@ -187,10 +190,9 @@ namespace Lssctc.ProgramManagement.Classes.Services
         public async Task<InstructorDto> GetInstructorByClassId(int classId)
         {
             if (classId <= 0) throw new Exception("Invalid classId");
-            if( _unitOfWork.ClassRepository.GetByIdAsync(classId) == null)
-            {
+            var classEntity = await _unitOfWork.ClassRepository.GetByIdAsync(classId);
+            if (classEntity == null)
                 throw new Exception("Class not found");
-            }
             var classInstructor = await _unitOfWork.ClassInstructorRepository
                 .GetAllAsQueryable()
                 .Include(ci => ci.Instructor)

@@ -1,7 +1,7 @@
 ﻿using AutoMapper;
 using Lssctc.ProgramManagement.Classes.DTOs;
 using Lssctc.Share.Entities;
-
+using Lssctc.Share.Enum;
 
 namespace Lssctc.ProgramManagement.Classes.Mappings
 {
@@ -9,51 +9,65 @@ namespace Lssctc.ProgramManagement.Classes.Mappings
     {
         public ClassMapper()
         {
-            // Create Class
-            CreateMap<ClassCreateDto, Class>()
-                .ForMember(dest => dest.ClassCode, opt => opt.Ignore()); 
-
-            // Class <-> ClassDto
+            // Class
             CreateMap<Class, ClassDto>()
-                .ForMember(dest => dest.ClassCode, opt => opt.MapFrom(src =>
-                    src.ClassCode != null
-                        ? new ClassCodeDto { Id = src.ClassCode.Id, Name = src.ClassCode.Name }
-                        : null))
-                .ForMember(dest => dest.Instructors, opt => opt.MapFrom(src => src.ClassInstructors));
-            CreateMap<ClassMember, ClassMemberDto>().ReverseMap();
+                .ForMember(dest => dest.Status,
+                           opt => opt.MapFrom(src => src.Status.ToString()));
+            CreateMap<ClassDto, Class>()
+                .ForMember(dest => dest.Status,
+                           opt => opt.MapFrom(src => Enum.Parse<ClassStatus>(src.Status, true)));
+
+            CreateMap<ClassCreateDto, Class>()
+                .ForMember(dest => dest.ClassCode, opt => opt.Ignore())
+                .ForMember(dest => dest.Status,
+                           opt => opt.MapFrom(src => Enum.Parse<ClassStatus>(src.Status, true)));
+
+            // ClassMember
+            CreateMap<ClassMember, ClassMemberDto>()
+                .ForMember(dest => dest.Status,
+                           opt => opt.MapFrom(src => src.Status.ToString()))
+                .ReverseMap()
+                .ForMember(dest => dest.Status,
+                           opt => opt.MapFrom(src => Enum.Parse<ClassStatus>(src.Status, true)));
+
             CreateMap<Trainee, TraineeDto>().ReverseMap();
-            // ClassCode mapping
             CreateMap<ClassCode, ClassCodeDto>().ReverseMap();
-
-            // ClassInstructor mapping
             CreateMap<ClassInstructor, ClassInstructorDto>().ReverseMap();
-
-            // Instructor mapping
             CreateMap<Instructor, InstructorDto>().ReverseMap();
 
-            //ClassEnrollment mapping
+            // ClassEnrollment
             CreateMap<ClassEnrollmentCreateDto, ClassEnrollment>()
                 .ForMember(dest => dest.CreatedDate, opt => opt.MapFrom(_ => DateTime.UtcNow))
-                .ForMember(dest => dest.Status, opt => opt.MapFrom(_ => 0)); 
+                .ForMember(dest => dest.Status, opt => opt.MapFrom(_ => ClassEnrollmentStatus.Pending));
 
             CreateMap<ClassEnrollment, ClassEnrollmentDto>()
+                .ForMember(dest => dest.Status,
+                           opt => opt.MapFrom(src => src.Status.ToString()))
                 .ForMember(dest => dest.ClassName, opt => opt.MapFrom(src => src.Class.Name))
                 .ForMember(dest => dest.TraineeCode, opt => opt.MapFrom(src => src.Trainee.TraineeCode));
 
-            // Training Progress
-            CreateMap<TrainingProgress, TrainingProgressDto>();
+            // TrainingProgress
+            CreateMap<TrainingProgress, TrainingProgressDto>()
+                .ForMember(dest => dest.Status,
+                           opt => opt.MapFrom(src => src.Status.ToString()));
+
             CreateMap<CreateTrainingProgressDto, TrainingProgress>()
+                .ForMember(dest => dest.Status,
+                           opt => opt.MapFrom(src => Enum.Parse<TrainingProgressStatus>(src.Status, true)))
                 .ForMember(dest => dest.StartDate, opt => opt.MapFrom(_ => DateTime.UtcNow))
                 .ForMember(dest => dest.LastUpdated, opt => opt.MapFrom(_ => DateTime.UtcNow));
+
             CreateMap<UpdateTrainingProgressDto, TrainingProgress>()
+                .ForMember(dest => dest.Status,
+                           opt => opt.MapFrom(src => Enum.Parse<TrainingProgressStatus>(src.Status, true)))
                 .ForMember(dest => dest.LastUpdated, opt => opt.MapFrom(_ => DateTime.UtcNow));
 
-            // Training Result
+            // TrainingResult
             CreateMap<TrainingResult, TrainingResultDto>();
             CreateMap<CreateTrainingResultDto, TrainingResult>();
             CreateMap<UpdateTrainingResultDto, TrainingResult>();
 
-            // Training Result Type
+            // TrainingResultType
             CreateMap<TrainingResultType, TrainingResultTypeDto>();
         }
     }

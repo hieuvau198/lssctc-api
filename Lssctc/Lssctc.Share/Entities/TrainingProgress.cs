@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Lssctc.Share.Enum;
+using System;
 using System.Collections.Generic;
 
 namespace Lssctc.Share.Entities;
@@ -9,7 +10,7 @@ public partial class TrainingProgress
 
     public int CourseMemberId { get; set; }
 
-    public int Status { get; set; }
+    public TrainingProgressStatus Status { get; set; }
 
     public double? ProgressPercentage { get; set; }
 

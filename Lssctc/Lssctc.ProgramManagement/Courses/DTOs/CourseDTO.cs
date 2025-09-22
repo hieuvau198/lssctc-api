@@ -35,7 +35,7 @@
         public bool? IsActive { get; set; }
         public string? ImageUrl { get; set; }
         public int? DurationHours { get; set; }
-        public int? CourseCodeId { get; set; }
+        public string? CourseCodeName { get; set; }
     }
 
     public class CreateCourseDto
@@ -47,7 +47,7 @@
         public decimal? Price { get; set; }
         public string? ImageUrl { get; set; }
         public int? DurationHours { get; set; }
-        public int? CourseCodeId { get; set; }
+        public string? CourseCodeName { get; set; }
     }
 
     public class UpdateCourseDto
@@ -60,7 +60,7 @@
         public bool? IsActive { get; set; }
         public string? ImageUrl { get; set; }
         public int? DurationHours { get; set; }
-        public int? CourseCodeId { get; set; }
+        //public string? CourseCodeName { get; set; }
     }
     public class CourseQueryParameters
     {

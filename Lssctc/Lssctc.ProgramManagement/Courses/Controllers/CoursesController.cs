@@ -71,6 +71,25 @@ namespace Lssctc.ProgramManagement.Courses.Controllers
             return Ok(result);
         }
         /// <summary>
+        /// Retrieves courses by optional category and/or level with pagination.
+        /// </summary>
+        /// <param name="categoryId">Optional category filter.</param>
+        /// <param name="levelId">Optional level filter.</param>
+        /// <param name="pageNumber">Page number (default: 1).</param>
+        /// <param name="pageSize">Page size (default: 10).</param>
+        /// <returns>Paged list of filtered courses.</returns>
+        [HttpGet("filter")]
+        public async Task<IActionResult> GetCoursesByFilter(
+            [FromQuery] int? categoryId,
+            [FromQuery] int? levelId,
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10)
+        {
+            var result = await _courseService.GetCoursesByFilter(categoryId, levelId, pageNumber, pageSize);
+            return Ok(result);
+        }
+
+        /// <summary>
         /// Creates a new course.
         /// </summary>
         /// <param name="dto">The data transfer object containing course details.</param>
@@ -119,7 +138,7 @@ namespace Lssctc.ProgramManagement.Courses.Controllers
         {
             var result = await _courseService.GetSyllabusByCourseId(courseId);
 
-            if (result == null || !result.Any())
+            if (result == null )
                 return NotFound(new { message = "No syllabuses found for this course." });
 
             return Ok(result);
