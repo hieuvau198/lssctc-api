@@ -212,7 +212,7 @@ CREATE TABLE [dbo].[simulation_components] (
     [name] NVARCHAR(100) NOT NULL,
     [description] NVARCHAR(2000),
     [image_url] NVARCHAR(2000),
-    [status] INT DEFAULT 1,
+    [is_active] BIT DEFAULT 1
     [created_date] DATETIME2(0) NOT NULL DEFAULT SYSDATETIME(),
     [is_deleted] BIT DEFAULT 0
 );
@@ -224,7 +224,6 @@ CREATE TABLE [dbo].[practices] (
     [estimated_duration_minutes] INT,
     [difficulty_level] NVARCHAR(2000),
     [max_attempts] INT,
-    [status] INT DEFAULT 1,
     [created_date] DATETIME2(0) NOT NULL DEFAULT SYSDATETIME(),
     [is_active] BIT DEFAULT 1,
     [is_deleted] BIT DEFAULT 0
@@ -370,7 +369,7 @@ CREATE TABLE [dbo].[classes] (
     FOREIGN KEY ([class_code_id]) REFERENCES [dbo].[class_codes]([id])
 );
 
-CREATE TABLE [dbo].[class_enrollments] (
+CREATE TABLE [dbo].[class_registrations] (
     [id] INT IDENTITY(1,1) PRIMARY KEY,
     [name] NVARCHAR(100) NOT NULL,
     [created_date] DATETIME2(0) NOT NULL DEFAULT SYSDATETIME(),
@@ -562,6 +561,7 @@ CREATE TABLE [dbo].[section_quiz_attempts] (
     [quiz_attempt_date] DATETIME2(0) NOT NULL DEFAULT SYSDATETIME(),
     [status] INT NOT NULL DEFAULT 1,
     [attempt_order] INT,
+	[is_pass] BIT,
     FOREIGN KEY ([section_quiz_id]) REFERENCES [dbo].[section_quizzes]([id]),
 	FOREIGN KEY ([learning_record_partition_id]) REFERENCES [dbo].[learning_record_partitions]([id])
 
