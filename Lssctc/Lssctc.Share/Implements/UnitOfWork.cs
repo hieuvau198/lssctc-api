@@ -12,7 +12,7 @@ namespace Lssctc.Share.Implements
         private IGenericRepository<Certificate>? _certificateRepository;
         private IGenericRepository<Class>? _classRepository;
         private IGenericRepository<ClassCode>? _classCodeRepository;
-        private IGenericRepository<ClassEnrollment>? _classEnrollmentRepository;
+        private IGenericRepository<ClassRegistration>? _classRegisRepository;
         private IGenericRepository<ClassInstructor>? _classInstructorRepository;
         private IGenericRepository<ClassMember>? _classMemberRepository;
         private IGenericRepository<Course>? _courseRepository;
@@ -88,8 +88,8 @@ namespace Lssctc.Share.Implements
         public IGenericRepository<ClassCode> ClassCodeRepository =>
             _classCodeRepository ??= new GenericRepository<ClassCode>(_context);
 
-        public IGenericRepository<ClassEnrollment> ClassEnrollmentRepository =>
-            _classEnrollmentRepository ??= new GenericRepository<ClassEnrollment>(_context);
+        public IGenericRepository<ClassRegistration> ClassRegisRepository =>
+            _classRegisRepository ??= new GenericRepository<ClassRegistration>(_context);
 
         public IGenericRepository<ClassInstructor> ClassInstructorRepository =>
             _classInstructorRepository ??= new GenericRepository<ClassInstructor>(_context);

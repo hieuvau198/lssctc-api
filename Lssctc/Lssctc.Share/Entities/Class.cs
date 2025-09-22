@@ -1,5 +1,4 @@
-﻿using Lssctc.Share.Enum;
-using System;
+﻿using System;
 using System.Collections.Generic;
 
 namespace Lssctc.Share.Entities;
@@ -22,15 +21,15 @@ public partial class Class
 
     public string Description { get; set; } = null!;
 
-    public ClassStatus Status { get; set; }
+    public int Status { get; set; }
 
     public virtual ClassCode? ClassCode { get; set; }
-
-    public virtual ICollection<ClassEnrollment> ClassEnrollments { get; set; } = new List<ClassEnrollment>();
 
     public virtual ICollection<ClassInstructor> ClassInstructors { get; set; } = new List<ClassInstructor>();
 
     public virtual ICollection<ClassMember> ClassMembers { get; set; } = new List<ClassMember>();
+
+    public virtual ICollection<ClassRegistration> ClassRegistrations { get; set; } = new List<ClassRegistration>();
 
     public virtual ProgramCourse ProgramCourse { get; set; } = null!;
 

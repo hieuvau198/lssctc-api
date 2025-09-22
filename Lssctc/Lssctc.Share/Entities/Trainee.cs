@@ -13,9 +13,9 @@ public partial class Trainee
 
     public bool? IsDeleted { get; set; }
 
-    public virtual ICollection<ClassEnrollment> ClassEnrollments { get; set; } = new List<ClassEnrollment>();
-
     public virtual ICollection<ClassMember> ClassMembers { get; set; } = new List<ClassMember>();
+
+    public virtual ICollection<ClassRegistration> ClassRegistrations { get; set; } = new List<ClassRegistration>();
 
     public virtual User IdNavigation { get; set; } = null!;
 

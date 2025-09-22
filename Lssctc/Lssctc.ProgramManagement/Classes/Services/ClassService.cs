@@ -2,6 +2,7 @@
 using Lssctc.ProgramManagement.Classes.DTOs;
 using Lssctc.Share.Entities;
 using Lssctc.Share.Enum;
+using Lssctc.Share.Enums;
 using Lssctc.Share.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
@@ -100,7 +101,7 @@ namespace Lssctc.ProgramManagement.Classes.Services
             // validate class
             var classEntity = await _unitOfWork.ClassRepository
                 .GetAllAsQueryable()
-                .Include(c => c.ClassEnrollments)
+                .Include(c => c.ClassRegistrations)
                 .FirstOrDefaultAsync(c => c.Id == dto.ClassId);
 
             if (classEntity == null)
@@ -112,18 +113,18 @@ namespace Lssctc.ProgramManagement.Classes.Services
                 throw new Exception("Trainee not found");
 
             // check if already enrolled
-            if (classEntity.ClassEnrollments.Any(e => e.TraineeId == dto.TraineeId))
+            if (classEntity.ClassRegistrations.Any(e => e.TraineeId == dto.TraineeId))
                 throw new Exception("Trainee already enrolled in this class");
 
             // map to entity
-            var enrollment = _mapper.Map<ClassEnrollment>(dto);
+            var enrollment = _mapper.Map<ClassRegistration>(dto);
             enrollment.Status = 0; // 0 = Pending
 
-            await _unitOfWork.ClassEnrollmentRepository.CreateAsync(enrollment);
+            await _unitOfWork.ClassRegisRepository.CreateAsync(enrollment);
             await _unitOfWork.SaveChangesAsync();
 
             // reload with nav props
-            enrollment = await _unitOfWork.ClassEnrollmentRepository
+            enrollment = await _unitOfWork.ClassRegisRepository
                 .GetAllAsQueryable()
                 .Include(e => e.Class)
                 .Include(e => e.Trainee)
@@ -134,7 +135,7 @@ namespace Lssctc.ProgramManagement.Classes.Services
 
         public async Task<ClassEnrollmentDto> GetClassEnrollmentById(int classid)
         {
-            return _mapper.Map<ClassEnrollmentDto>(await _unitOfWork.ClassEnrollmentRepository
+            return _mapper.Map<ClassEnrollmentDto>(await _unitOfWork.ClassRegisRepository
                 .GetAllAsQueryable()
                 .FirstOrDefaultAsync(ce => ce.ClassId == classid));
         }
@@ -142,7 +143,7 @@ namespace Lssctc.ProgramManagement.Classes.Services
         public async Task<ClassMemberDto> ApproveEnrollment(ApproveEnrollmentDto dto)
         {
             // get enrollment
-            var enrollment = await _unitOfWork.ClassEnrollmentRepository
+            var enrollment = await _unitOfWork.ClassRegisRepository
                 .GetAllAsQueryable()
                 .Include(e => e.Class)
                 .Include(e => e.Trainee)
@@ -151,15 +152,15 @@ namespace Lssctc.ProgramManagement.Classes.Services
             if (enrollment == null)
                 throw new Exception("Enrollment not found");
 
-            if (enrollment.Status == ClassEnrollmentStatus.Approved) // already approved
+            if (enrollment.Status == ((int)ClassRegistrationStatus.Approved)) // already approved
                 throw new Exception("Enrollment already approved");
 
             // update enrollment
-            enrollment.Status = ClassEnrollmentStatus.Approved; // 1 = Approved
+            enrollment.Status = ((int)ClassRegistrationStatus.Approved); // 1 = Approved
             enrollment.ApprovedDate = DateTime.UtcNow;
             enrollment.Description = dto.Description ?? enrollment.Description;
 
-            _unitOfWork.ClassEnrollmentRepository.UpdateAsync(enrollment);
+            _unitOfWork.ClassRegisRepository.UpdateAsync(enrollment);
 
             // create class member
             var member = new ClassMember

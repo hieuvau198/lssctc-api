@@ -13,7 +13,7 @@ public partial class SimulationComponent
 
     public string? ImageUrl { get; set; }
 
-    public int? Status { get; set; }
+    public bool? IsActive { get; set; }
 
     public DateTime CreatedDate { get; set; }
 

@@ -23,6 +23,8 @@ public partial class SectionQuizAttempt
 
     public int? AttemptOrder { get; set; }
 
+    public bool? IsPass { get; set; }
+
     public virtual LearningRecordPartition LearningRecordPartition { get; set; } = null!;
 
     public virtual SectionQuiz SectionQuiz { get; set; } = null!;

@@ -24,11 +24,11 @@ public partial class LssctcDbContext : DbContext
 
     public virtual DbSet<ClassCode> ClassCodes { get; set; }
 
-    public virtual DbSet<ClassEnrollment> ClassEnrollments { get; set; }
-
     public virtual DbSet<ClassInstructor> ClassInstructors { get; set; }
 
     public virtual DbSet<ClassMember> ClassMembers { get; set; }
+
+    public virtual DbSet<ClassRegistration> ClassRegistrations { get; set; }
 
     public virtual DbSet<Course> Courses { get; set; }
 
@@ -140,15 +140,12 @@ public partial class LssctcDbContext : DbContext
 
     public virtual DbSet<User> Users { get; set; }
 
-//    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-//#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
-//        => optionsBuilder.UseSqlServer("Server=localhost;Database=lssctc-db;Trusted_Connection=True;MultipleActiveResultSets=True;TrustServerCertificate=True;");
-
+    
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Admin>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__admins__3213E83FB71AAE67");
+            entity.HasKey(e => e.Id).HasName("PK__admins__3213E83F685A1660");
 
             entity.ToTable("admins");
 
@@ -159,16 +156,16 @@ public partial class LssctcDbContext : DbContext
             entity.HasOne(d => d.IdNavigation).WithOne(p => p.Admin)
                 .HasForeignKey<Admin>(d => d.Id)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__admins__id__3D5E1FD2");
+                .HasConstraintName("FK__admins__id__75A278F5");
         });
 
         modelBuilder.Entity<Certificate>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__certific__3213E83F2AFFA0C3");
+            entity.HasKey(e => e.Id).HasName("PK__certific__3213E83F2639C3F3");
 
             entity.ToTable("certificates");
 
-            entity.HasIndex(e => e.Name, "UQ__certific__72E12F1B8FC8F2D8").IsUnique();
+            entity.HasIndex(e => e.Name, "UQ__certific__72E12F1BE6CA2087").IsUnique();
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.CertifyingAuthority)
@@ -191,7 +188,7 @@ public partial class LssctcDbContext : DbContext
 
         modelBuilder.Entity<Class>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__classes__3213E83FF4C36904");
+            entity.HasKey(e => e.Id).HasName("PK__classes__3213E83FC3FB290E");
 
             entity.ToTable("classes");
 
@@ -218,21 +215,21 @@ public partial class LssctcDbContext : DbContext
 
             entity.HasOne(d => d.ClassCode).WithMany(p => p.Classes)
                 .HasForeignKey(d => d.ClassCodeId)
-                .HasConstraintName("FK__classes__class_c__41EDCAC5");
+                .HasConstraintName("FK__classes__class_c__793DFFAF");
 
             entity.HasOne(d => d.ProgramCourse).WithMany(p => p.Classes)
                 .HasForeignKey(d => d.ProgramCourseId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__classes__program__40F9A68C");
+                .HasConstraintName("FK__classes__program__7849DB76");
         });
 
         modelBuilder.Entity<ClassCode>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__class_co__3213E83F2667010B");
+            entity.HasKey(e => e.Id).HasName("PK__class_co__3213E83FED6202B1");
 
             entity.ToTable("class_codes");
 
-            entity.HasIndex(e => e.Name, "UQ__class_co__72E12F1B18C390C0").IsUnique();
+            entity.HasIndex(e => e.Name, "UQ__class_co__72E12F1BFB830AD2").IsUnique();
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.Name)
@@ -240,11 +237,63 @@ public partial class LssctcDbContext : DbContext
                 .HasColumnName("name");
         });
 
-        modelBuilder.Entity<ClassEnrollment>(entity =>
+        modelBuilder.Entity<ClassInstructor>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__class_en__3213E83F937E4FB2");
+            entity.HasKey(e => e.Id).HasName("PK__class_in__3213E83F2C5079C5");
 
-            entity.ToTable("class_enrollments");
+            entity.ToTable("class_instructors");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.ClassId).HasColumnName("class_id");
+            entity.Property(e => e.InstructorId).HasColumnName("instructor_id");
+            entity.Property(e => e.Position)
+                .HasMaxLength(2000)
+                .HasColumnName("position");
+
+            entity.HasOne(d => d.Class).WithMany(p => p.ClassInstructors)
+                .HasForeignKey(d => d.ClassId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__class_ins__class__01D345B0");
+
+            entity.HasOne(d => d.Instructor).WithMany(p => p.ClassInstructors)
+                .HasForeignKey(d => d.InstructorId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__class_ins__instr__02C769E9");
+        });
+
+        modelBuilder.Entity<ClassMember>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__class_me__3213E83FFD05E911");
+
+            entity.ToTable("class_members");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.AssignedDate)
+                .HasPrecision(0)
+                .HasDefaultValueSql("(sysdatetime())")
+                .HasColumnName("assigned_date");
+            entity.Property(e => e.ClassId).HasColumnName("class_id");
+            entity.Property(e => e.Status)
+                .HasDefaultValue(1)
+                .HasColumnName("status");
+            entity.Property(e => e.TraineeId).HasColumnName("trainee_id");
+
+            entity.HasOne(d => d.Class).WithMany(p => p.ClassMembers)
+                .HasForeignKey(d => d.ClassId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__class_mem__class__0880433F");
+
+            entity.HasOne(d => d.Trainee).WithMany(p => p.ClassMembers)
+                .HasForeignKey(d => d.TraineeId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__class_mem__train__078C1F06");
+        });
+
+        modelBuilder.Entity<ClassRegistration>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__class_re__3213E83FFA4B8DA1");
+
+            entity.ToTable("class_registrations");
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.ApprovedDate)
@@ -269,72 +318,20 @@ public partial class LssctcDbContext : DbContext
                 .HasColumnName("trainee_contact");
             entity.Property(e => e.TraineeId).HasColumnName("trainee_id");
 
-            entity.HasOne(d => d.Class).WithMany(p => p.ClassEnrollments)
+            entity.HasOne(d => d.Class).WithMany(p => p.ClassRegistrations)
                 .HasForeignKey(d => d.ClassId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__class_enr__class__46B27FE2");
+                .HasConstraintName("FK__class_reg__class__7E02B4CC");
 
-            entity.HasOne(d => d.Trainee).WithMany(p => p.ClassEnrollments)
+            entity.HasOne(d => d.Trainee).WithMany(p => p.ClassRegistrations)
                 .HasForeignKey(d => d.TraineeId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__class_enr__train__47A6A41B");
-        });
-
-        modelBuilder.Entity<ClassInstructor>(entity =>
-        {
-            entity.HasKey(e => e.Id).HasName("PK__class_in__3213E83F2DF1EFDB");
-
-            entity.ToTable("class_instructors");
-
-            entity.Property(e => e.Id).HasColumnName("id");
-            entity.Property(e => e.ClassId).HasColumnName("class_id");
-            entity.Property(e => e.InstructorId).HasColumnName("instructor_id");
-            entity.Property(e => e.Position)
-                .HasMaxLength(2000)
-                .HasColumnName("position");
-
-            entity.HasOne(d => d.Class).WithMany(p => p.ClassInstructors)
-                .HasForeignKey(d => d.ClassId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__class_ins__class__4A8310C6");
-
-            entity.HasOne(d => d.Instructor).WithMany(p => p.ClassInstructors)
-                .HasForeignKey(d => d.InstructorId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__class_ins__instr__4B7734FF");
-        });
-
-        modelBuilder.Entity<ClassMember>(entity =>
-        {
-            entity.HasKey(e => e.Id).HasName("PK__class_me__3213E83F96A2E8CC");
-
-            entity.ToTable("class_members");
-
-            entity.Property(e => e.Id).HasColumnName("id");
-            entity.Property(e => e.AssignedDate)
-                .HasPrecision(0)
-                .HasDefaultValueSql("(sysdatetime())")
-                .HasColumnName("assigned_date");
-            entity.Property(e => e.ClassId).HasColumnName("class_id");
-            entity.Property(e => e.Status)
-                .HasDefaultValue(1)
-                .HasColumnName("status");
-            entity.Property(e => e.TraineeId).HasColumnName("trainee_id");
-
-            entity.HasOne(d => d.Class).WithMany(p => p.ClassMembers)
-                .HasForeignKey(d => d.ClassId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__class_mem__class__51300E55");
-
-            entity.HasOne(d => d.Trainee).WithMany(p => p.ClassMembers)
-                .HasForeignKey(d => d.TraineeId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__class_mem__train__503BEA1C");
+                .HasConstraintName("FK__class_reg__train__7EF6D905");
         });
 
         modelBuilder.Entity<Course>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__courses__3213E83FEEE3173D");
+            entity.HasKey(e => e.Id).HasName("PK__courses__3213E83F2F21085E");
 
             entity.ToTable("courses");
 
@@ -364,24 +361,24 @@ public partial class LssctcDbContext : DbContext
 
             entity.HasOne(d => d.Category).WithMany(p => p.Courses)
                 .HasForeignKey(d => d.CategoryId)
-                .HasConstraintName("FK__courses__categor__2EDAF651");
+                .HasConstraintName("FK__courses__categor__662B2B3B");
 
             entity.HasOne(d => d.CourseCode).WithMany(p => p.Courses)
                 .HasForeignKey(d => d.CourseCodeId)
-                .HasConstraintName("FK__courses__course___30C33EC3");
+                .HasConstraintName("FK__courses__course___681373AD");
 
             entity.HasOne(d => d.Level).WithMany(p => p.Courses)
                 .HasForeignKey(d => d.LevelId)
-                .HasConstraintName("FK__courses__level_i__2FCF1A8A");
+                .HasConstraintName("FK__courses__level_i__671F4F74");
         });
 
         modelBuilder.Entity<CourseCategory>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__course_c__3213E83F2DE04F77");
+            entity.HasKey(e => e.Id).HasName("PK__course_c__3213E83FFF925C31");
 
             entity.ToTable("course_categories");
 
-            entity.HasIndex(e => e.Name, "UQ__course_c__72E12F1B574196BF").IsUnique();
+            entity.HasIndex(e => e.Name, "UQ__course_c__72E12F1BC6AA4AAF").IsUnique();
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.Description)
@@ -394,7 +391,7 @@ public partial class LssctcDbContext : DbContext
 
         modelBuilder.Entity<CourseCertificate>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__course_c__3213E83F429C3704");
+            entity.HasKey(e => e.Id).HasName("PK__course_c__3213E83F24A122E8");
 
             entity.ToTable("course_certificates");
 
@@ -404,20 +401,20 @@ public partial class LssctcDbContext : DbContext
 
             entity.HasOne(d => d.Certificate).WithMany(p => p.CourseCertificates)
                 .HasForeignKey(d => d.CertificateId)
-                .HasConstraintName("FK__course_ce__certi__3864608B");
+                .HasConstraintName("FK__course_ce__certi__6FB49575");
 
             entity.HasOne(d => d.Course).WithMany(p => p.CourseCertificates)
                 .HasForeignKey(d => d.CourseId)
-                .HasConstraintName("FK__course_ce__cours__37703C52");
+                .HasConstraintName("FK__course_ce__cours__6EC0713C");
         });
 
         modelBuilder.Entity<CourseCode>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__course_c__3213E83FC530BBD1");
+            entity.HasKey(e => e.Id).HasName("PK__course_c__3213E83F13FE7767");
 
             entity.ToTable("course_codes");
 
-            entity.HasIndex(e => e.Name, "UQ__course_c__72E12F1BDDF6A087").IsUnique();
+            entity.HasIndex(e => e.Name, "UQ__course_c__72E12F1B4ED84DD8").IsUnique();
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.Name)
@@ -427,11 +424,11 @@ public partial class LssctcDbContext : DbContext
 
         modelBuilder.Entity<CourseLevel>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__course_l__3213E83F346BC416");
+            entity.HasKey(e => e.Id).HasName("PK__course_l__3213E83FCD6CAAB1");
 
             entity.ToTable("course_levels");
 
-            entity.HasIndex(e => e.Name, "UQ__course_l__72E12F1BD296FE3D").IsUnique();
+            entity.HasIndex(e => e.Name, "UQ__course_l__72E12F1B44793371").IsUnique();
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.Description)
@@ -444,7 +441,7 @@ public partial class LssctcDbContext : DbContext
 
         modelBuilder.Entity<CourseSyllabuse>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__course_s__3213E83F0D70CA80");
+            entity.HasKey(e => e.Id).HasName("PK__course_s__3213E83F557BF8C3");
 
             entity.ToTable("course_syllabuses");
 
@@ -455,17 +452,17 @@ public partial class LssctcDbContext : DbContext
             entity.HasOne(d => d.Course).WithMany(p => p.CourseSyllabuses)
                 .HasForeignKey(d => d.CourseId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__course_sy__cours__3B40CD36");
+                .HasConstraintName("FK__course_sy__cours__72910220");
 
             entity.HasOne(d => d.Syllabus).WithMany(p => p.CourseSyllabuses)
                 .HasForeignKey(d => d.SyllabusId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__course_sy__sylla__3C34F16F");
+                .HasConstraintName("FK__course_sy__sylla__73852659");
         });
 
         modelBuilder.Entity<Instructor>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__instruct__3213E83F848C48BF");
+            entity.HasKey(e => e.Id).HasName("PK__instruct__3213E83FFEBAF182");
 
             entity.ToTable("instructors");
 
@@ -488,12 +485,12 @@ public partial class LssctcDbContext : DbContext
             entity.HasOne(d => d.IdNavigation).WithOne(p => p.Instructor)
                 .HasForeignKey<Instructor>(d => d.Id)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__instructors__id__47DBAE45");
+                .HasConstraintName("FK__instructors__id__00200768");
         });
 
         modelBuilder.Entity<InstructorProfile>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__instruct__3213E83FF5D70ABE");
+            entity.HasKey(e => e.Id).HasName("PK__instruct__3213E83FD9C38A04");
 
             entity.ToTable("instructor_profiles");
 
@@ -514,12 +511,12 @@ public partial class LssctcDbContext : DbContext
             entity.HasOne(d => d.IdNavigation).WithOne(p => p.InstructorProfile)
                 .HasForeignKey<InstructorProfile>(d => d.Id)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__instructor_p__id__4F7CD00D");
+                .HasConstraintName("FK__instructor_p__id__07C12930");
         });
 
         modelBuilder.Entity<LearningMaterial>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__learning__3213E83FB6A2E516");
+            entity.HasKey(e => e.Id).HasName("PK__learning__3213E83FBA95DBB9");
 
             entity.ToTable("learning_materials");
 
@@ -538,12 +535,12 @@ public partial class LssctcDbContext : DbContext
             entity.HasOne(d => d.LearningMaterialType).WithMany(p => p.LearningMaterials)
                 .HasForeignKey(d => d.LearningMaterialTypeId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__learning___learn__6A30C649");
+                .HasConstraintName("FK__learning___learn__22751F6C");
         });
 
         modelBuilder.Entity<LearningMaterialType>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__learning__3213E83FDCACD9E0");
+            entity.HasKey(e => e.Id).HasName("PK__learning__3213E83F6408A26F");
 
             entity.ToTable("learning_material_types");
 
@@ -555,7 +552,7 @@ public partial class LssctcDbContext : DbContext
 
         modelBuilder.Entity<LearningRecord>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__learning__3213E83FE27ADDAF");
+            entity.HasKey(e => e.Id).HasName("PK__learning__3213E83F50162BFA");
 
             entity.ToTable("learning_records");
 
@@ -581,17 +578,17 @@ public partial class LssctcDbContext : DbContext
             entity.HasOne(d => d.Section).WithMany(p => p.LearningRecords)
                 .HasForeignKey(d => d.SectionId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__learning___secti__72910220");
+                .HasConstraintName("FK__learning___secti__29E1370A");
 
             entity.HasOne(d => d.TrainingProgress).WithMany(p => p.LearningRecords)
                 .HasForeignKey(d => d.TrainingProgressId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__learning___train__73852659");
+                .HasConstraintName("FK__learning___train__2AD55B43");
         });
 
         modelBuilder.Entity<LearningRecordPartition>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__learning__3213E83F30C9F96A");
+            entity.HasKey(e => e.Id).HasName("PK__learning__3213E83F9CD0FD4A");
 
             entity.ToTable("learning_record_partitions");
 
@@ -624,17 +621,17 @@ public partial class LssctcDbContext : DbContext
             entity.HasOne(d => d.LearningRecord).WithMany(p => p.LearningRecordPartitions)
                 .HasForeignKey(d => d.LearningRecordId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__learning___learn__7B264821");
+                .HasConstraintName("FK__learning___learn__32767D0B");
 
             entity.HasOne(d => d.SectionPartition).WithMany(p => p.LearningRecordPartitions)
                 .HasForeignKey(d => d.SectionPartitionId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__learning___secti__7A3223E8");
+                .HasConstraintName("FK__learning___secti__318258D2");
         });
 
         modelBuilder.Entity<Payment>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__payments__3213E83F098B7950");
+            entity.HasKey(e => e.Id).HasName("PK__payments__3213E83F88CFC6FD");
 
             entity.ToTable("payments");
 
@@ -664,12 +661,12 @@ public partial class LssctcDbContext : DbContext
             entity.HasOne(d => d.Trainee).WithMany(p => p.Payments)
                 .HasForeignKey(d => d.TraineeId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__payments__traine__2F9A1060");
+                .HasConstraintName("FK__payments__traine__66EA454A");
         });
 
         modelBuilder.Entity<PaymentTransaction>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__payment___3213E83FD8796FA3");
+            entity.HasKey(e => e.Id).HasName("PK__payment___3213E83FB07EDF64");
 
             entity.ToTable("payment_transactions");
 
@@ -687,17 +684,17 @@ public partial class LssctcDbContext : DbContext
             entity.HasOne(d => d.Payment).WithMany(p => p.PaymentTransactions)
                 .HasForeignKey(d => d.PaymentId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__payment_t__payme__39237A9A");
+                .HasConstraintName("FK__payment_t__payme__7073AF84");
 
             entity.HasOne(d => d.Transaction).WithMany(p => p.PaymentTransactions)
                 .HasForeignKey(d => d.TransactionId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__payment_t__trans__3A179ED3");
+                .HasConstraintName("FK__payment_t__trans__7167D3BD");
         });
 
         modelBuilder.Entity<Practice>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__practice__3213E83FF387D213");
+            entity.HasKey(e => e.Id).HasName("PK__practice__3213E83F441ACAEF");
 
             entity.ToTable("practices");
 
@@ -723,14 +720,11 @@ public partial class LssctcDbContext : DbContext
             entity.Property(e => e.PracticeName)
                 .HasMaxLength(2000)
                 .HasColumnName("practice_name");
-            entity.Property(e => e.Status)
-                .HasDefaultValue(1)
-                .HasColumnName("status");
         });
 
         modelBuilder.Entity<PracticeStep>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__practice__3213E83F50BA4ACB");
+            entity.HasKey(e => e.Id).HasName("PK__practice__3213E83F2C1A7655");
 
             entity.ToTable("practice_steps");
 
@@ -753,12 +747,12 @@ public partial class LssctcDbContext : DbContext
             entity.HasOne(d => d.Practice).WithMany(p => p.PracticeSteps)
                 .HasForeignKey(d => d.PracticeId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__practice___pract__1332DBDC");
+                .HasConstraintName("FK__practice___pract__4A8310C6");
         });
 
         modelBuilder.Entity<PracticeStepComponent>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__practice__3213E83F8CDA7A2B");
+            entity.HasKey(e => e.Id).HasName("PK__practice__3213E83F3504BB21");
 
             entity.ToTable("practice_step_components");
 
@@ -773,17 +767,17 @@ public partial class LssctcDbContext : DbContext
             entity.HasOne(d => d.Component).WithMany(p => p.PracticeStepComponents)
                 .HasForeignKey(d => d.ComponentId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__practice___compo__1F98B2C1");
+                .HasConstraintName("FK__practice___compo__56E8E7AB");
 
             entity.HasOne(d => d.Step).WithMany(p => p.PracticeStepComponents)
                 .HasForeignKey(d => d.StepId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__practice___step___1EA48E88");
+                .HasConstraintName("FK__practice___step___55F4C372");
         });
 
         modelBuilder.Entity<PracticeStepType>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__practice__3213E83F5D38A531");
+            entity.HasKey(e => e.Id).HasName("PK__practice__3213E83F9DDE0921");
 
             entity.ToTable("practice_step_types");
 
@@ -801,7 +795,7 @@ public partial class LssctcDbContext : DbContext
 
         modelBuilder.Entity<PracticeStepWarning>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__practice__3213E83F1CF393E5");
+            entity.HasKey(e => e.Id).HasName("PK__practice__3213E83F28DA9958");
 
             entity.ToTable("practice_step_warnings");
 
@@ -821,16 +815,16 @@ public partial class LssctcDbContext : DbContext
             entity.HasOne(d => d.PracticeStep).WithMany(p => p.PracticeStepWarnings)
                 .HasForeignKey(d => d.PracticeStepId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__practice___pract__19DFD96B");
+                .HasConstraintName("FK__practice___pract__51300E55");
 
             entity.HasOne(d => d.WarningType).WithMany(p => p.PracticeStepWarnings)
                 .HasForeignKey(d => d.WarningTypeId)
-                .HasConstraintName("FK__practice___warni__1AD3FDA4");
+                .HasConstraintName("FK__practice___warni__5224328E");
         });
 
         modelBuilder.Entity<PracticeStepWarningType>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__practice__3213E83FACFD83FF");
+            entity.HasKey(e => e.Id).HasName("PK__practice__3213E83F8A2ADD9B");
 
             entity.ToTable("practice_step_warning_types");
 
@@ -848,7 +842,7 @@ public partial class LssctcDbContext : DbContext
 
         modelBuilder.Entity<ProgramCourse>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__program___3213E83F561C4F88");
+            entity.HasKey(e => e.Id).HasName("PK__program___3213E83F2C257403");
 
             entity.ToTable("program_courses");
 
@@ -866,17 +860,17 @@ public partial class LssctcDbContext : DbContext
             entity.HasOne(d => d.Courses).WithMany(p => p.ProgramCourses)
                 .HasForeignKey(d => d.CoursesId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__program_c__cours__3493CFA7");
+                .HasConstraintName("FK__program_c__cours__6BE40491");
 
             entity.HasOne(d => d.Program).WithMany(p => p.ProgramCourses)
                 .HasForeignKey(d => d.ProgramId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__program_c__progr__339FAB6E");
+                .HasConstraintName("FK__program_c__progr__6AEFE058");
         });
 
         modelBuilder.Entity<ProgramEntryRequirement>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__program___3213E83F0DA5E6AC");
+            entity.HasKey(e => e.Id).HasName("PK__program___3213E83F99EBB7E9");
 
             entity.ToTable("program_entry_requirements");
 
@@ -895,12 +889,12 @@ public partial class LssctcDbContext : DbContext
             entity.HasOne(d => d.Program).WithMany(p => p.ProgramEntryRequirements)
                 .HasForeignKey(d => d.ProgramId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__program_e__progr__2A164134");
+                .HasConstraintName("FK__program_e__progr__6166761E");
         });
 
         modelBuilder.Entity<ProgramManager>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__program___3213E83F63E7560B");
+            entity.HasKey(e => e.Id).HasName("PK__program___3213E83F656598C5");
 
             entity.ToTable("program_managers");
 
@@ -911,12 +905,12 @@ public partial class LssctcDbContext : DbContext
             entity.HasOne(d => d.IdNavigation).WithOne(p => p.ProgramManager)
                 .HasForeignKey<ProgramManager>(d => d.Id)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__program_mana__id__4316F928");
+                .HasConstraintName("FK__program_mana__id__7B5B524B");
         });
 
         modelBuilder.Entity<Quiz>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__quizzes__3213E83F60E66E6E");
+            entity.HasKey(e => e.Id).HasName("PK__quizzes__3213E83F122EB702");
 
             entity.ToTable("quizzes");
 
@@ -946,7 +940,7 @@ public partial class LssctcDbContext : DbContext
 
         modelBuilder.Entity<QuizQuestion>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__quiz_que__3213E83F677D17E2");
+            entity.HasKey(e => e.Id).HasName("PK__quiz_que__3213E83F7E70E710");
 
             entity.ToTable("quiz_questions");
 
@@ -968,16 +962,16 @@ public partial class LssctcDbContext : DbContext
             entity.HasOne(d => d.Quiz).WithMany(p => p.QuizQuestions)
                 .HasForeignKey(d => d.QuizId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__quiz_ques__quiz___71D1E811");
+                .HasConstraintName("FK__quiz_ques__quiz___2A164134");
         });
 
         modelBuilder.Entity<QuizQuestionOption>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__quiz_que__3213E83FC0890C36");
+            entity.HasKey(e => e.Id).HasName("PK__quiz_que__3213E83F2E1805B0");
 
             entity.ToTable("quiz_question_options");
 
-            entity.HasIndex(e => e.DisplayOrder, "UQ__quiz_que__1B16645E76A837DC").IsUnique();
+            entity.HasIndex(e => e.DisplayOrder, "UQ__quiz_que__1B16645EAEFA11C0").IsUnique();
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.Description)
@@ -998,12 +992,12 @@ public partial class LssctcDbContext : DbContext
             entity.HasOne(d => d.QuizQuestion).WithMany(p => p.QuizQuestionOptions)
                 .HasForeignKey(d => d.QuizQuestionId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__quiz_ques__quiz___76969D2E");
+                .HasConstraintName("FK__quiz_ques__quiz___2EDAF651");
         });
 
         modelBuilder.Entity<Section>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__sections__3213E83F1618AC11");
+            entity.HasKey(e => e.Id).HasName("PK__sections__3213E83FBAF2AF82");
 
             entity.ToTable("sections");
 
@@ -1032,17 +1026,17 @@ public partial class LssctcDbContext : DbContext
             entity.HasOne(d => d.Classes).WithMany(p => p.Sections)
                 .HasForeignKey(d => d.ClassesId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__sections__classe__671F4F74");
+                .HasConstraintName("FK__sections__classe__1E6F845E");
 
             entity.HasOne(d => d.SyllabusSection).WithMany(p => p.Sections)
                 .HasForeignKey(d => d.SyllabusSectionId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__sections__syllab__681373AD");
+                .HasConstraintName("FK__sections__syllab__1F63A897");
         });
 
         modelBuilder.Entity<SectionMaterial>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__section___3213E83FA6C652A4");
+            entity.HasKey(e => e.Id).HasName("PK__section___3213E83F9B12E0AC");
 
             entity.ToTable("section_materials");
 
@@ -1059,17 +1053,17 @@ public partial class LssctcDbContext : DbContext
             entity.HasOne(d => d.LearningMaterial).WithMany(p => p.SectionMaterials)
                 .HasForeignKey(d => d.LearningMaterialId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__section_m__learn__7EF6D905");
+                .HasConstraintName("FK__section_m__learn__36470DEF");
 
             entity.HasOne(d => d.SectionPartition).WithMany(p => p.SectionMaterials)
                 .HasForeignKey(d => d.SectionPartitionId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__section_m__secti__7E02B4CC");
+                .HasConstraintName("FK__section_m__secti__3552E9B6");
         });
 
         modelBuilder.Entity<SectionPartition>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__section___3213E83F5FB2F18A");
+            entity.HasKey(e => e.Id).HasName("PK__section___3213E83FF5BA8E14");
 
             entity.ToTable("section_partitions");
 
@@ -1086,17 +1080,17 @@ public partial class LssctcDbContext : DbContext
             entity.HasOne(d => d.PartitionType).WithMany(p => p.SectionPartitions)
                 .HasForeignKey(d => d.PartitionTypeId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__section_p__parti__6CD828CA");
+                .HasConstraintName("FK__section_p__parti__24285DB4");
 
             entity.HasOne(d => d.Section).WithMany(p => p.SectionPartitions)
                 .HasForeignKey(d => d.SectionId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__section_p__secti__6DCC4D03");
+                .HasConstraintName("FK__section_p__secti__251C81ED");
         });
 
         modelBuilder.Entity<SectionPartitionType>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__section___3213E83FCD5E0CE1");
+            entity.HasKey(e => e.Id).HasName("PK__section___3213E83F8698591E");
 
             entity.ToTable("section_partition_types");
 
@@ -1115,7 +1109,7 @@ public partial class LssctcDbContext : DbContext
 
         modelBuilder.Entity<SectionPractice>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__section___3213E83F65A389A2");
+            entity.HasKey(e => e.Id).HasName("PK__section___3213E83FA084F73E");
 
             entity.ToTable("section_practices");
 
@@ -1142,21 +1136,21 @@ public partial class LssctcDbContext : DbContext
             entity.HasOne(d => d.Practice).WithMany(p => p.SectionPractices)
                 .HasForeignKey(d => d.PracticeId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__section_p__pract__09746778");
+                .HasConstraintName("FK__section_p__pract__40C49C62");
 
             entity.HasOne(d => d.SectionPartition).WithMany(p => p.SectionPractices)
                 .HasForeignKey(d => d.SectionPartitionId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__section_p__secti__0880433F");
+                .HasConstraintName("FK__section_p__secti__3FD07829");
 
             entity.HasOne(d => d.SimulationTimeslot).WithMany(p => p.SectionPractices)
                 .HasForeignKey(d => d.SimulationTimeslotId)
-                .HasConstraintName("FK__section_p__simul__0A688BB1");
+                .HasConstraintName("FK__section_p__simul__41B8C09B");
         });
 
         modelBuilder.Entity<SectionPracticeAttempt>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__section___3213E83FAC1D2852");
+            entity.HasKey(e => e.Id).HasName("PK__section___3213E83F5A5D4F21");
 
             entity.ToTable("section_practice_attempts");
 
@@ -1186,17 +1180,17 @@ public partial class LssctcDbContext : DbContext
             entity.HasOne(d => d.LearningRecordPartition).WithMany(p => p.SectionPracticeAttempts)
                 .HasForeignKey(d => d.LearningRecordPartitionId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__section_p__learn__24285DB4");
+                .HasConstraintName("FK__section_p__learn__5B78929E");
 
             entity.HasOne(d => d.SectionPractice).WithMany(p => p.SectionPracticeAttempts)
                 .HasForeignKey(d => d.SectionPracticeId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__section_p__secti__2334397B");
+                .HasConstraintName("FK__section_p__secti__5A846E65");
         });
 
         modelBuilder.Entity<SectionPracticeAttemptStep>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__section___3213E83F05844D58");
+            entity.HasKey(e => e.Id).HasName("PK__section___3213E83F5FE7ECBC");
 
             entity.ToTable("section_practice_attempt_steps");
 
@@ -1219,17 +1213,17 @@ public partial class LssctcDbContext : DbContext
             entity.HasOne(d => d.Attempt).WithMany(p => p.SectionPracticeAttemptSteps)
                 .HasForeignKey(d => d.AttemptId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__section_p__attem__28ED12D1");
+                .HasConstraintName("FK__section_p__attem__603D47BB");
 
             entity.HasOne(d => d.PracticeStep).WithMany(p => p.SectionPracticeAttemptSteps)
                 .HasForeignKey(d => d.PracticeStepId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__section_p__pract__29E1370A");
+                .HasConstraintName("FK__section_p__pract__61316BF4");
         });
 
         modelBuilder.Entity<SectionPracticeTimeslot>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__section___3213E83F0AC7CF56");
+            entity.HasKey(e => e.Id).HasName("PK__section___3213E83FC11D1B9A");
 
             entity.ToTable("section_practice_timeslots");
 
@@ -1243,17 +1237,17 @@ public partial class LssctcDbContext : DbContext
             entity.HasOne(d => d.SectionPractice).WithMany(p => p.SectionPracticeTimeslots)
                 .HasForeignKey(d => d.SectionPracticeId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__section_p__secti__0D44F85C");
+                .HasConstraintName("FK__section_p__secti__44952D46");
 
             entity.HasOne(d => d.SimulationTimeslot).WithMany(p => p.SectionPracticeTimeslots)
                 .HasForeignKey(d => d.SimulationTimeslotId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__section_p__simul__0E391C95");
+                .HasConstraintName("FK__section_p__simul__4589517F");
         });
 
         modelBuilder.Entity<SectionQuiz>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__section___3213E83FFD4F56B1");
+            entity.HasKey(e => e.Id).HasName("PK__section___3213E83F4A0F09FC");
 
             entity.ToTable("section_quizzes");
 
@@ -1270,17 +1264,17 @@ public partial class LssctcDbContext : DbContext
             entity.HasOne(d => d.Quiz).WithMany(p => p.SectionQuizzes)
                 .HasForeignKey(d => d.QuizId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__section_q__quiz___01D345B0");
+                .HasConstraintName("FK__section_q__quiz___39237A9A");
 
             entity.HasOne(d => d.SectionPartition).WithMany(p => p.SectionQuizzes)
                 .HasForeignKey(d => d.SectionPartitionId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__section_q__secti__02C769E9");
+                .HasConstraintName("FK__section_q__secti__3A179ED3");
         });
 
         modelBuilder.Entity<SectionQuizAttempt>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__section___3213E83FF5FF9D55");
+            entity.HasKey(e => e.Id).HasName("PK__section___3213E83FBB7E93A7");
 
             entity.ToTable("section_quiz_attempts");
 
@@ -1289,6 +1283,7 @@ public partial class LssctcDbContext : DbContext
             entity.Property(e => e.AttemptScore)
                 .HasColumnType("decimal(5, 2)")
                 .HasColumnName("attempt_score");
+            entity.Property(e => e.IsPass).HasColumnName("is_pass");
             entity.Property(e => e.LearningRecordPartitionId).HasColumnName("learning_record_partition_id");
             entity.Property(e => e.MaxScore)
                 .HasColumnType("decimal(5, 2)")
@@ -1308,17 +1303,17 @@ public partial class LssctcDbContext : DbContext
             entity.HasOne(d => d.LearningRecordPartition).WithMany(p => p.SectionQuizAttempts)
                 .HasForeignKey(d => d.LearningRecordPartitionId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__section_q__learn__13F1F5EB");
+                .HasConstraintName("FK__section_q__learn__4B422AD5");
 
             entity.HasOne(d => d.SectionQuiz).WithMany(p => p.SectionQuizAttempts)
                 .HasForeignKey(d => d.SectionQuizId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__section_q__secti__12FDD1B2");
+                .HasConstraintName("FK__section_q__secti__4A4E069C");
         });
 
         modelBuilder.Entity<SectionQuizAttemptAnswer>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__section___3213E83FBBBDD4A8");
+            entity.HasKey(e => e.Id).HasName("PK__section___3213E83FBF4FE601");
 
             entity.ToTable("section_quiz_attempt_answers");
 
@@ -1340,12 +1335,12 @@ public partial class LssctcDbContext : DbContext
             entity.HasOne(d => d.SectionQuizAttemptQuestion).WithMany(p => p.SectionQuizAttemptAnswers)
                 .HasForeignKey(d => d.SectionQuizAttemptQuestionId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__section_q__secti__1C873BEC");
+                .HasConstraintName("FK__section_q__secti__53D770D6");
         });
 
         modelBuilder.Entity<SectionQuizAttemptQuestion>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__section___3213E83F6E24AE75");
+            entity.HasKey(e => e.Id).HasName("PK__section___3213E83F257B3D8D");
 
             entity.ToTable("section_quiz_attempt_questions");
 
@@ -1373,12 +1368,12 @@ public partial class LssctcDbContext : DbContext
             entity.HasOne(d => d.SectionQuizAttempt).WithMany(p => p.SectionQuizAttemptQuestions)
                 .HasForeignKey(d => d.SectionQuizAttemptId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__section_q__secti__18B6AB08");
+                .HasConstraintName("FK__section_q__secti__5006DFF2");
         });
 
         modelBuilder.Entity<SimulationComponent>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__simulati__3213E83FD66238B5");
+            entity.HasKey(e => e.Id).HasName("PK__simulati__3213E83F7EB341C3");
 
             entity.ToTable("simulation_components");
 
@@ -1393,20 +1388,20 @@ public partial class LssctcDbContext : DbContext
             entity.Property(e => e.ImageUrl)
                 .HasMaxLength(2000)
                 .HasColumnName("image_url");
+            entity.Property(e => e.IsActive)
+                .HasDefaultValue(true)
+                .HasColumnName("is_active");
             entity.Property(e => e.IsDeleted)
                 .HasDefaultValue(false)
                 .HasColumnName("is_deleted");
             entity.Property(e => e.Name)
                 .HasMaxLength(100)
                 .HasColumnName("name");
-            entity.Property(e => e.Status)
-                .HasDefaultValue(1)
-                .HasColumnName("status");
         });
 
         modelBuilder.Entity<SimulationComponentType>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__simulati__3213E83FF9B4F38A");
+            entity.HasKey(e => e.Id).HasName("PK__simulati__3213E83F55517392");
 
             entity.ToTable("simulation_component_types");
 
@@ -1424,7 +1419,7 @@ public partial class LssctcDbContext : DbContext
 
         modelBuilder.Entity<SimulationManager>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__simulati__3213E83F556E6523");
+            entity.HasKey(e => e.Id).HasName("PK__simulati__3213E83F7078F101");
 
             entity.ToTable("simulation_managers");
 
@@ -1435,12 +1430,12 @@ public partial class LssctcDbContext : DbContext
             entity.HasOne(d => d.IdNavigation).WithOne(p => p.SimulationManager)
                 .HasForeignKey<SimulationManager>(d => d.Id)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__simulation_m__id__403A8C7D");
+                .HasConstraintName("FK__simulation_m__id__787EE5A0");
         });
 
         modelBuilder.Entity<SimulationSetting>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__simulati__3213E83F9B821752");
+            entity.HasKey(e => e.Id).HasName("PK__simulati__3213E83FD5A82625");
 
             entity.ToTable("simulation_settings");
 
@@ -1461,7 +1456,7 @@ public partial class LssctcDbContext : DbContext
 
         modelBuilder.Entity<SimulationTimeslot>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__simulati__3213E83F6D5B796E");
+            entity.HasKey(e => e.Id).HasName("PK__simulati__3213E83F2E8773CF");
 
             entity.ToTable("simulation_timeslots");
 
@@ -1491,7 +1486,7 @@ public partial class LssctcDbContext : DbContext
 
         modelBuilder.Entity<SyllabusSection>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__syllabus__3213E83F03DE7290");
+            entity.HasKey(e => e.Id).HasName("PK__syllabus__3213E83F6F9E1B3D");
 
             entity.ToTable("syllabus_sections");
 
@@ -1512,12 +1507,12 @@ public partial class LssctcDbContext : DbContext
             entity.HasOne(d => d.Syllabus).WithMany(p => p.SyllabusSections)
                 .HasForeignKey(d => d.SyllabusId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__syllabus___sylla__2739D489");
+                .HasConstraintName("FK__syllabus___sylla__5E8A0973");
         });
 
         modelBuilder.Entity<Syllabuse>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__syllabus__3213E83F8BFA1DEE");
+            entity.HasKey(e => e.Id).HasName("PK__syllabus__3213E83F71580203");
 
             entity.ToTable("syllabuses");
 
@@ -1544,7 +1539,7 @@ public partial class LssctcDbContext : DbContext
 
         modelBuilder.Entity<Trainee>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__trainees__3213E83F70C510DA");
+            entity.HasKey(e => e.Id).HasName("PK__trainees__3213E83FCFD32AB9");
 
             entity.ToTable("trainees");
 
@@ -1564,12 +1559,12 @@ public partial class LssctcDbContext : DbContext
             entity.HasOne(d => d.IdNavigation).WithOne(p => p.Trainee)
                 .HasForeignKey<Trainee>(d => d.Id)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__trainees__id__4CA06362");
+                .HasConstraintName("FK__trainees__id__04E4BC85");
         });
 
         modelBuilder.Entity<TraineeCertificate>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__trainee___3213E83F7F0CE9E1");
+            entity.HasKey(e => e.Id).HasName("PK__trainee___3213E83F23BFE478");
 
             entity.ToTable("trainee_certificates");
 
@@ -1598,16 +1593,16 @@ public partial class LssctcDbContext : DbContext
 
             entity.HasOne(d => d.CourseCertificate).WithMany(p => p.TraineeCertificates)
                 .HasForeignKey(d => d.CourseCertificateId)
-                .HasConstraintName("FK__trainee_c__cours__6166761E");
+                .HasConstraintName("FK__trainee_c__cours__18B6AB08");
 
             entity.HasOne(d => d.Trainee).WithMany(p => p.TraineeCertificates)
                 .HasForeignKey(d => d.TraineeId)
-                .HasConstraintName("FK__trainee_c__train__625A9A57");
+                .HasConstraintName("FK__trainee_c__train__19AACF41");
         });
 
         modelBuilder.Entity<TraineeProfile>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__trainee___3213E83F9BD75A5F");
+            entity.HasKey(e => e.Id).HasName("PK__trainee___3213E83F4A521A3D");
 
             entity.ToTable("trainee_profiles");
 
@@ -1652,16 +1647,16 @@ public partial class LssctcDbContext : DbContext
             entity.HasOne(d => d.IdNavigation).WithOne(p => p.TraineeProfile)
                 .HasForeignKey<TraineeProfile>(d => d.Id)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__trainee_prof__id__52593CB8");
+                .HasConstraintName("FK__trainee_prof__id__0A9D95DB");
         });
 
         modelBuilder.Entity<TrainingProgram>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__training__3213E83F69C8212E");
+            entity.HasKey(e => e.Id).HasName("PK__training__3213E83F24CE6846");
 
             entity.ToTable("training_programs");
 
-            entity.HasIndex(e => e.Name, "UQ__training__72E12F1B6C141BC7").IsUnique();
+            entity.HasIndex(e => e.Name, "UQ__training__72E12F1BF78FF02A").IsUnique();
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.Description)
@@ -1685,7 +1680,7 @@ public partial class LssctcDbContext : DbContext
 
         modelBuilder.Entity<TrainingProgress>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__training__3213E83F2076811E");
+            entity.HasKey(e => e.Id).HasName("PK__training__3213E83FDBCFE2CD");
 
             entity.ToTable("training_progresses");
 
@@ -1712,12 +1707,12 @@ public partial class LssctcDbContext : DbContext
             entity.HasOne(d => d.CourseMember).WithMany(p => p.TrainingProgresses)
                 .HasForeignKey(d => d.CourseMemberId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__training___cours__55F4C372");
+                .HasConstraintName("FK__training___cours__0D44F85C");
         });
 
         modelBuilder.Entity<TrainingResult>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__training__3213E83FD0299780");
+            entity.HasKey(e => e.Id).HasName("PK__training__3213E83FA4D1381E");
 
             entity.ToTable("training_results");
 
@@ -1738,17 +1733,17 @@ public partial class LssctcDbContext : DbContext
             entity.HasOne(d => d.TrainingProgress).WithMany(p => p.TrainingResults)
                 .HasForeignKey(d => d.TrainingProgressId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__training___train__5CA1C101");
+                .HasConstraintName("FK__training___train__13F1F5EB");
 
             entity.HasOne(d => d.TrainingResultType).WithMany(p => p.TrainingResults)
                 .HasForeignKey(d => d.TrainingResultTypeId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__training___train__5BAD9CC8");
+                .HasConstraintName("FK__training___train__12FDD1B2");
         });
 
         modelBuilder.Entity<TrainingResultType>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__training__3213E83F50AB9848");
+            entity.HasKey(e => e.Id).HasName("PK__training__3213E83F2A40A514");
 
             entity.ToTable("training_result_types");
 
@@ -1763,11 +1758,11 @@ public partial class LssctcDbContext : DbContext
 
         modelBuilder.Entity<Transaction>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__transact__3213E83F2EA38936");
+            entity.HasKey(e => e.Id).HasName("PK__transact__3213E83F5FD2C591");
 
             entity.ToTable("transactions");
 
-            entity.HasIndex(e => e.TransactionCode, "UQ__transact__DD5740BE53168FBF").IsUnique();
+            entity.HasIndex(e => e.TransactionCode, "UQ__transact__DD5740BE1DCEEB5E").IsUnique();
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.Amount)
@@ -1814,7 +1809,7 @@ public partial class LssctcDbContext : DbContext
 
         modelBuilder.Entity<TransactionProgram>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__transact__3213E83F15D3D46F");
+            entity.HasKey(e => e.Id).HasName("PK__transact__3213E83F5147D233");
 
             entity.ToTable("transaction_programs");
 
@@ -1825,21 +1820,21 @@ public partial class LssctcDbContext : DbContext
             entity.HasOne(d => d.Program).WithMany(p => p.TransactionPrograms)
                 .HasForeignKey(d => d.ProgramId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__transacti__progr__3DE82FB7");
+                .HasConstraintName("FK__transacti__progr__753864A1");
 
             entity.HasOne(d => d.Transaction).WithMany(p => p.TransactionPrograms)
                 .HasForeignKey(d => d.TransactionId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__transacti__trans__3CF40B7E");
+                .HasConstraintName("FK__transacti__trans__74444068");
         });
 
         modelBuilder.Entity<User>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__users__3213E83F84665E54");
+            entity.HasKey(e => e.Id).HasName("PK__users__3213E83FBAA658AC");
 
             entity.ToTable("users");
 
-            entity.HasIndex(e => e.Username, "UQ__users__F3DBC572041694C8").IsUnique();
+            entity.HasIndex(e => e.Username, "UQ__users__F3DBC5727C621851").IsUnique();
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.AvatarUrl)

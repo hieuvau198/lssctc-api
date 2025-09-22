@@ -8,7 +8,7 @@ namespace Lssctc.Share.Interfaces
         IGenericRepository<Certificate> CertificateRepository { get; }
         IGenericRepository<Class> ClassRepository { get; }
         IGenericRepository<ClassCode> ClassCodeRepository { get; }
-        IGenericRepository<ClassEnrollment> ClassEnrollmentRepository { get; }
+        IGenericRepository<ClassRegistration> ClassRegisRepository { get; }
         IGenericRepository<ClassInstructor> ClassInstructorRepository { get; }
         IGenericRepository<ClassMember> ClassMemberRepository { get; }
         IGenericRepository<Course> CourseRepository { get; }
