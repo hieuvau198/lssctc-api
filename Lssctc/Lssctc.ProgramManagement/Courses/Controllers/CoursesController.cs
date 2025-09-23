@@ -244,5 +244,45 @@ namespace Lssctc.ProgramManagement.Courses.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
             }
         }
+
+        /// <summary>
+        /// Get all course categories
+        /// </summary>
+        [HttpGet("categories")]
+        public async Task<IActionResult> GetCourseCategories()
+        {
+            try
+            {
+                var categories = await _courseService.GetAllCourseCategoriesAsync();
+                if (categories == null || !categories.Any())
+                    return NotFound(new { message = "No course categories found." });
+
+                return Ok(categories);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Get all course levels
+        /// </summary>
+        [HttpGet("levels")]
+        public async Task<IActionResult> GetCourseLevels()
+        {
+            try
+            {
+                var levels = await _courseService.GetAllCourseLevelsAsync();
+                if (levels == null || !levels.Any())
+                    return NotFound(new { message = "No course levels found." });
+
+                return Ok(levels);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
+            }
+        }
     }
 }

@@ -15,7 +15,26 @@ namespace Lssctc.ProgramManagement.Classes.Controller
         {
             _classService = classService;
         }
+        /// <summary>
+        /// Get all classes with pagination
+        /// </summary>
+        [HttpGet]
+        public async Task<IActionResult> GetAllClasses([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+        {
+            try
+            {
+                var result = await _classService.GetAllClassesAsync(page, pageSize);
 
+                if (result == null || !result.Items.Any())
+                    return NotFound("No classes found.");
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
         /// <summary>
         /// Create a new empty Class
         /// </summary>

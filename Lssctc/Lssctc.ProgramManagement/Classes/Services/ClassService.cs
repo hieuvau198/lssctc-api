@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using Lssctc.ProgramManagement.Classes.DTOs;
+using Lssctc.Share.Common;
 using Lssctc.Share.Entities;
 using Lssctc.Share.Enums;
 using Lssctc.Share.Interfaces;
@@ -17,7 +18,36 @@ namespace Lssctc.ProgramManagement.Classes.Services
             _unitOfWork = unitOfWork;
             _mapper = mapper;
         }
+        public async Task<PagedResult<ClassDto>> GetAllClassesAsync(int page = 1, int pageSize = 10)
+        {
+            if (page <= 0) page = 1;
+            if (pageSize <= 0) pageSize = 10;
 
+            var query = _unitOfWork.ClassRepository
+                .GetAllAsQueryable()
+                .Include(c => c.ClassCode)
+                .Include(c => c.ClassInstructors)
+                .Include(c => c.ClassMembers)
+                .AsNoTracking();
+
+            var totalCount = await query.CountAsync();
+
+            var items = await query
+                .OrderByDescending(c => c.StartDate) 
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            var mapped = _mapper.Map<List<ClassDto>>(items);
+
+            return new PagedResult<ClassDto>
+            {
+                Items = mapped,
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize
+            };
+        }
         public async Task<ClassDto> CreateClassByProgramCourseId(ClassCreateDto dto)
         {
             // Validate ProgramCourse

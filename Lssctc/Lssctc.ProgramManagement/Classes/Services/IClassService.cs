@@ -1,4 +1,5 @@
 ﻿using Lssctc.ProgramManagement.Classes.DTOs;
+using Lssctc.Share.Common;
 
 
 namespace Lssctc.ProgramManagement.Classes.Services
@@ -6,6 +7,7 @@ namespace Lssctc.ProgramManagement.Classes.Services
     public interface IClassService
     {
         // using string for ClassCode instead of int ClassCodeId
+        Task<PagedResult<ClassDto>> GetAllClassesAsync(int page = 1, int pageSize = 10);
         Task<ClassDto> CreateClassByProgramCourseId(ClassCreateDto dto);
         Task<ClassDto> AssignInstructorToClass(AssignInstructorDto dto);
         //Task<ClassDto?> AssignTraineeAsync(AssignTraineeDto dto);

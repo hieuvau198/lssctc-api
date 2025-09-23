@@ -24,6 +24,7 @@ namespace Lssctc.ProgramManagement.Courses.Services
             var query = _unitOfWork.CourseRepository.GetAllAsQueryable()
                 .Include(c => c.Category)
                 .Include(c => c.Level)
+                .Include(c => c.CourseCode)
                 .Where(c => c.IsDeleted == false);
 
             // 🔍 Filtering
@@ -68,6 +69,7 @@ namespace Lssctc.ProgramManagement.Courses.Services
                 .GetAllAsQueryable()
                 .Include(c => c.Category)
                 .Include(c => c.Level)
+                .Include(c => c.CourseCode)
                 .FirstOrDefaultAsync(c => c.Id == id && c.IsDeleted == false);
 
             return course == null ? null : _mapper.Map<CourseDto>(course);
@@ -77,6 +79,7 @@ namespace Lssctc.ProgramManagement.Courses.Services
             var query = _unitOfWork.CourseRepository.GetAllAsQueryable()
                 .Include(c => c.Category)
                 .Include(c => c.Level)
+                .Include(c => c.CourseCode)
                 .Where(c => c.IsDeleted == false && c.CategoryId == categoryId)
                 .OrderBy(c => c.Name);
 
@@ -96,6 +99,7 @@ namespace Lssctc.ProgramManagement.Courses.Services
             var query = _unitOfWork.CourseRepository.GetAllAsQueryable()
                 .Include(c => c.Category)
                 .Include(c => c.Level)
+                .Include(c => c.CourseCode)
                 .Where(c => c.IsDeleted == false && c.LevelId == levelId)
                 .OrderBy(c => c.Name);
 
@@ -114,6 +118,7 @@ namespace Lssctc.ProgramManagement.Courses.Services
             var query = _unitOfWork.CourseRepository.GetAllAsQueryable()
                 .Include(c => c.Category)
                 .Include(c => c.Level)
+                .Include(c => c.CourseCode)
                 .Where(c => c.IsDeleted == false);
 
             if (categoryId.HasValue)
@@ -300,6 +305,25 @@ namespace Lssctc.ProgramManagement.Courses.Services
                 .Include(cs => cs.Course).FirstOrDefaultAsync();
 
             return _mapper.Map<CourseSyllabusDto>(courseSyllabuses);
+        }
+        public async Task<IEnumerable<CourseCategoryDto>> GetAllCourseCategoriesAsync()
+        {
+            var categories = await _unitOfWork.CourseCategoryRepository
+                .GetAllAsQueryable()
+                .OrderBy(c => c.Name)
+                .ToListAsync();
+
+            return _mapper.Map<IEnumerable<CourseCategoryDto>>(categories);
+        }
+
+        public async Task<IEnumerable<CourseLevelDto>> GetAllCourseLevelsAsync()
+        {
+            var levels = await _unitOfWork.CourseLevelRepository
+                .GetAllAsQueryable()
+                .OrderBy(l => l.Name)
+                .ToListAsync();
+
+            return _mapper.Map<IEnumerable<CourseLevelDto>>(levels);
         }
 
     }
