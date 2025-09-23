@@ -25,8 +25,10 @@ namespace Lssctc.ProgramManagement.Courses.Mappings
                 .ForMember(dest => dest.SyllabusName, opt => opt.MapFrom(src => src.Syllabus.Name));
 
             CreateMap<CourseSyllabusCreateDto, CourseSyllabuse>();
-           
-            
+
+            CreateMap<CourseCategory, CourseCategoryDto>().ReverseMap();
+
+            CreateMap<CourseLevel, CourseLevelDto>().ReverseMap();
         }
     }
 }
