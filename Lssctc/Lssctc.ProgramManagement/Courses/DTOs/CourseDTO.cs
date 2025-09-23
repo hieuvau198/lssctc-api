@@ -72,4 +72,18 @@
         public int? LevelId { get; set; }
         public bool? IsActive { get; set; }
     }
+
+    public class CourseCategoryDto
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = null!;
+        public string? Description { get; set; }
+    }
+
+    public class CourseLevelDto
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = null!;
+        public string? Description { get; set; }
+    }
 }

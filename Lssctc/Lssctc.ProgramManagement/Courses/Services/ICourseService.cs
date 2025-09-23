@@ -19,5 +19,8 @@ namespace Lssctc.ProgramManagement.Courses.Services
         Task<CourseSyllabusDto?> UpdateSyllabusById(int courseSyllabusId, UpdateCourseSyllabusDto dto);
         Task<CourseDto?> UpdateCourseById(int id,UpdateCourseDto dto);
         Task<bool> DeleteCourseById(int id);
+
+        Task<IEnumerable<CourseLevelDto>> GetAllCourseLevelsAsync();
+        Task<IEnumerable<CourseCategoryDto>> GetAllCourseCategoriesAsync();
     }
 }

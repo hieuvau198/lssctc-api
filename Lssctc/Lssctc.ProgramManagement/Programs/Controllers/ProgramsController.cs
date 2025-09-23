@@ -1,7 +1,6 @@
 ﻿using Lssctc.ProgramManagement.HttpCustomResponse;
 using Lssctc.ProgramManagement.Programs.DTOs;
 using Lssctc.ProgramManagement.Programs.Services;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -24,8 +23,15 @@ namespace Lssctc.ProgramManagement.Programs.Controllers
         [HttpGet]
         public async Task<IActionResult> GetPrograms([FromQuery] ProgramQueryParameters parameters)
         {
-            var result = await _programService.GetAllProgramsAsync(parameters);
-            return Ok(result);
+            try
+            {
+                var result = await _programService.GetAllProgramsAsync(parameters);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
+            }
         }
 
         /// <summary>
@@ -34,11 +40,18 @@ namespace Lssctc.ProgramManagement.Programs.Controllers
         [HttpGet("{id}")]
         public async Task<IActionResult> GetProgram(int id)
         {
-            var program = await _programService.GetProgramByIdAsync(id);
-            if (program == null)
-                return NotFound();
+            try
+            {
+                var program = await _programService.GetProgramByIdAsync(id);
+                if (program == null)
+                    return NotFound(new { message = "Program not found." });
 
-            return Ok(program);
+                return Ok(program);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
+            }
         }
 
         /// <summary>
@@ -50,8 +63,19 @@ namespace Lssctc.ProgramManagement.Programs.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var createdProgram = await _programService.CreateProgramAsync(dto);
-            return CreatedAtAction(nameof(GetProgram), new { id = createdProgram.Id }, createdProgram);
+            try
+            {
+                var createdProgram = await _programService.CreateProgramAsync(dto);
+                return CreatedAtAction(nameof(GetProgram), new { id = createdProgram.Id }, createdProgram);
+            }
+            catch (BadRequestException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
+            }
         }
 
         /// <summary>
@@ -67,7 +91,7 @@ namespace Lssctc.ProgramManagement.Programs.Controllers
             {
                 var updatedProgram = await _programService.AddCoursesToProgramAsync(programId, courses);
                 if (updatedProgram == null)
-                    return NotFound();
+                    return NotFound(new { message = "Program not found." });
 
                 return Ok(updatedProgram);
             }
@@ -75,9 +99,14 @@ namespace Lssctc.ProgramManagement.Programs.Controllers
             {
                 return BadRequest(new { message = ex.Message });
             }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
+            }
         }
+
         /// <summary>
-        /// adds entry requirements to an existing program.
+        /// Adds entry requirements to an existing program.
         /// </summary>
         [HttpPost("{programId}/entry-requirements")]
         public async Task<IActionResult> AddPrerequisitesToProgram(
@@ -85,15 +114,22 @@ namespace Lssctc.ProgramManagement.Programs.Controllers
             [FromBody] List<EntryRequirementDto> prerequisites)
         {
             if (prerequisites == null || prerequisites.Count == 0)
-                return BadRequest("At least one prerequisite must be provided.");
+                return BadRequest(new { message = "At least one prerequisite must be provided." });
 
-            var result = await _programService.AddPrerequisitesToProgramAsync(programId, prerequisites);
+            try
+            {
+                var result = await _programService.AddPrerequisitesToProgramAsync(programId, prerequisites);
+                if (result == null)
+                    return NotFound(new { message = $"Program with ID {programId} not found or deleted." });
 
-            if (result == null)
-                return NotFound($"Program with ID {programId} not found or deleted.");
-
-            return Ok(result);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
+            }
         }
+
         /// <summary>
         /// Updates a program (can replace courses entirely).
         /// </summary>
@@ -107,13 +143,17 @@ namespace Lssctc.ProgramManagement.Programs.Controllers
             {
                 var updatedProgram = await _programService.UpdateProgramAsync(id, dto);
                 if (updatedProgram == null)
-                    return NotFound();
+                    return NotFound(new { message = "Program not found." });
 
                 return Ok(updatedProgram);
             }
             catch (BadRequestException ex)
             {
                 return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
             }
         }
 
@@ -123,11 +163,18 @@ namespace Lssctc.ProgramManagement.Programs.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteProgram(int id)
         {
-            var deleted = await _programService.DeleteProgramAsync(id);
-            if (!deleted)
-                return NotFound();
+            try
+            {
+                var deleted = await _programService.DeleteProgramAsync(id);
+                if (!deleted)
+                    return NotFound(new { message = "Program not found." });
 
-            return NoContent();
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
+            }
         }
     }
 }
