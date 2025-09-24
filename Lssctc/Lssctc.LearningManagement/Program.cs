@@ -7,21 +7,17 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-
 #region DbContext
-
 builder.Services.AddDbContext<LssctcDbContext>(opt =>
     opt.UseSqlServer(builder.Configuration.GetConnectionString("lssctcDb")));
-
 #endregion
 
-//auto maper
+// AutoMapper
 builder.Services.AddAutoMapper(typeof(QuizMapper).Assembly);
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-
 
 #region Domain
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
@@ -29,13 +25,21 @@ builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepositor
 #endregion
 
 #region Application Services
-//builder.Services.AddAutoMapper(typeof(CoursesMappingProfile));
-//builder.Services.AddScoped<ICoursesService, CoursesService>();
-
 builder.Services.AddScoped<IQuizService, QuizService>();
-
-
 #endregion
+
+// ================== ADD CORS ==================
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", policy =>
+    {
+        policy
+            .AllowAnyOrigin()   // Cho phép tất cả origin (FE có thể đổi thành cụ thể)
+            .AllowAnyMethod()
+            .AllowAnyHeader();
+    });
+});
+// ==============================================
 
 var app = builder.Build();
 
@@ -44,7 +48,12 @@ if (true)
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
 app.UseHttpsRedirection();
+
+// ================== USE CORS ==================
+app.UseCors("AllowAll");
+// ==============================================
 
 app.UseAuthorization();
 
