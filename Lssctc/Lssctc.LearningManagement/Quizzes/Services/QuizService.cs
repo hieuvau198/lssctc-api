@@ -333,5 +333,19 @@ namespace Lssctc.LearningManagement.Quizzes.Services
 
             return items;
         }
+
+
+
+        //==== section quiz ======
+        public async Task<QuizTraineeDetailDto?> GetQuizTraineeDetailBySectionQuizIdAsync(
+    int sectionQuizId, CancellationToken ct = default)
+        {
+            return await _uow.SectionQuizRepository.GetAllAsQueryable()
+                .Where(sq => sq.Id == sectionQuizId)
+                .Select(sq => sq.Quiz)
+                .ProjectTo<QuizTraineeDetailDto>(_mapper.ConfigurationProvider)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(ct);
+        }
     }
 }
