@@ -197,6 +197,29 @@ namespace Lssctc.LearningManagement.Quizzes.Controllers
             }
         }
 
+        // create question and option by quiz id
+
+        [HttpPost("{quizId:int}/questions-with-options")]
+        public async Task<IActionResult> CreateQuestionWithOptions(
+    [FromRoute] int quizId,
+    [FromBody] CreateQuizQuestionWithOptionsDto dto)
+        {
+            try
+            {
+                var questionId = await _quizService.CreateQuestionWithOptionsByQuizId(quizId, dto);
+
+                // có thể trả về link xem quiz detail của teacher hoặc trainee
+                return CreatedAtAction(
+                    nameof(GetDetail), // GET: /api/quizzes/{id}/questions
+                    new { id = quizId },
+                    new { id = questionId }
+                );
+            }
+            catch (KeyNotFoundException ex) { return NotFound(new { error = ex.Message }); }
+            catch (ValidationException ex) { return BadRequest(new { error = ex.Message }); }
+        }
+
+
 
     }
 }

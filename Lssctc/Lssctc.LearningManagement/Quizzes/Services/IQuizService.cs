@@ -27,5 +27,10 @@ namespace Lssctc.LearningManagement.Quizzes.Services
         Task<QuizTraineeDetailDto?> GetQuizTraineeDetailBySectionQuizIdAsync(
      int sectionQuizId, CancellationToken ct = default);
 
+        //create question and option question by quiz id
+        Task<int> CreateQuestionWithOptionsByQuizId(
+    int quizId, CreateQuizQuestionWithOptionsDto dto);
+
+
     }
 }
