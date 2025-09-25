@@ -1,11 +1,16 @@
-﻿namespace Lssctc.SimulationManagement.Practices.Services
+﻿using Lssctc.Share.Common;
+using Lssctc.SimulationManagement.Practices.Dtos;
+
+namespace Lssctc.SimulationManagement.Practices.Services
 {
     public interface IPracticeService
     {
-        // get practices with pagination
-        // get practice by id
-        // create practice
-        // update practice
-        // delete practice
+        Task<PagedResult<PracticeDto>> GetAllAsync(PracticeQueryDto query);
+        Task<PracticeDto?> GetByIdAsync(int id);
+        Task<PracticeDto> CreateAsync(CreatePracticeDto dto);
+        Task<PracticeDto?> UpdateAsync(int id, UpdatePracticeDto dto);
+        Task<bool> DeleteAsync(int id);
+        Task<bool> ExistsAsync(int id);
+        Task<bool> ExistsAsync(string practiceName, int? excludeId = null);
     }
 }
