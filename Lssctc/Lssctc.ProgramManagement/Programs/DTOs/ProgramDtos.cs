@@ -78,13 +78,6 @@
 
             public string? SearchTerm { get; set; }
 
-            public bool? IsActive { get; set; }
-
-            public bool? IsDeleted { get; set; }
-
-            public int? MinDurationHours { get; set; }
-
-            public int? MaxDurationHours { get; set; }
         }
 
 }
