@@ -8,26 +8,38 @@ namespace Lssctc.ProgramManagement.Programs.Mappings
     {
         public ProgramMapper()
         {
-            // TrainingProgram → DTO
+            // --- Entity → DTO ---
             CreateMap<TrainingProgram, ProgramDto>()
                 .ForMember(dest => dest.Courses, opt => opt.MapFrom(src => src.ProgramCourses))
-                .ForMember(dest => dest.Prerequisites, opt => opt.MapFrom(src => src.ProgramEntryRequirements));
+                .ForMember(dest => dest.EntryRequirements, opt => opt.MapFrom(src => src.ProgramEntryRequirements));
 
             CreateMap<ProgramCourse, ProgramCourseDto>();
             CreateMap<ProgramEntryRequirement, EntryRequirementDto>();
 
-            // DTO → TrainingProgram
+            // --- DTO → Entity ---
+            // Create Program
             CreateMap<CreateProgramDto, TrainingProgram>()
                 .ForMember(dest => dest.ProgramCourses, opt => opt.Ignore())
                 .ForMember(dest => dest.ProgramEntryRequirements, opt => opt.Ignore());
 
-            CreateMap<UpdateProgramDto, TrainingProgram>()
+            // Update Program Info (does not touch collections)
+            CreateMap<UpdateProgramInfoDto, TrainingProgram>()
                 .ForMember(dest => dest.ProgramCourses, opt => opt.Ignore())
                 .ForMember(dest => dest.ProgramEntryRequirements, opt => opt.Ignore())
-                .ForAllMembers(opts => opts.Condition((src, dest, srcMember) => srcMember != null));
+                .ForAllMembers(opt => opt.Condition((src, dest, srcMember) => srcMember != null));
 
+            // Update Program Courses (only used in service, not direct mapping to TrainingProgram)
+            CreateMap<ProgramCourseOrderDto, ProgramCourse>()
+                .ForMember(dest => dest.CoursesId, opt => opt.MapFrom(src => src.CourseId))
+                .ForMember(dest => dest.CourseOrder, opt => opt.MapFrom(src => src.Order))
+                .ForMember(dest => dest.ProgramId, opt => opt.Ignore()) // set in service
+                .ForMember(dest => dest.Name, opt => opt.Ignore())      // loaded from Course
+                .ForMember(dest => dest.Description, opt => opt.Ignore());
+
+            // Update Program Entry Requirements
             CreateMap<CreateProgramPrerequisiteDto, ProgramEntryRequirement>();
-            CreateMap<UpdateProgramPrerequisiteDto, ProgramEntryRequirement>();
+            CreateMap<UpdateEntryRequirementDto, ProgramEntryRequirement>()
+                .ForMember(dest => dest.ProgramId, opt => opt.Ignore()); // set in service
         }
     }
 }

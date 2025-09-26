@@ -130,21 +130,35 @@ namespace Lssctc.ProgramManagement.Programs.Controllers
             }
         }
 
-        /// <summary>
-        /// Updates a program (can replace courses entirely).
-        /// </summary>
-        [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateProgram(int id, [FromBody] UpdateProgramDto dto)
+        // ✅ UPDATE basic info
+        [HttpPut("{id}/basic")]
+        public async Task<IActionResult> UpdateProgramBasic(int id, [FromBody] UpdateProgramInfoDto dto)
         {
-            
-
             try
             {
-                var updatedProgram = await _programService.UpdateProgramAsync(id, dto);
-                if (updatedProgram == null)
+                var result = await _programService.UpdateProgramBasicAsync(id, dto);
+                if (result == null)
                     return NotFound(new { message = "Program not found." });
 
-                return Ok(updatedProgram);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = ex.Message });
+            }
+        }
+
+        // ✅ UPDATE program courses
+        [HttpPut("{id}/courses")]
+        public async Task<IActionResult> UpdateProgramCourses(int id, [FromBody] ICollection<ProgramCourseOrderDto> courses)
+        {
+            try
+            {
+                var result = await _programService.UpdateProgramCoursesAsync(id, courses);
+                if (result == null)
+                    return NotFound(new { message = "Program not found." });
+
+                return Ok(result);
             }
             catch (BadRequestException ex)
             {
@@ -152,7 +166,25 @@ namespace Lssctc.ProgramManagement.Programs.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
+                return StatusCode(500, new { message = ex.Message });
+            }
+        }
+
+        // ✅ UPDATE entry requirements
+        [HttpPut("{id}/entry-requirements")]
+        public async Task<IActionResult> UpdateProgramEntryRequirements(int id, [FromBody] ICollection<UpdateEntryRequirementDto> entryRequirements)
+        {
+            try
+            {
+                var result = await _programService.UpdateProgramEntryRequirementsAsync(id, entryRequirements);
+                if (result == null)
+                    return NotFound(new { message = "Program not found." });
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = ex.Message });
             }
         }
 
