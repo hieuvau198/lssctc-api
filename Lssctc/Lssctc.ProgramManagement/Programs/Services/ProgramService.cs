@@ -27,28 +27,17 @@ namespace Lssctc.ProgramManagement.Programs.Services
             {
                 query = query.Where(p =>
                     p.Name.Contains(parameters.SearchTerm) ||
-                    (p.Description != null && p.Description.Contains(parameters.SearchTerm)));
+                    (p.Description ?? "").Contains(parameters.SearchTerm));
             }
 
-            if (parameters.IsActive.HasValue)
-            {
-                query = query.Where(p => p.IsActive == parameters.IsActive);
-            }
+            query = query
+                .Include(p => p.ProgramEntryRequirements)
+                .Include(p => p.ProgramCourses)
+                    .ThenInclude(pc => pc.Courses);
 
-            if (parameters.IsDeleted.HasValue)
-            {
-                query = query.Where(p => p.IsDeleted == parameters.IsDeleted);
-            }
 
-            if (parameters.MinDurationHours.HasValue)
-            {
-                query = query.Where(p => p.DurationHours >= parameters.MinDurationHours);
-            }
 
-            if (parameters.MaxDurationHours.HasValue)
-            {
-                query = query.Where(p => p.DurationHours <= parameters.MaxDurationHours);
-            }
+
 
             var totalCount = await query.CountAsync();
 
