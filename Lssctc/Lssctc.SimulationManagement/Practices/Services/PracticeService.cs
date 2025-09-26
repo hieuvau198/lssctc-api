@@ -3,6 +3,7 @@ using Lssctc.Share.Common;
 using Lssctc.Share.Entities;
 using Lssctc.Share.Interfaces;
 using Lssctc.SimulationManagement.Practices.Dtos;
+using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
 
 namespace Lssctc.SimulationManagement.Practices.Services
@@ -18,7 +19,7 @@ namespace Lssctc.SimulationManagement.Practices.Services
             _mapper = mapper;
         }
 
-        public async Task<PagedResult<PracticeDto>> GetAllAsync(PracticeQueryDto query)
+        public async Task<PagedResult<PracticeDto>> GetPractices(PracticeQueryDto query)
         {
             var queryable = _unitOfWork.PracticeRepository.GetAllAsQueryable()
                 .Where(x => x.IsDeleted != true);
@@ -37,7 +38,7 @@ namespace Lssctc.SimulationManagement.Practices.Services
         }
 
 
-        public async Task<PracticeDto?> GetByIdAsync(int id)
+        public async Task<PracticeDto?> GetPracticeById(int id)
         {
             var entity = await _unitOfWork.PracticeRepository.GetByIdAsync(id);
 
@@ -47,9 +48,9 @@ namespace Lssctc.SimulationManagement.Practices.Services
             return _mapper.Map<PracticeDto>(entity);
         }
 
-        public async Task<PracticeDto> CreateAsync(CreatePracticeDto dto)
+        public async Task<PracticeDto> CreatePractice(CreatePracticeDto dto)
         {
-            if (await ExistsAsync(dto.PracticeName))
+            if (await ExistsPracticeQuery(dto.PracticeName))
             {
                 throw new InvalidOperationException($"A practice with name '{dto.PracticeName}' already exists.");
             }
@@ -61,14 +62,14 @@ namespace Lssctc.SimulationManagement.Practices.Services
             return _mapper.Map<PracticeDto>(createdEntity);
         }
 
-        public async Task<PracticeDto?> UpdateAsync(int id, UpdatePracticeDto dto)
+        public async Task<PracticeDto?> UpdatePractice(int id, UpdatePracticeDto dto)
         {
             var existingEntity = await _unitOfWork.PracticeRepository.GetByIdAsync(id);
 
             if (existingEntity == null || existingEntity.IsDeleted == true)
                 return null;
 
-            if (dto.PracticeName != null && await ExistsAsync(dto.PracticeName, id))
+            if (dto.PracticeName != null && await ExistsPracticeQuery(dto.PracticeName, id))
             {
                 throw new InvalidOperationException($"A practice with name '{dto.PracticeName}' already exists.");
             }
@@ -81,7 +82,7 @@ namespace Lssctc.SimulationManagement.Practices.Services
             return _mapper.Map<PracticeDto>(existingEntity);
         }
 
-        public async Task<bool> DeleteAsync(int id)
+        public async Task<bool> DeletePractice(int id)
         {
             var entity = await _unitOfWork.PracticeRepository.GetByIdAsync(id);
 
@@ -95,13 +96,13 @@ namespace Lssctc.SimulationManagement.Practices.Services
             return true;
         }
 
-        public async Task<bool> ExistsAsync(int id)
+        public async Task<bool> ExistPractice(int id)
         {
             return await _unitOfWork.PracticeRepository
                 .ExistsAsync(x => x.Id == id && x.IsDeleted != true);
         }
 
-        public async Task<bool> ExistsAsync(string practiceName, int? excludeId = null)
+        public async Task<bool> ExistsPracticeQuery(string practiceName, int? excludeId = null)
         {
             Expression<Func<Practice, bool>> predicate = x =>
                 x.PracticeName == practiceName && x.IsDeleted != true;
@@ -111,5 +112,8 @@ namespace Lssctc.SimulationManagement.Practices.Services
 
             return await _unitOfWork.PracticeRepository.ExistsAsync(predicate);
         }
+
+        
+
     }
 }

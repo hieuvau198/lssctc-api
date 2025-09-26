@@ -11,10 +11,12 @@ namespace Lssctc.SimulationManagement.Practices.Controllers
     public class PracticesController : ControllerBase
     {
         private readonly IPracticeService _practiceService;
+        private readonly IPracticeStepService _practiceStepService;
 
-        public PracticesController(IPracticeService practiceService)
+        public PracticesController(IPracticeService practiceService, IPracticeStepService practiceStepService)
         {
             _practiceService = practiceService;
+            _practiceStepService = practiceStepService;
         }
 
         [HttpGet]
@@ -22,7 +24,7 @@ namespace Lssctc.SimulationManagement.Practices.Controllers
         {
             try
             {
-                var result = await _practiceService.GetAllAsync(query);
+                var result = await _practiceService.GetPractices(query);
                 return Ok(result);
             }
             catch (Exception ex)
@@ -39,7 +41,7 @@ namespace Lssctc.SimulationManagement.Practices.Controllers
                 if (id <= 0)
                     return BadRequest(new { message = "Invalid practice ID." });
 
-                var practice = await _practiceService.GetByIdAsync(id);
+                var practice = await _practiceService.GetPracticeById(id);
 
                 if (practice == null)
                     return NotFound(new { message = $"Practice with ID {id} not found." });
@@ -60,7 +62,7 @@ namespace Lssctc.SimulationManagement.Practices.Controllers
                 if (!ModelState.IsValid)
                     return BadRequest(ModelState);
 
-                var practice = await _practiceService.CreateAsync(dto);
+                var practice = await _practiceService.CreatePractice(dto);
 
                 return CreatedAtAction(
                     nameof(GetById),
@@ -88,7 +90,7 @@ namespace Lssctc.SimulationManagement.Practices.Controllers
                 if (!ModelState.IsValid)
                     return BadRequest(ModelState);
 
-                var practice = await _practiceService.UpdateAsync(id, dto);
+                var practice = await _practiceService.UpdatePractice(id, dto);
 
                 if (practice == null)
                     return NotFound(new { message = $"Practice with ID {id} not found." });
@@ -113,7 +115,7 @@ namespace Lssctc.SimulationManagement.Practices.Controllers
                 if (id <= 0)
                     return BadRequest(new { message = "Invalid practice ID." });
 
-                var success = await _practiceService.DeleteAsync(id);
+                var success = await _practiceService.DeletePractice(id);
 
                 if (!success)
                     return NotFound(new { message = $"Practice with ID {id} not found." });
@@ -134,7 +136,7 @@ namespace Lssctc.SimulationManagement.Practices.Controllers
                 if (id <= 0)
                     return BadRequest();
 
-                var exists = await _practiceService.ExistsAsync(id);
+                var exists = await _practiceService.ExistPractice(id);
 
                 return exists ? Ok() : NotFound();
             }
@@ -143,5 +145,75 @@ namespace Lssctc.SimulationManagement.Practices.Controllers
                 return StatusCode(500);
             }
         }
+
+
+        // GET: api/practices/{practiceId}/steps
+        [HttpGet("{practiceId}/steps")]
+        public async Task<ActionResult<List<PracticeStepDto>>> GetPracticeStepsByPracticeId(int practiceId)
+        {
+            if (practiceId <= 0)
+                return BadRequest(new { message = "Invalid practice ID." });
+
+            var steps = await _practiceStepService.GetPracticeStepsByPracticeIdAsync(practiceId);
+            return Ok(steps);
+        }
+
+        // GET: api/practices/steps/{stepId}
+        [HttpGet("steps/{stepId}")]
+        public async Task<ActionResult<PracticeStepDto>> GetPracticeStepById(int stepId)
+        {
+            if (stepId <= 0)
+                return BadRequest(new { message = "Invalid step ID." });
+
+            var step = await _practiceStepService.GetPracticeStepByIdAsync(stepId);
+            if (step == null)
+                return NotFound(new { message = $"PracticeStep with ID {stepId} not found." });
+
+            return Ok(step);
+        }
+
+        // POST: api/practices/steps
+        [HttpPost("steps")]
+        public async Task<ActionResult<PracticeStepDto>> CreatePracticeStep([FromBody] CreatePracticeStepDto dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var step = await _practiceStepService.CreatePracticeStepAsync(dto);
+
+            return CreatedAtAction(nameof(GetPracticeStepById), new { stepId = step.Id }, step);
+        }
+
+        // PUT: api/practices/steps/{stepId}
+        [HttpPut("steps/{stepId}")]
+        public async Task<ActionResult<PracticeStepDto>> UpdatePracticeStep(int stepId, [FromBody] UpdatePracticeStepDto dto)
+        {
+            if (stepId <= 0)
+                return BadRequest(new { message = "Invalid step ID." });
+
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var step = await _practiceStepService.UpdatePracticeStepAsync(stepId, dto);
+            if (step == null)
+                return NotFound(new { message = $"PracticeStep with ID {stepId} not found." });
+
+            return Ok(step);
+        }
+
+        // DELETE: api/practices/steps/{stepId}
+        [HttpDelete("steps/{stepId}")]
+        public async Task<ActionResult> DeletePracticeStep(int stepId)
+        {
+            if (stepId <= 0)
+                return BadRequest(new { message = "Invalid step ID." });
+
+            var success = await _practiceStepService.DeletePracticeStepAsync(stepId);
+            if (!success)
+                return NotFound(new { message = $"PracticeStep with ID {stepId} not found." });
+
+            return NoContent();
+        }
+
     }
 }

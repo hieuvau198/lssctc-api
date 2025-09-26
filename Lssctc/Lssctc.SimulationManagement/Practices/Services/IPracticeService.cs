@@ -5,12 +5,14 @@ namespace Lssctc.SimulationManagement.Practices.Services
 {
     public interface IPracticeService
     {
-        Task<PagedResult<PracticeDto>> GetAllAsync(PracticeQueryDto query);
-        Task<PracticeDto?> GetByIdAsync(int id);
-        Task<PracticeDto> CreateAsync(CreatePracticeDto dto);
-        Task<PracticeDto?> UpdateAsync(int id, UpdatePracticeDto dto);
-        Task<bool> DeleteAsync(int id);
-        Task<bool> ExistsAsync(int id);
-        Task<bool> ExistsAsync(string practiceName, int? excludeId = null);
+        Task<PagedResult<PracticeDto>> GetPractices(PracticeQueryDto query);
+        Task<PracticeDto?> GetPracticeById(int id);
+        Task<PracticeDto> CreatePractice(CreatePracticeDto dto);
+        Task<PracticeDto?> UpdatePractice(int id, UpdatePracticeDto dto);
+        Task<bool> DeletePractice(int id);
+        Task<bool> ExistPractice(int id);
+        Task<bool> ExistsPracticeQuery(string practiceName, int? excludeId = null);        
+
+
     }
 }

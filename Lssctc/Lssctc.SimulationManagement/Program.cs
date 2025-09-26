@@ -28,6 +28,7 @@ builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepositor
 builder.Services.AddAutoMapper(typeof(ComponentMappingProfile));
 builder.Services.AddScoped<IComponentService, ComponentService>();
 builder.Services.AddScoped<IPracticeService, PracticeService>();
+builder.Services.AddScoped<IPracticeStepService, PracticeStepService>();
 
 #endregion
 

@@ -24,6 +24,18 @@ namespace Lssctc.SimulationManagement.Practices.Mappings
                 .ForMember(dest => dest.PracticeSteps, opt => opt.Ignore())
                 .ForMember(dest => dest.SectionPractices, opt => opt.Ignore())
                 .ForAllMembers(opts => opts.Condition((src, dest, srcMember) => srcMember != null));
+
+            CreateMap<PracticeStep, PracticeStepDto>();
+            CreateMap<CreatePracticeStepDto, PracticeStep>()
+                .ForMember(dest => dest.Id, opt => opt.Ignore())
+                .ForMember(dest => dest.IsDeleted, opt => opt.MapFrom(src => false));
+
+            CreateMap<UpdatePracticeStepDto, PracticeStep>()
+                .ForMember(dest => dest.Id, opt => opt.Ignore())
+                .ForMember(dest => dest.PracticeId, opt => opt.Ignore())
+                .ForMember(dest => dest.IsDeleted, opt => opt.Ignore())
+                .ForAllMembers(opts => opts.Condition((src, dest, srcMember) => srcMember != null));
+
         }
     }
 }
