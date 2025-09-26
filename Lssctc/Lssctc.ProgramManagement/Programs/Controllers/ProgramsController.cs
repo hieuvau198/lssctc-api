@@ -136,8 +136,7 @@ namespace Lssctc.ProgramManagement.Programs.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateProgram(int id, [FromBody] UpdateProgramDto dto)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+            
 
             try
             {
