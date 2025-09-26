@@ -185,61 +185,84 @@ namespace Lssctc.ProgramManagement.Programs.Services
 
 
 
+
         public async Task<ProgramDto?> UpdateProgramAsync(int id, UpdateProgramDto dto)
         {
             var program = await _unitOfWork.ProgramRepository.GetAllAsQueryable()
-                .Include( p => p.ProgramEntryRequirements)
                 .Include(p => p.ProgramCourses)
+                    .ThenInclude(pc => pc.Classes)
+                .Include(p => p.ProgramEntryRequirements)
                 .FirstOrDefaultAsync(p => p.Id == id);
 
             if (program == null || program.IsDeleted == true)
                 return null;
 
-            _mapper.Map(dto, program);
+            // --- Update scalar fields manually (avoid overwriting navigation collections) ---
+            program.Name = dto.Name;
+            program.Description = dto.Description;
+            program.ImageUrl = dto.ImageUrl;
+            program.IsActive = dto.IsActive ?? program.IsActive;
 
-            // Clear the old courses in the program
-            var existingProgramCourses = program.ProgramCourses.ToList();
-            if (existingProgramCourses.Any())
+            // --- Current ProgramCourses ---
+            var oldCourseIds = program.ProgramCourses.Select(pc => pc.CoursesId).ToList();
+            var newCourseIds = dto.Courses.Select(c => c.CourseId).ToList();
+
+            // --- Find removed courses ---
+            var removedCourseIds = oldCourseIds.Except(newCourseIds).ToList();
+
+            // --- Check if any removed course has classes ---
+            var blocked = program.ProgramCourses
+                .FirstOrDefault(pc => removedCourseIds.Contains(pc.CoursesId) && pc.Classes.Any());
+
+            if (blocked != null)
             {
-                foreach (var pc in existingProgramCourses)
-                {
-                    await _unitOfWork.ProgramCourseRepository.DeleteAsync(pc);
-                }
-
-                await _unitOfWork.SaveChangesAsync();
-
-                program.ProgramCourses.Clear();
+                throw new BadRequestException(
+                    $"Cannot remove course '{blocked.Name}' because it still has associated classes."
+                );
             }
 
+            // --- Remove ProgramCourses only if they are not in new list ---
+            program.ProgramCourses = program.ProgramCourses
+                .Where(pc => !removedCourseIds.Contains(pc.CoursesId))
+                .ToList();
+
+            // --- Clear prerequisites ---
+            program.ProgramEntryRequirements.Clear();
+
+            await _unitOfWork.SaveChangesAsync(); // flush deletes
+
+            // --- Add/update new ProgramCourses ---
             if (dto.Courses != null && dto.Courses.Any())
             {
-                var courseIds = dto.Courses.Select(c => c.CourseId).ToList();
-
                 var coursesInProgram = await _unitOfWork.CourseRepository
                     .GetAllAsQueryable()
-                    .Where(c => courseIds.Contains(c.Id) && c.IsDeleted != true)
+                    .Where(c => newCourseIds.Contains(c.Id) && c.IsDeleted != true)
                     .ToListAsync();
 
                 program.TotalCourses = coursesInProgram.Count;
-                program.DurationHours = 0;
-                foreach (var c in coursesInProgram)
-                {
-                    program.DurationHours += c.DurationHours ?? 0;
-                }
+                program.DurationHours = coursesInProgram.Sum(c => c.DurationHours ?? 0);
 
                 foreach (var courseOrderDto in dto.Courses)
                 {
-                    var course = coursesInProgram.FirstOrDefault(c => c.Id == courseOrderDto.CourseId);
-                    if (course != null)
+                    var existing = program.ProgramCourses.FirstOrDefault(pc => pc.CoursesId == courseOrderDto.CourseId);
+                    if (existing != null)
                     {
-                        program.ProgramCourses.Add(new ProgramCourse
+                        existing.CourseOrder = courseOrderDto.Order; // update order
+                    }
+                    else
+                    {
+                        var course = coursesInProgram.FirstOrDefault(c => c.Id == courseOrderDto.CourseId);
+                        if (course != null)
                         {
-                            CoursesId = course.Id,
-                            ProgramId = program.Id,
-                            CourseOrder = courseOrderDto.Order,
-                            Name = dto.Name,
-                            Description = dto.Description
-                        });
+                            program.ProgramCourses.Add(new ProgramCourse
+                            {
+                                ProgramId = program.Id,
+                                CoursesId = course.Id,
+                                CourseOrder = courseOrderDto.Order,
+                                Name = course.Name,
+                                Description = course.Description
+                            });
+                        }
                     }
                 }
             }
@@ -248,57 +271,34 @@ namespace Lssctc.ProgramManagement.Programs.Services
                 program.TotalCourses = 0;
                 program.DurationHours = 0;
             }
-            //update prerequisites
-            if (dto.Prerequisites != null)
+
+            // --- Add prerequisites ---
+            if (dto.Prerequisites != null && dto.Prerequisites.Any())
             {
-                var dtoPrereqIds = dto.Prerequisites.Where(p => p.Id > 0).Select(p => p.Id).ToList();
-
-                // Remove prerequisites not in DTO
-                var toRemove = program.ProgramEntryRequirements
-                    .Where(p => !dtoPrereqIds.Contains(p.Id))
-                    .ToList();
-                if(toRemove != null && toRemove.Count > 0)
-                {
-                    foreach (var rem in toRemove)
-                    {
-                        await _unitOfWork.ProgramEntryRequirementRepository.DeleteAsync(rem);
-                    }
-                    await _unitOfWork.SaveChangesAsync();
-
-                    program.ProgramEntryRequirements.Clear();
-                }
-
-
-                // Update existing or add new
                 foreach (var prereqDto in dto.Prerequisites)
                 {
-                    if (prereqDto.Id > 0)
+                    program.ProgramEntryRequirements.Add(new ProgramEntryRequirement
                     {
-                        var existing = program.ProgramEntryRequirements.FirstOrDefault(p => p.Id == prereqDto.Id);
-                        if (existing != null)
-                        {
-                            existing.Name = prereqDto.Name;
-                            existing.Description = prereqDto.Description;
-                        }
-                    }
-                    else
-                    {
-                        program.ProgramEntryRequirements.Add(new ProgramEntryRequirement
-                        {
-                            ProgramId = program.Id,
-                            Name = prereqDto.Name,
-                            Description = prereqDto.Description,
-                        });
-                    }
+                        ProgramId = program.Id,
+                        Name = prereqDto.Name,
+                        Description = prereqDto.Description,
+                        DocumentUrl = prereqDto.DocumentUrl
+                    });
                 }
             }
-            await _unitOfWork.ProgramRepository.UpdateAsync(program);
+
             await _unitOfWork.SaveChangesAsync();
 
             var result = _mapper.Map<ProgramDto>(program);
             result.Courses = result.Courses.OrderBy(c => c.CourseOrder).ToList();
             return result;
         }
+
+
+
+
+
+
 
         public async Task<bool> DeleteProgramAsync(int id)
         {

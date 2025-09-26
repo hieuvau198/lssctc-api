@@ -4,7 +4,7 @@
         public class ProgramDto
         {
             public int Id { get; set; }
-            public string Name { get; set; } = null!;
+            public string Name { get; set; } 
             public string? Description { get; set; }
             public bool? IsDeleted { get; set; }
             public bool? IsActive { get; set; }
@@ -17,7 +17,7 @@
         }
         public class CreateProgramDto
         {
-            public string Name { get; set; } = null!;
+            public string Name { get; set; } 
             public string? Description { get; set; }
             public int? DurationHours { get; set; }
             public string? ImageUrl { get; set; }
@@ -50,21 +50,21 @@
         public class EntryRequirementDto
         {
 
-            public string Name { get; set; } = null!;
+            public string Name { get; set; } 
             public string? Description { get; set; }
         }
 
         public class CreateProgramPrerequisiteDto
         {
-            public string Name { get; set; } = null!;
+            public string Name { get; set; } 
             public string? Description { get; set; }
         }
 
         public class UpdateProgramPrerequisiteDto
         {
-            public int Id { get; set; }
-            public string Name { get; set; } = null!;
+            public string Name { get; set; } 
             public string? Description { get; set; }
+            public string ? DocumentUrl { get; set; }
         }
         public class ProgramCourseOrderDto
         {
