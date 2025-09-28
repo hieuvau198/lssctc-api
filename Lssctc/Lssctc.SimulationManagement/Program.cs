@@ -4,6 +4,8 @@ using Lssctc.Share.Interfaces;
 using Lssctc.SimulationManagement.Components.Mappings;
 using Lssctc.SimulationManagement.Components.Services;
 using Lssctc.SimulationManagement.Practices.Services;
+using Lssctc.SimulationManagement.SectionPractice.Mappings;
+using Lssctc.SimulationManagement.SectionPractice.Services;
 using Microsoft.AspNetCore.Cors.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 
@@ -25,11 +27,11 @@ builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepositor
 #endregion
 
 #region Application Services
-builder.Services.AddAutoMapper(typeof(ComponentMappingProfile));
+builder.Services.AddAutoMapper(typeof(ComponentMappingProfile), typeof(SectionPracticeMapper));
 builder.Services.AddScoped<IComponentService, ComponentService>();
 builder.Services.AddScoped<IPracticeService, PracticeService>();
 builder.Services.AddScoped<IPracticeStepService, PracticeStepService>();
-
+builder.Services.AddScoped<ISectionPracticeService, SectionPracticeService>();
 #endregion
 
 #region Cors
