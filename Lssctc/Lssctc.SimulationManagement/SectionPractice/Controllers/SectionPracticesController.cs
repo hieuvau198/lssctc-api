@@ -2,6 +2,7 @@
 using Lssctc.SimulationManagement.SectionPractice.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel.DataAnnotations;
 
 namespace Lssctc.SimulationManagement.SectionPractice.Controllers
 {
@@ -71,5 +72,136 @@ namespace Lssctc.SimulationManagement.SectionPractice.Controllers
                 Data = dto
             });
         }
+
+
+        [HttpPost]
+        public async Task<IActionResult> Create([FromBody] CreateSectionPracticeDto dto)
+        {
+            try
+            {
+                var id = await _svc.CreateAsync(dto);
+                return StatusCode(201, new ApiResponse<object>
+                {
+                    Success = true,
+                    StatusCode = 201,
+                    Message = "Create section practice successfully.",
+                    Data = new { id },
+                    Pagination = null
+                });
+            }
+            catch (ValidationException ex)
+            {
+                return BadRequest(new ApiResponse<object>
+                {
+                    Success = false,
+                    StatusCode = 400,
+                    Message = $"Invalid input. {ex.Message}",
+                    Data = null,
+                    Pagination = null
+                });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new ApiResponse<object>
+                {
+                    Success = false,
+                    StatusCode = 404,
+                    Message = ex.Message,   // nhận message chi tiết từ service
+                    Data = null,
+                    Pagination = null
+                });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Conflict(new ApiResponse<object>
+                {
+                    Success = false,
+                    StatusCode = 409,
+                    Message = $"Conflict. {ex.Message}",
+                    Data = null,
+                    Pagination = null
+                });
+            }
+        }
+
+
+        [HttpPut("{id:int}")]
+        public async Task<IActionResult> Update([FromRoute] int id, [FromBody] UpdateSectionPracticeDto dto)
+        {
+            try
+            {
+                var ok = await _svc.UpdateAsync(id, dto);
+                if (!ok)
+                    return NotFound(new ApiResponse<object> { Success = false, StatusCode = 404, Message = "Not found." });
+
+                return Ok(new ApiResponse<object> { Success = true, StatusCode = 200, Message = "Section Practice has been updated." });
+            }
+            catch (ValidationException)
+            {
+                return BadRequest(new ApiResponse<object> { Success = false, StatusCode = 400, Message = "Invalid input." });
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound(new ApiResponse<object> { Success = false, StatusCode = 404, Message = "Not found." });
+            }
+            catch (InvalidOperationException)
+            {
+                return Conflict(new ApiResponse<object> { Success = false, StatusCode = 409, Message = "Conflict." });
+            }
+        }
+
+        [HttpDelete("{id:int}")]
+        public async Task<IActionResult> Delete([FromRoute] int id)
+        {
+            try
+            {
+                var ok = await _svc.DeleteAsync(id);
+                if (!ok)
+                {
+                    return NotFound(new ApiResponse<object>
+                    {
+                        Success = false,
+                        StatusCode = 404,
+                        Message = $"SectionPractice with id={id} not found.",
+                        Data = null,
+                        Pagination = null
+                    });
+                }
+
+                return Ok(new ApiResponse<object>
+                {
+                    Success = true,
+                    StatusCode = 200,
+                    Message = $"Delete section practice with id={id} successfully.",
+                    Data = null,
+                    Pagination = null
+                });
+            }
+            catch (InvalidOperationException ex)
+            {
+                // trường hợp đang có Timeslot hoặc Attempt liên kết
+                return Conflict(new ApiResponse<object>
+                {
+                    Success = false,
+                    StatusCode = 409,
+                    Message = $"Cannot delete SectionPractice with id={id}: {ex.Message}",
+                    Data = null,
+                    Pagination = null
+                });
+            }
+            catch (ValidationException ex)
+            {
+                return BadRequest(new ApiResponse<object>
+                {
+                    Success = false,
+                    StatusCode = 400,
+                    Message = $"Invalid input. {ex.Message}",
+                    Data = null,
+                    Pagination = null
+                });
+            }
+        }
+
+
     }
 }

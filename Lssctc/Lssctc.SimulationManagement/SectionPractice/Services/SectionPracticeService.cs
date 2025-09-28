@@ -3,6 +3,8 @@ using AutoMapper.QueryableExtensions;
 using Lssctc.Share.Interfaces;
 using Lssctc.SimulationManagement.SectionPractice.Dtos;
 using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.DataAnnotations;
+using Entities = Lssctc.Share.Entities;
 
 namespace Lssctc.SimulationManagement.SectionPractice.Services
 {
@@ -17,15 +19,51 @@ namespace Lssctc.SimulationManagement.SectionPractice.Services
             _mapper = mapper;
         }
 
-        public Task<int> CreateAsync(CreateSectionPracticeDto dto)
+        public async Task<int> CreateAsync(CreateSectionPracticeDto dto)
         {
-            throw new NotImplementedException();
+            if (dto == null || dto.SectionPartitionId <= 0 || dto.PracticeId <= 0)
+                throw new ValidationException("Invalid input.");
+
+            if (!await _uow.SectionPartitionRepository.ExistsAsync(s => s.Id == dto.SectionPartitionId))
+                throw new KeyNotFoundException($"SectionPartition with id={dto.SectionPartitionId} not found.");
+
+            if (!await _uow.PracticeRepository.ExistsAsync(p => p.Id == dto.PracticeId))
+                throw new KeyNotFoundException($"Practice with id={dto.PracticeId} not found.");
+
+            if (dto.SimulationTimeslotId.HasValue)
+            {
+                var exists = await _uow.SimulationTimeslotRepository.ExistsAsync(t => t.Id == dto.SimulationTimeslotId.Value);
+                if (!exists)
+                    throw new KeyNotFoundException($"SimulationTimeslot with id={dto.SimulationTimeslotId.Value} not found.");
+            }
+
+            var entity = _mapper.Map<Entities.SectionPractice>(dto);
+            await _uow.SectionPracticeRepository.CreateAsync(entity);
+            await _uow.SaveChangesAsync();
+            return entity.Id;
         }
 
-        public Task<bool> DeleteAsync(int id)
+
+
+        public async Task<bool> DeleteAsync(int id)
         {
-            throw new NotImplementedException();
+            var entity = await _uow.SectionPracticeRepository.GetByIdAsync(id);
+            if (entity == null) return false;
+
+            var hasTimeslot = await _uow.SectionPracticeTimeslotRepository
+                .ExistsAsync(t => t.SectionPracticeId == id);
+
+            var hasAttempt = await _uow.SectionPracticeAttemptRepository
+                .ExistsAsync(a => a.SectionPracticeId == id);
+
+            if (hasTimeslot || hasAttempt)
+                throw new InvalidOperationException("Cannot delete: section practice is in use (timeslots/attempts exist).");
+
+            await _uow.SectionPracticeRepository.DeleteAsync(entity);
+            await _uow.SaveChangesAsync();
+            return true;
         }
+
 
         public async Task<SectionPracticeDto?> GetByIdAsync(int id)
         {
@@ -74,9 +112,35 @@ namespace Lssctc.SimulationManagement.SectionPractice.Services
             return (items, total);
         }
 
-        public Task<bool> UpdateAsync(int id, UpdateSectionPracticeDto dto)
+        public async Task<bool> UpdateAsync(int id, UpdateSectionPracticeDto dto)
         {
-            throw new NotImplementedException();
+            var entity = await _uow.SectionPracticeRepository.GetByIdAsync(id);
+            if (entity == null) return false;
+
+            if (dto.SectionPartitionId.HasValue)
+            {
+                if (dto.SectionPartitionId.Value <= 0) throw new ValidationException("SectionPartitionId is invalid.");
+                var ok = await _uow.SectionPartitionRepository.ExistsAsync(s => s.Id == dto.SectionPartitionId.Value);
+                if (!ok) throw new KeyNotFoundException($"SectionPartition {dto.SectionPartitionId.Value} not found.");
+            }
+
+            if (dto.PracticeId.HasValue)
+            {
+                if (dto.PracticeId.Value <= 0) throw new ValidationException("PracticeId is invalid.");
+                var ok = await _uow.PracticeRepository.ExistsAsync(p => p.Id == dto.PracticeId.Value);
+                if (!ok) throw new KeyNotFoundException($"Practice {dto.PracticeId.Value} not found.");
+            }
+
+            if (dto.SimulationTimeslotId.HasValue)
+            {
+                var ok = await _uow.SimulationTimeslotRepository.ExistsAsync(t => t.Id == dto.SimulationTimeslotId.Value);
+                if (!ok) throw new KeyNotFoundException($"SimulationTimeslot {dto.SimulationTimeslotId.Value} not found.");
+            }
+
+            _mapper.Map(dto, entity);
+            await _uow.SectionPracticeRepository.UpdateAsync(entity);
+            await _uow.SaveChangesAsync();
+            return true;
         }
     }
 }
