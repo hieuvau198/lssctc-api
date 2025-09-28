@@ -47,5 +47,29 @@ namespace Lssctc.SimulationManagement.SectionPractice.Controllers
 
             return Ok(resp);
         }
+
+
+        [HttpGet("{id:int}")]
+        public async Task<IActionResult> GetById([FromRoute] int id)
+        {
+            var dto = await _svc.GetByIdAsync(id);
+            if (dto is null)
+            {
+                return NotFound(new ApiResponse<object>
+                {
+                    Success = false,
+                    StatusCode = 404,
+                    Message = $"SectionPractice {id} not found."
+                });
+            }
+
+            return Ok(new ApiResponse<SectionPracticeDto>
+            {
+                Success = true,
+                StatusCode = 200,
+                Message = "Get section practice successfully.",
+                Data = dto
+            });
+        }
     }
 }

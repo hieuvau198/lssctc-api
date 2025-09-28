@@ -27,9 +27,14 @@ namespace Lssctc.SimulationManagement.SectionPractice.Services
             throw new NotImplementedException();
         }
 
-        public Task<SectionPracticeDto?> GetByIdAsync(int id)
+        public async Task<SectionPracticeDto?> GetByIdAsync(int id)
         {
-            throw new NotImplementedException();
+            var dto = await _uow.SectionPracticeRepository.GetAllAsQueryable()
+                .Where(x => x.Id == id)
+                .ProjectTo<SectionPracticeDto>(_mapper.ConfigurationProvider)
+                .AsNoTracking()
+                .FirstOrDefaultAsync();
+            return dto;
         }
 
         public async Task<(IReadOnlyList<SectionPracticeDto> Items, int Total)> GetPagedAsync(
