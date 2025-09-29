@@ -44,6 +44,7 @@ builder.Services.AddScoped<IProgramService, ProgramService>();
 builder.Services.AddScoped<IClassService, ClassService>();
 
 #endregion
+
 #region CORS
 builder.Services.AddCors(options =>
 {
@@ -55,6 +56,7 @@ builder.Services.AddCors(options =>
     });
 });
 #endregion
+
 var app = builder.Build();
 
 if (true)
