@@ -18,167 +18,100 @@ namespace Lssctc.LearningManagement.SectionPartition.Controllers
             _svc = svc;
         }
 
-        // GET: /api/SectionPartitions?pageIndex=1&pageSize=20&sectionId=1&partitionTypeId=2&search=abc
+        // GET: /api/SectionPartitions?pageIndex=1&pageSize=20
         [HttpGet]
-        public async Task<IActionResult> GetPaged(
-     [FromQuery] int pageIndex = 1,
-     [FromQuery] int pageSize = 20,
-     [FromQuery] int? sectionId = null,
-     [FromQuery] int? partitionTypeId = null,
-     [FromQuery] string? search = null)
+        public async Task<IActionResult> GetSectionPartitionsPaged(
+            [FromQuery] int pageIndex = 1,
+            [FromQuery] int pageSize = 20)
         {
-            var page = await _svc.GetPagedAsync(pageIndex, pageSize, sectionId, partitionTypeId, search);
+            var page = await _svc.GetSectionPartitionsPaged(pageIndex, pageSize);
 
-            // (tuỳ chọn) expose tổng record cho FE
+            // Cho phép FE đọc total qua header
             Response.Headers["X-Total-Count"] = page.TotalCount.ToString();
             Response.Headers["Access-Control-Expose-Headers"] = "X-Total-Count";
 
-            var resp = new ApiResponse<PagedResult<SectionPartitionDto>>
-            {
-                Success = true,
-                StatusCode = 200,
-                Message = "Get section partitions successfully.",
-                Data = page,
-               
-            };
-
-            return Ok(resp);
+            return Ok(page); // Trả thẳng PagedResult<SectionPartitionDto>
         }
 
+        // GET: /api/SectionPartitions/5
         [HttpGet("{id:int}")]
         public async Task<IActionResult> GetById([FromRoute] int id)
         {
-            var dto = await _svc.GetByIdAsync(id);
+            var dto = await _svc.GetSectionPartitionById(id);
             if (dto is null)
-            {
-                return NotFound(new ApiResponse<object>
-                {
-                    Success = false,
-                    StatusCode = 404,
-                    Message = $"SectionPartition {id} not found."
-                });
-            }
+                return NotFound(new { message = $"SectionPartition {id} not found." });
 
-            return Ok(new ApiResponse<SectionPartitionDto>
-            {
-                Success = true,
-                StatusCode = 200,
-                Message = "Get section partition successfully.",
-                Data = dto
-            });
+            return Ok(dto);
         }
 
+        // POST: /api/SectionPartitions
         [HttpPost]
-        public async Task<IActionResult> Create([FromBody] CreateSectionPartitionDto dto)
+        public async Task<IActionResult> CreateSectionPartition([FromBody] CreateSectionPartitionDto dto)
         {
             try
             {
-                var id = await _svc.CreateAsync(dto);
-                var resp = new ApiResponse<object>
-                {
-                    Success = true,
-                    StatusCode = 201,
-                    Message = "Create section partition successfully.",
-                    Data = new { id }
-                };
-                return StatusCode(201, resp);
+                var id = await _svc.CreateSectionPartition(dto);
+                return CreatedAtAction(nameof(GetById), new { id }, new { id });
             }
             catch (ValidationException ex)
             {
-                return BadRequest(new ApiResponse<object>
-                {
-                    Success = false,
-                    StatusCode = 400,
-                    Message = ex.Message
-                });
+                return BadRequest(new { message = ex.Message });
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(new ApiResponse<object>
-                {
-                    Success = false,
-                    StatusCode = 404,
-                    Message = ex.Message
-                });
+                return NotFound(new { message = ex.Message });
             }
             catch (InvalidOperationException ex)
             {
-                return Conflict(new ApiResponse<object>
-                {
-                    Success = false,
-                    StatusCode = 409,
-                    Message = ex.Message
-                });
+                return Conflict(new { message = ex.Message });
             }
         }
 
+        // PUT: /api/SectionPartitions/5
         [HttpPut("{id:int}")]
-        public async Task<IActionResult> Update([FromRoute] int id, [FromBody] UpdateSectionPartitionDto dto)
+        public async Task<IActionResult> UpdateSectionPartition([FromRoute] int id, [FromBody] UpdateSectionPartitionDto dto)
         {
             try
             {
-                var ok = await _svc.UpdateAsync(id, dto);
+                var ok = await _svc.UpdateSectionPartition(id, dto);
                 if (!ok)
-                {
-                    return NotFound(new ApiResponse<object>
-                    {
-                        Success = false,
-                        StatusCode = 404,
-                        Message = $"SectionPartition {id} not found."
-                    });
-                }
+                    return NotFound(new { message = $"SectionPartition {id} not found." });
 
-                return Ok(new ApiResponse<object>
-                {
-                    Success = true,
-                    StatusCode = 200,
-                    Message = "Update section partition successfully."
-                });
+                return Ok(new { message = "Update section partition successfully." });
             }
             catch (ValidationException ex)
             {
-                return BadRequest(new ApiResponse<object> { Success = false, StatusCode = 400, Message = ex.Message });
+                return BadRequest(new { message = ex.Message });
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(new ApiResponse<object> { Success = false, StatusCode = 404, Message = ex.Message });
+                return NotFound(new { message = ex.Message });
             }
             catch (InvalidOperationException ex)
             {
-                return Conflict(new ApiResponse<object> { Success = false, StatusCode = 409, Message = ex.Message });
+                return Conflict(new { message = ex.Message });
             }
         }
 
+        // DELETE: /api/SectionPartitions/5
         [HttpDelete("{id:int}")]
-        public async Task<IActionResult> Delete([FromRoute] int id)
+        public async Task<IActionResult> DeleteSectionPartition([FromRoute] int id)
         {
             try
             {
-                var ok = await _svc.DeleteAsync(id);
+                var ok = await _svc.DeleteSectionPartition(id);
                 if (!ok)
-                {
-                    return NotFound(new ApiResponse<object>
-                    {
-                        Success = false,
-                        StatusCode = 404,
-                        Message = $"SectionPartition {id} not found."
-                    });
-                }
+                    return NotFound(new { message = $"SectionPartition {id} not found." });
 
-                return Ok(new ApiResponse<object>
-                {
-                    Success = true,
-                    StatusCode = 200,
-                    Message = "Delete section partition successfully."
-                });
+                return Ok(new { message = "Delete section partition successfully." });
             }
             catch (ValidationException ex)
             {
-                return BadRequest(new ApiResponse<object> { Success = false, StatusCode = 400, Message = ex.Message });
+                return BadRequest(new { message = ex.Message });
             }
             catch (InvalidOperationException ex)
             {
-                return Conflict(new ApiResponse<object> { Success = false, StatusCode = 409, Message = ex.Message });
+                return Conflict(new { message = ex.Message });
             }
         }
     }

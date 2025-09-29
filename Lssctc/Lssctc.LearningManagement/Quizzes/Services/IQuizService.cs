@@ -1,11 +1,11 @@
 ﻿using Lssctc.LearningManagement.Quizzes.DTOs;
+using Lssctc.Share.Common;
 
 namespace Lssctc.LearningManagement.Quizzes.Services
 {
     public interface IQuizService
     {
-        Task<(IReadOnlyList<QuizDetailDto> Items, int Total)> GetDetailQuizzes(
-      int pageIndex, int pageSize, string? search);
+        Task<PagedResult<QuizDetailDto>> GetDetailQuizzes(int pageIndex, int pageSize);
         Task<QuizDto?> GetQuizById(int id);
         Task<int> CreateQuiz(CreateQuizDto dto);
         Task<bool> UpdateQuizById(int id, UpdateQuizDto dto);

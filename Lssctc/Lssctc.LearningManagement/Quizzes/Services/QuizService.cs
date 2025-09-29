@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using AutoMapper.QueryableExtensions;
 using Lssctc.LearningManagement.Quizzes.DTOs;
+using Lssctc.Share.Common;
 using Lssctc.Share.Entities;
 using Lssctc.Share.Interfaces;
 using Microsoft.Data.SqlClient;
@@ -28,34 +29,31 @@ namespace Lssctc.LearningManagement.Quizzes.Services
             return entity == null ? null : _mapper.Map<QuizDto>(entity);
         }
 
-        public async Task<(IReadOnlyList<QuizDetailDto> Items, int Total)> GetDetailQuizzes(
-      int pageIndex, int pageSize, string? search)
+        public async Task<PagedResult<QuizDetailDto>> GetDetailQuizzes(int pageIndex, int pageSize)
         {
             if (pageIndex < 1) pageIndex = 1;
             if (pageSize <= 0 || pageSize > 200) pageSize = 20;
 
             var query = _uow.QuizRepository.GetAllAsQueryable();
 
-            if (!string.IsNullOrWhiteSpace(search))
-            {
-                var s = search.Trim();
-                query = query.Where(q =>
-                    (q.Name != null && q.Name.Contains(s)) ||
-                    (q.Description != null && q.Description.Contains(s)));
-            }
-
             var total = await query.CountAsync();
 
             var items = await query
-                .OrderByDescending(q => q.UpdatedAt)
-                .ThenByDescending(q => q.Id)
                 .Skip((pageIndex - 1) * pageSize)
                 .Take(pageSize)
                 .ProjectTo<QuizDetailDto>(_mapper.ConfigurationProvider)
+                .AsNoTracking()
                 .ToListAsync();
 
-            return (items, total);
+            return new PagedResult<QuizDetailDto>
+            {
+                Items = items,
+                TotalCount = total,
+                Page = pageIndex,
+                PageSize = pageSize
+            };
         }
+
 
 
         public async Task<int> CreateQuiz(CreateQuizDto dto)

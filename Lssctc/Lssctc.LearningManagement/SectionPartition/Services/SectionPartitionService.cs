@@ -19,29 +19,16 @@ namespace Lssctc.LearningManagement.SectionPartition.Services
             _mapper = mapper;
         }
 
-        public async Task<PagedResult<SectionPartitionDto>> GetPagedAsync(
-    int pageIndex, int pageSize, int? sectionId, int? partitionTypeId, string? search)
+        public async Task<PagedResult<SectionPartitionDto>> GetSectionPartitionsPaged(int pageIndex, int pageSize)
         {
             if (pageIndex < 1) pageIndex = 1;
             if (pageSize < 1 || pageSize > 200) pageSize = 20;
 
             var q = _uow.SectionPartitionRepository.GetAllAsQueryable();
 
-            if (sectionId.HasValue) q = q.Where(x => x.SectionId == sectionId.Value);
-            if (partitionTypeId.HasValue) q = q.Where(x => x.PartitionTypeId == partitionTypeId.Value);
-
-            if (!string.IsNullOrWhiteSpace(search))
-            {
-                var s = string.Join(" ", search.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries));
-                q = q.Where(x =>
-                    (x.Name != null && x.Name.Contains(s)) ||
-                    (x.Description != null && x.Description.Contains(s)));
-            }
-
             var total = await q.CountAsync();
 
             var items = await q
-                .OrderByDescending(x => x.Id)
                 .Skip((pageIndex - 1) * pageSize)
                 .Take(pageSize)
                 .ProjectTo<SectionPartitionDto>(_mapper.ConfigurationProvider)
@@ -54,11 +41,11 @@ namespace Lssctc.LearningManagement.SectionPartition.Services
                 TotalCount = total,
                 Page = pageIndex,
                 PageSize = pageSize
-                // TotalPages tự tính từ property
             };
         }
 
-        public async Task<SectionPartitionDto?> GetByIdAsync(int id)
+
+        public async Task<SectionPartitionDto?> GetSectionPartitionById(int id)
         {
             var dto = await _uow.SectionPartitionRepository.GetAllAsQueryable()
                 .Where(x => x.Id == id)
@@ -69,7 +56,7 @@ namespace Lssctc.LearningManagement.SectionPartition.Services
             return dto;
         }
 
-        public async Task<int> CreateAsync(CreateSectionPartitionDto dto)
+        public async Task<int> CreateSectionPartition(CreateSectionPartitionDto dto)
         {
             if (dto == null) throw new ValidationException("Body is required.");
             if (dto.SectionId <= 0) throw new ValidationException("SectionId is invalid.");
@@ -99,7 +86,7 @@ namespace Lssctc.LearningManagement.SectionPartition.Services
             return entity.Id;
         }
 
-        public async Task<bool> UpdateAsync(int id, UpdateSectionPartitionDto dto)
+        public async Task<bool> UpdateSectionPartition(int id, UpdateSectionPartitionDto dto)
         {
             var entity = await _uow.SectionPartitionRepository.GetByIdAsync(id);
             if (entity == null) return false;
@@ -137,7 +124,7 @@ namespace Lssctc.LearningManagement.SectionPartition.Services
             return true;
         }
 
-        public async Task<bool> DeleteAsync(int id)
+        public async Task<bool> DeleteSectionPartition(int id)
         {
             var entity = await _uow.SectionPartitionRepository.GetByIdAsync(id);
             if (entity == null) return false;

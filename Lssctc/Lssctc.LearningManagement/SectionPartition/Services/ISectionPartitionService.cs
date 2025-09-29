@@ -5,16 +5,15 @@ namespace Lssctc.LearningManagement.SectionPartition.Services
 {
     public interface ISectionPartitionService
     {
-        Task<PagedResult<SectionPartitionDto>> GetPagedAsync(
-        int pageIndex, int pageSize, int? sectionId, int? partitionTypeId, string? search);
+        Task<PagedResult<SectionPartitionDto>> GetSectionPartitionsPaged(int pageIndex, int pageSize);
 
-        Task<SectionPartitionDto?> GetByIdAsync(int id);
+        Task<SectionPartitionDto?> GetSectionPartitionById(int id);
 
-        Task<int> CreateAsync(CreateSectionPartitionDto dto);
+        Task<int> CreateSectionPartition(CreateSectionPartitionDto dto);
 
-        Task<bool> UpdateAsync(int id, UpdateSectionPartitionDto dto);
+        Task<bool> UpdateSectionPartition(int id, UpdateSectionPartitionDto dto);
 
-        Task<bool> DeleteAsync(int id);
+        Task<bool> DeleteSectionPartition(int id);
 
     }
 

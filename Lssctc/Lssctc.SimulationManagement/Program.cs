@@ -4,7 +4,7 @@ using Lssctc.Share.Interfaces;
 using Lssctc.SimulationManagement.Components.Mappings;
 using Lssctc.SimulationManagement.Components.Services;
 using Lssctc.SimulationManagement.Practices.Services;
-using Lssctc.SimulationManagement.PracticeStepComponent.Mappings;
+
 using Lssctc.SimulationManagement.PracticeStepComponents.Services;
 using Lssctc.SimulationManagement.PracticeSteps.Services;
 using Lssctc.SimulationManagement.SectionPractice.Mappings;

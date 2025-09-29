@@ -17,36 +17,25 @@ namespace Lssctc.LearningManagement.Quizzes.Controllers
             _quizService = quizService;
         }
 
-        // GET: /api/quizzes?pageIndex=1&pageSize=20&search=an%20toan
+        // GET: /api/quizzes?pageIndex=1&pageSize=20
         [HttpGet]
         public async Task<IActionResult> GetDetailQuizzes(
             [FromQuery] int pageIndex = 1,
             [FromQuery] int pageSize = 20,
-            [FromQuery] string? search = null,
             CancellationToken ct = default)
         {
             if (pageIndex < 1) return BadRequest("pageIndex must be >= 1.");
             if (pageSize < 1 || pageSize > 200) return BadRequest("pageSize must be between 1 and 200.");
 
-            //chuẩn hoá search trước khi gửi xuống service
-            search = string.IsNullOrWhiteSpace(search) ? null : string.Join(" ",
-                search.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries));
+            var result = await _quizService.GetDetailQuizzes(pageIndex, pageSize);
 
-           
-            var (items, total) = await _quizService.GetDetailQuizzes(pageIndex, pageSize, search);
-
-            // Cho phép FE (trình duyệt) đọc header này qua CORS
-            Response.Headers["X-Total-Count"] = total.ToString();
+            // Cho phép FE đọc header này qua CORS
+            Response.Headers["X-Total-Count"] = result.TotalCount.ToString();
             Response.Headers["Access-Control-Expose-Headers"] = "X-Total-Count";
 
-            return Ok(new
-            {
-                pageIndex,
-                pageSize,
-                total,
-                items
-            });
+            return Ok(result);
         }
+
 
         [HttpGet("{id:int}")]
         public async Task<IActionResult> GetById([FromRoute] int id)
