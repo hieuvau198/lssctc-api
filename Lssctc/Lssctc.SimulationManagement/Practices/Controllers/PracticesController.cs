@@ -11,12 +11,11 @@ namespace Lssctc.SimulationManagement.Practices.Controllers
     public class PracticesController : ControllerBase
     {
         private readonly IPracticeService _practiceService;
-        private readonly IPracticeStepService _practiceStepService;
+        
 
-        public PracticesController(IPracticeService practiceService, IPracticeStepService practiceStepService)
+        public PracticesController(IPracticeService practiceService)
         {
             _practiceService = practiceService;
-            _practiceStepService = practiceStepService;
         }
 
         [HttpGet]
@@ -147,73 +146,7 @@ namespace Lssctc.SimulationManagement.Practices.Controllers
         }
 
 
-        // GET: api/practices/{practiceId}/steps
-        [HttpGet("{practiceId}/steps")]
-        public async Task<ActionResult<List<PracticeStepDto>>> GetPracticeStepsByPracticeId(int practiceId)
-        {
-            if (practiceId <= 0)
-                return BadRequest(new { message = "Invalid practice ID." });
-
-            var steps = await _practiceStepService.GetPracticeStepsByPracticeIdAsync(practiceId);
-            return Ok(steps);
-        }
-
-        // GET: api/practices/steps/{stepId}
-        [HttpGet("steps/{stepId}")]
-        public async Task<ActionResult<PracticeStepDto>> GetPracticeStepById(int stepId)
-        {
-            if (stepId <= 0)
-                return BadRequest(new { message = "Invalid step ID." });
-
-            var step = await _practiceStepService.GetPracticeStepByIdAsync(stepId);
-            if (step == null)
-                return NotFound(new { message = $"PracticeStep with ID {stepId} not found." });
-
-            return Ok(step);
-        }
-
-        // POST: api/practices/steps
-        [HttpPost("steps")]
-        public async Task<ActionResult<PracticeStepDto>> CreatePracticeStep([FromBody] CreatePracticeStepDto dto)
-        {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
-
-            var step = await _practiceStepService.CreatePracticeStepAsync(dto);
-
-            return CreatedAtAction(nameof(GetPracticeStepById), new { stepId = step.Id }, step);
-        }
-
-        // PUT: api/practices/steps/{stepId}
-        [HttpPut("steps/{stepId}")]
-        public async Task<ActionResult<PracticeStepDto>> UpdatePracticeStep(int stepId, [FromBody] UpdatePracticeStepDto dto)
-        {
-            if (stepId <= 0)
-                return BadRequest(new { message = "Invalid step ID." });
-
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
-
-            var step = await _practiceStepService.UpdatePracticeStepAsync(stepId, dto);
-            if (step == null)
-                return NotFound(new { message = $"PracticeStep with ID {stepId} not found." });
-
-            return Ok(step);
-        }
-
-        // DELETE: api/practices/steps/{stepId}
-        [HttpDelete("steps/{stepId}")]
-        public async Task<ActionResult> DeletePracticeStep(int stepId)
-        {
-            if (stepId <= 0)
-                return BadRequest(new { message = "Invalid step ID." });
-
-            var success = await _practiceStepService.DeletePracticeStepAsync(stepId);
-            if (!success)
-                return NotFound(new { message = $"PracticeStep with ID {stepId} not found." });
-
-            return NoContent();
-        }
+        
 
     }
 }

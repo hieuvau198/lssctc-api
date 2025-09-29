@@ -4,8 +4,8 @@ using Lssctc.Share.Interfaces;
 using Lssctc.SimulationManagement.Components.Mappings;
 using Lssctc.SimulationManagement.Components.Services;
 using Lssctc.SimulationManagement.Practices.Services;
-using Lssctc.SimulationManagement.PracticeStepComponent.Mappings;
-using Lssctc.SimulationManagement.PracticeStepComponent.Services;
+using Lssctc.SimulationManagement.PracticeStepComponents.Services;
+using Lssctc.SimulationManagement.PracticeSteps.Services;
 using Lssctc.SimulationManagement.SectionPractice.Mappings;
 using Lssctc.SimulationManagement.SectionPractice.Services;
 using Microsoft.AspNetCore.Cors.Infrastructure;
@@ -33,8 +33,9 @@ builder.Services.AddAutoMapper(typeof(ComponentMappingProfile), typeof(SectionPr
 builder.Services.AddScoped<IComponentService, ComponentService>();
 builder.Services.AddScoped<IPracticeService, PracticeService>();
 builder.Services.AddScoped<IPracticeStepService, PracticeStepService>();
-builder.Services.AddScoped<ISectionPracticeService, SectionPracticeService>();
 builder.Services.AddScoped<IPracticeStepComponentService, PracticeStepComponentService>();
+builder.Services.AddScoped<ISectionPracticeService, SectionPracticeService>();
+
 #endregion
 
 #region Cors
@@ -42,10 +43,10 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowClients",
         policy => policy
-            .WithOrigins("http://localhost:5173")
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials()
+            .AllowAnyHeader()
     );
 });
 #endregion
