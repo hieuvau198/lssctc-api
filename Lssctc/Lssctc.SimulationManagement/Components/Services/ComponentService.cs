@@ -23,18 +23,6 @@ namespace Lssctc.SimulationManagement.Components.Services
             var queryable = _unitOfWork.SimulationComponentRepository.GetAllAsQueryable()
                 .Where(x => x.IsDeleted != true);
 
-            if (!string.IsNullOrWhiteSpace(query.Name))
-            {
-                queryable = queryable.Where(x => x.Name.Contains(query.Name));
-            }
-
-            if (query.IsActive.HasValue)
-            {
-                queryable = queryable.Where(x => x.IsActive == query.IsActive);
-            }
-
-            queryable = ApplySorting(queryable, query.SortBy, query.SortDescending);
-
             var pagedResult = await queryable.ToPagedResultAsync(query.Page, query.PageSize);
 
             var dtos = _mapper.Map<IEnumerable<SimulationComponentDto>>(pagedResult.Items);
@@ -126,29 +114,5 @@ namespace Lssctc.SimulationManagement.Components.Services
             return await _unitOfWork.SimulationComponentRepository.ExistsAsync(predicate);
         }
 
-        private static IQueryable<SimulationComponent> ApplySorting(
-            IQueryable<SimulationComponent> queryable,
-            string? sortBy,
-            bool sortDescending)
-        {
-            if (string.IsNullOrWhiteSpace(sortBy))
-                sortBy = "Name";
-
-            return sortBy.ToLower() switch
-            {
-                "name" => sortDescending
-                    ? queryable.OrderByDescending(x => x.Name)
-                    : queryable.OrderBy(x => x.Name),
-                "createddate" => sortDescending
-                    ? queryable.OrderByDescending(x => x.CreatedDate)
-                    : queryable.OrderBy(x => x.CreatedDate),
-                "isactive" => sortDescending
-                    ? queryable.OrderByDescending(x => x.IsActive)
-                    : queryable.OrderBy(x => x.IsActive),
-                _ => sortDescending
-                    ? queryable.OrderByDescending(x => x.Name)
-                    : queryable.OrderBy(x => x.Name)
-            };
-        }
     }
 }
