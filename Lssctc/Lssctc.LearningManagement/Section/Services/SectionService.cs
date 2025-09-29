@@ -21,38 +21,20 @@ namespace Lssctc.LearningManagement.Section.Services
             _mapper = mapper;
         }
 
-        public async Task<PagedResult<SectionListItemDto>> GetSections(
-     int pageIndex, int pageSize,
-     int? classesId = null,
-     int? syllabusSectionId = null,
-     int? status = null,
-     string? search = null)
+        public async Task<PagedResult<SectionListItemDto>> GetSections(SectionQueryParameters p)
         {
-            if (pageIndex < 1) pageIndex = 1;
-            if (pageSize <= 0 || pageSize > 200) pageSize = 20;
+            // Chuẩn hoá pagination
+            var page = p.PageNumber < 1 ? 1 : p.PageNumber;
+            var size = (p.PageSize <= 0 || p.PageSize > 200) ? 20 : p.PageSize;
 
             var q = _uow.SectionRepository.GetAllAsQueryable();
-
-            if (classesId.HasValue) q = q.Where(s => s.ClassesId == classesId.Value);
-            if (syllabusSectionId.HasValue) q = q.Where(s => s.SyllabusSectionId == syllabusSectionId.Value);
-            if (status.HasValue) q = q.Where(s => s.Status == status.Value);
-
-            if (!string.IsNullOrWhiteSpace(search))
-            {
-                var s = string.Join(" ", search.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries));
-                q = q.Where(x =>
-                    (x.Name != null && x.Name.Contains(s)) ||
-                    (x.Description != null && x.Description.Contains(s)));
-            }
 
             var total = await q.CountAsync();
 
             var items = await q
-                .OrderBy(s => s.ClassesId)
-                .ThenBy(s => s.Order)
                 .ProjectTo<SectionListItemDto>(_mapper.ConfigurationProvider)
-                .Skip((pageIndex - 1) * pageSize)
-                .Take(pageSize)
+                .Skip((page - 1) * size)
+                .Take(size)
                 .AsNoTracking()
                 .ToListAsync();
 
@@ -60,13 +42,13 @@ namespace Lssctc.LearningManagement.Section.Services
             {
                 Items = items,
                 TotalCount = total,
-                Page = pageIndex,
-                PageSize = pageSize
-                // TotalPages tự tính
+                Page = page,
+                PageSize = size
             };
         }
 
-        public async Task<SectionDto?> GetById(int id)
+
+        public async Task<SectionDto?> GetSectionById(int id)
         {
             var dto = await _uow.SectionRepository.GetAllAsQueryable()
                 .Where(s => s.Id == id)
@@ -76,7 +58,7 @@ namespace Lssctc.LearningManagement.Section.Services
             return dto;
         }
 
-        public async Task<int> Create(CreateSectionDto dto)
+        public async Task<int> CreateSection(CreateSectionDto dto)
         {
             if (dto == null) throw new ValidationException("Body is required.");
 
@@ -122,7 +104,7 @@ namespace Lssctc.LearningManagement.Section.Services
             return entity.Id;
         }
 
-        public async Task<bool> Update(int id, UpdateSectionDto dto)
+        public async Task<bool> UpdateSection(int id, UpdateSectionDto dto)
         {
             var entity = await _uow.SectionRepository.GetByIdAsync(id);
             if (entity == null) return false;
@@ -178,7 +160,7 @@ namespace Lssctc.LearningManagement.Section.Services
             return true;
         }
 
-        public async Task<bool> Delete(int id)
+        public async Task<bool> DeleteSectionById(int id)
         {
             var entity = await _uow.SectionRepository.GetByIdAsync(id);
             if (entity == null) return false;

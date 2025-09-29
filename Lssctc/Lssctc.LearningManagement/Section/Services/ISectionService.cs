@@ -5,16 +5,11 @@ namespace Lssctc.LearningManagement.Section.Services
 {
     public interface ISectionService
     {
-        Task<PagedResult<SectionListItemDto>> GetSections(
-        int pageIndex, int pageSize,
-        int? classesId = null,
-        int? syllabusSectionId = null,
-        int? status = null,
-        string? search = null);
+        Task<PagedResult<SectionListItemDto>> GetSections(SectionQueryParameters parameters);
 
-        Task<SectionDto?> GetById(int id);
-        Task<int> Create(CreateSectionDto dto);
-        Task<bool> Update(int id, UpdateSectionDto dto);
-        Task<bool> Delete(int id);
+        Task<SectionDto?> GetSectionById(int id);
+        Task<int> CreateSection(CreateSectionDto dto);
+        Task<bool> UpdateSection(int id, UpdateSectionDto dto);
+        Task<bool> DeleteSectionById(int id);
     }
 }

@@ -4,6 +4,7 @@ using Lssctc.Share.Interfaces;
 using Lssctc.SimulationManagement.Components.Mappings;
 using Lssctc.SimulationManagement.Components.Services;
 using Lssctc.SimulationManagement.Practices.Services;
+using Lssctc.SimulationManagement.PracticeStepComponent.Mappings;
 using Lssctc.SimulationManagement.PracticeStepComponents.Services;
 using Lssctc.SimulationManagement.PracticeSteps.Services;
 using Lssctc.SimulationManagement.SectionPractice.Mappings;
@@ -29,7 +30,7 @@ builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepositor
 #endregion
 
 #region Application Services
-builder.Services.AddAutoMapper(typeof(ComponentMappingProfile), typeof(SectionPracticeMapper), typeof(PracticeStepComponentMapper));
+builder.Services.AddAutoMapper(typeof(ComponentMappingProfile), typeof(SectionPracticeMapper));
 builder.Services.AddScoped<IComponentService, ComponentService>();
 builder.Services.AddScoped<IPracticeService, PracticeService>();
 builder.Services.AddScoped<IPracticeStepService, PracticeStepService>();

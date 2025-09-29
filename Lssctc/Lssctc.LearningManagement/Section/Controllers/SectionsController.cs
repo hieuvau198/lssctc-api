@@ -19,34 +19,29 @@ namespace Lssctc.LearningManagement.Section.Controllers
 
         // GET: /api/sections?pageIndex=1&pageSize=20&classesId=1&syllabusSectionId=2&status=1&search=crane
         [HttpGet]
-        public async Task<IActionResult> GetSections(
-             [FromQuery] int pageIndex = 1,
-             [FromQuery] int pageSize = 20,
-             [FromQuery] int? classesId = null,
-             [FromQuery] int? syllabusSectionId = null,
-             [FromQuery] int? status = null,
-             [FromQuery] string? search = null)
+        public async Task<IActionResult> GetSections([FromQuery] SectionQueryParameters parameters)
         {
-            var page = await _service.GetSections(pageIndex, pageSize, classesId, syllabusSectionId, status, search);
-
-            // (tuỳ chọn) expose tổng record cho FE
-            Response.Headers["X-Total-Count"] = page.TotalCount.ToString();
-            Response.Headers["Access-Control-Expose-Headers"] = "X-Total-Count";
-
-            return Ok(new
+            try
             {
-                success = true,
-                statusCode = 200,
-                message = "Get sections successfully.",
-                data = page
-                // page gồm: Items, TotalCount, Page, PageSize, TotalPages
-            });
+                var result = await _service.GetSections(parameters);
+
+                // (optional) expose total for FE
+                Response.Headers["X-Total-Count"] = result.TotalCount.ToString();
+                Response.Headers["Access-Control-Expose-Headers"] = "X-Total-Count";
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                // đồng bộ kiểu trả lỗi như CoursesController
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
+            }
         }
 
         [HttpGet("{id:int}")]
         public async Task<IActionResult> GetById([FromRoute] int id)
         {
-            var dto = await _service.GetById(id);
+            var dto = await _service.GetSectionById(id);
             if (dto is null)
                 return NotFound(new { success = false, message = "Section not found." });
 
@@ -60,11 +55,11 @@ namespace Lssctc.LearningManagement.Section.Controllers
 
 
         [HttpPost]
-        public async Task<IActionResult> Create([FromBody] CreateSectionDto dto)
+        public async Task<IActionResult> CreateSection([FromBody] CreateSectionDto dto)
         {
             try
             {
-                var id = await _service.Create(dto);
+                var id = await _service.CreateSection(dto);
                 return CreatedAtAction(nameof(GetById), new { id }, new
                 {
                     success = true,
@@ -79,11 +74,11 @@ namespace Lssctc.LearningManagement.Section.Controllers
         }
 
         [HttpPut("{id:int}")]
-        public async Task<IActionResult> Update([FromRoute] int id, [FromBody] UpdateSectionDto dto)
+        public async Task<IActionResult> UpdateSection([FromRoute] int id, [FromBody] UpdateSectionDto dto)
         {
             try
             {
-                var ok = await _service.Update(id, dto);
+                var ok = await _service.UpdateSection(id, dto);
                 if (!ok) return NotFound(new { success = false, message = "Section not found." });
 
                 return Ok(new
@@ -99,11 +94,11 @@ namespace Lssctc.LearningManagement.Section.Controllers
         }
 
         [HttpDelete("{id:int}")]
-        public async Task<IActionResult> Delete([FromRoute] int id)
+        public async Task<IActionResult> DeleteSectionById([FromRoute] int id)
         {
             try
             {
-                var ok = await _service.Delete(id);
+                var ok = await _service.DeleteSectionById(id);
                 if (!ok) return NotFound(new { success = false, message = "Section not found." });
 
                 return Ok(new
