@@ -36,6 +36,27 @@ namespace Lssctc.ProgramManagement.Classes.Controller
             }
         }
         /// <summary>
+        /// Get all classes by ProgramCourseId
+        /// </summary>
+        [HttpGet("programcourse/{programCourseId}")]
+        public async Task<IActionResult> GetClassesByProgramCourseId(int programCourseId)
+        {
+            try
+            {
+                var result = await _classService.GetClassesByProgramCourseIdAsync(programCourseId);
+
+                if (result == null || !result.Any())
+                    return NotFound($"No classes found for ProgramCourseId = {programCourseId}");
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        /// <summary>
         /// Create a new empty Class
         /// </summary>
         [HttpPost("create")]

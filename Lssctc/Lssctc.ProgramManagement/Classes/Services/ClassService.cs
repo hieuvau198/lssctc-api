@@ -48,6 +48,28 @@ namespace Lssctc.ProgramManagement.Classes.Services
                 PageSize = pageSize
             };
         }
+
+        public async Task<List<ClassDto>> GetClassesByProgramCourseIdAsync(int programCourseId)
+        {
+            if (programCourseId <= 0)
+                throw new Exception("Invalid ProgramCourseId");
+            if (_unitOfWork.ProgramCourseRepository.GetByIdAsync(programCourseId) == null)
+                throw new Exception("ProgramCourse not found");
+            var query = _unitOfWork.ClassRepository
+                .GetAllAsQueryable()
+                .Include(c => c.ClassCode)
+                .Include(c => c.ClassInstructors)
+                .Include(c => c.ClassMembers)
+                .Where(c => c.ProgramCourseId == programCourseId)
+                .AsNoTracking();
+
+            var items = await query
+                .OrderByDescending(c => c.StartDate)
+                .ToListAsync();
+
+            return _mapper.Map<List<ClassDto>>(items);
+        }
+
         public async Task<ClassDto> CreateClassByProgramCourseId(ClassCreateDto dto)
         {
             // Validate ProgramCourse
@@ -151,7 +173,8 @@ namespace Lssctc.ProgramManagement.Classes.Services
 
             // map to entity
             var enrollment = _mapper.Map<ClassRegistration>(dto);
-            enrollment.Status = 1; // 1 = Pending
+            //enrollment.Status = (int)ClassRegistrationStatus.Pending; // 1 = Pending
+            enrollment.Status = (int)ClassRegistrationStatus.Approved; // 1 = Pending
 
             await _unitOfWork.ClassRegisRepository.CreateAsync(enrollment);
             await _unitOfWork.SaveChangesAsync();

@@ -10,7 +10,7 @@ namespace Lssctc.LearningManagement.Quizzes.Services
         Task<int> CreateQuiz(CreateQuizDto dto);
         Task<bool> UpdateQuizById(int id, UpdateQuizDto dto);
         Task<bool> DeleteQuizById(int id);
-        // Add method: Get questions by quizId
+       
         Task<QuizDetailDto?> GetQuizDetail(int quizId, CancellationToken ct = default);
         Task<QuizTraineeDetailDto?> GetQuizDetailForTrainee(
     int quizId, CancellationToken ct = default);
@@ -22,6 +22,15 @@ namespace Lssctc.LearningManagement.Quizzes.Services
         Task<IReadOnlyList<QuizDetailQuestionOptionDto>> GetOptionsByQuestionId(
         int questionId, CancellationToken ct = default);
         Task<QuizQuestionOptionDto?> GetOptionById(int optionId);
-       
+
+        // get quizzes by Section Quiz id
+        Task<QuizTraineeDetailDto?> GetQuizTraineeDetailBySectionQuizIdAsync(
+     int sectionQuizId, CancellationToken ct = default);
+
+        //create question and option question by quiz id
+        Task<int> CreateQuestionWithOptionsByQuizId(
+    int quizId, CreateQuizQuestionWithOptionsDto dto);
+
+
     }
 }

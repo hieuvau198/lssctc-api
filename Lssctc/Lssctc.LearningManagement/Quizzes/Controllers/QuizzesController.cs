@@ -171,5 +171,55 @@ namespace Lssctc.LearningManagement.Quizzes.Controllers
             catch (ValidationException ex) { return BadRequest(new { error = ex.Message }); }
         }
 
+
+        // GET /api/Quizzes/by-section-quiz/{sectionQuizId}/trainee-view
+        [HttpGet("by-section-quiz/{sectionQuizId:int}/trainee-view")]
+        public async Task<IActionResult> GetQuizTraineeViewBySectionQuiz(
+            [FromRoute] int sectionQuizId,
+            CancellationToken ct = default)
+        {
+            if (sectionQuizId <= 0)
+                return BadRequest(new { error = "sectionQuizId must be a positive integer." });
+
+            try
+            {
+                var dto = await _quizService.GetQuizTraineeDetailBySectionQuizIdAsync(sectionQuizId, ct);
+                if (dto == null)
+                    return NotFound(new { error = $"No quiz (trainee view) found for section_quiz id = {sectionQuizId}." });
+
+                return Ok(dto);
+            }
+            catch (Exception ex)
+            {
+                // TODO: log ex
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    new { error = "Unexpected error.", detail = ex.Message });
+            }
+        }
+
+        // create question and option by quiz id
+
+        [HttpPost("{quizId:int}/questions-with-options")]
+        public async Task<IActionResult> CreateQuestionWithOptions(
+    [FromRoute] int quizId,
+    [FromBody] CreateQuizQuestionWithOptionsDto dto)
+        {
+            try
+            {
+                var questionId = await _quizService.CreateQuestionWithOptionsByQuizId(quizId, dto);
+
+                // có thể trả về link xem quiz detail của teacher hoặc trainee
+                return CreatedAtAction(
+                    nameof(GetDetail), // GET: /api/quizzes/{id}/questions
+                    new { id = quizId },
+                    new { id = questionId }
+                );
+            }
+            catch (KeyNotFoundException ex) { return NotFound(new { error = ex.Message }); }
+            catch (ValidationException ex) { return BadRequest(new { error = ex.Message }); }
+        }
+
+
+
     }
 }
