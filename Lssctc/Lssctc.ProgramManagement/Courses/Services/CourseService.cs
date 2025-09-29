@@ -21,11 +21,10 @@ namespace Lssctc.ProgramManagement.Courses.Services
 
         public async Task<PagedResult<CourseDto>> GetCourses(CourseQueryParameters parameters)
         {
-            var query = _unitOfWork.CourseRepository.GetAllAsQueryable()
+            IQueryable<Course> query = _unitOfWork.CourseRepository.GetAllAsQueryable()
                 .Include(c => c.Category)
                 .Include(c => c.Level)
-                .Include(c => c.CourseCode)
-                .Where(c => c.IsDeleted == false);
+                .Include(c => c.CourseCode);
 
             // 🔍 Filtering
             if (!string.IsNullOrEmpty(parameters.SearchTerm))
@@ -70,7 +69,7 @@ namespace Lssctc.ProgramManagement.Courses.Services
                 .Include(c => c.Category)
                 .Include(c => c.Level)
                 .Include(c => c.CourseCode)
-                .FirstOrDefaultAsync(c => c.Id == id && c.IsDeleted == false);
+                .FirstOrDefaultAsync(c => c.Id == id);
 
             return course == null ? null : _mapper.Map<CourseDto>(course);
         }
@@ -80,7 +79,7 @@ namespace Lssctc.ProgramManagement.Courses.Services
                 .Include(c => c.Category)
                 .Include(c => c.Level)
                 .Include(c => c.CourseCode)
-                .Where(c => c.IsDeleted == false && c.CategoryId == categoryId)
+                .Where(c =>  c.CategoryId == categoryId)
                 .OrderBy(c => c.Name);
 
             var pagedResult = await query.ToPagedResultAsync(pageNumber, pageSize);
@@ -100,7 +99,7 @@ namespace Lssctc.ProgramManagement.Courses.Services
                 .Include(c => c.Category)
                 .Include(c => c.Level)
                 .Include(c => c.CourseCode)
-                .Where(c => c.IsDeleted == false && c.LevelId == levelId)
+                .Where(c => c.LevelId == levelId)
                 .OrderBy(c => c.Name);
 
             var pagedResult = await query.ToPagedResultAsync(pageNumber, pageSize);
@@ -115,11 +114,10 @@ namespace Lssctc.ProgramManagement.Courses.Services
         }
         public async Task<PagedResult<CourseDto>> GetCoursesByFilter(int? categoryId, int? levelId, int pageNumber, int pageSize)
         {
-            var query = _unitOfWork.CourseRepository.GetAllAsQueryable()
+            IQueryable<Course> query = _unitOfWork.CourseRepository.GetAllAsQueryable()
                 .Include(c => c.Category)
                 .Include(c => c.Level)
-                .Include(c => c.CourseCode)
-                .Where(c => c.IsDeleted == false);
+                .Include(c => c.CourseCode);
 
             if (categoryId.HasValue)
                 query = query.Where(c => c.CategoryId == categoryId.Value);
