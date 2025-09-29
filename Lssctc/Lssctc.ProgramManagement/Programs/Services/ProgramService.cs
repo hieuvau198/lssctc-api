@@ -242,6 +242,7 @@ namespace Lssctc.ProgramManagement.Programs.Services
                 {
                     existing.CourseOrder = courseOrderDto.Order;
                     // no need to re-add, EF is already tracking it
+                    await _unitOfWork.ProgramCourseRepository.UpdateAsync(existing);
                 }
                 else
                 {
