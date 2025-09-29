@@ -1,4 +1,4 @@
-﻿namespace Lssctc.SimulationManagement.Practices.Dtos
+﻿namespace Lssctc.SimulationManagement.PracticeSteps.Dtos
 {
     public class PracticeStepDto
     {
@@ -27,4 +27,15 @@
         public int? StepOrder { get; set; }
     }
 
+    public class PracticeStepComponentDto
+    {
+        public int Id { get; set; }
+        public int PracticeStepId { get; set; }
+        public int ComponentId { get; set; }
+        public string? ComponentName { get; set; }
+        public string? ComponentDescription { get; set; }
+        public int DisplayOrder { get; set; }
+        public string? ComponentImageUrl { get; set; }
+
+    }
 }

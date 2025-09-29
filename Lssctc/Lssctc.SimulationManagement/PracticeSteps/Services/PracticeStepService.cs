@@ -1,10 +1,10 @@
 ﻿using AutoMapper;
 using Lssctc.Share.Entities;
 using Lssctc.Share.Interfaces;
-using Lssctc.SimulationManagement.Practices.Dtos;
+using Lssctc.SimulationManagement.PracticeSteps.Dtos;
 using Microsoft.EntityFrameworkCore;
 
-namespace Lssctc.SimulationManagement.Practices.Services
+namespace Lssctc.SimulationManagement.PracticeSteps.Services
 {
     public class PracticeStepService : IPracticeStepService
     {
