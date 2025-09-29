@@ -1,5 +1,9 @@
-﻿using Lssctc.LearningManagement.Quizzes.Services;
-using Lssctc.LearningManagement.Quizzes.Mappings;
+﻿using Lssctc.LearningManagement.Quizzes.Mappings;
+using Lssctc.LearningManagement.Quizzes.Services;
+using Lssctc.LearningManagement.Section.Mappings;
+using Lssctc.LearningManagement.Section.Services;
+using Lssctc.LearningManagement.SectionPartition.Mappings;
+using Lssctc.LearningManagement.SectionPartition.Services;
 using Lssctc.Share.Contexts;
 using Lssctc.Share.Implements;
 using Lssctc.Share.Interfaces;
@@ -13,7 +17,7 @@ builder.Services.AddDbContext<LssctcDbContext>(opt =>
 #endregion
 
 // AutoMapper
-builder.Services.AddAutoMapper(typeof(QuizMapper).Assembly);
+builder.Services.AddAutoMapper(typeof(QuizMapper).Assembly, typeof(SectionMapper).Assembly, typeof(SectionPartitionMapper).Assembly);
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -22,10 +26,13 @@ builder.Services.AddSwaggerGen();
 #region Domain
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
+
 #endregion
 
 #region Application Services
 builder.Services.AddScoped<IQuizService, QuizService>();
+builder.Services.AddScoped<ISectionService, SectionService>();
+builder.Services.AddScoped<ISectionPartitionService, SectionPartitionService>();
 #endregion
 
 // ================== ADD CORS ==================
