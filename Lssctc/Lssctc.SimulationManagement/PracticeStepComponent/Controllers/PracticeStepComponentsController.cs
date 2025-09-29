@@ -34,13 +34,7 @@ namespace Lssctc.SimulationManagement.PracticeStepComponent.Controllers
                 StatusCode = 200,
                 Message = "Get practice step components successfully.",
                 Data = result.Items,
-                Pagination = new Pagination
-                {
-                    PageIndex = result.Page,
-                    PageSize = result.PageSize,
-                    TotalItems = result.TotalCount,
-                    TotalPages = result.TotalPages
-                }
+              
             });
         }
     }

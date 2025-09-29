@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using AutoMapper.QueryableExtensions;
 using Lssctc.LearningManagement.SectionPartition.DTOs;
+using Lssctc.Share.Common;
 using Lssctc.Share.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
@@ -18,8 +19,8 @@ namespace Lssctc.LearningManagement.SectionPartition.Services
             _mapper = mapper;
         }
 
-        public async Task<(IReadOnlyList<SectionPartitionDto> Items, int Total)> GetPagedAsync(
-            int pageIndex, int pageSize, int? sectionId, int? partitionTypeId, string? search)
+        public async Task<PagedResult<SectionPartitionDto>> GetPagedAsync(
+    int pageIndex, int pageSize, int? sectionId, int? partitionTypeId, string? search)
         {
             if (pageIndex < 1) pageIndex = 1;
             if (pageSize < 1 || pageSize > 200) pageSize = 20;
@@ -32,8 +33,9 @@ namespace Lssctc.LearningManagement.SectionPartition.Services
             if (!string.IsNullOrWhiteSpace(search))
             {
                 var s = string.Join(" ", search.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries));
-                q = q.Where(x => (x.Name != null && x.Name.Contains(s)) ||
-                                 (x.Description != null && x.Description.Contains(s)));
+                q = q.Where(x =>
+                    (x.Name != null && x.Name.Contains(s)) ||
+                    (x.Description != null && x.Description.Contains(s)));
             }
 
             var total = await q.CountAsync();
@@ -46,7 +48,14 @@ namespace Lssctc.LearningManagement.SectionPartition.Services
                 .AsNoTracking()
                 .ToListAsync();
 
-            return (items, total);
+            return new PagedResult<SectionPartitionDto>
+            {
+                Items = items,
+                TotalCount = total,
+                Page = pageIndex,
+                PageSize = pageSize
+                // TotalPages tự tính từ property
+            };
         }
 
         public async Task<SectionPartitionDto?> GetByIdAsync(int id)

@@ -1,5 +1,6 @@
 ﻿using Lssctc.LearningManagement.SectionPartition.DTOs;
 using Lssctc.LearningManagement.SectionPartition.Services;
+using Lssctc.Share.Common;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
@@ -20,29 +21,25 @@ namespace Lssctc.LearningManagement.SectionPartition.Controllers
         // GET: /api/SectionPartitions?pageIndex=1&pageSize=20&sectionId=1&partitionTypeId=2&search=abc
         [HttpGet]
         public async Task<IActionResult> GetPaged(
-            [FromQuery] int pageIndex = 1,
-            [FromQuery] int pageSize = 20,
-            [FromQuery] int? sectionId = null,
-            [FromQuery] int? partitionTypeId = null,
-            [FromQuery] string? search = null)
+     [FromQuery] int pageIndex = 1,
+     [FromQuery] int pageSize = 20,
+     [FromQuery] int? sectionId = null,
+     [FromQuery] int? partitionTypeId = null,
+     [FromQuery] string? search = null)
         {
-            var (items, total) = await _svc.GetPagedAsync(pageIndex, pageSize, sectionId, partitionTypeId, search);
+            var page = await _svc.GetPagedAsync(pageIndex, pageSize, sectionId, partitionTypeId, search);
 
-            var pagination = new Pagination
-            {
-                PageIndex = pageIndex,
-                PageSize = pageSize,
-                TotalItems = total,
-                TotalPages = (int)Math.Ceiling(total / (double)pageSize)
-            };
+            // (tuỳ chọn) expose tổng record cho FE
+            Response.Headers["X-Total-Count"] = page.TotalCount.ToString();
+            Response.Headers["Access-Control-Expose-Headers"] = "X-Total-Count";
 
-            var resp = new ApiResponse<IEnumerable<SectionPartitionDto>>
+            var resp = new ApiResponse<PagedResult<SectionPartitionDto>>
             {
                 Success = true,
                 StatusCode = 200,
                 Message = "Get section partitions successfully.",
-                Data = items,
-                Pagination = pagination
+                Data = page,
+               
             };
 
             return Ok(resp);

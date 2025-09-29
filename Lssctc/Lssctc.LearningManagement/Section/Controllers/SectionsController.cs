@@ -20,19 +20,27 @@ namespace Lssctc.LearningManagement.Section.Controllers
         // GET: /api/sections?pageIndex=1&pageSize=20&classesId=1&syllabusSectionId=2&status=1&search=crane
         [HttpGet]
         public async Task<IActionResult> GetSections(
-            [FromQuery] int pageIndex = 1,
-            [FromQuery] int pageSize = 20,
-            [FromQuery] int? classesId = null,
-            [FromQuery] int? syllabusSectionId = null,
-            [FromQuery] int? status = null,
-            [FromQuery] string? search = null)
+             [FromQuery] int pageIndex = 1,
+             [FromQuery] int pageSize = 20,
+             [FromQuery] int? classesId = null,
+             [FromQuery] int? syllabusSectionId = null,
+             [FromQuery] int? status = null,
+             [FromQuery] string? search = null)
         {
-            var (items, total) = await _service.GetSections(pageIndex, pageSize, classesId, syllabusSectionId, status, search);
+            var page = await _service.GetSections(pageIndex, pageSize, classesId, syllabusSectionId, status, search);
 
-            Response.Headers["X-Total-Count"] = total.ToString();
+            // (tuỳ chọn) expose tổng record cho FE
+            Response.Headers["X-Total-Count"] = page.TotalCount.ToString();
             Response.Headers["Access-Control-Expose-Headers"] = "X-Total-Count";
 
-            return Ok(new { pageIndex, pageSize, total, items });
+            return Ok(new
+            {
+                success = true,
+                statusCode = 200,
+                message = "Get sections successfully.",
+                data = page
+                // page gồm: Items, TotalCount, Page, PageSize, TotalPages
+            });
         }
 
         [HttpGet("{id:int}")]

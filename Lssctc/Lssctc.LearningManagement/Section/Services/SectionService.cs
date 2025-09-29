@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using AutoMapper.QueryableExtensions;
 using Lssctc.LearningManagement.Section.DTOs;
+using Lssctc.Share.Common;
 using Lssctc.Share.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
@@ -20,12 +21,12 @@ namespace Lssctc.LearningManagement.Section.Services
             _mapper = mapper;
         }
 
-        public async Task<(IReadOnlyList<SectionListItemDto> Items, int Total)> GetSections(
-            int pageIndex, int pageSize,
-            int? classesId = null,
-            int? syllabusSectionId = null,
-            int? status = null,
-            string? search = null)
+        public async Task<PagedResult<SectionListItemDto>> GetSections(
+     int pageIndex, int pageSize,
+     int? classesId = null,
+     int? syllabusSectionId = null,
+     int? status = null,
+     string? search = null)
         {
             if (pageIndex < 1) pageIndex = 1;
             if (pageSize <= 0 || pageSize > 200) pageSize = 20;
@@ -46,15 +47,23 @@ namespace Lssctc.LearningManagement.Section.Services
 
             var total = await q.CountAsync();
 
-            var items = await q.OrderBy(s => s.ClassesId)
-                               .ThenBy(s => s.Order)
-                               .ProjectTo<SectionListItemDto>(_mapper.ConfigurationProvider)
-                               .Skip((pageIndex - 1) * pageSize)
-                               .Take(pageSize)
-                               .AsNoTracking()
-                               .ToListAsync();
+            var items = await q
+                .OrderBy(s => s.ClassesId)
+                .ThenBy(s => s.Order)
+                .ProjectTo<SectionListItemDto>(_mapper.ConfigurationProvider)
+                .Skip((pageIndex - 1) * pageSize)
+                .Take(pageSize)
+                .AsNoTracking()
+                .ToListAsync();
 
-            return (items, total);
+            return new PagedResult<SectionListItemDto>
+            {
+                Items = items,
+                TotalCount = total,
+                Page = pageIndex,
+                PageSize = pageSize
+                // TotalPages tự tính
+            };
         }
 
         public async Task<SectionDto?> GetById(int id)

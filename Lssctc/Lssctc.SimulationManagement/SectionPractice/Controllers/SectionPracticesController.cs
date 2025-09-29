@@ -1,4 +1,5 @@
-﻿using Lssctc.SimulationManagement.SectionPractice.Dtos;
+﻿using Lssctc.Share.Common;
+using Lssctc.SimulationManagement.SectionPractice.Dtos;
 using Lssctc.SimulationManagement.SectionPractice.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -20,32 +21,28 @@ namespace Lssctc.SimulationManagement.SectionPractice.Controllers
         // GET: /api/SectionPractices?pageIndex=1&pageSize=20&sectionPartitionId=1&practiceId=2&status=1&search=abc
         [HttpGet]
         public async Task<IActionResult> GetPaged(
-            [FromQuery] int pageIndex = 1,
-            [FromQuery] int pageSize = 20,
-            [FromQuery] int? sectionPartitionId = null,
-            [FromQuery] int? practiceId = null,
-            [FromQuery] int? status = null,
-            [FromQuery] string? search = null)
+    [FromQuery] int pageIndex = 1,
+    [FromQuery] int pageSize = 20,
+    [FromQuery] int? sectionPartitionId = null,
+    [FromQuery] int? practiceId = null,
+    [FromQuery] int? status = null,
+    [FromQuery] string? search = null)
         {
-            var (items, total) = await _svc.GetPagedAsync(pageIndex, pageSize, sectionPartitionId, practiceId, status, search);
+            var page = await _svc.GetPagedAsync(pageIndex, pageSize, sectionPartitionId, practiceId, status, search);
 
-            var pagination = new Pagination
-            {
-                PageIndex = pageIndex,
-                PageSize = pageSize,
-                TotalItems = total,
-                TotalPages = (int)Math.Ceiling(total / (double)pageSize)
-            };
+            // (Tuỳ chọn) đưa total ra header để FE dễ đọc
+            Response.Headers["X-Total-Count"] = page.TotalCount.ToString();
+            Response.Headers["Access-Control-Expose-Headers"] = "X-Total-Count";
 
-            var resp = new ApiResponse<IEnumerable<SectionPracticeDto>>
+            // Trả về ApiResponse gói PagedResult
+            var resp = new ApiResponse<PagedResult<SectionPracticeDto>>
             {
                 Success = true,
                 StatusCode = 200,
                 Message = "Get section practices successfully.",
-                Data = items,
-                Pagination = pagination
+                Data = page,
+                
             };
-
             return Ok(resp);
         }
 
@@ -86,7 +83,7 @@ namespace Lssctc.SimulationManagement.SectionPractice.Controllers
                     StatusCode = 201,
                     Message = "Create section practice successfully.",
                     Data = new { id },
-                    Pagination = null
+                   
                 });
             }
             catch (ValidationException ex)
@@ -97,7 +94,7 @@ namespace Lssctc.SimulationManagement.SectionPractice.Controllers
                     StatusCode = 400,
                     Message = $"Invalid input. {ex.Message}",
                     Data = null,
-                    Pagination = null
+                    
                 });
             }
             catch (KeyNotFoundException ex)
@@ -108,7 +105,7 @@ namespace Lssctc.SimulationManagement.SectionPractice.Controllers
                     StatusCode = 404,
                     Message = ex.Message,   // nhận message chi tiết từ service
                     Data = null,
-                    Pagination = null
+                   
                 });
             }
             catch (InvalidOperationException ex)
@@ -119,7 +116,7 @@ namespace Lssctc.SimulationManagement.SectionPractice.Controllers
                     StatusCode = 409,
                     Message = $"Conflict. {ex.Message}",
                     Data = null,
-                    Pagination = null
+                   
                 });
             }
         }
@@ -164,7 +161,7 @@ namespace Lssctc.SimulationManagement.SectionPractice.Controllers
                         StatusCode = 404,
                         Message = $"SectionPractice with id={id} not found.",
                         Data = null,
-                        Pagination = null
+                        
                     });
                 }
 
@@ -174,7 +171,7 @@ namespace Lssctc.SimulationManagement.SectionPractice.Controllers
                     StatusCode = 200,
                     Message = $"Delete section practice with id={id} successfully.",
                     Data = null,
-                    Pagination = null
+                    
                 });
             }
             catch (InvalidOperationException ex)
@@ -186,7 +183,7 @@ namespace Lssctc.SimulationManagement.SectionPractice.Controllers
                     StatusCode = 409,
                     Message = $"Cannot delete SectionPractice with id={id}: {ex.Message}",
                     Data = null,
-                    Pagination = null
+                    
                 });
             }
             catch (ValidationException ex)
@@ -197,7 +194,7 @@ namespace Lssctc.SimulationManagement.SectionPractice.Controllers
                     StatusCode = 400,
                     Message = $"Invalid input. {ex.Message}",
                     Data = null,
-                    Pagination = null
+                   
                 });
             }
         }

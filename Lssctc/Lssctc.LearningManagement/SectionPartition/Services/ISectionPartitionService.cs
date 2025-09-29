@@ -1,11 +1,12 @@
 ﻿using Lssctc.LearningManagement.SectionPartition.DTOs;
+using Lssctc.Share.Common;
 
 namespace Lssctc.LearningManagement.SectionPartition.Services
 {
     public interface ISectionPartitionService
     {
-        Task<(IReadOnlyList<SectionPartitionDto> Items, int Total)> GetPagedAsync(
-            int pageIndex, int pageSize, int? sectionId, int? partitionTypeId, string? search);
+        Task<PagedResult<SectionPartitionDto>> GetPagedAsync(
+        int pageIndex, int pageSize, int? sectionId, int? partitionTypeId, string? search);
 
         Task<SectionPartitionDto?> GetByIdAsync(int id);
 

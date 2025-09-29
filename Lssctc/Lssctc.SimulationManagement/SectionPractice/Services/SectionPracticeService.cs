@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using AutoMapper.QueryableExtensions;
+using Lssctc.Share.Common;
 using Lssctc.Share.Interfaces;
 using Lssctc.SimulationManagement.SectionPractice.Dtos;
 using Microsoft.EntityFrameworkCore;
@@ -75,27 +76,21 @@ namespace Lssctc.SimulationManagement.SectionPractice.Services
             return dto;
         }
 
-        public async Task<(IReadOnlyList<SectionPracticeDto> Items, int Total)> GetPagedAsync(
-             int pageIndex, int pageSize, int? sectionPartitionId, int? practiceId, int? status, string? search)
+        public async Task<PagedResult<SectionPracticeDto>> GetPagedAsync(
+    int pageIndex, int pageSize, int? sectionPartitionId, int? practiceId, int? status, string? search)
         {
             if (pageIndex < 1) pageIndex = 1;
             if (pageSize < 1 || pageSize > 200) pageSize = 20;
 
             var q = _uow.SectionPracticeRepository.GetAllAsQueryable();
 
-            if (sectionPartitionId.HasValue)
-                q = q.Where(x => x.SectionPartitionId == sectionPartitionId.Value);
-
-            if (practiceId.HasValue)
-                q = q.Where(x => x.PracticeId == practiceId.Value);
-
-            if (status.HasValue)
-                q = q.Where(x => x.Status == status.Value);
+            if (sectionPartitionId.HasValue) q = q.Where(x => x.SectionPartitionId == sectionPartitionId.Value);
+            if (practiceId.HasValue) q = q.Where(x => x.PracticeId == practiceId.Value);
+            if (status.HasValue) q = q.Where(x => x.Status == status.Value);
 
             if (!string.IsNullOrWhiteSpace(search))
             {
                 var s = string.Join(" ", search.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries));
-                // search vào custom_description
                 q = q.Where(x => x.CustomDescription != null && x.CustomDescription.Contains(s));
             }
 
@@ -109,7 +104,14 @@ namespace Lssctc.SimulationManagement.SectionPractice.Services
                 .AsNoTracking()
                 .ToListAsync();
 
-            return (items, total);
+            return new PagedResult<SectionPracticeDto>
+            {
+                Items = items,
+                TotalCount = total,
+                Page = pageIndex,
+                PageSize = pageSize
+                // TotalPages được tính từ property trong class
+            };
         }
 
         public async Task<bool> UpdateAsync(int id, UpdateSectionPracticeDto dto)
