@@ -18,6 +18,20 @@ namespace Lssctc.ProgramManagement.Courses.Controllers
             _courseService = courseService;
         }
 
+        [HttpGet("all")]
+        public async Task<IActionResult> GetAllCourses()
+        {
+            try
+            {
+                var courses = await _courseService.GetAllCourses();
+                return Ok(courses);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
+            }
+        }
+
         /// <summary>
         /// Retrieves a list of courses with optional query parameters for filtering and pagination.
         /// </summary>
