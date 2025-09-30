@@ -328,6 +328,7 @@ namespace Lssctc.ProgramManagement.Programs.Services
                 return false;
 
             program.IsDeleted = true;
+            program.IsActive = false;
             await _unitOfWork.ProgramRepository.UpdateAsync(program);
             await _unitOfWork.SaveChangesAsync();
 

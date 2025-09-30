@@ -48,12 +48,106 @@ namespace Lssctc.ProgramManagement.Classes.Services
                 PageSize = pageSize
             };
         }
+        public async Task<ClassDto> GetClassDetailById(int classId)
+        {
+            if (classId <= 0)
+                throw new Exception("Invalid classId");
+
+            var classEntity = await _unitOfWork.ClassRepository
+                .GetAllAsQueryable()
+                .Include(c => c.ClassCode)
+                .Include(c => c.ClassInstructors)
+                    .ThenInclude(ci => ci.Instructor)
+                        .ThenInclude(i => i.InstructorProfile)
+                .Include(c => c.ClassMembers)
+                    .ThenInclude(cm => cm.Trainee)
+                .Include(c => c.ClassRegistrations)
+                    .ThenInclude(cr => cr.Trainee)
+                .Include(c => c.Sections)
+                .FirstOrDefaultAsync(c => c.Id == classId);
+
+            if (classEntity == null)
+                throw new Exception("Class not found");
+
+            return _mapper.Map<ClassDto>(classEntity);
+        }
+        public async Task<ClassDto> UpdateClassBasicInfoAsync(int classId, ClassUpdateDto dto)
+        {
+            if (classId <= 0)
+                throw new Exception("Invalid classId");
+
+            var classEntity = await _unitOfWork.ClassRepository
+                .GetAllAsQueryable()
+                .Include(c => c.ClassCode)
+                .FirstOrDefaultAsync(c => c.Id == classId);
+
+            if (classEntity == null)
+                throw new Exception("Class not found");
+
+            // Update allowed properties
+            classEntity.Name = dto.Name;
+            classEntity.Description = dto.Description;
+            classEntity.StartDate = dto.StartDate;
+            classEntity.EndDate = dto.EndDate;
+            classEntity.Capacity = dto.Capacity;
+
+            // Handle ClassCode (optional change)
+            if (!string.IsNullOrWhiteSpace(dto.ClassCode) && classEntity.ClassCode?.Name != dto.ClassCode)
+            {
+                // Ensure uniqueness
+                var exists = await _unitOfWork.ClassCodeRepository
+                    .GetAllAsQueryable()
+                    .AnyAsync(cc => cc.Name == dto.ClassCode && cc.Id != classEntity.ClassCodeId);
+
+                if (exists)
+                    throw new Exception("ClassCode already exists");
+
+                // Update existing code entity
+                if (classEntity.ClassCode != null)
+                {
+                    classEntity.ClassCode.Name = dto.ClassCode;
+                    await _unitOfWork.ClassCodeRepository.UpdateAsync(classEntity.ClassCode);
+                }
+                else
+                {
+                    var newCode = new ClassCode { Name = dto.ClassCode };
+                    await _unitOfWork.ClassCodeRepository.CreateAsync(newCode);
+                    await _unitOfWork.SaveChangesAsync();
+                    classEntity.ClassCodeId = newCode.Id;
+                }
+            }
+
+            await _unitOfWork.ClassRepository.UpdateAsync(classEntity);
+            await _unitOfWork.SaveChangesAsync();
+
+            return _mapper.Map<ClassDto>(classEntity);
+        }
+        public async Task<bool> CancelClassAsync(int classId)
+        {
+            if (classId <= 0)
+                throw new Exception("Invalid classId");
+
+            var classEntity = await _unitOfWork.ClassRepository.GetByIdAsync(classId);
+            if (classEntity == null)
+                throw new Exception("Class not found");
+
+            if (classEntity.Status == (int)ClassStatus.Cancelled)
+                throw new Exception("Class is already archived");
+
+            classEntity.Status = (int)ClassStatus.Cancelled;
+            await _unitOfWork.ClassRepository.UpdateAsync(classEntity);
+            await _unitOfWork.SaveChangesAsync();
+
+            return true;
+        }
+
 
         public async Task<List<ClassDto>> GetClassesByProgramCourseIdAsync(int programCourseId)
         {
             if (programCourseId <= 0)
                 throw new Exception("Invalid ProgramCourseId");
-            if (_unitOfWork.ProgramCourseRepository.GetByIdAsync(programCourseId) == null)
+            var programCourse = await _unitOfWork.ProgramCourseRepository.GetByIdAsync(programCourseId);
+            if (programCourse == null)
                 throw new Exception("ProgramCourse not found");
             var query = _unitOfWork.ClassRepository
                 .GetAllAsQueryable()
@@ -149,10 +243,64 @@ namespace Lssctc.ProgramManagement.Classes.Services
 
 
         //create class enrollment
+        //public async Task<ClassEnrollmentDto> EnrollTrainee(ClassEnrollmentCreateDto dto)
+        //{
+        //    if (dto.ClassId <= 0) throw new Exception("Invalid ClassId");
+        //    if (dto.TraineeId <= 0) throw new Exception("Invalid TraineeId");
+
+        //    // validate class
+        //    var classEntity = await _unitOfWork.ClassRepository
+        //        .GetAllAsQueryable()
+        //        .Include(c => c.ClassRegistrations)
+        //        .FirstOrDefaultAsync(c => c.Id == dto.ClassId);
+
+        //    if (classEntity == null)
+        //        throw new Exception("Class not found");
+
+        //    // validate trainee
+        //    var trainee = await _unitOfWork.TraineeRepository.GetByIdAsync(dto.TraineeId);
+        //    if (trainee == null)
+        //        throw new Exception("Trainee not found");
+
+        //    // check if already enrolled
+        //    if (classEntity.ClassRegistrations.Any(e => e.TraineeId == dto.TraineeId))
+        //        throw new Exception("Trainee already enrolled in this class");
+
+        //    // map to entity
+        //    var enrollment = _mapper.Map<ClassRegistration>(dto);
+        //    enrollment.Status = (int)ClassRegistrationStatus.Approved;
+        //    enrollment.ApprovedDate = DateTime.UtcNow;
+
+        //    await _unitOfWork.ClassRegisRepository.CreateAsync(enrollment);
+
+        //    // also create class member (auto-approved behavior)
+        //    var member = new ClassMember
+        //    {
+        //        ClassId = enrollment.ClassId,
+        //        TraineeId = enrollment.TraineeId,
+        //        AssignedDate = DateTime.UtcNow,
+        //        Status = (int)ClassMemberStatus.Studying 
+
+        //    };
+
+        //    await _unitOfWork.ClassMemberRepository.CreateAsync(member);
+
+        //    await _unitOfWork.SaveChangesAsync();
+
+        //    // reload enrollment with nav props
+        //    enrollment = await _unitOfWork.ClassRegisRepository
+        //        .GetAllAsQueryable()
+        //        .Include(e => e.Class)
+        //        .Include(e => e.Trainee)
+        //        .FirstOrDefaultAsync(e => e.Id == enrollment.Id);
+
+        //    return _mapper.Map<ClassEnrollmentDto>(enrollment);
+        //}
         public async Task<ClassEnrollmentDto> EnrollTrainee(ClassEnrollmentCreateDto dto)
         {
             if (dto.ClassId <= 0) throw new Exception("Invalid ClassId");
             if (dto.TraineeId <= 0) throw new Exception("Invalid TraineeId");
+
             // validate class
             var classEntity = await _unitOfWork.ClassRepository
                 .GetAllAsQueryable()
@@ -173,13 +321,25 @@ namespace Lssctc.ProgramManagement.Classes.Services
 
             // map to entity
             var enrollment = _mapper.Map<ClassRegistration>(dto);
-            //enrollment.Status = (int)ClassRegistrationStatus.Pending; // 1 = Pending
-            enrollment.Status = (int)ClassRegistrationStatus.Approved; // 1 = Pending
+            enrollment.Status = (int)ClassRegistrationStatus.Approved;
+            enrollment.ApprovedDate = DateTime.UtcNow;
 
             await _unitOfWork.ClassRegisRepository.CreateAsync(enrollment);
+
+            // also create class member (auto-approved behavior)
+            var member = new ClassMember
+            {
+                ClassId = enrollment.ClassId,
+                TraineeId = enrollment.TraineeId,
+                AssignedDate = DateTime.UtcNow,
+                Status = (int)ClassMemberStatus.Studying 
+            };
+
+            await _unitOfWork.ClassMemberRepository.CreateAsync(member);
+
             await _unitOfWork.SaveChangesAsync();
 
-            // reload with nav props
+            // reload enrollment with nav props
             enrollment = await _unitOfWork.ClassRegisRepository
                 .GetAllAsQueryable()
                 .Include(e => e.Class)
@@ -188,6 +348,7 @@ namespace Lssctc.ProgramManagement.Classes.Services
 
             return _mapper.Map<ClassEnrollmentDto>(enrollment);
         }
+
 
         public async Task<ClassEnrollmentDto> GetClassEnrollmentById(int classid)
         {
@@ -216,7 +377,7 @@ namespace Lssctc.ProgramManagement.Classes.Services
             enrollment.ApprovedDate = DateTime.UtcNow;
             enrollment.Description = dto.Description ?? enrollment.Description;
 
-            _unitOfWork.ClassRegisRepository.UpdateAsync(enrollment);
+             await _unitOfWork.ClassRegisRepository.UpdateAsync(enrollment);
 
             // create class member
             var member = new ClassMember

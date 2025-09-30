@@ -8,6 +8,9 @@ namespace Lssctc.ProgramManagement.Classes.Services
     {
         // using string for ClassCode instead of int ClassCodeId
         Task<PagedResult<ClassDto>> GetAllClassesAsync(int page = 1, int pageSize = 10);
+        Task<ClassDto> GetClassDetailById(int classId);
+        Task<bool> CancelClassAsync(int classId);
+        Task<ClassDto> UpdateClassBasicInfoAsync(int classId, ClassUpdateDto dto);
         Task<List<ClassDto>> GetClassesByProgramCourseIdAsync(int programCourseId);
         Task<ClassDto> CreateClassByProgramCourseId(ClassCreateDto dto);
         Task<ClassDto> AssignInstructorToClass(AssignInstructorDto dto);

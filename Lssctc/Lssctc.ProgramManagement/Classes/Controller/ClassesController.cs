@@ -36,6 +36,70 @@ namespace Lssctc.ProgramManagement.Classes.Controller
             }
         }
         /// <summary>
+        /// Get class detail by ClassId
+        /// </summary>
+        [HttpGet("{classId}")]
+        public async Task<IActionResult> GetClassDetail(int classId)
+        {
+            try
+            {
+                var result = await _classService.GetClassDetailById(classId);
+
+                if (result == null)
+                    return NotFound($"Class with Id = {classId} not found.");
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+        /// <summary>
+        /// Update basic information of a class
+        /// </summary>
+        [HttpPut("{classId}")]
+        public async Task<IActionResult> UpdateClassBasicInfo(int classId, [FromBody] ClassUpdateDto dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            try
+            {
+                var result = await _classService.UpdateClassBasicInfoAsync(classId, dto);
+
+                if (result == null)
+                    return NotFound($"Class with Id = {classId} not found.");
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Cancel a class (soft delete by setting status to Cancelled)
+        /// </summary>
+        [HttpDelete("{classId}")]
+        public async Task<IActionResult> CancelClass(int classId)
+        {
+            try
+            {
+                var success = await _classService.CancelClassAsync(classId);
+
+                if (!success)
+                    return NotFound($"Class with Id = {classId} not found or already cancelled.");
+
+                return Ok($"Class {classId} has been cancelled.");
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+        /// <summary>
         /// Get all classes by ProgramCourseId
         /// </summary>
         [HttpGet("programcourse/{programCourseId}")]
