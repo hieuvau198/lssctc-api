@@ -1,6 +1,6 @@
-﻿using Lssctc.SimulationManagement.SectionPractice.Dtos;
+﻿using Lssctc.Share.Common;
+using Lssctc.SimulationManagement.SectionPractice.Dtos;
 using Lssctc.SimulationManagement.SectionPractice.Services;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
 
@@ -17,191 +17,103 @@ namespace Lssctc.SimulationManagement.SectionPractice.Controllers
             _svc = svc;
         }
 
-        // GET: /api/SectionPractices?pageIndex=1&pageSize=20&sectionPartitionId=1&practiceId=2&status=1&search=abc
+        // GET: /api/SectionPractices?pageIndex=1&pageSize=20
         [HttpGet]
-        public async Task<IActionResult> GetPaged(
+        public async Task<IActionResult> GetSectionPracticesPaged(
             [FromQuery] int pageIndex = 1,
-            [FromQuery] int pageSize = 20,
-            [FromQuery] int? sectionPartitionId = null,
-            [FromQuery] int? practiceId = null,
-            [FromQuery] int? status = null,
-            [FromQuery] string? search = null)
+            [FromQuery] int pageSize = 20)
         {
-            var (items, total) = await _svc.GetPagedAsync(pageIndex, pageSize, sectionPartitionId, practiceId, status, search);
+            if (pageIndex < 1) return BadRequest(new { message = "pageIndex must be >= 1." });
+            if (pageSize < 1 || pageSize > 200) return BadRequest(new { message = "pageSize must be between 1 and 200." });
 
-            var pagination = new Pagination
-            {
-                PageIndex = pageIndex,
-                PageSize = pageSize,
-                TotalItems = total,
-                TotalPages = (int)Math.Ceiling(total / (double)pageSize)
-            };
+            var page = await _svc.GetSectionPracticesPaged(pageIndex, pageSize);
 
-            var resp = new ApiResponse<IEnumerable<SectionPracticeDto>>
-            {
-                Success = true,
-                StatusCode = 200,
-                Message = "Get section practices successfully.",
-                Data = items,
-                Pagination = pagination
-            };
+            // expose total qua header cho FE
+            Response.Headers["X-Total-Count"] = page.TotalCount.ToString();
+            Response.Headers["Access-Control-Expose-Headers"] = "X-Total-Count";
 
-            return Ok(resp);
+            return Ok(page); 
         }
 
-
+        // GET: /api/SectionPractices/5
         [HttpGet("{id:int}")]
-        public async Task<IActionResult> GetById([FromRoute] int id)
+        public async Task<IActionResult> GetSectionPracticeById([FromRoute] int id)
         {
-            var dto = await _svc.GetByIdAsync(id);
-            if (dto is null)
-            {
-                return NotFound(new ApiResponse<object>
-                {
-                    Success = false,
-                    StatusCode = 404,
-                    Message = $"SectionPractice {id} not found."
-                });
-            }
+            var dto = await _svc.GetSectionPracticeById(id);
+            if (dto is null) return NotFound(new { message = $"SectionPractice {id} not found." });
 
-            return Ok(new ApiResponse<SectionPracticeDto>
-            {
-                Success = true,
-                StatusCode = 200,
-                Message = "Get section practice successfully.",
-                Data = dto
-            });
+            return Ok(dto); 
         }
 
-
+        // POST: /api/SectionPractices
         [HttpPost]
-        public async Task<IActionResult> Create([FromBody] CreateSectionPracticeDto dto)
+        public async Task<IActionResult> CreateSectionPractice([FromBody] CreateSectionPracticeDto dto)
         {
             try
             {
-                var id = await _svc.CreateAsync(dto);
-                return StatusCode(201, new ApiResponse<object>
-                {
-                    Success = true,
-                    StatusCode = 201,
-                    Message = "Create section practice successfully.",
-                    Data = new { id },
-                    Pagination = null
-                });
+                var id = await _svc.CreateSectionPractice(dto);
+                // trả về địa chỉ GET-by-id theo chuẩn REST
+                return CreatedAtAction(nameof(GetSectionPracticeById), new { id }, new { id });
             }
             catch (ValidationException ex)
             {
-                return BadRequest(new ApiResponse<object>
-                {
-                    Success = false,
-                    StatusCode = 400,
-                    Message = $"Invalid input. {ex.Message}",
-                    Data = null,
-                    Pagination = null
-                });
+                return BadRequest(new { message = ex.Message });
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(new ApiResponse<object>
-                {
-                    Success = false,
-                    StatusCode = 404,
-                    Message = ex.Message,   // nhận message chi tiết từ service
-                    Data = null,
-                    Pagination = null
-                });
+                return NotFound(new { message = ex.Message });
             }
             catch (InvalidOperationException ex)
             {
-                return Conflict(new ApiResponse<object>
-                {
-                    Success = false,
-                    StatusCode = 409,
-                    Message = $"Conflict. {ex.Message}",
-                    Data = null,
-                    Pagination = null
-                });
+                return Conflict(new { message = ex.Message });
             }
         }
 
-
+        // PUT: /api/SectionPractices/5
         [HttpPut("{id:int}")]
-        public async Task<IActionResult> Update([FromRoute] int id, [FromBody] UpdateSectionPracticeDto dto)
+        public async Task<IActionResult> UpdateSectionPractice([FromRoute] int id, [FromBody] UpdateSectionPracticeDto dto)
         {
             try
             {
-                var ok = await _svc.UpdateAsync(id, dto);
-                if (!ok)
-                    return NotFound(new ApiResponse<object> { Success = false, StatusCode = 404, Message = "Not found." });
+                var ok = await _svc.UpdateSectionPractice(id, dto);
+                if (!ok) return NotFound(new { message = $"SectionPractice {id} not found." });
 
-                return Ok(new ApiResponse<object> { Success = true, StatusCode = 200, Message = "Section Practice has been updated." });
-            }
-            catch (ValidationException)
-            {
-                return BadRequest(new ApiResponse<object> { Success = false, StatusCode = 400, Message = "Invalid input." });
-            }
-            catch (KeyNotFoundException)
-            {
-                return NotFound(new ApiResponse<object> { Success = false, StatusCode = 404, Message = "Not found." });
-            }
-            catch (InvalidOperationException)
-            {
-                return Conflict(new ApiResponse<object> { Success = false, StatusCode = 409, Message = "Conflict." });
-            }
-        }
-
-        [HttpDelete("{id:int}")]
-        public async Task<IActionResult> Delete([FromRoute] int id)
-        {
-            try
-            {
-                var ok = await _svc.DeleteAsync(id);
-                if (!ok)
-                {
-                    return NotFound(new ApiResponse<object>
-                    {
-                        Success = false,
-                        StatusCode = 404,
-                        Message = $"SectionPractice with id={id} not found.",
-                        Data = null,
-                        Pagination = null
-                    });
-                }
-
-                return Ok(new ApiResponse<object>
-                {
-                    Success = true,
-                    StatusCode = 200,
-                    Message = $"Delete section practice with id={id} successfully.",
-                    Data = null,
-                    Pagination = null
-                });
-            }
-            catch (InvalidOperationException ex)
-            {
-                // trường hợp đang có Timeslot hoặc Attempt liên kết
-                return Conflict(new ApiResponse<object>
-                {
-                    Success = false,
-                    StatusCode = 409,
-                    Message = $"Cannot delete SectionPractice with id={id}: {ex.Message}",
-                    Data = null,
-                    Pagination = null
-                });
+                return Ok(new { message = "Section practice updated successfully." });
             }
             catch (ValidationException ex)
             {
-                return BadRequest(new ApiResponse<object>
-                {
-                    Success = false,
-                    StatusCode = 400,
-                    Message = $"Invalid input. {ex.Message}",
-                    Data = null,
-                    Pagination = null
-                });
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Conflict(new { message = ex.Message });
             }
         }
 
+        // DELETE: /api/SectionPractices/5
+        [HttpDelete("{id:int}")]
+        public async Task<IActionResult> DeleteSectionPractice([FromRoute] int id)
+        {
+            try
+            {
+                var ok = await _svc.DeleteSectionPractice(id);
+                if (!ok) return NotFound(new { message = $"SectionPractice {id} not found." });
 
+                return Ok(new { message = $"Delete section practice with id={id} successfully." });
+            }
+            catch (InvalidOperationException ex)
+            {
+                // ví dụ: đang có Timeslot/Attempt liên kết…
+                return Conflict(new { message = $"Cannot delete SectionPractice {id}: {ex.Message}" });
+            }
+            catch (ValidationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
     }
 }

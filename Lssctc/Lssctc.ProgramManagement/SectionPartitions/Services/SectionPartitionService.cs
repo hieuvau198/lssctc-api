@@ -1,12 +1,12 @@
 ﻿using AutoMapper;
 using AutoMapper.QueryableExtensions;
-using Lssctc.LearningManagement.SectionPartition.DTOs;
+using Lssctc.ProgramManagement.SectionPartitions.DTOs;
 using Lssctc.Share.Common;
 using Lssctc.Share.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 using Entities = Lssctc.Share.Entities;
-namespace Lssctc.LearningManagement.SectionPartition.Services
+namespace Lssctc.ProgramManagement.SectionPartitions.Services
 {
     public class SectionPartitionService : ISectionPartitionService
     {

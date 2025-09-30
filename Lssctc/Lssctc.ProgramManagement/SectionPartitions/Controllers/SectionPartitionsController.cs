@@ -1,11 +1,11 @@
-﻿using Lssctc.LearningManagement.SectionPartition.DTOs;
-using Lssctc.LearningManagement.SectionPartition.Services;
+﻿using Lssctc.ProgramManagement.SectionPartitions.DTOs;
+using Lssctc.ProgramManagement.SectionPartitions.Services;
 using Lssctc.Share.Common;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
 
-namespace Lssctc.LearningManagement.SectionPartition.Controllers
+namespace Lssctc.ProgramManagement.SectionPartitions.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]

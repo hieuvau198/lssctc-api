@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using AutoMapper.QueryableExtensions;
+using Lssctc.Share.Common;
 using Lssctc.Share.Interfaces;
 using Lssctc.SimulationManagement.SectionPractice.Dtos;
 using Microsoft.EntityFrameworkCore;
@@ -19,7 +20,7 @@ namespace Lssctc.SimulationManagement.SectionPractice.Services
             _mapper = mapper;
         }
 
-        public async Task<int> CreateAsync(CreateSectionPracticeDto dto)
+        public async Task<int> CreateSectionPractice(CreateSectionPracticeDto dto)
         {
             if (dto == null || dto.SectionPartitionId <= 0 || dto.PracticeId <= 0)
                 throw new ValidationException("Invalid input.");
@@ -45,7 +46,7 @@ namespace Lssctc.SimulationManagement.SectionPractice.Services
 
 
 
-        public async Task<bool> DeleteAsync(int id)
+        public async Task<bool> DeleteSectionPractice(int id)
         {
             var entity = await _uow.SectionPracticeRepository.GetByIdAsync(id);
             if (entity == null) return false;
@@ -65,7 +66,7 @@ namespace Lssctc.SimulationManagement.SectionPractice.Services
         }
 
 
-        public async Task<SectionPracticeDto?> GetByIdAsync(int id)
+        public async Task<SectionPracticeDto?> GetSectionPracticeById(int id)
         {
             var dto = await _uow.SectionPracticeRepository.GetAllAsQueryable()
                 .Where(x => x.Id == id)
@@ -75,44 +76,33 @@ namespace Lssctc.SimulationManagement.SectionPractice.Services
             return dto;
         }
 
-        public async Task<(IReadOnlyList<SectionPracticeDto> Items, int Total)> GetPagedAsync(
-             int pageIndex, int pageSize, int? sectionPartitionId, int? practiceId, int? status, string? search)
+        public async Task<PagedResult<SectionPracticeDto>> GetSectionPracticesPaged(int pageIndex, int pageSize)
         {
             if (pageIndex < 1) pageIndex = 1;
             if (pageSize < 1 || pageSize > 200) pageSize = 20;
 
             var q = _uow.SectionPracticeRepository.GetAllAsQueryable();
 
-            if (sectionPartitionId.HasValue)
-                q = q.Where(x => x.SectionPartitionId == sectionPartitionId.Value);
-
-            if (practiceId.HasValue)
-                q = q.Where(x => x.PracticeId == practiceId.Value);
-
-            if (status.HasValue)
-                q = q.Where(x => x.Status == status.Value);
-
-            if (!string.IsNullOrWhiteSpace(search))
-            {
-                var s = string.Join(" ", search.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries));
-                // search vào custom_description
-                q = q.Where(x => x.CustomDescription != null && x.CustomDescription.Contains(s));
-            }
-
             var total = await q.CountAsync();
 
             var items = await q
-                .OrderByDescending(x => x.Id)
                 .Skip((pageIndex - 1) * pageSize)
                 .Take(pageSize)
                 .ProjectTo<SectionPracticeDto>(_mapper.ConfigurationProvider)
                 .AsNoTracking()
                 .ToListAsync();
 
-            return (items, total);
+            return new PagedResult<SectionPracticeDto>
+            {
+                Items = items,
+                TotalCount = total,
+                Page = pageIndex,
+                PageSize = pageSize
+            };
         }
 
-        public async Task<bool> UpdateAsync(int id, UpdateSectionPracticeDto dto)
+
+        public async Task<bool> UpdateSectionPractice(int id, UpdateSectionPracticeDto dto)
         {
             var entity = await _uow.SectionPracticeRepository.GetByIdAsync(id);
             if (entity == null) return false;

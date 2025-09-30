@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace Lssctc.LearningManagement.Section.DTOs
+namespace Lssctc.ProgramManagement.Sections.DTOs
 {
     public class SectionDto
     {

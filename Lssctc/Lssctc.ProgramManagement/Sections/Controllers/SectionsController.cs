@@ -1,10 +1,10 @@
-﻿using Lssctc.LearningManagement.Section.DTOs;
-using Lssctc.LearningManagement.Section.Services;
+﻿using Lssctc.ProgramManagement.Sections.DTOs;
+using Lssctc.ProgramManagement.Sections.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
 
-namespace Lssctc.LearningManagement.Section.Controllers
+namespace Lssctc.ProgramManagement.Sections.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]

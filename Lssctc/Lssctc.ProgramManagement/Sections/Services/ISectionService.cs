@@ -1,7 +1,7 @@
-﻿using Lssctc.LearningManagement.Section.DTOs;
+﻿using Lssctc.ProgramManagement.Sections.DTOs;
 using Lssctc.Share.Common;
 
-namespace Lssctc.LearningManagement.Section.Services
+namespace Lssctc.ProgramManagement.Sections.Services
 {
     public interface ISectionService
     {

@@ -1,10 +1,10 @@
-﻿using Lssctc.LearningManagement.Quizzes.DTOs;
-using Lssctc.LearningManagement.Quizzes.Services;
+﻿using Lssctc.ProgramManagement.Quizzes.DTOs;
+using Lssctc.ProgramManagement.Quizzes.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
 
-namespace Lssctc.LearningManagement.Quizzes.Controllers
+namespace Lssctc.ProgramManagement.Quizzes.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]

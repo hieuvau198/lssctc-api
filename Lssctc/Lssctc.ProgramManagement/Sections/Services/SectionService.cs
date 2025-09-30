@@ -1,12 +1,12 @@
 ﻿using AutoMapper;
 using AutoMapper.QueryableExtensions;
-using Lssctc.LearningManagement.Section.DTOs;
+using Lssctc.ProgramManagement.Sections.DTOs;
 using Lssctc.Share.Common;
 using Lssctc.Share.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 
-namespace Lssctc.LearningManagement.Section.Services
+namespace Lssctc.ProgramManagement.Sections.Services
 {
     public class SectionService : ISectionService
     {
@@ -25,7 +25,7 @@ namespace Lssctc.LearningManagement.Section.Services
         {
             // Chuẩn hoá pagination
             var page = p.PageNumber < 1 ? 1 : p.PageNumber;
-            var size = (p.PageSize <= 0 || p.PageSize > 200) ? 20 : p.PageSize;
+            var size = p.PageSize <= 0 || p.PageSize > 200 ? 20 : p.PageSize;
 
             var q = _uow.SectionRepository.GetAllAsQueryable();
 
@@ -96,7 +96,7 @@ namespace Lssctc.LearningManagement.Section.Services
             // Chuẩn hoá name
             var normalizedName = string.Join(" ", rawName.Split(' ', StringSplitOptions.RemoveEmptyEntries));
 
-            var entity = _mapper.Map<Lssctc.Share.Entities.Section>(dto);
+            var entity = _mapper.Map<Share.Entities.Section>(dto);
             entity.Name = normalizedName;
 
             await _uow.SectionRepository.CreateAsync(entity);

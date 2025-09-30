@@ -1,7 +1,7 @@
-﻿using Lssctc.LearningManagement.SectionPartition.DTOs;
+﻿using Lssctc.ProgramManagement.SectionPartitions.DTOs;
 using Lssctc.Share.Common;
 
-namespace Lssctc.LearningManagement.SectionPartition.Services
+namespace Lssctc.ProgramManagement.SectionPartitions.Services
 {
     public interface ISectionPartitionService
     {

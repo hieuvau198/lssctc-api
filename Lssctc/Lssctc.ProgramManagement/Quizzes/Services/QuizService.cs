@@ -1,6 +1,6 @@
 ﻿using AutoMapper;
 using AutoMapper.QueryableExtensions;
-using Lssctc.LearningManagement.Quizzes.DTOs;
+using Lssctc.ProgramManagement.Quizzes.DTOs;
 using Lssctc.Share.Common;
 using Lssctc.Share.Entities;
 using Lssctc.Share.Interfaces;
@@ -8,7 +8,7 @@ using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 
-namespace Lssctc.LearningManagement.Quizzes.Services
+namespace Lssctc.ProgramManagement.Quizzes.Services
 {
     public class QuizService : IQuizService
     {
@@ -177,7 +177,7 @@ namespace Lssctc.LearningManagement.Quizzes.Services
                 {
                     var used = await _uow.QuizQuestionRepository.GetAllAsQueryable()
                         .Where(q => q.QuizId == quizId && q.QuestionScore != null)
-                        .SumAsync(q => (decimal?)q.QuestionScore) ?? 0m;
+                        .SumAsync(q => q.QuestionScore) ?? 0m;
 
                     var willBe = used + score.Value;
                     if (willBe > quiz.TotalScore.Value + 0.0001m)
@@ -235,7 +235,7 @@ namespace Lssctc.LearningManagement.Quizzes.Services
                 {
                     var used = await _uow.QuizQuestionOptionRepository.GetAllAsQueryable()
                         .Where(o => o.QuizQuestionId == questionId && o.OptionScore != null)
-                        .SumAsync(o => (decimal?)o.OptionScore) ?? 0m;
+                        .SumAsync(o => o.OptionScore) ?? 0m;
 
                     var willBe = used + optionScore.Value;
                     if (willBe > question.QuestionScore.Value + 0.0001m)
@@ -268,7 +268,7 @@ namespace Lssctc.LearningManagement.Quizzes.Services
         {
             var maxOrder = await _uow.QuizQuestionOptionRepository
                 .GetAllAsQueryable()
-                .Select(x => (int?)x.DisplayOrder)
+                .Select(x => x.DisplayOrder)
                 .MaxAsync();
 
             return (maxOrder ?? 0) + 1;
@@ -387,7 +387,7 @@ public async Task<int> CreateQuestionWithOptionsByQuizId(
             {
                 var used = await _uow.QuizQuestionRepository.GetAllAsQueryable()
                     .Where(q => q.QuizId == quizId && q.QuestionScore != null)
-                    .SumAsync(q => (decimal?)q.QuestionScore) ?? 0m;
+                    .SumAsync(q => q.QuestionScore) ?? 0m;
 
                 var willBe = used + questionScore.Value;
                 if (willBe > quiz.TotalScore.Value + 0.0001m)
@@ -465,7 +465,7 @@ public async Task<int> CreateQuestionWithOptionsByQuizId(
             // 1) Tính MAX theo câu hỏi
             var maxPerQuestion = await _uow.QuizQuestionOptionRepository.GetAllAsQueryable()
                 .Where(o => o.QuizQuestionId == question.Id)
-                .Select(o => (int?)o.DisplayOrder)
+                .Select(o => o.DisplayOrder)
                 .MaxAsync() ?? 0;
 
             // 2) Gán order 1..n dựa trên per-question
@@ -487,7 +487,7 @@ public async Task<int> CreateQuestionWithOptionsByQuizId(
             {
                 // Fallback: DB có UNIQUE display_order toàn bảng → gán theo GLOBAL MAX và thử lại
                 var maxGlobal = await _uow.QuizQuestionOptionRepository.GetAllAsQueryable()
-                    .Select(o => (int?)o.DisplayOrder)
+                    .Select(o => o.DisplayOrder)
                     .MaxAsync() ?? 0;
 
                 int gnext = maxGlobal + 1;
