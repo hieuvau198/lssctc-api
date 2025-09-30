@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using AutoMapper.QueryableExtensions;
 using Lssctc.LearningManagement.SectionMaterial.DTOs;
+using Lssctc.Share.Common;
 using Lssctc.Share.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
@@ -18,8 +19,7 @@ namespace Lssctc.LearningManagement.SectionMaterial.Services
             _mapper = mapper;
         }
 
-        public async Task<(IReadOnlyList<SectionMaterialDto> Items, int Total)> GetSectionMaterialsPaged(
-    int pageIndex, int pageSize)
+        public async Task<PagedResult<SectionMaterialDto>> GetSectionMaterialsPaged(int pageIndex, int pageSize)
         {
             if (pageIndex < 1) pageIndex = 1;
             if (pageSize < 1 || pageSize > 200) pageSize = 20;
@@ -36,8 +36,15 @@ namespace Lssctc.LearningManagement.SectionMaterial.Services
                 .AsNoTracking()
                 .ToListAsync();
 
-            return (items, total);
+            return new PagedResult<SectionMaterialDto>
+            {
+                Items = items,
+                TotalCount = total,
+                Page = pageIndex,
+                PageSize = pageSize
+            };
         }
+
 
 
         public async Task<SectionMaterialDto?> GetSectionMateriaById(int id)

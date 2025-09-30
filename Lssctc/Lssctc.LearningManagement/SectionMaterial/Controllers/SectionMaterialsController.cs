@@ -1,5 +1,6 @@
 ﻿using Lssctc.LearningManagement.SectionMaterial.DTOs;
 using Lssctc.LearningManagement.SectionMaterial.Services;
+using Lssctc.Share.Common;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
@@ -17,14 +18,19 @@ namespace Lssctc.LearningManagement.SectionMaterial.Controllers
             _svc = svc;
         }
 
+        // GET: /api/SectionMaterials?pageIndex=1&pageSize=20
         [HttpGet]
-        public async Task<IActionResult> GetSectionMaterias(
+        public async Task<IActionResult> GetPaged(
             [FromQuery] int pageIndex = 1,
-            [FromQuery] int pageSize = 20,
-            [FromQuery] int? sectionPartitionId = null)
+            [FromQuery] int pageSize = 20)
         {
-            var (items, total) = await _svc.GetSectionMaterialsPaged(pageIndex, pageSize);
-            return Ok(new { pageIndex, pageSize, total, items });
+            var paged = await _svc.GetSectionMaterialsPaged(pageIndex, pageSize);
+
+            // Thêm header tổng số record
+            Response.Headers["X-Total-Count"] = paged.TotalCount.ToString();
+            Response.Headers["Access-Control-Expose-Headers"] = "X-Total-Count";
+
+            return Ok(paged);
         }
 
         [HttpGet("{id:int}")]
