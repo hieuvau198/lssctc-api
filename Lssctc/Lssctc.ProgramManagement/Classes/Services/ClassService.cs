@@ -18,7 +18,20 @@ namespace Lssctc.ProgramManagement.Classes.Services
             _unitOfWork = unitOfWork;
             _mapper = mapper;
         }
-        public async Task<PagedResult<ClassDto>> GetAllClassesAsync(int page = 1, int pageSize = 10)
+
+        public async Task<List<ClassDto>> GetAllClasses()
+        {
+            var classes = await _unitOfWork.ClassRepository
+                .GetAllAsQueryable()
+                .Include(c => c.ClassCode)
+                .Include(c => c.ClassInstructors)
+                .Include(c => c.ClassMembers)
+                .AsNoTracking()
+                .ToListAsync();
+            return _mapper.Map<List<ClassDto>>(classes);
+        }
+
+        public async Task<PagedResult<ClassDto>> GetClasses(int page = 1, int pageSize = 10)
         {
             if (page <= 0) page = 1;
             if (pageSize <= 0) pageSize = 10;
@@ -49,7 +62,7 @@ namespace Lssctc.ProgramManagement.Classes.Services
             };
         }
 
-        public async Task<List<ClassDto>> GetClassesByProgramCourseIdAsync(int programCourseId)
+        public async Task<List<ClassDto>> GetClassesByProgramCourse(int programCourseId)
         {
             if (programCourseId <= 0)
                 throw new Exception("Invalid ProgramCourseId");
@@ -70,7 +83,7 @@ namespace Lssctc.ProgramManagement.Classes.Services
             return _mapper.Map<List<ClassDto>>(items);
         }
 
-        public async Task<ClassDto> CreateClassByProgramCourseId(ClassCreateDto dto)
+        public async Task<ClassDto> CreateClassByProgramCourse(ClassCreateDto dto)
         {
             // Validate ProgramCourse
             var programCourse = await _unitOfWork.ProgramCourseRepository.GetByIdAsync(dto.ProgramCourseId);

@@ -2,6 +2,7 @@
 using Lssctc.ProgramManagement.Classes.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.Threading.Tasks;
 
 namespace Lssctc.ProgramManagement.Classes.Controller
 {
@@ -15,15 +16,30 @@ namespace Lssctc.ProgramManagement.Classes.Controller
         {
             _classService = classService;
         }
+
+        [HttpGet("all")]
+        public async Task<IActionResult> GetAllClasses()
+        {
+            try
+            {
+                var classes = await _classService.GetAllClasses();
+                return Ok(classes);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
+            }
+        }
+
         /// <summary>
         /// Get all classes with pagination
         /// </summary>
         [HttpGet]
-        public async Task<IActionResult> GetAllClasses([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+        public async Task<IActionResult> GetClasses([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
         {
             try
             {
-                var result = await _classService.GetAllClassesAsync(page, pageSize);
+                var result = await _classService.GetClasses(page, pageSize);
 
                 if (result == null || !result.Items.Any())
                     return NotFound("No classes found.");
@@ -43,7 +59,7 @@ namespace Lssctc.ProgramManagement.Classes.Controller
         {
             try
             {
-                var result = await _classService.GetClassesByProgramCourseIdAsync(programCourseId);
+                var result = await _classService.GetClassesByProgramCourse(programCourseId);
 
                 if (result == null || !result.Any())
                     return NotFound($"No classes found for ProgramCourseId = {programCourseId}");
@@ -67,7 +83,7 @@ namespace Lssctc.ProgramManagement.Classes.Controller
 
             try
             {
-                var result = await _classService.CreateClassByProgramCourseId(dto);
+                var result = await _classService.CreateClassByProgramCourse(dto);
                 return Ok(result);
             }
             catch (Exception ex)
@@ -320,18 +336,6 @@ namespace Lssctc.ProgramManagement.Classes.Controller
                 return BadRequest(ex.Message);
             }
         }
-
-        /// <summary>
-        /// Delete a training result
-        /// </summary>
-        //[HttpDelete("results/{id}")]
-        //public async Task<IActionResult> DeleteTrainingResult(int id)
-        //{
-        //    var success = await _classService.DeleteTrainingResultAsync(id);
-        //    if (!success)
-        //        return NotFound("Training result not found.");
-        //    return NoContent();
-        //}
 
         /// <summary>
         /// Create a new Section for a Class

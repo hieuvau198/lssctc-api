@@ -6,12 +6,11 @@ namespace Lssctc.ProgramManagement.Classes.Services
 {
     public interface IClassService
     {
-        // using string for ClassCode instead of int ClassCodeId
-        Task<PagedResult<ClassDto>> GetAllClassesAsync(int page = 1, int pageSize = 10);
-        Task<List<ClassDto>> GetClassesByProgramCourseIdAsync(int programCourseId);
-        Task<ClassDto> CreateClassByProgramCourseId(ClassCreateDto dto);
+        Task<List<ClassDto>> GetAllClasses();
+        Task<PagedResult<ClassDto>> GetClasses(int page = 1, int pageSize = 10);
+        Task<List<ClassDto>> GetClassesByProgramCourse(int programCourseId);
+        Task<ClassDto> CreateClassByProgramCourse(ClassCreateDto dto);
         Task<ClassDto> AssignInstructorToClass(AssignInstructorDto dto);
-        //Task<ClassDto?> AssignTraineeAsync(AssignTraineeDto dto);
         Task<ClassEnrollmentDto> GetClassEnrollmentById(int classid);
         Task<ClassEnrollmentDto> EnrollTrainee(ClassEnrollmentCreateDto dto);
         Task<ClassMemberDto> ApproveEnrollment(ApproveEnrollmentDto dto);
