@@ -16,10 +16,10 @@ namespace Lssctc.SimulationManagement.PracticeStepComponents.Controllers
             _service = service;
         }
 
-        [HttpGet]
-        public async Task<ActionResult<List<PracticeStepComponentDto>>> Get(int practiceStepId)
+        [HttpGet("{stepId}")]
+        public async Task<ActionResult<List<PracticeStepComponentDto>>> Get(int stepId)
         {
-            var result = await _service.GetByPracticeStepIdAsync(practiceStepId);
+            var result = await _service.GetByPracticeStepIdAsync(stepId);
             return Ok(result);
         }
 
