@@ -9,6 +9,8 @@ using Lssctc.ProgramManagement.Programs.Services;
 using Lssctc.ProgramManagement.Quizzes.Services;
 using Lssctc.ProgramManagement.SectionMaterials.Services;
 using Lssctc.ProgramManagement.SectionPartitions.Services;
+using Lssctc.ProgramManagement.SectionQuiz.Services;
+using Lssctc.ProgramManagement.Sections.Mappings;
 using Lssctc.ProgramManagement.Sections.Services;
 using Lssctc.Share.Contexts;
 using Lssctc.Share.Implements;
@@ -47,6 +49,7 @@ builder.Services.AddAutoMapper(typeof(CourseMapper));
 builder.Services.AddAutoMapper(typeof(ProgramMapper));
 builder.Services.AddAutoMapper(typeof(ClassMapper));
 builder.Services.AddAutoMapper(typeof(LearningMaterialMapper).Assembly);
+builder.Services.AddAutoMapper(typeof(SectionMapper).Assembly);
 builder.Services.AddScoped<ICourseService, CourseService>();
 builder.Services.AddScoped<IProgramService, ProgramService>();
 builder.Services.AddScoped<IClassService, ClassService>();
@@ -56,6 +59,7 @@ builder.Services.AddScoped<ISectionService, SectionService>();
 builder.Services.AddScoped<ISectionPartitionService, SectionPartitionService>();
 builder.Services.AddScoped<ISectionMaterialService, SectionMaterialService>();
 builder.Services.AddScoped<ILearningMaterialService, LearningMaterialService>();
+builder.Services.AddScoped<ISectionQuizService, SectionQuizService>();
 #endregion
 
 #region CORS
