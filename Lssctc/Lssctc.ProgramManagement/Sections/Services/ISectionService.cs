@@ -7,6 +7,7 @@ namespace Lssctc.ProgramManagement.Sections.Services
     {
         // get all without pagination
         Task<PagedResult<SectionListItemDto>> GetSections(SectionQueryParameters parameters);
+        Task<IReadOnlyList<SectionListItemDto>> GetSectionsNoPagination();
 
         Task<SectionDto?> GetSectionById(int id);
         Task<int> CreateSection(CreateSectionDto dto);

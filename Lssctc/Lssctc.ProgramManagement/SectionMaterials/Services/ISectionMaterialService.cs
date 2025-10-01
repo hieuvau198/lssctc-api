@@ -6,7 +6,9 @@ namespace Lssctc.ProgramManagement.SectionMaterials.Services
     public interface ISectionMaterialService
     {
         // get all without pagination
+
         Task<PagedResult<SectionMaterialDto>> GetSectionMaterialsPaged(int pageIndex, int pageSize);
+        Task<IReadOnlyList<SectionMaterialDto>> GetAllSectionMaterialsAsync();
         Task<SectionMaterialDto?> GetSectionMateriaById(int id);
         Task<int> CreateSectionMateria(CreateSectionMaterialDto dto);
         Task<bool> UpdateSectionMateria(int id, UpdateSectionMaterialDto dto);
