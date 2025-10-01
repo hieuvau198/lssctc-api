@@ -5,6 +5,7 @@ namespace Lssctc.ProgramManagement.SectionMaterials.Services
 {
     public interface ISectionMaterialService
     {
+        // get all without pagination
         Task<PagedResult<SectionMaterialDto>> GetSectionMaterialsPaged(int pageIndex, int pageSize);
         Task<SectionMaterialDto?> GetSectionMateriaById(int id);
         Task<int> CreateSectionMateria(CreateSectionMaterialDto dto);

@@ -5,6 +5,7 @@ namespace Lssctc.ProgramManagement.SectionPartitions.Services
 {
     public interface ISectionPartitionService
     {
+        // get all without pagination
         Task<PagedResult<SectionPartitionDto>> GetSectionPartitionsPaged(int pageIndex, int pageSize);
 
         Task<SectionPartitionDto?> GetSectionPartitionById(int id);
