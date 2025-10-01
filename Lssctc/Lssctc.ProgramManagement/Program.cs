@@ -2,6 +2,8 @@ using Lssctc.ProgramManagement.Classes.Mappings;
 using Lssctc.ProgramManagement.Classes.Services;
 using Lssctc.ProgramManagement.Courses.Mappings;
 using Lssctc.ProgramManagement.Courses.Services;
+using Lssctc.ProgramManagement.LearningMaterial.Mappings;
+using Lssctc.ProgramManagement.LearningMaterial.Services;
 using Lssctc.ProgramManagement.Programs.Mappings;
 using Lssctc.ProgramManagement.Programs.Services;
 using Lssctc.ProgramManagement.Quizzes.Services;
@@ -35,6 +37,7 @@ builder.Services.AddSwaggerGen(c =>
 #region Domain
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
+
 #endregion
 
 #region Application Services
@@ -43,6 +46,7 @@ builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepositor
 builder.Services.AddAutoMapper(typeof(CourseMapper));
 builder.Services.AddAutoMapper(typeof(ProgramMapper));
 builder.Services.AddAutoMapper(typeof(ClassMapper));
+builder.Services.AddAutoMapper(typeof(LearningMaterialMapper).Assembly);
 builder.Services.AddScoped<ICourseService, CourseService>();
 builder.Services.AddScoped<IProgramService, ProgramService>();
 builder.Services.AddScoped<IClassService, ClassService>();
@@ -51,6 +55,7 @@ builder.Services.AddScoped<IQuizService, QuizService>();
 builder.Services.AddScoped<ISectionService, SectionService>();
 builder.Services.AddScoped<ISectionPartitionService, SectionPartitionService>();
 builder.Services.AddScoped<ISectionMaterialService, SectionMaterialService>();
+builder.Services.AddScoped<ILearningMaterialService, LearningMaterialService>();
 #endregion
 
 #region CORS
