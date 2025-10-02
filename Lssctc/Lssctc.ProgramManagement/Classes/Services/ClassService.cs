@@ -5,6 +5,7 @@ using Lssctc.Share.Entities;
 using Lssctc.Share.Enums;
 using Lssctc.Share.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using Entities = Lssctc.Share.Entities;
 
 namespace Lssctc.ProgramManagement.Classes.Services
 {
@@ -366,7 +367,7 @@ namespace Lssctc.ProgramManagement.Classes.Services
             if (type == null) throw new Exception("Invalid TrainingResultTypeId");
 
 
-            var entity = _mapper.Map<TrainingResult>(dto);
+            var entity = _mapper.Map<Entities.TrainingResult>(dto);
             await _unitOfWork.TrainingResultRepository.CreateAsync(entity);
             await _unitOfWork.SaveChangesAsync();
             return _mapper.Map<TrainingResultDto>(entity);

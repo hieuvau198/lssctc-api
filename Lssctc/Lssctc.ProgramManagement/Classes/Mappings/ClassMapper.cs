@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using Lssctc.ProgramManagement.Classes.DTOs;
+using Entities = Lssctc.Share.Entities;
 using Lssctc.Share.Entities;
 using Lssctc.Share.Enums;
 
@@ -62,9 +63,9 @@ namespace Lssctc.ProgramManagement.Classes.Mappings
                 .ForMember(dest => dest.LastUpdated, opt => opt.MapFrom(_ => DateTime.UtcNow));
 
             // TrainingResult
-            CreateMap<TrainingResult, TrainingResultDto>();
-            CreateMap<CreateTrainingResultDto, TrainingResult>();
-            CreateMap<UpdateTrainingResultDto, TrainingResult>();
+            CreateMap<Entities.TrainingResult, TrainingResultDto>();
+            CreateMap<CreateTrainingResultDto, Entities.TrainingResult>();
+            CreateMap<UpdateTrainingResultDto, Entities.TrainingResult>();
 
             // TrainingResultType
             CreateMap<TrainingResultType, TrainingResultTypeDto>();
