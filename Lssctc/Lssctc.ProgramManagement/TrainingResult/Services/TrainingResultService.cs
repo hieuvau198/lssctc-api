@@ -112,7 +112,7 @@ namespace Lssctc.ProgramManagement.TrainingResult.Services
             if (id <= 0) throw new ValidationException("Id is invalid.");
             if (dto is null) throw new ValidationException("Body is required.");
 
-            // Nếu body có Id thì bắt khớp với route (tuỳ chọn)
+            // Nếu body có Id thì bắt khớp với route (tuỳ chọn) - để 0 thì bỏ qua
             if (dto.Id != 0 && dto.Id != id)
                 throw new ValidationException("Body.Id must match route id.");
 
