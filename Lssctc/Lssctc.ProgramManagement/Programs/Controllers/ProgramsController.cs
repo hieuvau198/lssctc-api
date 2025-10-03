@@ -17,6 +17,20 @@ namespace Lssctc.ProgramManagement.Programs.Controllers
             _programService = programService;
         }
 
+        [HttpGet("all")]
+        public IActionResult GetAllPrograms()
+        {
+            try
+            {
+                var programs = _programService.GetAllPrograms();
+                return Ok(programs);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
+            }
+        }
+
         /// <summary>
         /// Retrieves all programs with filtering and pagination.
         /// </summary>
@@ -25,7 +39,7 @@ namespace Lssctc.ProgramManagement.Programs.Controllers
         {
             try
             {
-                var result = await _programService.GetAllProgramsAsync(parameters);
+                var result = await _programService.GetPrograms(parameters);
                 return Ok(result);
             }
             catch (Exception ex)
@@ -42,7 +56,7 @@ namespace Lssctc.ProgramManagement.Programs.Controllers
         {
             try
             {
-                var program = await _programService.GetProgramByIdAsync(id);
+                var program = await _programService.GetProgramById(id);
                 if (program == null)
                     return NotFound(new { message = "Program not found." });
 
@@ -65,7 +79,7 @@ namespace Lssctc.ProgramManagement.Programs.Controllers
 
             try
             {
-                var createdProgram = await _programService.CreateProgramAsync(dto);
+                var createdProgram = await _programService.CreateProgram(dto);
                 return CreatedAtAction(nameof(GetProgram), new { id = createdProgram.Id }, createdProgram);
             }
             catch (BadRequestException ex)
@@ -89,7 +103,7 @@ namespace Lssctc.ProgramManagement.Programs.Controllers
 
             try
             {
-                var updatedProgram = await _programService.AddCoursesToProgramAsync(programId, courses);
+                var updatedProgram = await _programService.AddCoursesToProgram(programId, courses);
                 if (updatedProgram == null)
                     return NotFound(new { message = "Program not found." });
 
@@ -118,7 +132,7 @@ namespace Lssctc.ProgramManagement.Programs.Controllers
 
             try
             {
-                var result = await _programService.AddPrerequisitesToProgramAsync(programId, prerequisites);
+                var result = await _programService.AddPrerequisitesToProgram(programId, prerequisites);
                 if (result == null)
                     return NotFound(new { message = $"Program with ID {programId} not found or deleted." });
 
@@ -136,7 +150,7 @@ namespace Lssctc.ProgramManagement.Programs.Controllers
         {
             try
             {
-                var result = await _programService.UpdateProgramBasicAsync(id, dto);
+                var result = await _programService.UpdateProgram(id, dto);
                 if (result == null)
                     return NotFound(new { message = "Program not found." });
 
@@ -154,7 +168,7 @@ namespace Lssctc.ProgramManagement.Programs.Controllers
         {
             try
             {
-                var result = await _programService.UpdateProgramCoursesAsync(id, courses);
+                var result = await _programService.UpdateProgramCourses(id, courses);
                 if (result == null)
                     return NotFound(new { message = "Program not found." });
 
@@ -176,7 +190,7 @@ namespace Lssctc.ProgramManagement.Programs.Controllers
         {
             try
             {
-                var result = await _programService.UpdateProgramEntryRequirementsAsync(id, entryRequirements);
+                var result = await _programService.UpdateProgramEntryRequirements(id, entryRequirements);
                 if (result == null)
                     return NotFound(new { message = "Program not found." });
 
@@ -196,7 +210,7 @@ namespace Lssctc.ProgramManagement.Programs.Controllers
         {
             try
             {
-                var deleted = await _programService.DeleteProgramAsync(id);
+                var deleted = await _programService.DeleteProgram(id);
                 if (!deleted)
                     return NotFound(new { message = "Program not found." });
 

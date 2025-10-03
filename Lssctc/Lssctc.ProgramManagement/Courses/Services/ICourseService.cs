@@ -5,9 +5,7 @@ namespace Lssctc.ProgramManagement.Courses.Services
 {
     public interface ICourseService
     {
-        // get syllabus sections by syllabusId
-        // create syllabus section by syllabusId
-        // update, delete syllabus sections
+        Task<List<CourseDto>> GetAllCourses();
         Task<PagedResult<CourseDto>> GetCourses(CourseQueryParameters parameters);
         Task<CourseDto?> GetCourseById(int id);
         Task<PagedResult<CourseDto>> GetCoursesByLevelId(int levelId, int pageNumber, int pageSize);

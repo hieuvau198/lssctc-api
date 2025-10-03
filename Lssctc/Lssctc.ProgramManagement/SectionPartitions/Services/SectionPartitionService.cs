@@ -44,6 +44,15 @@ namespace Lssctc.ProgramManagement.SectionPartitions.Services
             };
         }
 
+        public async Task<IReadOnlyList<SectionPartitionDto>> GetSectionPartitionsNoPagination()
+        {
+            return await _uow.SectionPartitionRepository.GetAllAsQueryable()
+                .OrderByDescending(x => x.Id) // giữ đồng nhất style
+                .ProjectTo<SectionPartitionDto>(_mapper.ConfigurationProvider)
+                .AsNoTracking()
+                .ToListAsync();
+        }
+
 
         public async Task<SectionPartitionDto?> GetSectionPartitionById(int id)
         {

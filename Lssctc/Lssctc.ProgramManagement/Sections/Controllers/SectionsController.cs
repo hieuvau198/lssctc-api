@@ -38,6 +38,13 @@ namespace Lssctc.ProgramManagement.Sections.Controllers
             }
         }
 
+        [HttpGet("all")]
+        public async Task<IActionResult> GetAll()
+        {
+            var items = await _service.GetSectionsNoPagination();
+            return Ok(items);
+        }
+
         [HttpGet("{id:int}")]
         public async Task<IActionResult> GetById([FromRoute] int id)
         {

@@ -32,6 +32,13 @@ namespace Lssctc.ProgramManagement.SectionMaterials.Controllers
 
             return Ok(paged);
         }
+        [HttpGet("all")]
+        public async Task<IActionResult> GetSectionMaterialsNoPagination()
+        {
+            var items = await _svc.GetAllSectionMaterialsAsync();
+            return Ok(items);
+        }
+
 
         [HttpGet("{id:int}")]
         public async Task<IActionResult> GetSectionMateriaById([FromRoute] int id)

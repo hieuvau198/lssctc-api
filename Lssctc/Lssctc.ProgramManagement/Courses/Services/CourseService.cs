@@ -19,6 +19,18 @@ namespace Lssctc.ProgramManagement.Courses.Services
             _mapper = mapper;
         }
 
+        public async Task<List<CourseDto>> GetAllCourses()
+        {
+            var courses = await _unitOfWork.CourseRepository.GetAllAsQueryable()
+                .Include(c => c.Category)
+                .Include(c => c.Level)
+                .Include(c => c.CourseCode)
+                .Where(c => c.IsDeleted == false)
+                .OrderBy(c => c.Id)
+                .ToListAsync();
+            return _mapper.Map<List<CourseDto>>(courses);
+        }
+
         public async Task<PagedResult<CourseDto>> GetCourses(CourseQueryParameters parameters)
         {
             var query = _unitOfWork.CourseRepository.GetAllAsQueryable()

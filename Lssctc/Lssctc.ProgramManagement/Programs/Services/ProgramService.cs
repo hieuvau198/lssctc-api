@@ -19,7 +19,23 @@ namespace Lssctc.ProgramManagement.Programs.Services
             _mapper = mapper;
         }
 
-        public async Task<PagedResult<ProgramDto?>> GetAllProgramsAsync(ProgramQueryParameters parameters)
+        public async Task<List<ProgramDto>> GetAllPrograms()
+        {
+            var programs = await _unitOfWork.ProgramRepository.GetAllAsQueryable()
+                .Include(p => p.ProgramEntryRequirements)
+                .Include(p => p.ProgramCourses)
+                    .ThenInclude(pc => pc.Courses)
+                .Where(p => p.IsDeleted != true)
+                .ToListAsync();
+            var dtoList = _mapper.Map<List<ProgramDto>>(programs);
+            foreach (var dto in dtoList)
+            {
+                dto.Courses = dto.Courses.OrderBy(c => c.CourseOrder).ToList();
+            }
+            return dtoList;
+        }
+
+        public async Task<PagedResult<ProgramDto?>> GetPrograms(ProgramQueryParameters parameters)
         {
             var query = _unitOfWork.ProgramRepository.GetAllAsQueryable();
 
@@ -63,7 +79,7 @@ namespace Lssctc.ProgramManagement.Programs.Services
             };
         }
 
-        public async Task<ProgramDto?> GetProgramByIdAsync(int id)
+        public async Task<ProgramDto?> GetProgramById(int id)
         {
             var program = await _unitOfWork.ProgramRepository.GetAllAsQueryable()
                 .Include(p => p.ProgramEntryRequirements)
@@ -80,7 +96,7 @@ namespace Lssctc.ProgramManagement.Programs.Services
             return dto;
         }
 
-        public async Task<ProgramDto> CreateProgramAsync(CreateProgramDto dto)
+        public async Task<ProgramDto> CreateProgram(CreateProgramDto dto)
         {
             var entity = _mapper.Map<TrainingProgram>(dto);
             entity.IsActive = true;
@@ -93,7 +109,7 @@ namespace Lssctc.ProgramManagement.Programs.Services
 
             return _mapper.Map<ProgramDto>(entity);
         }
-        public async Task<ProgramDto?> AddCoursesToProgramAsync(int programId, List<CourseOrderDto> coursesToAdd)
+        public async Task<ProgramDto?> AddCoursesToProgram(int programId, List<CourseOrderDto> coursesToAdd)
         {
             var program = await _unitOfWork.ProgramRepository.GetAllAsQueryable()
                 .Include(p => p.ProgramCourses)
@@ -150,7 +166,7 @@ namespace Lssctc.ProgramManagement.Programs.Services
             result.Courses = result.Courses.OrderBy(c => c.CourseOrder).ToList();
             return result;
         }
-        public async Task<ProgramDto?> AddPrerequisitesToProgramAsync(int programId, List<EntryRequirementDto> prerequisitesToAdd)
+        public async Task<ProgramDto?> AddPrerequisitesToProgram(int programId, List<EntryRequirementDto> prerequisitesToAdd)
         {
             var program = await _unitOfWork.ProgramRepository.GetAllAsQueryable()
                 .Include(p => p.ProgramEntryRequirements)
@@ -186,7 +202,7 @@ namespace Lssctc.ProgramManagement.Programs.Services
 
 
 
-        public async Task<ProgramDto?> UpdateProgramBasicAsync(int id, UpdateProgramInfoDto dto)
+        public async Task<ProgramDto?> UpdateProgram(int id, UpdateProgramInfoDto dto)
         {
             var program = await _unitOfWork.ProgramRepository.GetByIdAsync(id);
             if (program == null || program.IsDeleted == true) return null;
@@ -200,7 +216,7 @@ namespace Lssctc.ProgramManagement.Programs.Services
             return _mapper.Map<ProgramDto>(program);
         }
 
-        public async Task<ProgramDto?> UpdateProgramCoursesAsync(int id, ICollection<ProgramCourseOrderDto> courses)
+        public async Task<ProgramDto?> UpdateProgramCourses(int id, ICollection<ProgramCourseOrderDto> courses)
         {
             var program = await _unitOfWork.ProgramRepository.GetAllAsQueryable()
                 .Include(p => p.ProgramCourses)
@@ -270,7 +286,7 @@ namespace Lssctc.ProgramManagement.Programs.Services
         }
 
 
-        public async Task<ProgramDto?> UpdateProgramEntryRequirementsAsync(int id, ICollection<UpdateEntryRequirementDto> entryRequirements)
+        public async Task<ProgramDto?> UpdateProgramEntryRequirements(int id, ICollection<UpdateEntryRequirementDto> entryRequirements)
         {
             var program = await _unitOfWork.ProgramRepository.GetAllAsQueryable()
                 .Include(p => p.ProgramEntryRequirements)
@@ -319,7 +335,7 @@ namespace Lssctc.ProgramManagement.Programs.Services
 
 
 
-        public async Task<bool> DeleteProgramAsync(int id)
+        public async Task<bool> DeleteProgram(int id)
         {
             var program = await _unitOfWork.ProgramRepository.GetByIdAsync(id);
 
