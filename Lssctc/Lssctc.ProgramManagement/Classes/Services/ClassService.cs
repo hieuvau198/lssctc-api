@@ -67,7 +67,7 @@ namespace Lssctc.ProgramManagement.Classes.Services
         {
             if (programCourseId <= 0)
                 throw new Exception("Invalid ProgramCourseId");
-            if (_unitOfWork.ProgramCourseRepository.GetByIdAsync(programCourseId) == null)
+            if (await _unitOfWork.ProgramCourseRepository.GetByIdAsync(programCourseId) == null)
                 throw new Exception("ProgramCourse not found");
             var query = _unitOfWork.ClassRepository
                 .GetAllAsQueryable()
