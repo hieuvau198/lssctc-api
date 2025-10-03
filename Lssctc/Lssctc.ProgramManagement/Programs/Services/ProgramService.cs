@@ -87,7 +87,7 @@ namespace Lssctc.ProgramManagement.Programs.Services
                 .ThenInclude(pc => pc.Courses)
                 .FirstOrDefaultAsync(p => p.Id == id);
 
-            if (program == null || program.IsDeleted == true)
+            if (program == null )
                 return null;
 
             var dto = _mapper.Map<ProgramDto>(program);
@@ -116,7 +116,7 @@ namespace Lssctc.ProgramManagement.Programs.Services
                 .ThenInclude(pc => pc.Courses)
                 .FirstOrDefaultAsync(p => p.Id == programId);
 
-            if (program == null || program.IsDeleted == true)
+            if (program == null )
                 return null;
 
             if (coursesToAdd == null || !coursesToAdd.Any())
@@ -172,7 +172,7 @@ namespace Lssctc.ProgramManagement.Programs.Services
                 .Include(p => p.ProgramEntryRequirements)
                 .FirstOrDefaultAsync(p => p.Id == programId);
 
-            if (program == null || program.IsDeleted == true)
+            if (program == null )
                 return null;
 
             if (prerequisitesToAdd == null || !prerequisitesToAdd.Any())
@@ -205,7 +205,7 @@ namespace Lssctc.ProgramManagement.Programs.Services
         public async Task<ProgramDto?> UpdateProgram(int id, UpdateProgramInfoDto dto)
         {
             var program = await _unitOfWork.ProgramRepository.GetByIdAsync(id);
-            if (program == null || program.IsDeleted == true) return null;
+            if (program == null ) return null;
 
             program.Name = dto.Name;
             program.Description = dto.Description;
@@ -223,7 +223,7 @@ namespace Lssctc.ProgramManagement.Programs.Services
                     .ThenInclude(pc => pc.Classes)
                 .FirstOrDefaultAsync(p => p.Id == id);
 
-            if (program == null || program.IsDeleted == true) return null;
+            if (program == null ) return null;
 
             var oldCourseIds = program.ProgramCourses.Select(pc => pc.CoursesId).ToList();
             var newCourseIds = courses.Select(c => c.CourseId).ToList();
@@ -258,6 +258,7 @@ namespace Lssctc.ProgramManagement.Programs.Services
                 {
                     existing.CourseOrder = courseOrderDto.Order;
                     // no need to re-add, EF is already tracking it
+                    await _unitOfWork.ProgramCourseRepository.UpdateAsync(existing);
                 }
                 else
                 {
@@ -292,7 +293,7 @@ namespace Lssctc.ProgramManagement.Programs.Services
                 .Include(p => p.ProgramEntryRequirements)
                 .FirstOrDefaultAsync(p => p.Id == id);
 
-            if (program == null || program.IsDeleted == true) return null;
+            if (program == null ) return null;
 
             // Explicitly delete all existing entry requirements
             foreach (var oldReq in program.ProgramEntryRequirements.ToList())
@@ -339,10 +340,11 @@ namespace Lssctc.ProgramManagement.Programs.Services
         {
             var program = await _unitOfWork.ProgramRepository.GetByIdAsync(id);
 
-            if (program == null || program.IsDeleted == true)
+            if (program == null )
                 return false;
 
             program.IsDeleted = true;
+            program.IsActive = false;
             await _unitOfWork.ProgramRepository.UpdateAsync(program);
             await _unitOfWork.SaveChangesAsync();
 

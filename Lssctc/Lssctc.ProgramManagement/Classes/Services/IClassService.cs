@@ -10,6 +10,9 @@ namespace Lssctc.ProgramManagement.Classes.Services
         Task<PagedResult<ClassDto>> GetClasses(int page = 1, int pageSize = 10);
         Task<List<ClassDto>> GetClassesByProgramCourse(int programCourseId);
         Task<ClassDto> CreateClassByProgramCourse(ClassCreateDto dto);
+        Task<ClassDto> GetClassDetailById(int classId);
+        Task<bool> CancelClassAsync(int classId);
+        Task<ClassDto> UpdateClassBasicInfoAsync(int classId, ClassUpdateDto dto);
         Task<ClassDto> AssignInstructorToClass(AssignInstructorDto dto);
         Task<ClassEnrollmentDto> GetClassEnrollmentById(int classid);
         Task<ClassEnrollmentDto> EnrollTrainee(ClassEnrollmentCreateDto dto);
