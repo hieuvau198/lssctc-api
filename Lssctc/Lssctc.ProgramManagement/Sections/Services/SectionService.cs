@@ -47,6 +47,15 @@ namespace Lssctc.ProgramManagement.Sections.Services
             };
         }
 
+        public async Task<IReadOnlyList<SectionListItemDto>> GetSectionsNoPagination()
+        {
+            return await _uow.SectionRepository.GetAllAsQueryable()
+                .OrderByDescending(x => EF.Property<int>(x, "Id"))
+                .ProjectTo<SectionListItemDto>(_mapper.ConfigurationProvider)
+                .AsNoTracking()
+                .ToListAsync();
+        }
+
 
         public async Task<SectionDto?> GetSectionById(int id)
         {

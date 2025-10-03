@@ -33,6 +33,15 @@ namespace Lssctc.ProgramManagement.SectionPartitions.Controllers
             return Ok(page); // Trả thẳng PagedResult<SectionPartitionDto>
         }
 
+        [HttpGet("all")]
+        public async Task<IActionResult> GetSectionPartitionsNoPagination()
+        {
+            var items = await _svc.GetSectionPartitionsNoPagination();
+
+            return Ok(items);
+        }
+
+
         // GET: /api/SectionPartitions/5
         [HttpGet("{id:int}")]
         public async Task<IActionResult> GetById([FromRoute] int id)

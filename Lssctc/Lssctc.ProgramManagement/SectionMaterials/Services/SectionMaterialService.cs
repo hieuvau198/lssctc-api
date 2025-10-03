@@ -45,6 +45,15 @@ namespace Lssctc.ProgramManagement.SectionMaterials.Services
             };
         }
 
+        public async Task<IReadOnlyList<SectionMaterialDto>> GetAllSectionMaterialsAsync()
+        {
+            return await _uow.SectionMaterialRepository.GetAllAsQueryable()
+                .OrderByDescending(x => EF.Property<int>(x, "Id"))   // giữ style đồng nhất
+                .ProjectTo<SectionMaterialDto>(_mapper.ConfigurationProvider)
+                .AsNoTracking()
+                .ToListAsync();
+        }
+
 
 
         public async Task<SectionMaterialDto?> GetSectionMateriaById(int id)
