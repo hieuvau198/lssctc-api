@@ -10,7 +10,8 @@
         public int Id { get; set; }
         public int ClassId { get; set; }
         public int InstructorId { get; set; }
-        public string Position { get; set; } 
+        public string Position { get; set; }
+        public InstructorDto Instructor { get; set; } = new();
     }
 
     public class AssignInstructorDto
@@ -26,7 +27,7 @@
         public int ClassId { get; set; }
         public DateTime AssignedDate { get; set; }
         public string Status { get; set; }
-
+        public TraineeDto Trainee { get; set; } = new();
         public List<TrainingProgressDto> TrainingProgresses { get; set; } = new();
     }
 
@@ -41,6 +42,10 @@
         public int Id { get; set; }
         public string? TraineeCode { get; set; }
         public bool? IsActive { get; set; }
+        
+        // User info
+        public string? FullName { get; set; }
+        public string? Email { get; set; }
     }
     public class InstructorDto
     {
@@ -57,6 +62,9 @@
 
         public string? Specialization { get; set; }
 
+        public string? FullName { get; set; }
+        public string? Email { get; set; }
+
 
     }
 
@@ -71,7 +79,15 @@
         public int ProgramCourseId { get; set; }
         public string Description { get; set; } 
     }
-
+    public class ClassUpdateDto
+    {
+        public string Name { get; set; } = null!;
+        public DateTime StartDate { get; set; }
+        public DateTime? EndDate { get; set; }
+        public int? Capacity { get; set; }
+        public string Description { get; set; } = null!;
+        public string? ClassCode { get; set; } 
+    }
     public class ClassDto
     {
         public int Id { get; set; }
