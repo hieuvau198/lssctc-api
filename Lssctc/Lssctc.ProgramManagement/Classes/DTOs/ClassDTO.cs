@@ -104,6 +104,25 @@
         public List<ClassMemberDto> Members { get; set; } = new();
     }
 
+    // My Class
+    public class MyClassDto
+    {
+        public int CourseId { get; set; }
+        public string? CourseName { get; set; }
+        public string? CourseCode { get; set; } 
+        public int? DurationHours { get; set; }
+        public string? ImageUrl { get; set; }
+
+        public int ClassId { get; set; }
+        public string? ClassName { get; set; }
+        public string? ClassCode { get; set; }         
+        public int Status { get; set; }               
+        public int? InstructorId { get; set; }         
+        public string? InstructorName { get; set; }    
+        public DateTime StartDate { get; set; }
+        public DateTime? EndDate { get; set; }
+    }
+
     //Enrollment
     public class ClassEnrollmentCreateDto
     {

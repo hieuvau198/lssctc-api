@@ -71,6 +71,23 @@ namespace Lssctc.ProgramManagement.Classes.Controller
                 return BadRequest(ex.Message);
             }
         }
+
+        [HttpGet("myclasses/{traineeId}")]
+        public async Task<IActionResult> GetMyClasses(int traineeId)
+        {
+            try
+            {
+                var result = await _classService.GetMyClasses(traineeId);
+                if (result == null || !result.Any())
+                    return NotFound($"No classes found for UserId = {traineeId}");
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
         /// <summary>
         /// Update basic information of a class
         /// </summary>
