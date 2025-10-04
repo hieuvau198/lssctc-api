@@ -171,6 +171,7 @@ CREATE TABLE [dbo].[quiz_question_options] (
     [id] INT IDENTITY(1,1) PRIMARY KEY,
     [quiz_question_id] INT NOT NULL,
     [description] NVARCHAR(2000),
+	[explanation] NVARCHAR(2000) NULL,
     [is_correct] BIT NOT NULL DEFAULT 1,
     [display_order] INT UNIQUE,
     [option_score] DECIMAL(5,2),
