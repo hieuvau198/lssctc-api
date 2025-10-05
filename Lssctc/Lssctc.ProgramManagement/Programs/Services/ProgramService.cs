@@ -109,6 +109,52 @@ namespace Lssctc.ProgramManagement.Programs.Services
 
             return _mapper.Map<ProgramDto>(entity);
         }
+        public async Task<ProgramDto?> AddCourseToProgram(int programId, int courseId)
+        {
+            var program = await _unitOfWork.ProgramRepository.GetAllAsQueryable()
+                .Include(p => p.ProgramCourses)
+                .ThenInclude(pc => pc.Courses)
+                .FirstOrDefaultAsync(p => p.Id == programId);
+
+            if (program == null)
+                return null;
+
+            var courseToAdd = await _unitOfWork.CourseRepository
+                .GetAllAsQueryable()
+                .FirstOrDefaultAsync(c => c.Id == courseId && c.IsDeleted != true);
+
+            if (courseToAdd == null)
+                throw new BadRequestException($"Course with ID {courseId} is invalid or deleted.");
+
+            if (program.ProgramCourses.Any(pc => pc.CoursesId == courseId))
+                throw new BadRequestException($"Course with ID {courseId} is already part of the program.");
+
+            var nextOrder = program.ProgramCourses.Any()
+                ? program.ProgramCourses.Max(pc => pc.CourseOrder) + 1
+                : 1;
+
+            var newProgramCourse = new ProgramCourse
+            {
+                CoursesId = courseToAdd.Id,
+                ProgramId = program.Id,
+                CourseOrder = nextOrder,
+                Name = program.Name,
+                Description = program.Description
+            };
+
+            program.ProgramCourses.Add(newProgramCourse);
+
+            program.TotalCourses = program.ProgramCourses.Count;
+            program.DurationHours += courseToAdd.DurationHours ?? 0; // Add the new course's duration
+
+            await _unitOfWork.ProgramRepository.UpdateAsync(program);
+            await _unitOfWork.SaveChangesAsync();
+
+            var result = _mapper.Map<ProgramDto>(program);
+            result.Courses = result.Courses.OrderBy(c => c.CourseOrder).ToList();
+
+            return result;
+        }
         public async Task<ProgramDto?> AddCoursesToProgram(int programId, List<CourseOrderDto> coursesToAdd)
         {
             var program = await _unitOfWork.ProgramRepository.GetAllAsQueryable()
@@ -166,6 +212,7 @@ namespace Lssctc.ProgramManagement.Programs.Services
             result.Courses = result.Courses.OrderBy(c => c.CourseOrder).ToList();
             return result;
         }
+        
         public async Task<ProgramDto?> AddPrerequisitesToProgram(int programId, List<EntryRequirementDto> prerequisitesToAdd)
         {
             var program = await _unitOfWork.ProgramRepository.GetAllAsQueryable()
@@ -184,7 +231,8 @@ namespace Lssctc.ProgramManagement.Programs.Services
                 {
                     ProgramId = program.Id,
                     Name = prereqDto.Name,
-                    Description = prereqDto.Description
+                    Description = prereqDto.Description,
+                    DocumentUrl = prereqDto.DocumentUrl
                 });
             }
 
@@ -286,6 +334,20 @@ namespace Lssctc.ProgramManagement.Programs.Services
             return result;
         }
 
+        public async Task<EntryRequirementDto?> UpdateProgramEntryRequirement(int id, UpdateEntryRequirementDto entryRequirement)
+        {
+            var existingReq = await _unitOfWork.ProgramEntryRequirementRepository.GetByIdAsync(id);
+            if (existingReq == null ) return null;
+            if(entryRequirement.Name != null)
+                existingReq.Name = entryRequirement.Name;
+            if(entryRequirement.Description != null)
+                existingReq.Description = entryRequirement.Description;
+            if(entryRequirement.DocumentUrl != null)
+                existingReq.DocumentUrl = entryRequirement.DocumentUrl;
+            await _unitOfWork.ProgramEntryRequirementRepository.UpdateAsync(existingReq);
+            await _unitOfWork.SaveChangesAsync();
+            return _mapper.Map<EntryRequirementDto>(existingReq);
+        }
 
         public async Task<ProgramDto?> UpdateProgramEntryRequirements(int id, ICollection<UpdateEntryRequirementDto> entryRequirements)
         {

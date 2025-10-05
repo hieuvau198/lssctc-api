@@ -18,11 +18,11 @@ namespace Lssctc.ProgramManagement.Programs.Controllers
         }
 
         [HttpGet("all")]
-        public IActionResult GetAllPrograms()
+        public async Task<IActionResult> GetAllPrograms()
         {
             try
             {
-                var programs = _programService.GetAllPrograms();
+                var programs = await _programService.GetAllPrograms();
                 return Ok(programs);
             }
             catch (Exception ex)
@@ -81,6 +81,28 @@ namespace Lssctc.ProgramManagement.Programs.Controllers
             {
                 var createdProgram = await _programService.CreateProgram(dto);
                 return CreatedAtAction(nameof(GetProgram), new { id = createdProgram.Id }, createdProgram);
+            }
+            catch (BadRequestException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
+            }
+        }
+
+        [HttpPost("{programId}/course")]
+        public async Task<IActionResult> AddCourseToProgram(int programId, [FromBody] int courseId)
+        {
+            if (courseId <= 0)
+                return BadRequest(new { message = "Invalid course ID." });
+            try
+            {
+                var updatedProgram = await _programService.AddCourseToProgram(programId, courseId);
+                if (updatedProgram == null)
+                    return NotFound(new { message = "Program not found." });
+                return Ok(updatedProgram);
             }
             catch (BadRequestException ex)
             {
@@ -177,6 +199,22 @@ namespace Lssctc.ProgramManagement.Programs.Controllers
             catch (BadRequestException ex)
             {
                 return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = ex.Message });
+            }
+        }
+
+        [HttpPut("entry-requirements/{entryid}")]
+        public async Task<IActionResult> UpdateProgramEntryRequirement(int entryid, [FromBody] UpdateEntryRequirementDto entryRequirement)
+        {
+            try
+            {
+                var result = await _programService.UpdateProgramEntryRequirement(entryid, entryRequirement);
+                if (result == null)
+                    return NotFound(new { message = "Entry requirement not found." });
+                return Ok(result);
             }
             catch (Exception ex)
             {

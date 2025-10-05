@@ -98,7 +98,7 @@ CREATE TABLE [dbo].[training_programs] (
     [duration_hours] INT,
     [total_courses] INT,
     [image_url] NVARCHAR(2000)
-);	-- need seed data
+);	
 
 CREATE TABLE [dbo].[certificates] (
     [id] INT IDENTITY(1,1) PRIMARY KEY,
@@ -108,13 +108,13 @@ CREATE TABLE [dbo].[certificates] (
     [requirement] NVARCHAR(2000),
     [certifying_authority] NVARCHAR(2000),
     [image_url] NVARCHAR(2000)
-);	-- need seed data
+);	
 
 CREATE TABLE [dbo].[course_categories] (
     [id] INT IDENTITY(1,1) PRIMARY KEY,
     [name] NVARCHAR(100) NOT NULL UNIQUE,
     [description] NVARCHAR(2000)
-);	-- need seed data: Safety & Regulations, Basic Operation, Advanced Operation, Equipment Maintenance, Certification Preparation 
+);	-- Mobile Crane, Safety & Regulations, Basic Operation, Advanced Operation, Equipment Maintenance, Certification Preparation 
 
 CREATE TABLE [dbo].[course_levels] (
     [id] INT IDENTITY(1,1) PRIMARY KEY,

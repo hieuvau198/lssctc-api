@@ -14,6 +14,7 @@ using Lssctc.ProgramManagement.SectionPartitions.Services;
 using Lssctc.ProgramManagement.SectionQuizzes.Services;
 using Lssctc.ProgramManagement.Sections.Mappings;
 using Lssctc.ProgramManagement.Sections.Services;
+using Lssctc.ProgramManagement.Syllabuses.Services;
 using Lssctc.ProgramManagement.TrainingResults.Services;
 using Lssctc.Share.Contexts;
 using Lssctc.Share.Implements;
@@ -58,6 +59,7 @@ builder.Services.AddAutoMapper(typeof(LearningRecordMapper).Assembly);
 builder.Services.AddScoped<ICourseService, CourseService>();
 builder.Services.AddScoped<IProgramService, ProgramService>();
 builder.Services.AddScoped<IClassService, ClassService>();
+builder.Services.AddScoped<ISyllabusService, SyllabusService>();
 
 builder.Services.AddScoped<IQuizService, QuizService>();
 builder.Services.AddScoped<ISectionService, SectionService>();
