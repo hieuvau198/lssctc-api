@@ -19,5 +19,7 @@ public partial class QuizQuestionOption
 
     public string Name { get; set; } = null!;
 
+    public string? Explanation { get; set; }
+
     public virtual QuizQuestion QuizQuestion { get; set; } = null!;
 }

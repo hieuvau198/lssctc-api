@@ -11,8 +11,6 @@ public partial class SectionPractice
 
     public int PracticeId { get; set; }
 
-    public int? SimulationTimeslotId { get; set; }
-
     public DateTime? CustomDeadline { get; set; }
 
     public string? CustomDescription { get; set; }
@@ -30,6 +28,4 @@ public partial class SectionPractice
     public virtual ICollection<SectionPracticeAttempt> SectionPracticeAttempts { get; set; } = new List<SectionPracticeAttempt>();
 
     public virtual ICollection<SectionPracticeTimeslot> SectionPracticeTimeslots { get; set; } = new List<SectionPracticeTimeslot>();
-
-    public virtual SimulationTimeslot? SimulationTimeslot { get; set; }
 }

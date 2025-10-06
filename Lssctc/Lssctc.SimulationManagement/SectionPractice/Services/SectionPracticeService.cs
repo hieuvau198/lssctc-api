@@ -31,13 +31,6 @@ namespace Lssctc.SimulationManagement.SectionPractice.Services
             if (!await _uow.PracticeRepository.ExistsAsync(p => p.Id == dto.PracticeId))
                 throw new KeyNotFoundException($"Practice with id={dto.PracticeId} not found.");
 
-            if (dto.SimulationTimeslotId.HasValue)
-            {
-                var exists = await _uow.SimulationTimeslotRepository.ExistsAsync(t => t.Id == dto.SimulationTimeslotId.Value);
-                if (!exists)
-                    throw new KeyNotFoundException($"SimulationTimeslot with id={dto.SimulationTimeslotId.Value} not found.");
-            }
-
             var entity = _mapper.Map<Entities.SectionPractice>(dto);
             await _uow.SectionPracticeRepository.CreateAsync(entity);
             await _uow.SaveChangesAsync();
@@ -119,12 +112,6 @@ namespace Lssctc.SimulationManagement.SectionPractice.Services
                 if (dto.PracticeId.Value <= 0) throw new ValidationException("PracticeId is invalid.");
                 var ok = await _uow.PracticeRepository.ExistsAsync(p => p.Id == dto.PracticeId.Value);
                 if (!ok) throw new KeyNotFoundException($"Practice {dto.PracticeId.Value} not found.");
-            }
-
-            if (dto.SimulationTimeslotId.HasValue)
-            {
-                var ok = await _uow.SimulationTimeslotRepository.ExistsAsync(t => t.Id == dto.SimulationTimeslotId.Value);
-                if (!ok) throw new KeyNotFoundException($"SimulationTimeslot {dto.SimulationTimeslotId.Value} not found.");
             }
 
             _mapper.Map(dto, entity);

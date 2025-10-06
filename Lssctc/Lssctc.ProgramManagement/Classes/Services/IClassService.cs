@@ -6,19 +6,22 @@ namespace Lssctc.ProgramManagement.Classes.Services
 {
     public interface IClassService
     {
+        // Class - get info
         Task<List<ClassDto>> GetAllClasses();
         Task<PagedResult<ClassDto>> GetClasses(int page = 1, int pageSize = 10);
         Task<List<ClassDto>> GetClassesByProgramCourse(int programCourseId);
-        Task<ClassDto> CreateClassByProgramCourse(ClassCreateDto dto);
         Task<ClassDto> GetClassDetailById(int classId);
-        Task<bool> CancelClassAsync(int classId);
-        Task<ClassDto> UpdateClassBasicInfoAsync(int classId, ClassUpdateDto dto);
-        Task<ClassDto> AssignInstructorToClass(AssignInstructorDto dto);
         Task<ClassEnrollmentDto> GetClassEnrollmentById(int classid);
-        Task<ClassEnrollmentDto> EnrollTrainee(ClassEnrollmentCreateDto dto);
-        Task<ClassMemberDto> ApproveEnrollment(ApproveEnrollmentDto dto);
         Task<IEnumerable<ClassMemberDto>> GetMembersByClassId(int classId);
         Task<InstructorDto> GetInstructorByClassId(int classId);
+        Task<List<MyClassDto>> GetMyClasses(int traineeId);
+        // Class - manage
+        Task<ClassDto> CreateClassByProgramCourse(ClassCreateDto dto);
+        Task<ClassDto> UpdateClassBasicInfoAsync(int classId, ClassUpdateDto dto);
+        Task<bool> CancelClassAsync(int classId);
+        Task<ClassDto> AssignInstructorToClass(AssignInstructorDto dto);
+        Task<ClassEnrollmentDto> EnrollTrainee(ClassEnrollmentCreateDto dto);
+        Task<ClassMemberDto> ApproveEnrollment(ApproveEnrollmentDto dto);
         // Training Progress
         Task<List<TrainingProgressDto>> GetProgressByMember(int classMemberId);
         Task<TrainingProgressDto> CreateProgress(CreateTrainingProgressDto dto);
@@ -29,7 +32,7 @@ namespace Lssctc.ProgramManagement.Classes.Services
         Task<TrainingResultDto> CreateResult(CreateTrainingResultDto dto);
         Task<TrainingResultDto> UpdateResult(UpdateTrainingResultDto dto);
         Task<bool> DeleteResult(int resultId);
-        //section
+        // Section
         Task<SectionDto> CreateSectionAsync(SectionCreateDto dto);
         Task<SyllabusSectionDto> CreateSyllabusSectionAsync(SyllabusSectionCreateDto dto);
 

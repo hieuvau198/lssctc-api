@@ -7,7 +7,6 @@ namespace Lssctc.SimulationManagement.SectionPractice.Dtos
         public int Id { get; set; }
         public int SectionPartitionId { get; set; }
         public int PracticeId { get; set; }
-        public int? SimulationTimeslotId { get; set; }
         public DateTime? CustomDeadline { get; set; }
         public string? CustomDescription { get; set; }
         public int? Status { get; set; }
@@ -22,8 +21,6 @@ namespace Lssctc.SimulationManagement.SectionPractice.Dtos
 
         [Range(1, int.MaxValue)]
         public int PracticeId { get; set; }
-
-        public int? SimulationTimeslotId { get; set; }
         public DateTime? CustomDeadline { get; set; }
 
         [MaxLength(2000)]
@@ -42,7 +39,6 @@ namespace Lssctc.SimulationManagement.SectionPractice.Dtos
         [Range(1, int.MaxValue)]
         public int? PracticeId { get; set; }
 
-        public int? SimulationTimeslotId { get; set; }
         public DateTime? CustomDeadline { get; set; }
 
         [MaxLength(2000)]

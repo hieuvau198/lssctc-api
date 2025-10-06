@@ -98,7 +98,7 @@ CREATE TABLE [dbo].[training_programs] (
     [duration_hours] INT,
     [total_courses] INT,
     [image_url] NVARCHAR(2000)
-);	-- need seed data
+);	
 
 CREATE TABLE [dbo].[certificates] (
     [id] INT IDENTITY(1,1) PRIMARY KEY,
@@ -108,13 +108,13 @@ CREATE TABLE [dbo].[certificates] (
     [requirement] NVARCHAR(2000),
     [certifying_authority] NVARCHAR(2000),
     [image_url] NVARCHAR(2000)
-);	-- need seed data
+);	
 
 CREATE TABLE [dbo].[course_categories] (
     [id] INT IDENTITY(1,1) PRIMARY KEY,
     [name] NVARCHAR(100) NOT NULL UNIQUE,
     [description] NVARCHAR(2000)
-);	-- need seed data: Safety & Regulations, Basic Operation, Advanced Operation, Equipment Maintenance, Certification Preparation 
+);	-- Mobile Crane, Safety & Regulations, Basic Operation, Advanced Operation, Equipment Maintenance, Certification Preparation 
 
 CREATE TABLE [dbo].[course_levels] (
     [id] INT IDENTITY(1,1) PRIMARY KEY,
@@ -171,6 +171,7 @@ CREATE TABLE [dbo].[quiz_question_options] (
     [id] INT IDENTITY(1,1) PRIMARY KEY,
     [quiz_question_id] INT NOT NULL,
     [description] NVARCHAR(2000),
+	[explanation] NVARCHAR(2000) NULL,
     [is_correct] BIT NOT NULL DEFAULT 1,
     [display_order] INT UNIQUE,
     [option_score] DECIMAL(5,2),
@@ -528,15 +529,13 @@ CREATE TABLE [dbo].[section_practices] (
     [id] INT IDENTITY(1,1) PRIMARY KEY,
     [section_partition_id] INT NOT NULL,
     [practice_id] INT NOT NULL,
-    [simulation_timeslot_id] INT NULL,
     [custom_deadline] DATETIME2(0),
     [custom_description] NVARCHAR(2000),
     [status] INT DEFAULT 1,
     [is_active] BIT DEFAULT 1,
     [is_deleted] BIT DEFAULT 0,
     FOREIGN KEY ([section_partition_id]) REFERENCES [dbo].[section_partitions]([id]),
-    FOREIGN KEY ([practice_id]) REFERENCES [dbo].[practices]([id]),
-    FOREIGN KEY ([simulation_timeslot_id]) REFERENCES [dbo].[simulation_timeslots]([id])
+    FOREIGN KEY ([practice_id]) REFERENCES [dbo].[practices]([id])
 );
 
 CREATE TABLE [dbo].[section_practice_timeslots] (

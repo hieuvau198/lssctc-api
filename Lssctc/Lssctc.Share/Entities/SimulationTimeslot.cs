@@ -22,6 +22,4 @@ public partial class SimulationTimeslot
     public bool? IsDeleted { get; set; }
 
     public virtual ICollection<SectionPracticeTimeslot> SectionPracticeTimeslots { get; set; } = new List<SectionPracticeTimeslot>();
-
-    public virtual ICollection<SectionPractice> SectionPractices { get; set; } = new List<SectionPractice>();
 }
