@@ -1131,7 +1131,6 @@ public partial class LssctcDbContext : DbContext
                 .HasColumnName("is_deleted");
             entity.Property(e => e.PracticeId).HasColumnName("practice_id");
             entity.Property(e => e.SectionPartitionId).HasColumnName("section_partition_id");
-            entity.Property(e => e.SimulationTimeslotId).HasColumnName("simulation_timeslot_id");
             entity.Property(e => e.Status)
                 .HasDefaultValue(1)
                 .HasColumnName("status");
@@ -1145,10 +1144,6 @@ public partial class LssctcDbContext : DbContext
                 .HasForeignKey(d => d.SectionPartitionId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK__section_p__secti__3FD07829");
-
-            entity.HasOne(d => d.SimulationTimeslot).WithMany(p => p.SectionPractices)
-                .HasForeignKey(d => d.SimulationTimeslotId)
-                .HasConstraintName("FK__section_p__simul__41B8C09B");
         });
 
         modelBuilder.Entity<SectionPracticeAttempt>(entity =>

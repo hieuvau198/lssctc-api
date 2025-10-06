@@ -529,15 +529,13 @@ CREATE TABLE [dbo].[section_practices] (
     [id] INT IDENTITY(1,1) PRIMARY KEY,
     [section_partition_id] INT NOT NULL,
     [practice_id] INT NOT NULL,
-    [simulation_timeslot_id] INT NULL,
     [custom_deadline] DATETIME2(0),
     [custom_description] NVARCHAR(2000),
     [status] INT DEFAULT 1,
     [is_active] BIT DEFAULT 1,
     [is_deleted] BIT DEFAULT 0,
     FOREIGN KEY ([section_partition_id]) REFERENCES [dbo].[section_partitions]([id]),
-    FOREIGN KEY ([practice_id]) REFERENCES [dbo].[practices]([id]),
-    FOREIGN KEY ([simulation_timeslot_id]) REFERENCES [dbo].[simulation_timeslots]([id])
+    FOREIGN KEY ([practice_id]) REFERENCES [dbo].[practices]([id])
 );
 
 CREATE TABLE [dbo].[section_practice_timeslots] (
