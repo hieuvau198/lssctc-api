@@ -6,6 +6,7 @@ using Lssctc.ProgramManagement.LearningMaterials.Mappings;
 using Lssctc.ProgramManagement.LearningMaterials.Services;
 using Lssctc.ProgramManagement.LearningRecords.Mappings;
 using Lssctc.ProgramManagement.LearningRecords.Services;
+using Lssctc.ProgramManagement.Learnings.Services;
 using Lssctc.ProgramManagement.Programs.Mappings;
 using Lssctc.ProgramManagement.Programs.Services;
 using Lssctc.ProgramManagement.Quizzes.Services;
@@ -69,6 +70,8 @@ builder.Services.AddScoped<ILearningMaterialService, LearningMaterialService>();
 builder.Services.AddScoped<ISectionQuizService, SectionQuizService>();
 builder.Services.AddScoped<ITrainingResultService, TrainingResultService>();
 builder.Services.AddScoped<ILearningRecordService, LearningRecordService>();
+
+builder.Services.AddScoped<ILearningsClassService, LearningsClassService>();
 #endregion
 
 #region CORS
