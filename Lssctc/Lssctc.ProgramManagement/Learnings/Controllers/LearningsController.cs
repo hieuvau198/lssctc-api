@@ -35,23 +35,25 @@ namespace Lssctc.ProgramManagement.Learnings.Controllers
         }
 
         /// <summary>
-        /// Get details of a specific class by its ID.
+        /// Get details of a specific class by its ID and trainee ID.
         /// </summary>
         /// <param name="classId">The class ID.</param>
+        /// <param name="traineeId">The trainee ID.</param>
         /// <returns>LearningsClassDto</returns>
-        [HttpGet("class/{classId:int}")]
-        public async Task<IActionResult> GetClassById(int classId)
+        [HttpGet("class/{classId:int}/trainee/{traineeId:int}")]
+        public async Task<IActionResult> GetClassByClassIdAndTraineeId(int classId, int traineeId)
         {
-            if (classId <= 0)
-                return BadRequest("Invalid class ID.");
+            if (classId <= 0 || traineeId <= 0)
+                return BadRequest("Invalid class or trainee ID.");
 
-            var result = await _learningsClassService.GetClassById(classId);
+            var result = await _learningsClassService.GetClassByClassIdAndTraineeId(classId, traineeId);
 
             if (result == null)
-                return NotFound($"Class with ID {classId} not found.");
+                return NotFound($"Class with ID {classId} for trainee {traineeId} not found.");
 
             return Ok(result);
         }
+
 
         /// <summary>
         /// Get paginated classes for a specific trainee.

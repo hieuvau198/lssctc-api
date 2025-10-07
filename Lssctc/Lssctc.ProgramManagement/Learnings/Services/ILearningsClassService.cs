@@ -10,6 +10,6 @@ namespace Lssctc.ProgramManagement.Learnings.Services
         // get list all of LearningsClassDto by traineeId
         Task<List<LearningsClassDto>> GetAllClassesByTraineeId(int traineeId);
         // get LearningsClassDto by class id
-        Task<LearningsClassDto> GetClassById(int classId);
+        Task<LearningsClassDto> GetClassByClassIdAndTraineeId(int classId, int traineeId);
     }
 }
