@@ -1,6 +1,6 @@
 ﻿namespace Lssctc.ProgramManagement.Learnings.Services
 {
-    public class LearningsSectionPartitionService
+    public class LearningsSectionPartitionService : ILearningsSectionPartitionService
     {
     }
 }
