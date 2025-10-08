@@ -10,11 +10,16 @@ namespace Lssctc.ProgramManagement.Learnings.Controllers
     {
         private readonly ILearningsClassService _learningsClassService;
         private readonly ILearningsSectionService _learningsSectionService;
+        private readonly ILearningsSectionPartitionService _learningsSectionPartitionService;
 
-        public LearningsController(ILearningsClassService learningsClassService, ILearningsSectionService learningsSectionService)
+        public LearningsController(
+            ILearningsClassService learningsClassService, 
+            ILearningsSectionService learningsSectionService, 
+            ILearningsSectionPartitionService learningsSectionPartitionService)
         {
             _learningsClassService = learningsClassService;
             _learningsSectionService = learningsSectionService;
+            _learningsSectionPartitionService = learningsSectionPartitionService;
         }
 
         #region Classes
@@ -141,6 +146,58 @@ namespace Lssctc.ProgramManagement.Learnings.Controllers
 
         #region Section Partitions
 
+        /// <summary>
+        /// Get all section partitions for a specific section and trainee.
+        /// </summary>
+        [HttpGet("section/{sectionId:int}/trainee/{traineeId:int}/partitions")]
+        public async Task<IActionResult> GetAllSectionPartitionsBySectionIdAndTraineeId(int sectionId, int traineeId)
+        {
+            if (sectionId <= 0 || traineeId <= 0)
+                return BadRequest("Invalid section or trainee ID.");
+
+            var result = await _learningsSectionPartitionService.GetAllSectionPartitionsBySectionIdAndTraineeId(sectionId, traineeId);
+            if (result == null || !result.Any())
+                return NotFound($"No section partitions found for section ID {sectionId} and trainee ID {traineeId}.");
+
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// Get details of a specific section partition by partition ID and trainee ID.
+        /// </summary>
+        [HttpGet("partition/{partitionId:int}/trainee/{traineeId:int}")]
+        public async Task<IActionResult> GetSectionPartitionByPartitionIdAndTraineeId(int partitionId, int traineeId)
+        {
+            if (partitionId <= 0 || traineeId <= 0)
+                return BadRequest("Invalid partition or trainee ID.");
+
+            var result = await _learningsSectionPartitionService.GetSectionPartitionByPartitionIdAndTraineeId(partitionId, traineeId);
+            if (result == null)
+                return NotFound($"Section partition with ID {partitionId} for trainee {traineeId} not found.");
+
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// Get paginated section partitions for a section and trainee.
+        /// </summary>
+        [HttpGet("section/{sectionId:int}/trainee/{traineeId:int}/partitions/paged")]
+        public async Task<IActionResult> GetSectionPartitionsBySectionIdAndTraineeIdPaged(
+            int sectionId, int traineeId, int pageIndex = 1, int pageSize = 10)
+        {
+            if (sectionId <= 0 || traineeId <= 0)
+                return BadRequest("Invalid section or trainee ID.");
+            if (pageIndex <= 0 || pageSize <= 0)
+                return BadRequest("Page index and size must be greater than 0.");
+
+            var result = await _learningsSectionPartitionService.GetSectionPartitionsBySectionIdAndTraineeIdPaged(sectionId, traineeId, pageIndex, pageSize);
+            if (result == null || !result.Items.Any())
+                return NotFound($"No section partitions found for section ID {sectionId} and trainee ID {traineeId} on page {pageIndex}.");
+
+            return Ok(result);
+        }
+
         #endregion
+
     }
 }
