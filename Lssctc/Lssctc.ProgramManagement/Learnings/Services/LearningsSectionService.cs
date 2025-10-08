@@ -200,7 +200,5 @@ namespace Lssctc.ProgramManagement.Learnings.Services
                 throw new Exception($"Error in CheckIfAllSectionsHaveProgress - TraineeId: {traineeId}, ClassId: {classId}", ex);
             }
         }
-
-
     }
 }
