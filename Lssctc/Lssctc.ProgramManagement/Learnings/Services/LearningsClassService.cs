@@ -27,7 +27,7 @@ namespace Lssctc.ProgramManagement.Learnings.Services
             return classes.Select(c => MapToLearningsClassDto(c, traineeId)).ToList();
         }
 
-        public async Task<LearningsClassDto> GetClassById(int classId)
+        public async Task<LearningsClassDto> GetClassByClassIdAndTraineeId(int classId, int traineeId)
         {
             var c = await _uow.ClassRepository
                 .GetAllAsQueryable()
@@ -37,14 +37,14 @@ namespace Lssctc.ProgramManagement.Learnings.Services
                         .ThenInclude(co => co.CourseCode)
                 .Include(c => c.ClassMembers)
                     .ThenInclude(cm => cm.TrainingProgresses)
-                .FirstOrDefaultAsync(c => c.Id == classId);
+                .FirstOrDefaultAsync(c => c.Id == classId && c.ClassMembers.Any(cm => cm.TraineeId == traineeId));
 
             if (c == null)
-                throw new KeyNotFoundException($"Class with ID {classId} not found.");
+                throw new KeyNotFoundException($"Class with ID {classId} for trainee {traineeId} not found.");
 
-            // 🚨 Here traineeId is unknown, you can pass 0 or modify method signature to accept it
-            return MapToLearningsClassDto(c, 0);
+            return MapToLearningsClassDto(c, traineeId);
         }
+
 
 
         public async Task<PagedResult<LearningsClassDto>> GetClassesByTraineeIdPaged(int traineeId, int pageIndex, int pageSize)
