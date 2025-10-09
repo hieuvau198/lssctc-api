@@ -12,4 +12,7 @@
         public string? PartitionRecordStatus { get; set; }
         public bool IsCompleted { get; set; }
     }
+
+    
+
 }
