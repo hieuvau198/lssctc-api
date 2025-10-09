@@ -1074,6 +1074,7 @@ public partial class LssctcDbContext : DbContext
             entity.Property(e => e.Description)
                 .HasMaxLength(2000)
                 .HasColumnName("description");
+            entity.Property(e => e.DisplayOrder).HasColumnName("display_order");
             entity.Property(e => e.Name)
                 .HasMaxLength(100)
                 .HasColumnName("name");

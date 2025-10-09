@@ -15,6 +15,8 @@ public partial class SectionPartition
 
     public string? Description { get; set; }
 
+    public int? DisplayOrder { get; set; }
+
     public virtual ICollection<LearningRecordPartition> LearningRecordPartitions { get; set; } = new List<LearningRecordPartition>();
 
     public virtual SectionPartitionType PartitionType { get; set; } = null!;

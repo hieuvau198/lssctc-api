@@ -472,6 +472,7 @@ CREATE TABLE [dbo].[section_partitions] (
   [section_id] INT NOT NULL,      
   [name] NVARCHAR(100) NULL,
   [partition_type_id] INT NOT NULL,
+  [display_order] INT NULL,
   [description] NVARCHAR(2000) NULL,
     FOREIGN KEY ([partition_type_id]) REFERENCES [dbo].[section_partition_types]([id]),
     FOREIGN KEY ([section_id]) REFERENCES [dbo].[sections]([id])

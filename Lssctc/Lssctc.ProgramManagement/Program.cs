@@ -74,6 +74,7 @@ builder.Services.AddScoped<ILearningRecordService, LearningRecordService>();
 builder.Services.AddScoped<ILearningsClassService, LearningsClassService>();
 builder.Services.AddScoped<ILearningsSectionService, LearningsSectionService>();
 builder.Services.AddScoped<ILearningsSectionPartitionService, LearningsSectionPartitionService>();
+builder.Services.AddScoped<ILearningsSectionMaterialService, LearningsSectionMaterialService>();
 #endregion
 
 #region CORS

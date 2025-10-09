@@ -8,13 +8,22 @@ namespace Lssctc.ProgramManagement.Learnings.Controllers
     [ApiController]
     public class LearningsController : ControllerBase
     {
-        private readonly ILearningsClassService _learningsClassService;
-        private readonly ILearningsSectionService _learningsSectionService;
+        private readonly ILearningsClassService _lcService;
+        private readonly ILearningsSectionService _lsService;
+        private readonly ILearningsSectionPartitionService _lspService;
+        private readonly ILearningsSectionMaterialService _lspmService;
 
-        public LearningsController(ILearningsClassService learningsClassService, ILearningsSectionService learningsSectionService)
+        public LearningsController(
+            ILearningsClassService learningsClassService, 
+            ILearningsSectionService learningsSectionService, 
+            ILearningsSectionPartitionService learningsSectionPartitionService,
+            ILearningsSectionMaterialService learningsSectionMaterialService)
+            
         {
-            _learningsClassService = learningsClassService;
-            _learningsSectionService = learningsSectionService;
+            _lcService = learningsClassService;
+            _lsService = learningsSectionService;
+            _lspService = learningsSectionPartitionService;
+            _lspmService = learningsSectionMaterialService;
         }
 
         #region Classes
@@ -31,7 +40,7 @@ namespace Lssctc.ProgramManagement.Learnings.Controllers
             if (traineeId <= 0)
                 return BadRequest("Invalid trainee ID.");
 
-            var result = await _learningsClassService.GetAllClassesByTraineeId(traineeId);
+            var result = await _lcService.GetAllClassesByTraineeId(traineeId);
 
             if (result == null || !result.Any())
                 return NotFound($"No classes found for trainee with ID {traineeId}.");
@@ -51,7 +60,7 @@ namespace Lssctc.ProgramManagement.Learnings.Controllers
             if (classId <= 0 || traineeId <= 0)
                 return BadRequest("Invalid class or trainee ID.");
 
-            var result = await _learningsClassService.GetClassByClassIdAndTraineeId(classId, traineeId);
+            var result = await _lcService.GetClassByClassIdAndTraineeId(classId, traineeId);
 
             if (result == null)
                 return NotFound($"Class with ID {classId} for trainee {traineeId} not found.");
@@ -76,7 +85,7 @@ namespace Lssctc.ProgramManagement.Learnings.Controllers
             if (pageIndex <= 0 || pageSize <= 0)
                 return BadRequest("Page index and size must be greater than 0.");
 
-            var result = await _learningsClassService.GetClassesByTraineeIdPaged(traineeId, pageIndex, pageSize);
+            var result = await _lcService.GetClassesByTraineeIdPaged(traineeId, pageIndex, pageSize);
 
             if (result == null || !result.Items.Any())
                 return NotFound($"No classes found for trainee with ID {traineeId} on page {pageIndex}.");
@@ -96,7 +105,7 @@ namespace Lssctc.ProgramManagement.Learnings.Controllers
             if (classId <= 0 || traineeId <= 0)
                 return BadRequest("Invalid class or trainee ID.");
 
-            var result = await _learningsSectionService.GetAllSectionsByClassIdAndTraineeId(classId, traineeId);
+            var result = await _lsService.GetAllSectionsByClassIdAndTraineeId(classId, traineeId);
             if (result == null || !result.Any())
                 return NotFound($"No sections found for class ID {classId} and trainee ID {traineeId}.");
 
@@ -112,7 +121,7 @@ namespace Lssctc.ProgramManagement.Learnings.Controllers
             if (sectionId <= 0 || traineeId <= 0)
                 return BadRequest("Invalid section or trainee ID.");
 
-            var result = await _learningsSectionService.GetSectionBySectionIdAndTraineeId(sectionId, traineeId);
+            var result = await _lsService.GetSectionBySectionIdAndTraineeId(sectionId, traineeId);
             if (result == null)
                 return NotFound($"Section with ID {sectionId} for trainee {traineeId} not found.");
 
@@ -131,7 +140,7 @@ namespace Lssctc.ProgramManagement.Learnings.Controllers
             if (pageIndex <= 0 || pageSize <= 0)
                 return BadRequest("Page index and size must be greater than 0.");
 
-            var result = await _learningsSectionService.GetSectionsByClassIdAndTraineeIdPaged(classId, traineeId, pageIndex, pageSize);
+            var result = await _lsService.GetSectionsByClassIdAndTraineeIdPaged(classId, traineeId, pageIndex, pageSize);
             if (result == null || !result.Items.Any())
                 return NotFound($"No sections found for class ID {classId} and trainee ID {traineeId} on page {pageIndex}.");
 
@@ -141,6 +150,114 @@ namespace Lssctc.ProgramManagement.Learnings.Controllers
 
         #region Section Partitions
 
+        /// <summary>
+        /// Get all section partitions for a specific section and trainee.
+        /// </summary>
+        [HttpGet("partitions/section/{sectionId:int}/trainee/{traineeId:int}")]
+        public async Task<IActionResult> GetAllSectionPartitionsBySectionIdAndTraineeId(int sectionId, int traineeId)
+        {
+            if (sectionId <= 0 || traineeId <= 0)
+                return BadRequest("Invalid section or trainee ID.");
+
+            var result = await _lspService.GetAllSectionPartitionsBySectionIdAndTraineeId(sectionId, traineeId);
+            if (result == null || !result.Any())
+                return NotFound($"No section partitions found for section ID {sectionId} and trainee ID {traineeId}.");
+
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// Get details of a specific section partition by partition ID and trainee ID.
+        /// </summary>
+        [HttpGet("partition/{partitionId:int}/trainee/{traineeId:int}")]
+        public async Task<IActionResult> GetSectionPartitionByPartitionIdAndTraineeId(int partitionId, int traineeId)
+        {
+            if (partitionId <= 0 || traineeId <= 0)
+                return BadRequest("Invalid partition or trainee ID.");
+
+            var result = await _lspService.GetSectionPartitionByPartitionIdAndTraineeId(partitionId, traineeId);
+            if (result == null)
+                return NotFound($"Section partition with ID {partitionId} for trainee {traineeId} not found.");
+
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// Get paginated section partitions for a section and trainee.
+        /// </summary>
+        [HttpGet("partitions/section/{sectionId:int}/trainee/{traineeId:int}/paged")]
+        public async Task<IActionResult> GetSectionPartitionsBySectionIdAndTraineeIdPaged(
+            int sectionId, int traineeId, int pageIndex = 1, int pageSize = 10)
+        {
+            if (sectionId <= 0 || traineeId <= 0)
+                return BadRequest("Invalid section or trainee ID.");
+            if (pageIndex <= 0 || pageSize <= 0)
+                return BadRequest("Page index and size must be greater than 0.");
+
+            var result = await _lspService.GetSectionPartitionsBySectionIdAndTraineeIdPaged(sectionId, traineeId, pageIndex, pageSize);
+            if (result == null || !result.Items.Any())
+                return NotFound($"No section partitions found for section ID {sectionId} and trainee ID {traineeId} on page {pageIndex}.");
+
+            return Ok(result);
+        }
+
         #endregion
+
+        #region Section Materials
+        /// <summary>
+        /// Get details of a specific section material by partition ID and trainee ID.
+        /// </summary>
+        [HttpGet("sectionmaterials/partition/{partitionId:int}/trainee/{traineeId:int}")]
+        public async Task<IActionResult> GetSectionMaterialByPartitionIdAndTraineeId(int partitionId, int traineeId)
+        {
+            if (partitionId <= 0 || traineeId <= 0)
+                return BadRequest("Invalid partition or trainee ID.");
+
+            var result = await _lspmService.GetSectionMaterialByPartitionIdAndTraineeId(partitionId, traineeId);
+            if (result == null)
+                return NotFound($"Section material with partitionId {partitionId} for traineeId {traineeId} not found.");
+
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// Mark a learning material as completed for a specific partition and trainee.
+        /// </summary>
+        [HttpPut("sectionmaterials/partition/{partitionId:int}/trainee/{traineeId:int}/complete")]
+        public async Task<IActionResult> UpdateLearningMaterialAsCompleted(int partitionId, int traineeId)
+        {
+            if (partitionId <= 0 || traineeId <= 0)
+                return BadRequest("Invalid partition or trainee ID.");
+
+            var result = await _lspmService.UpdateLearningMaterialAsCompleted(partitionId, traineeId);
+
+            if (!result)
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    $"Failed to update learning material as completed for partition ID {partitionId} and trainee ID {traineeId}.");
+
+            return Ok(new { message = "Learning material marked as completed successfully." });
+        }
+
+        /// <summary>
+        /// Mark a learning material as not completed for a specific partition and trainee.
+        /// </summary>
+        [HttpPut("sectionmaterials/partition/{partitionId:int}/trainee/{traineeId:int}/incomplete")]
+        public async Task<IActionResult> UpdateLearningMaterialAsNotCompleted(int partitionId, int traineeId)
+        {
+            if (partitionId <= 0 || traineeId <= 0)
+                return BadRequest("Invalid partition or trainee ID.");
+
+            var result = await _lspmService.UpdateLearningMaterialAsNotCompleted(partitionId, traineeId);
+
+            if (!result)
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    $"Failed to update learning material as not completed for partition ID {partitionId} and trainee ID {traineeId}.");
+
+            return Ok(new { message = "Learning material marked as not completed successfully." });
+        }
+
+
+        #endregion
+
     }
 }
