@@ -32,8 +32,17 @@ namespace Lssctc.ProgramManagement.Learnings.Services
                 throw new KeyNotFoundException("SectionQuiz or associated Quiz not found");
             }
 
+            //var traineeCert = await _unitOfWork.TraineeCertificateRepository.GetAllAsQueryable()
+            //    .Where(tc => tc.TraineeId == traineeId && tc.CertificateId == sq.Quiz.CertificateId)
+            //    .FirstOrDefaultAsync();
+
+            //if (traineeCert != null)
+            //{
+            //    throw new InvalidOperationException("Trainee has already obtained the certificate associated with this quiz.");
+            //}
+
             var sqa = lrp.SectionQuizAttempts
-                .OrderByDescending(sqa => sqa.AttemptScore)
+                .OrderByDescending(sqa => sqa.QuizAttemptDate)
                 .FirstOrDefault(sqa => sqa.SectionQuizId == sq.Id);
             
 
