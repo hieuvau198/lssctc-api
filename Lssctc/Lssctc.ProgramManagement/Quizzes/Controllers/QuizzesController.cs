@@ -17,7 +17,6 @@ namespace Lssctc.ProgramManagement.Quizzes.Controllers
             _quizService = quizService;
         }
 
-        // GET: /api/quizzes?pageIndex=1&pageSize=20
         [HttpGet]
         public async Task<IActionResult> GetDetailQuizzes(
             [FromQuery] int pageIndex = 1,
@@ -29,7 +28,6 @@ namespace Lssctc.ProgramManagement.Quizzes.Controllers
 
             var result = await _quizService.GetDetailQuizzes(pageIndex, pageSize);
 
-            // Cho phép FE đọc header này qua CORS
             Response.Headers["X-Total-Count"] = result.TotalCount.ToString();
             Response.Headers["Access-Control-Expose-Headers"] = "X-Total-Count";
 
@@ -67,7 +65,6 @@ namespace Lssctc.ProgramManagement.Quizzes.Controllers
         }
 
 
-        // add questions to quiz
         [HttpPost("{quizId:int}/questions")]
         public async Task<IActionResult> CreateQuestion([FromRoute] int quizId, [FromBody] CreateQuizQuestionDto dto)
         {
@@ -86,9 +83,7 @@ namespace Lssctc.ProgramManagement.Quizzes.Controllers
             }
         }
 
-        //==== add options to question
 
-        // add option to a question
         [HttpPost("questions/{questionId:int}/options")]
         public async Task<IActionResult> CreateOption(
      [FromRoute] int questionId,
@@ -98,7 +93,6 @@ namespace Lssctc.ProgramManagement.Quizzes.Controllers
             {
                 var id = await _quizService.CreateOption(questionId, dto);
 
-                // Trả về CreatedAtAction với route: GetOptionById
                 return CreatedAtAction(
                     nameof(GetOptionById),
                     new { questionId, optionId = id },
@@ -116,7 +110,6 @@ namespace Lssctc.ProgramManagement.Quizzes.Controllers
         }
 
 
-        //=== = get option by id (for CreatedAtAction above)
         [HttpGet("questions/{questionId:int}/options/{optionId:int}")]
         public async Task<IActionResult> GetOptionById(
     [FromRoute] int questionId,
@@ -127,11 +120,9 @@ namespace Lssctc.ProgramManagement.Quizzes.Controllers
         }
 
 
-        // stub để CreatedAtAction dùng được
         [HttpGet("{questionId:int}/options/{id:int}")]
         public IActionResult GetById(int questionId, int id) => Ok();
 
-        // get only in4 of quiz for teacher 
         [HttpGet("{id:int}/questions")]
         public async Task<IActionResult> GetDetail(int id, CancellationToken ct = default)
         {
@@ -139,7 +130,14 @@ namespace Lssctc.ProgramManagement.Quizzes.Controllers
             return dto is null ? NotFound() : Ok(dto);
         }
 
-        // get quiz detail for trainee (no correct option info)
+        [HttpGet("{id:int}/no-answer")]
+        public async Task<IActionResult> GetDetailNoAnswer(int id, CancellationToken ct = default)
+        {
+            var dto = await _quizService.GetQuizDetailNoAnswer(id, ct);
+            return dto is null ? NotFound() : Ok(dto);
+        }
+
+
         [HttpGet("{id:int}/traineequiz-view")]
         public async Task<IActionResult> GetQuizForTrainee(int id, CancellationToken ct = default)
         {
@@ -147,7 +145,6 @@ namespace Lssctc.ProgramManagement.Quizzes.Controllers
             return dto is null ? NotFound() : Ok(dto);
         }
 
-        // GET: /api/quizzes/questions/{questionId}/options  (get option by question id)
         [HttpGet("questions/{questionId:int}/options")]
         public async Task<IActionResult> GetOptionsByQuestionIdFlat(int questionId, CancellationToken ct = default)
         {
@@ -161,7 +158,6 @@ namespace Lssctc.ProgramManagement.Quizzes.Controllers
         }
 
 
-        // GET /api/Quizzes/by-section-quiz/{sectionQuizId}/trainee-view
         [HttpGet("by-section-quiz/{sectionQuizId:int}/trainee-view")]
         public async Task<IActionResult> GetQuizTraineeViewBySectionQuiz(
             [FromRoute] int sectionQuizId,
@@ -180,13 +176,11 @@ namespace Lssctc.ProgramManagement.Quizzes.Controllers
             }
             catch (Exception ex)
             {
-                // TODO: log ex
                 return StatusCode(StatusCodes.Status500InternalServerError,
                     new { error = "Unexpected error.", detail = ex.Message });
             }
         }
 
-        // create question and option by quiz id
 
         [HttpPost("{quizId:int}/questions-with-options")]
         public async Task<IActionResult> CreateQuestionWithOptions(
@@ -197,9 +191,8 @@ namespace Lssctc.ProgramManagement.Quizzes.Controllers
             {
                 var questionId = await _quizService.CreateQuestionWithOptionsByQuizId(quizId, dto);
 
-                // có thể trả về link xem quiz detail của teacher hoặc trainee
                 return CreatedAtAction(
-                    nameof(GetDetail), // GET: /api/quizzes/{id}/questions
+                    nameof(GetDetail), 
                     new { id = quizId },
                     new { id = questionId }
                 );
