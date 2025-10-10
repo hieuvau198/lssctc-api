@@ -54,6 +54,67 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
             };
         }
 
+        public async Task<QuizDetailDto?> GetQuizDetail(int quizId, CancellationToken ct = default)
+        {
+            var quizDetail = await _uow.QuizRepository.GetAllAsQueryable()
+            .Where(q => q.Id == quizId)
+            .ProjectTo<QuizDetailDto>(_mapper.ConfigurationProvider)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(ct);
+
+            if (quizDetail == null)
+            {
+                return null;
+                throw new KeyNotFoundException($"Quiz {quizId} not found.");
+            }
+
+            return quizDetail;
+        }
+
+        public async Task<QuizDetailDto?> GetQuizDetailNoAnswer(int quizId, CancellationToken ct = default)
+        {
+            var quizDetail = await _uow.QuizRepository.GetAllAsQueryable()
+            .Where(q => q.Id == quizId)
+            .ProjectTo<QuizDetailDto>(_mapper.ConfigurationProvider)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(ct);
+
+            if (quizDetail == null)
+            {
+                return null;
+                throw new KeyNotFoundException($"Quiz {quizId} not found.");
+            }
+
+            foreach (var question in quizDetail.Questions)
+            {
+                foreach (var option in question.Options)
+                {
+                    option.IsCorrect = false;
+                }
+            }
+
+            return quizDetail;
+        }
+
+        public async Task<QuizTraineeDetailDto?> GetQuizDetailForTrainee(int quizId, CancellationToken ct = default)
+        {
+            if (ct.IsCancellationRequested)
+                ct.ThrowIfCancellationRequested();
+
+            var quizDetail = await _uow.QuizRepository.GetAllAsQueryable()
+       .Where(q => q.Id == quizId)
+       .ProjectTo<QuizTraineeDetailDto>(_mapper.ConfigurationProvider)
+       .AsNoTracking()
+       .FirstOrDefaultAsync(ct);
+
+            if (quizDetail == null)
+            {
+                return null;
+                throw new KeyNotFoundException($"Quiz {quizId} not found.");
+            }
+
+            return quizDetail;
+        }
 
 
         public async Task<int> CreateQuiz(CreateQuizDto dto)
@@ -83,58 +144,14 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
             await _uow.QuizRepository.DeleteAsync(entity);            
             await _uow.SaveChangesAsync();
             return true;
-        }
-                //========== question =================
+        }        
         
         
-        //====== get quiz with questions and options for teacher
-        public async Task<QuizDetailDto?> GetQuizDetail(int quizId, CancellationToken ct = default)
-        {
-            //CancellationToken dùng để huỷ truy vấn bất đồng bộ nếu client hủy request
-            var quizDetail = await _uow.QuizRepository.GetAllAsQueryable()
-        .Where(q => q.Id == quizId)
-        .ProjectTo<QuizDetailDto>(_mapper.ConfigurationProvider)
-        .AsNoTracking()
-        .FirstOrDefaultAsync(ct);
-
-            if (quizDetail == null)
-            {
-                return null;
-                throw new KeyNotFoundException($"Quiz {quizId} not found.");
-            }
-
-            return quizDetail;
-        }
-
-
-        //====== get quiz with questions and options for trainee
-        public async Task<QuizTraineeDetailDto?> GetQuizDetailForTrainee(
-    int quizId, CancellationToken ct = default)
-        {
-            if (ct.IsCancellationRequested)
-                ct.ThrowIfCancellationRequested();
-
-            var quizDetail = await _uow.QuizRepository.GetAllAsQueryable()
-       .Where(q => q.Id == quizId)
-       .ProjectTo<QuizTraineeDetailDto>(_mapper.ConfigurationProvider)
-       .AsNoTracking()
-       .FirstOrDefaultAsync(ct);
-
-            if (quizDetail == null)
-            {
-                return null;
-                throw new KeyNotFoundException($"Quiz {quizId} not found.");
-            }
-
-            return quizDetail;
-        }
-
 
 
 
         public async Task<int> CreateQuestionByQuizId(int quizId, CreateQuizQuestionDto dto)
         {
-            //  Validate question input data
             if (dto == null) throw new ValidationException("Body is required.");
 
             var quiz = await _uow.QuizRepository.GetByIdAsync(quizId);
