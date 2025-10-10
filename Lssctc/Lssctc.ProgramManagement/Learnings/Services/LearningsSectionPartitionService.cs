@@ -124,7 +124,7 @@ namespace Lssctc.ProgramManagement.Learnings.Services
                 PartitionOrder = partition.DisplayOrder ?? 1,
                 PartitionType = partition.PartitionTypeId,
                 PartitionRecordStatus = firstLrp.IsComplete ? "Completed" : "InCompleted",
-                IsCompleted = existedLearningRecord?.IsCompleted ?? false,
+                IsCompleted = firstLrp.IsComplete,
             };
         }
 

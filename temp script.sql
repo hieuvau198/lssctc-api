@@ -1,5 +1,10 @@
 SELECT TOP (1000) [id]
       ,[name]
+  FROM [dbo].[learning_material_types]
+
+
+SELECT TOP (1000) [id]
+      ,[name]
       ,[description]
       ,[classes_id]
       ,[syllabus_section_id]
@@ -11,6 +16,14 @@ SELECT TOP (1000) [id]
 FROM [dbo].[sections]
 
 SELECT TOP (1000) [id]
+      ,[description]
+      ,[name]
+      ,[pass_criteria]
+      ,[is_action_required]
+  FROM [dbo].[section_partition_types]
+
+
+SELECT TOP (1000) [id]
       ,[section_id]
       ,[name]
       ,[training_progress_id]
@@ -19,6 +32,19 @@ SELECT TOP (1000) [id]
       ,[is_trainee_attended]
       ,[progress]
 FROM [dbo].[learning_records]
+
+SELECT TOP (1000) [id]
+      ,[section_partition_id]
+      ,[name]
+      ,[learning_record_id]
+      ,[description]
+      ,[updated_at]
+      ,[completed_at]
+      ,[started_at]
+      ,[is_complete]
+      ,[record_partition_order]
+  FROM [dbo].[learning_record_partitions]
+
 
 
 SELECT TOP (1000) [id]
