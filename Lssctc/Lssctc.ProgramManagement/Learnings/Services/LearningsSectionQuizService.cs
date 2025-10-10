@@ -33,6 +33,7 @@ namespace Lssctc.ProgramManagement.Learnings.Services
             }
 
             var sqa = lrp.SectionQuizAttempts
+                .OrderByDescending(sqa => sqa.AttemptScore)
                 .FirstOrDefault(sqa => sqa.SectionQuizId == sq.Id);
             
 
