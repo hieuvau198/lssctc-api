@@ -28,7 +28,6 @@ namespace Lssctc.Share.Interfaces
         IGenericRepository<Practice> PracticeRepository { get; }
         IGenericRepository<PracticeStep> PracticeStepRepository { get; }
         IGenericRepository<PracticeStepComponent> PracticeStepComponentRepository { get; }
-        IGenericRepository<PracticeStepType> PracticeStepTypeRepository { get; }
         IGenericRepository<PracticeStepWarning> PracticeStepWarningRepository { get; }
         IGenericRepository<PracticeStepWarningType> PracticeStepWarningTypeRepository { get; }
         IGenericRepository<ProgramCourse> ProgramCourseRepository { get; }

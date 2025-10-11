@@ -64,8 +64,6 @@ public partial class LssctcDbContext : DbContext
 
     public virtual DbSet<PracticeStepComponent> PracticeStepComponents { get; set; }
 
-    public virtual DbSet<PracticeStepType> PracticeStepTypes { get; set; }
-
     public virtual DbSet<PracticeStepWarning> PracticeStepWarnings { get; set; }
 
     public virtual DbSet<PracticeStepWarningType> PracticeStepWarningTypes { get; set; }
@@ -771,24 +769,6 @@ public partial class LssctcDbContext : DbContext
                 .HasForeignKey(d => d.StepId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK__practice___step___55F4C372");
-        });
-
-        modelBuilder.Entity<PracticeStepType>(entity =>
-        {
-            entity.HasKey(e => e.Id).HasName("PK__practice__3213E83F9DDE0921");
-
-            entity.ToTable("practice_step_types");
-
-            entity.Property(e => e.Id).HasColumnName("id");
-            entity.Property(e => e.Description)
-                .HasMaxLength(2000)
-                .HasColumnName("description");
-            entity.Property(e => e.IsDeleted)
-                .HasDefaultValue(false)
-                .HasColumnName("is_deleted");
-            entity.Property(e => e.Name)
-                .HasMaxLength(100)
-                .HasColumnName("name");
         });
 
         modelBuilder.Entity<PracticeStepWarning>(entity =>

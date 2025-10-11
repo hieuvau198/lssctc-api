@@ -32,7 +32,6 @@ namespace Lssctc.Share.Implements
         private IGenericRepository<Practice>? _practiceRepository;
         private IGenericRepository<PracticeStep>? _practiceStepRepository;
         private IGenericRepository<PracticeStepComponent>? _practiceStepComponentRepository;
-        private IGenericRepository<PracticeStepType>? _practiceStepTypeRepository;
         private IGenericRepository<PracticeStepWarning>? _practiceStepWarningRepository;
         private IGenericRepository<PracticeStepWarningType>? _practiceStepWarningTypeRepository;
         private IGenericRepository<ProgramCourse>? _programCourseRepository;
@@ -146,9 +145,6 @@ namespace Lssctc.Share.Implements
 
         public IGenericRepository<PracticeStepComponent> PracticeStepComponentRepository =>
             _practiceStepComponentRepository ??= new GenericRepository<PracticeStepComponent>(_context);
-
-        public IGenericRepository<PracticeStepType> PracticeStepTypeRepository =>
-            _practiceStepTypeRepository ??= new GenericRepository<PracticeStepType>(_context);
 
         public IGenericRepository<PracticeStepWarning> PracticeStepWarningRepository =>
             _practiceStepWarningRepository ??= new GenericRepository<PracticeStepWarning>(_context);

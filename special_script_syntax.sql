@@ -31,3 +31,4 @@ EXEC sp_executesql @sql;
 
 
 DROP TABLE [dbo].[simulation_component_types];
+DROP TABLE [dbo].[practice_step_types];
