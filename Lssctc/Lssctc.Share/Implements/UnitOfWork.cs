@@ -32,6 +32,7 @@ namespace Lssctc.Share.Implements
         private IGenericRepository<Practice>? _practiceRepository;
         private IGenericRepository<PracticeStep>? _practiceStepRepository;
         private IGenericRepository<PracticeStepComponent>? _practiceStepComponentRepository;
+        private IGenericRepository<PracticeStepAction>? _practiceStepActionRepository;
         private IGenericRepository<PracticeStepWarning>? _practiceStepWarningRepository;
         private IGenericRepository<PracticeStepWarningType>? _practiceStepWarningTypeRepository;
         private IGenericRepository<ProgramCourse>? _programCourseRepository;
@@ -53,6 +54,7 @@ namespace Lssctc.Share.Implements
         private IGenericRepository<SectionQuizAttemptAnswer>? _sectionQuizAttemptAnswerRepository;
         private IGenericRepository<SectionQuizAttemptQuestion>? _sectionQuizAttemptQuestionRepository;
         private IGenericRepository<SimulationComponent>? _simulationComponentRepository;
+        private IGenericRepository<SimAction>? _simActionRepository;
         private IGenericRepository<SimulationManager>? _simulationManagerRepository;
         private IGenericRepository<SimulationSetting>? _simulationSettingRepository;
         private IGenericRepository<SimulationTimeslot>? _simulationTimeslotRepository;
@@ -146,6 +148,9 @@ namespace Lssctc.Share.Implements
         public IGenericRepository<PracticeStepComponent> PracticeStepComponentRepository =>
             _practiceStepComponentRepository ??= new GenericRepository<PracticeStepComponent>(_context);
 
+        public IGenericRepository<PracticeStepAction> PracticeStepActionRepository =>
+            _practiceStepActionRepository ??= new GenericRepository<PracticeStepAction>(_context);
+
         public IGenericRepository<PracticeStepWarning> PracticeStepWarningRepository =>
             _practiceStepWarningRepository ??= new GenericRepository<PracticeStepWarning>(_context);
 
@@ -208,6 +213,9 @@ namespace Lssctc.Share.Implements
 
         public IGenericRepository<SimulationComponent> SimulationComponentRepository =>
             _simulationComponentRepository ??= new GenericRepository<SimulationComponent>(_context);
+
+        public IGenericRepository<SimAction> SimActionRepository =>
+            _simActionRepository ??= new GenericRepository<SimAction>(_context);
 
         public IGenericRepository<SimulationManager> SimulationManagerRepository =>
             _simulationManagerRepository ??= new GenericRepository<SimulationManager>(_context);

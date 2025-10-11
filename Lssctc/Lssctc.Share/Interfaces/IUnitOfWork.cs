@@ -28,6 +28,7 @@ namespace Lssctc.Share.Interfaces
         IGenericRepository<Practice> PracticeRepository { get; }
         IGenericRepository<PracticeStep> PracticeStepRepository { get; }
         IGenericRepository<PracticeStepComponent> PracticeStepComponentRepository { get; }
+        IGenericRepository<PracticeStepAction> PracticeStepActionRepository { get; }
         IGenericRepository<PracticeStepWarning> PracticeStepWarningRepository { get; }
         IGenericRepository<PracticeStepWarningType> PracticeStepWarningTypeRepository { get; }
         IGenericRepository<ProgramCourse> ProgramCourseRepository { get; }
@@ -49,6 +50,7 @@ namespace Lssctc.Share.Interfaces
         IGenericRepository<SectionQuizAttemptAnswer> SectionQuizAttemptAnswerRepository { get; }
         IGenericRepository<SectionQuizAttemptQuestion> SectionQuizAttemptQuestionRepository { get; }
         IGenericRepository<SimulationComponent> SimulationComponentRepository { get; }
+        IGenericRepository<SimAction> SimActionRepository { get; }
         IGenericRepository<SimulationManager> SimulationManagerRepository { get; }
         IGenericRepository<SimulationSetting> SimulationSettingRepository { get; }
         IGenericRepository<SimulationTimeslot> SimulationTimeslotRepository { get; }
