@@ -198,13 +198,6 @@ CREATE TABLE [dbo].[simulation_timeslots] (
     [is_deleted] BIT DEFAULT 0,
 ); 
 
-CREATE TABLE [dbo].[simulation_component_types] (
-    [id] INT IDENTITY(1,1) PRIMARY KEY,
-    [name] NVARCHAR(100) NOT NULL,
-    [description] NVARCHAR(2000),
-    [is_deleted] BIT DEFAULT 0
-); 
-
 CREATE TABLE [dbo].[simulation_components] (
     [id] INT IDENTITY(1,1) PRIMARY KEY,
     [name] NVARCHAR(100) NOT NULL,

@@ -108,8 +108,6 @@ public partial class LssctcDbContext : DbContext
 
     public virtual DbSet<SimulationComponent> SimulationComponents { get; set; }
 
-    public virtual DbSet<SimulationComponentType> SimulationComponentTypes { get; set; }
-
     public virtual DbSet<SimulationManager> SimulationManagers { get; set; }
 
     public virtual DbSet<SimulationSetting> SimulationSettings { get; set; }
@@ -1390,24 +1388,6 @@ public partial class LssctcDbContext : DbContext
             entity.Property(e => e.IsActive)
                 .HasDefaultValue(true)
                 .HasColumnName("is_active");
-            entity.Property(e => e.IsDeleted)
-                .HasDefaultValue(false)
-                .HasColumnName("is_deleted");
-            entity.Property(e => e.Name)
-                .HasMaxLength(100)
-                .HasColumnName("name");
-        });
-
-        modelBuilder.Entity<SimulationComponentType>(entity =>
-        {
-            entity.HasKey(e => e.Id).HasName("PK__simulati__3213E83F55517392");
-
-            entity.ToTable("simulation_component_types");
-
-            entity.Property(e => e.Id).HasColumnName("id");
-            entity.Property(e => e.Description)
-                .HasMaxLength(2000)
-                .HasColumnName("description");
             entity.Property(e => e.IsDeleted)
                 .HasDefaultValue(false)
                 .HasColumnName("is_deleted");

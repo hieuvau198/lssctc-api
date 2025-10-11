@@ -1,6 +1,41 @@
+USE [lssctc-db]
+
+
+SELECT TOP (1000) [id]
+      ,[username]
+      ,[password]
+      ,[email]
+      ,[fullname]
+      ,[role]
+      ,[phone_number]
+      ,[avatar_url]
+      ,[is_active]
+      ,[is_deleted]
+  FROM [dbo].[users]
+
+
 SELECT TOP (1000) [id]
       ,[name]
   FROM [dbo].[learning_material_types]
+
+
+
+  SELECT TOP (1000) [id]
+      ,[name]
+      ,[start_date]
+      ,[end_date]
+      ,[capacity]
+      ,[program_course_id]
+      ,[class_code_id]
+      ,[description]
+      ,[status]
+  FROM [dbo].[classes]
+
+  SELECT TOP (1000) [id]
+      ,[class_id]
+      ,[instructor_id]
+      ,[position]
+  FROM [dbo].[class_instructors]
 
 
 SELECT TOP (1000) [id]
@@ -45,7 +80,15 @@ SELECT TOP (1000) [id]
       ,[record_partition_order]
   FROM [dbo].[learning_record_partitions]
 
-
+  SELECT TOP (1000) [id]
+      ,[name]
+      ,[pass_score_criteria]
+      ,[created_at]
+      ,[updated_at]
+      ,[timelimit_minute]
+      ,[total_score]
+      ,[description]
+  FROM [dbo].[quizzes]
 
 SELECT TOP (1000) [id]
     ,[course_member_id]
@@ -114,6 +157,17 @@ SELECT TOP (1000) [id]
   FROM [dbo].[syllabuses]
 
 
+  SELECT TOP (1000) [id]
+      ,[section_quiz_id]
+      ,[name]
+      ,[attempt_score]
+      ,[learning_record_partition_id]
+      ,[max_score]
+      ,[quiz_attempt_date]
+      ,[status]
+      ,[attempt_order]
+      ,[is_pass]
+  FROM [dbo].[section_quiz_attempts]
 
 
 DELETE FROM [dbo].[learning_records];

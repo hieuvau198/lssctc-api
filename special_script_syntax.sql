@@ -26,3 +26,8 @@ FROM sys.tables AS t
 INNER JOIN sys.schemas AS s ON t.schema_id = s.schema_id;
 
 EXEC sp_executesql @sql;
+
+
+
+
+DROP TABLE [dbo].[simulation_component_types];

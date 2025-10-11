@@ -50,7 +50,6 @@ namespace Lssctc.Share.Interfaces
         IGenericRepository<SectionQuizAttemptAnswer> SectionQuizAttemptAnswerRepository { get; }
         IGenericRepository<SectionQuizAttemptQuestion> SectionQuizAttemptQuestionRepository { get; }
         IGenericRepository<SimulationComponent> SimulationComponentRepository { get; }
-        IGenericRepository<SimulationComponentType> SimulationComponentTypeRepository { get; }
         IGenericRepository<SimulationManager> SimulationManagerRepository { get; }
         IGenericRepository<SimulationSetting> SimulationSettingRepository { get; }
         IGenericRepository<SimulationTimeslot> SimulationTimeslotRepository { get; }

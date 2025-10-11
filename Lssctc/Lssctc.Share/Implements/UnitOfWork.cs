@@ -54,7 +54,6 @@ namespace Lssctc.Share.Implements
         private IGenericRepository<SectionQuizAttemptAnswer>? _sectionQuizAttemptAnswerRepository;
         private IGenericRepository<SectionQuizAttemptQuestion>? _sectionQuizAttemptQuestionRepository;
         private IGenericRepository<SimulationComponent>? _simulationComponentRepository;
-        private IGenericRepository<SimulationComponentType>? _simulationComponentTypeRepository;
         private IGenericRepository<SimulationManager>? _simulationManagerRepository;
         private IGenericRepository<SimulationSetting>? _simulationSettingRepository;
         private IGenericRepository<SimulationTimeslot>? _simulationTimeslotRepository;
@@ -213,9 +212,6 @@ namespace Lssctc.Share.Implements
 
         public IGenericRepository<SimulationComponent> SimulationComponentRepository =>
             _simulationComponentRepository ??= new GenericRepository<SimulationComponent>(_context);
-
-        public IGenericRepository<SimulationComponentType> SimulationComponentTypeRepository =>
-            _simulationComponentTypeRepository ??= new GenericRepository<SimulationComponentType>(_context);
 
         public IGenericRepository<SimulationManager> SimulationManagerRepository =>
             _simulationManagerRepository ??= new GenericRepository<SimulationManager>(_context);
