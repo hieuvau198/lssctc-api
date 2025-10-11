@@ -42,6 +42,7 @@ builder.Services.AddScoped<ISectionPracticeService, SectionPracticeService>();
 builder.Services.AddScoped<ISimActionService, SimActionService>();
 builder.Services.AddScoped<IStepActionService, StepActionService>();
 builder.Services.AddScoped<ITraineePracticeService, TraineePracticeService>();
+builder.Services.AddScoped<ITraineeStepService, TraineeStepService>();
 #endregion
 
 #region Cors

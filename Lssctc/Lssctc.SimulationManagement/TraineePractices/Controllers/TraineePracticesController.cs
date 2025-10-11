@@ -10,9 +10,11 @@ namespace Lssctc.SimulationManagement.TraineePractices.Controllers
     public class TraineePracticesController : ControllerBase
     {
         private readonly ITraineePracticeService _traineePracticeService;
-        public TraineePracticesController(ITraineePracticeService traineePracticeService)
+        private readonly ITraineeStepService _traineeStepService;
+        public TraineePracticesController(ITraineePracticeService traineePracticeService, ITraineeStepService traineeStepService)
         {
             _traineePracticeService = traineePracticeService;
+            _traineeStepService = traineeStepService;
         }
 
         [HttpGet("practice/{practiceId}/trainee/{traineeId}")]
@@ -52,6 +54,35 @@ namespace Lssctc.SimulationManagement.TraineePractices.Controllers
                 var result = await _traineePracticeService.GetTraineePracticesByTraineeIdAndClassId(traineeId, classId);
                 if (result == null || !result.Any())
                     return NotFound($"No trainee practices found for Trainee ID {traineeId} in Class ID {classId}.");
+
+                return Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Conflict(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
+            }
+        }
+
+        [HttpGet("step/{stepId}/trainee/{traineeId}")]
+        public async Task<IActionResult> GetTraineeStepByIdAndTraineeId(int stepId, int traineeId)
+        {
+            try
+            {
+                var result = await _traineeStepService.GetTraineeStepByIdAndTraineeId(stepId, traineeId);
+                if (result == null)
+                    return NotFound($"No step found for Step ID {stepId} and Trainee ID {traineeId}.");
 
                 return Ok(result);
             }
