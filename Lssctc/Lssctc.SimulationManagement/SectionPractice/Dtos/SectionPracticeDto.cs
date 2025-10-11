@@ -28,7 +28,6 @@ namespace Lssctc.SimulationManagement.SectionPractice.Dtos
 
         public int? Status { get; set; }      
         public bool? IsActive { get; set; }   
-        public bool? IsDeleted { get; set; }  
     }
 
     public class UpdateSectionPracticeDto
@@ -46,6 +45,5 @@ namespace Lssctc.SimulationManagement.SectionPractice.Dtos
 
         public int? Status { get; set; }
         public bool? IsActive { get; set; }
-        public bool? IsDeleted { get; set; }
     }
 }

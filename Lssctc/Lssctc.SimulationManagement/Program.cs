@@ -10,6 +10,7 @@ using Lssctc.SimulationManagement.SectionPractice.Services;
 using Lssctc.SimulationManagement.SimActions.Services;
 using Lssctc.SimulationManagement.StepActions.Services;
 using Lssctc.SimulationManagement.StepComponents.Services;
+using Lssctc.SimulationManagement.TraineePractices.Services;
 using Microsoft.AspNetCore.Cors.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 
@@ -40,6 +41,7 @@ builder.Services.AddScoped<ISectionPracticeService, SectionPracticeService>();
 
 builder.Services.AddScoped<ISimActionService, SimActionService>();
 builder.Services.AddScoped<IStepActionService, StepActionService>();
+builder.Services.AddScoped<ITraineePracticeService, TraineePracticeService>();
 #endregion
 
 #region Cors
