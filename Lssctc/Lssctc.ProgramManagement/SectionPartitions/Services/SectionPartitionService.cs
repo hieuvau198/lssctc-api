@@ -53,6 +53,49 @@ namespace Lssctc.ProgramManagement.SectionPartitions.Services
                 .ToListAsync();
         }
 
+        //get by sectionId with pagination
+        public async Task<PagedResult<SectionPartitionDto>> GetSectionPartitionBySectionId(int sectionId, int page, int pageSize)
+        {
+            if (sectionId <= 0)
+                throw new ValidationException("sectionId is invalid.");
+            if (page <= 0) page = 1;
+            if (pageSize <= 0 || pageSize > 200) pageSize = 20;
+
+            var sectionExists = await _uow.SectionRepository.ExistsAsync(x => x.Id == sectionId);
+            if (!sectionExists)
+                throw new KeyNotFoundException($"Section {sectionId} not found.");
+
+            var baseQuery = _uow.SectionPartitionRepository
+                .GetAllAsQueryable()
+                .Where(x => x.SectionId == sectionId);
+
+            var total = await baseQuery.CountAsync();
+
+            var items = await baseQuery
+                .OrderBy(x => x.DisplayOrder)
+                .ThenBy(x => x.Id)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(x => new SectionPartitionDto
+                {
+                    Id = x.Id,
+                    SectionId = x.SectionId,
+                    Name = x.Name,
+                    PartitionTypeId = x.PartitionTypeId,
+                    DisplayOrder = x.DisplayOrder,
+                    Description = x.Description
+                })
+                .AsNoTracking()
+                .ToListAsync();
+
+            return new PagedResult<SectionPartitionDto>
+            {
+                Items = items,
+                TotalCount = total,
+                Page = page,
+                PageSize = pageSize
+            };
+        }
 
         public async Task<SectionPartitionDto?> GetSectionPartitionById(int id)
         {

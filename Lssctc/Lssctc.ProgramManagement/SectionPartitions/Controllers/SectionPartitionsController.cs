@@ -52,6 +52,28 @@ namespace Lssctc.ProgramManagement.SectionPartitions.Controllers
 
             return Ok(dto);
         }
+        /// <summary>
+        /// get section partitions by sectionId with pagination
+        /// </summary>
+
+        // GET /api/section-partitions/by-section/5/paged?page=1&pageSize=10
+        [HttpGet("by-section/{sectionId:int}/paged")]
+        public async Task<IActionResult> GetBySectionPaged(int sectionId, int page = 1, int pageSize = 20)
+        {
+            try
+            {
+                var result = await _svc.GetSectionPartitionBySectionId(sectionId, page, pageSize);
+                return Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { error = ex.Message });
+            }
+            catch (ValidationException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+        }
 
         // POST: /api/SectionPartitions
         [HttpPost]
