@@ -9,6 +9,8 @@ namespace Lssctc.ProgramManagement.Sections.Services
         Task<PagedResult<SectionListItemDto>> GetSections(SectionQueryParameters parameters);
         Task<IReadOnlyList<SectionListItemDto>> GetSectionsNoPagination();
 
+        Task<PagedResult<SectionDto>> GetSectionsByClassId(int classId, int page, int pageSize);
+
         Task<SectionDto?> GetSectionById(int id);
         Task<int> CreateSection(CreateSectionDto dto);
         Task<bool> UpdateSection(int id, UpdateSectionDto dto);

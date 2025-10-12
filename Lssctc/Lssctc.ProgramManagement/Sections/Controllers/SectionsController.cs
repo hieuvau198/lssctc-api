@@ -38,6 +38,29 @@ namespace Lssctc.ProgramManagement.Sections.Controllers
             }
         }
 
+        /// <summary>
+        /// get sections by classId with pagination
+        /// </summary>
+
+        // GET /api/sections/by-class/1?page=1&pageSize=20
+        [HttpGet("by-class/{classId:int}")]
+        public async Task<IActionResult> GetSectionsByClassId([FromRoute] int classId, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+        {
+            try
+            {
+                var result = await _service.GetSectionsByClassId(classId, page, pageSize);
+                return Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { error = ex.Message });
+            }
+            catch (ValidationException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+        }
+
         [HttpGet("all")]
         public async Task<IActionResult> GetAll()
         {

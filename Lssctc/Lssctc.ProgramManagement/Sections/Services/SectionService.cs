@@ -47,6 +47,52 @@ namespace Lssctc.ProgramManagement.Sections.Services
             };
         }
 
+        //get sections by classId with pagination
+        public async Task<PagedResult<SectionDto>> GetSectionsByClassId(int classId, int page, int pageSize)
+        {
+            if (classId <= 0) throw new ValidationException("classId is invalid.");
+            if (page <= 0) page = 1;
+            if (pageSize <= 0 || pageSize > 200) pageSize = 20;
+
+            var classExists = await _uow.ClassRepository.ExistsAsync(x => x.Id == classId);
+            if (!classExists) throw new KeyNotFoundException($"Class {classId} not found.");
+
+            var query = _uow.SectionRepository
+                .GetAllAsQueryable()
+                .Where(s => s.ClassesId == classId)
+                .OrderBy(s => s.Order)
+                .ThenBy(s => s.Id);
+
+            var total = await query.CountAsync();
+
+            var items = await query
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(s => new SectionDto
+                {
+                    Id = s.Id,
+                    Name = s.Name,
+                    Description = s.Description,
+                    ClassesId = s.ClassesId,
+                    SyllabusSectionId = s.SyllabusSectionId,
+                    DurationMinutes = s.DurationMinutes,
+                    Order = s.Order,
+                    StartDate = s.StartDate,
+                    EndDate = s.EndDate,
+                    Status = s.Status
+                })
+                .AsNoTracking()
+                .ToListAsync();
+
+            return new PagedResult<SectionDto>
+            {
+                Items = items,
+                TotalCount = total,
+                Page = page,
+                PageSize = pageSize
+            };
+        }
+
         public async Task<IReadOnlyList<SectionListItemDto>> GetSectionsNoPagination()
         {
             return await _uow.SectionRepository.GetAllAsQueryable()
