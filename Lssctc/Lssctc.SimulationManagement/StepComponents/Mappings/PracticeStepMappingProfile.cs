@@ -1,8 +1,8 @@
 ﻿using AutoMapper;
 using Lssctc.Share.Entities;
-using Lssctc.SimulationManagement.PracticeStepComponents.Dtos;
+using Lssctc.SimulationManagement.StepComponents.Dtos;
 
-namespace Lssctc.SimulationManagement.PracticeStepComponents.Mappings
+namespace Lssctc.SimulationManagement.StepComponents.Mappings
 {
     public class PracticeStepMappingProfile : Profile
     {

@@ -62,9 +62,9 @@ public partial class LssctcDbContext : DbContext
 
     public virtual DbSet<PracticeStep> PracticeSteps { get; set; }
 
-    public virtual DbSet<PracticeStepComponent> PracticeStepComponents { get; set; }
+    public virtual DbSet<PracticeStepAction> PracticeStepActions { get; set; }
 
-    public virtual DbSet<PracticeStepType> PracticeStepTypes { get; set; }
+    public virtual DbSet<PracticeStepComponent> PracticeStepComponents { get; set; }
 
     public virtual DbSet<PracticeStepWarning> PracticeStepWarnings { get; set; }
 
@@ -106,9 +106,9 @@ public partial class LssctcDbContext : DbContext
 
     public virtual DbSet<SectionQuizAttemptQuestion> SectionQuizAttemptQuestions { get; set; }
 
-    public virtual DbSet<SimulationComponent> SimulationComponents { get; set; }
+    public virtual DbSet<SimAction> SimActions { get; set; }
 
-    public virtual DbSet<SimulationComponentType> SimulationComponentTypes { get; set; }
+    public virtual DbSet<SimulationComponent> SimulationComponents { get; set; }
 
     public virtual DbSet<SimulationManager> SimulationManagers { get; set; }
 
@@ -750,6 +750,36 @@ public partial class LssctcDbContext : DbContext
                 .HasConstraintName("FK__practice___pract__4A8310C6");
         });
 
+        modelBuilder.Entity<PracticeStepAction>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__practice__3213E83F9DC055F9");
+
+            entity.ToTable("practice_step_actions");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.ActionId).HasColumnName("action_id");
+            entity.Property(e => e.Description)
+                .HasMaxLength(2000)
+                .HasColumnName("description");
+            entity.Property(e => e.IsDeleted)
+                .HasDefaultValue(false)
+                .HasColumnName("is_deleted");
+            entity.Property(e => e.Name)
+                .HasMaxLength(255)
+                .HasColumnName("name");
+            entity.Property(e => e.StepId).HasColumnName("step_id");
+
+            entity.HasOne(d => d.Action).WithMany(p => p.PracticeStepActions)
+                .HasForeignKey(d => d.ActionId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__practice___actio__00AA174D");
+
+            entity.HasOne(d => d.Step).WithMany(p => p.PracticeStepActions)
+                .HasForeignKey(d => d.StepId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__practice___step___7FB5F314");
+        });
+
         modelBuilder.Entity<PracticeStepComponent>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("PK__practice__3213E83F3504BB21");
@@ -773,24 +803,6 @@ public partial class LssctcDbContext : DbContext
                 .HasForeignKey(d => d.StepId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK__practice___step___55F4C372");
-        });
-
-        modelBuilder.Entity<PracticeStepType>(entity =>
-        {
-            entity.HasKey(e => e.Id).HasName("PK__practice__3213E83F9DDE0921");
-
-            entity.ToTable("practice_step_types");
-
-            entity.Property(e => e.Id).HasColumnName("id");
-            entity.Property(e => e.Description)
-                .HasMaxLength(2000)
-                .HasColumnName("description");
-            entity.Property(e => e.IsDeleted)
-                .HasDefaultValue(false)
-                .HasColumnName("is_deleted");
-            entity.Property(e => e.Name)
-                .HasMaxLength(100)
-                .HasColumnName("name");
         });
 
         modelBuilder.Entity<PracticeStepWarning>(entity =>
@@ -1370,6 +1382,30 @@ public partial class LssctcDbContext : DbContext
                 .HasConstraintName("FK__section_q__secti__5006DFF2");
         });
 
+        modelBuilder.Entity<SimAction>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__sim_acti__3213E83F7850B400");
+
+            entity.ToTable("sim_actions");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.ActionKey)
+                .HasMaxLength(50)
+                .HasColumnName("action_key");
+            entity.Property(e => e.Description)
+                .HasMaxLength(2000)
+                .HasColumnName("description");
+            entity.Property(e => e.IsActive)
+                .HasDefaultValue(true)
+                .HasColumnName("is_active");
+            entity.Property(e => e.IsDeleted)
+                .HasDefaultValue(false)
+                .HasColumnName("is_deleted");
+            entity.Property(e => e.Name)
+                .HasMaxLength(255)
+                .HasColumnName("name");
+        });
+
         modelBuilder.Entity<SimulationComponent>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("PK__simulati__3213E83F7EB341C3");
@@ -1390,24 +1426,6 @@ public partial class LssctcDbContext : DbContext
             entity.Property(e => e.IsActive)
                 .HasDefaultValue(true)
                 .HasColumnName("is_active");
-            entity.Property(e => e.IsDeleted)
-                .HasDefaultValue(false)
-                .HasColumnName("is_deleted");
-            entity.Property(e => e.Name)
-                .HasMaxLength(100)
-                .HasColumnName("name");
-        });
-
-        modelBuilder.Entity<SimulationComponentType>(entity =>
-        {
-            entity.HasKey(e => e.Id).HasName("PK__simulati__3213E83F55517392");
-
-            entity.ToTable("simulation_component_types");
-
-            entity.Property(e => e.Id).HasColumnName("id");
-            entity.Property(e => e.Description)
-                .HasMaxLength(2000)
-                .HasColumnName("description");
             entity.Property(e => e.IsDeleted)
                 .HasDefaultValue(false)
                 .HasColumnName("is_deleted");

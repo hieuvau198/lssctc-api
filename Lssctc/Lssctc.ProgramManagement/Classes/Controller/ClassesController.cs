@@ -2,6 +2,7 @@
 using Lssctc.ProgramManagement.Classes.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel.DataAnnotations;
 using System.Threading.Tasks;
 
 namespace Lssctc.ProgramManagement.Classes.Controller
@@ -69,6 +70,34 @@ namespace Lssctc.ProgramManagement.Classes.Controller
             catch (Exception ex)
             {
                 return BadRequest(ex.Message);
+            }
+        }
+
+
+        /// <summary>
+        /// get classes by instructor id
+        /// </summary>
+
+        [HttpGet("by-instructor/{instructorId:int}")]
+        public async Task<IActionResult> GetByInstructor([FromRoute] int instructorId)
+        {
+            try
+            {
+                var items = await _classService.GetClassesByInstructorAsync(instructorId);
+                return Ok(new
+                {
+                    success = true,
+                    total = items.Count(),
+                    items
+                });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { success = false, message = ex.Message });
+            }
+            catch (ValidationException ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
             }
         }
 

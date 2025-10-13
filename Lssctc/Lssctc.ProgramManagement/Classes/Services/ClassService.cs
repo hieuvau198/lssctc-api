@@ -1,10 +1,12 @@
 ﻿using AutoMapper;
+using AutoMapper.QueryableExtensions;
 using Lssctc.ProgramManagement.Classes.DTOs;
 using Lssctc.Share.Common;
 using Lssctc.Share.Entities;
 using Lssctc.Share.Enums;
 using Lssctc.Share.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.DataAnnotations;
 using Entities = Lssctc.Share.Entities;
 
 namespace Lssctc.ProgramManagement.Classes.Services
@@ -443,6 +445,29 @@ namespace Lssctc.ProgramManagement.Classes.Services
             return instructorDTO;
         }
 
+        public async Task<IEnumerable<ClassDto>> GetClassesByInstructorAsync(int instructorId)
+        {
+            if (instructorId <= 0)
+                throw new ValidationException("InstructorId is invalid.");
+
+            var exists = await _unitOfWork.InstructorRepository.ExistsAsync(x => x.Id == instructorId);
+            if (!exists)
+                throw new KeyNotFoundException($"Instructor {instructorId} not found.");
+
+            var query = from ci in _unitOfWork.ClassInstructorRepository.GetAllAsQueryable()
+                        join c in _unitOfWork.ClassRepository.GetAllAsQueryable() on ci.ClassId equals c.Id
+                        where ci.InstructorId == instructorId
+                        select c;
+
+            var classes = await query
+                .AsNoTracking()
+                .OrderByDescending(c => c.Id)
+                .ProjectTo<ClassDto>(_mapper.ConfigurationProvider)
+                .ToListAsync();
+
+            return classes;
+        }
+
 
 
         // TRAINGING PROGRESS & RESULTS
@@ -596,6 +621,9 @@ namespace Lssctc.ProgramManagement.Classes.Services
 
             return _mapper.Map<SyllabusSectionDto>(section);
         }
+
+
+
 
     }
 }

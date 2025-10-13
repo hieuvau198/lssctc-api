@@ -36,6 +36,8 @@ namespace Lssctc.ProgramManagement.Classes.Services
         Task<SectionDto> CreateSectionAsync(SectionCreateDto dto);
         Task<SyllabusSectionDto> CreateSyllabusSectionAsync(SyllabusSectionCreateDto dto);
 
+        //get class by intructor id
+        Task<IEnumerable<ClassDto>> GetClassesByInstructorAsync(int instructorId);
 
     }
 }

@@ -21,6 +21,8 @@ public partial class PracticeStep
 
     public virtual Practice Practice { get; set; } = null!;
 
+    public virtual ICollection<PracticeStepAction> PracticeStepActions { get; set; } = new List<PracticeStepAction>();
+
     public virtual ICollection<PracticeStepComponent> PracticeStepComponents { get; set; } = new List<PracticeStepComponent>();
 
     public virtual ICollection<PracticeStepWarning> PracticeStepWarnings { get; set; } = new List<PracticeStepWarning>();

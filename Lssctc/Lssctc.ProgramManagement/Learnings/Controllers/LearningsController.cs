@@ -1,4 +1,5 @@
-﻿using Lssctc.ProgramManagement.Learnings.Services;
+﻿using Lssctc.ProgramManagement.Learnings.Dtos;
+using Lssctc.ProgramManagement.Learnings.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -12,28 +13,25 @@ namespace Lssctc.ProgramManagement.Learnings.Controllers
         private readonly ILearningsSectionService _lsService;
         private readonly ILearningsSectionPartitionService _lspService;
         private readonly ILearningsSectionMaterialService _lspmService;
+        private readonly ILearningsSectionQuizService _lsqService;
 
         public LearningsController(
             ILearningsClassService learningsClassService, 
-            ILearningsSectionService learningsSectionService, 
+            ILearningsSectionService learningsSectionService,
             ILearningsSectionPartitionService learningsSectionPartitionService,
-            ILearningsSectionMaterialService learningsSectionMaterialService)
-            
+            ILearningsSectionMaterialService learningsSectionMaterialService,
+            ILearningsSectionQuizService lsqService)
+
         {
             _lcService = learningsClassService;
             _lsService = learningsSectionService;
             _lspService = learningsSectionPartitionService;
             _lspmService = learningsSectionMaterialService;
+            _lsqService = lsqService;
         }
 
         #region Classes
 
-        
-        /// <summary>
-        /// Get all classes for a specific trainee.
-        /// </summary>
-        /// <param name="traineeId">The trainee ID.</param>
-        /// <returns>List of LearningsClassDto</returns>
         [HttpGet("classes/trainee/{traineeId:int}")]
         public async Task<IActionResult> GetAllClassesByTraineeId(int traineeId)
         {
@@ -48,12 +46,6 @@ namespace Lssctc.ProgramManagement.Learnings.Controllers
             return Ok(result);
         }
 
-        /// <summary>
-        /// Get details of a specific class by its ID and trainee ID.
-        /// </summary>
-        /// <param name="classId">The class ID.</param>
-        /// <param name="traineeId">The trainee ID.</param>
-        /// <returns>LearningsClassDto</returns>
         [HttpGet("class/{classId:int}/trainee/{traineeId:int}")]
         public async Task<IActionResult> GetClassByClassIdAndTraineeId(int classId, int traineeId)
         {
@@ -68,14 +60,6 @@ namespace Lssctc.ProgramManagement.Learnings.Controllers
             return Ok(result);
         }
 
-
-        /// <summary>
-        /// Get paginated classes for a specific trainee.
-        /// </summary>
-        /// <param name="traineeId">The trainee ID.</param>
-        /// <param name="pageIndex">Page index (starting from 1).</param>
-        /// <param name="pageSize">Number of items per page.</param>
-        /// <returns>PagedResult of LearningsClassDto</returns>
         [HttpGet("classes/trainee/{traineeId:int}/paged")]
         public async Task<IActionResult> GetClassesByTraineeIdPaged(int traineeId, int pageIndex = 1, int pageSize = 10)
         {
@@ -96,9 +80,6 @@ namespace Lssctc.ProgramManagement.Learnings.Controllers
         #endregion
 
         #region Sections
-        /// <summary>
-        /// Get all sections for a specific class and trainee.
-        /// </summary>
         [HttpGet("sections/class/{classId:int}/trainee/{traineeId:int}")]
         public async Task<IActionResult> GetAllSectionsByClassIdAndTraineeId(int classId, int traineeId)
         {
@@ -112,9 +93,6 @@ namespace Lssctc.ProgramManagement.Learnings.Controllers
             return Ok(result);
         }
 
-        /// <summary>
-        /// Get a specific section by section ID and trainee ID.
-        /// </summary>
         [HttpGet("section/{sectionId:int}/trainee/{traineeId:int}")]
         public async Task<IActionResult> GetSectionBySectionIdAndTraineeId(int sectionId, int traineeId)
         {
@@ -128,9 +106,6 @@ namespace Lssctc.ProgramManagement.Learnings.Controllers
             return Ok(result);
         }
 
-        /// <summary>
-        /// Get paginated sections for a class and trainee.
-        /// </summary>
         [HttpGet("sections/class/{classId:int}/trainee/{traineeId:int}/paged")]
         public async Task<IActionResult> GetSectionsByClassIdAndTraineeIdPaged(
             int classId, int traineeId, int pageIndex = 1, int pageSize = 10)
@@ -150,9 +125,6 @@ namespace Lssctc.ProgramManagement.Learnings.Controllers
 
         #region Section Partitions
 
-        /// <summary>
-        /// Get all section partitions for a specific section and trainee.
-        /// </summary>
         [HttpGet("partitions/section/{sectionId:int}/trainee/{traineeId:int}")]
         public async Task<IActionResult> GetAllSectionPartitionsBySectionIdAndTraineeId(int sectionId, int traineeId)
         {
@@ -166,9 +138,6 @@ namespace Lssctc.ProgramManagement.Learnings.Controllers
             return Ok(result);
         }
 
-        /// <summary>
-        /// Get details of a specific section partition by partition ID and trainee ID.
-        /// </summary>
         [HttpGet("partition/{partitionId:int}/trainee/{traineeId:int}")]
         public async Task<IActionResult> GetSectionPartitionByPartitionIdAndTraineeId(int partitionId, int traineeId)
         {
@@ -182,9 +151,6 @@ namespace Lssctc.ProgramManagement.Learnings.Controllers
             return Ok(result);
         }
 
-        /// <summary>
-        /// Get paginated section partitions for a section and trainee.
-        /// </summary>
         [HttpGet("partitions/section/{sectionId:int}/trainee/{traineeId:int}/paged")]
         public async Task<IActionResult> GetSectionPartitionsBySectionIdAndTraineeIdPaged(
             int sectionId, int traineeId, int pageIndex = 1, int pageSize = 10)
@@ -204,9 +170,6 @@ namespace Lssctc.ProgramManagement.Learnings.Controllers
         #endregion
 
         #region Section Materials
-        /// <summary>
-        /// Get details of a specific section material by partition ID and trainee ID.
-        /// </summary>
         [HttpGet("sectionmaterials/partition/{partitionId:int}/trainee/{traineeId:int}")]
         public async Task<IActionResult> GetSectionMaterialByPartitionIdAndTraineeId(int partitionId, int traineeId)
         {
@@ -220,9 +183,6 @@ namespace Lssctc.ProgramManagement.Learnings.Controllers
             return Ok(result);
         }
 
-        /// <summary>
-        /// Mark a learning material as completed for a specific partition and trainee.
-        /// </summary>
         [HttpPut("sectionmaterials/partition/{partitionId:int}/trainee/{traineeId:int}/complete")]
         public async Task<IActionResult> UpdateLearningMaterialAsCompleted(int partitionId, int traineeId)
         {
@@ -238,9 +198,6 @@ namespace Lssctc.ProgramManagement.Learnings.Controllers
             return Ok(new { message = "Learning material marked as completed successfully." });
         }
 
-        /// <summary>
-        /// Mark a learning material as not completed for a specific partition and trainee.
-        /// </summary>
         [HttpPut("sectionmaterials/partition/{partitionId:int}/trainee/{traineeId:int}/incomplete")]
         public async Task<IActionResult> UpdateLearningMaterialAsNotCompleted(int partitionId, int traineeId)
         {
@@ -259,5 +216,50 @@ namespace Lssctc.ProgramManagement.Learnings.Controllers
 
         #endregion
 
+        #region Section Quizzes
+        [HttpGet("sectionquizzes/partition/{partitionId:int}/trainee/{traineeId:int}")]
+        public async Task<IActionResult> GetSectionQuizByPartitionIdAndTraineeId(int partitionId, int traineeId)
+        {
+            if (partitionId <= 0 || traineeId <= 0)
+                return BadRequest("Invalid partition or trainee ID.");
+            var result = await _lsqService.GetSectionQuizByPartitionIdAndTraineeId(partitionId, traineeId);
+            if (result == null)
+                return NotFound($"Section quiz with partitionId {partitionId} for traineeId {traineeId} not found.");
+            return Ok(result);
+        }
+
+        [HttpPost("sectionquizzes/{partitionId:int}/trainee/{traineeId:int}/submit")]
+        public async Task<IActionResult> SubmitSectionQuizAttempt(
+            int partitionId,
+            int traineeId,
+            [FromBody] CreateLearningsSectionQuizAttemptDto attempt)
+        {
+            if (partitionId <= 0 || traineeId <= 0)
+                return BadRequest("Invalid partitionId or traineeId.");
+
+            if (attempt == null)
+                return BadRequest("Attempt data cannot be null.");
+
+            try
+            {
+                var result = await _lsqService.SubmitSectionQuizAttempt(partitionId, traineeId, attempt);
+                return Ok(result);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                // Optional: log the exception (e.g., using ILogger)
+                return StatusCode(500, $"An unexpected error occurred: {ex.Message}");
+            }
+        }
+
+        #endregion
     }
 }
