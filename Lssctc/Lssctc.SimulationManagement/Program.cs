@@ -3,6 +3,7 @@ using Lssctc.Share.Implements;
 using Lssctc.Share.Interfaces;
 using Lssctc.SimulationManagement.Components.Mappings;
 using Lssctc.SimulationManagement.Components.Services;
+using Lssctc.SimulationManagement.PracticeAttempts.Services;
 using Lssctc.SimulationManagement.Practices.Services;
 using Lssctc.SimulationManagement.PracticeSteps.Services;
 using Lssctc.SimulationManagement.SectionPractice.Mappings;
@@ -43,6 +44,7 @@ builder.Services.AddScoped<ISimActionService, SimActionService>();
 builder.Services.AddScoped<IStepActionService, StepActionService>();
 builder.Services.AddScoped<ITraineePracticeService, TraineePracticeService>();
 builder.Services.AddScoped<ITraineeStepService, TraineeStepService>();
+builder.Services.AddScoped<IPracticeAttemptService, PracticeAttemptService>();
 #endregion
 
 #region Cors

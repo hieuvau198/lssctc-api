@@ -23,6 +23,6 @@
         public int CurrentStepId { get; set; } // PracticeStep
         public int? PreviousStepId { get; set; } // PracticeStep
         public int ComponentId { get; set; } // SimulationComponent
-        public int ActionId { get; set; } // SimAction
+        public string? ActionKey { get; set; } // SimAction
     }
 }

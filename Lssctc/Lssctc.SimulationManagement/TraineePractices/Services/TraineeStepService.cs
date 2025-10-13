@@ -75,6 +75,7 @@ namespace Lssctc.SimulationManagement.TraineePractices.Services
                                   spa.LearningRecordPartition.LearningRecord.TrainingProgress.CourseMember.TraineeId == traineeId &&
                                   spa.IsDeleted != true)
                     .Include(spa => spa.SectionPracticeAttemptSteps)
+                    .Include(spa => spa.SectionPractice)
                     .FirstOrDefaultAsync()
                     ?? throw new KeyNotFoundException($"Attempt not found for Attempt ID {attemptId} and Trainee ID {traineeId}.");
 
@@ -82,10 +83,11 @@ namespace Lssctc.SimulationManagement.TraineePractices.Services
                 .GetAllAsQueryable()
                 .Where(ps => 
                     ps.Id == input.CurrentStepId
-                    && ps.PracticeId == attempt.SectionPracticeId 
+                    && ps.PracticeId == attempt.SectionPractice.PracticeId
                     && ps.IsDeleted != true)
                 .Include(ps => ps.PracticeStepComponents)
                 .Include(ps => ps.PracticeStepActions)
+                    .ThenInclude(psa => psa.Action)
                 .FirstOrDefaultAsync() 
                 ?? throw new KeyNotFoundException($"Step not found for Step ID {input.CurrentStepId}.");
 
@@ -102,53 +104,42 @@ namespace Lssctc.SimulationManagement.TraineePractices.Services
                 {
                     AttemptId = attempt.Id,
                     PracticeStepId = step.Id,
-                    Score = 1000,
+                    Score = 100,
                     Description = step.StepName + " Attempt",
                     IsPass = false,
                     IsDeleted = false
                 };
                 await _unitOfWork.SectionPracticeAttemptStepRepository.CreateAsync(stepAttempt);
-                await _unitOfWork.SaveChangesAsync();
+                try
+                {
+                    await _unitOfWork.SaveChangesAsync();
+                }
+                catch (DbUpdateException dbEx)
+                {
+                    throw new InvalidOperationException("Failed to create SectionPracticeAttemptStep due to database update error.", dbEx);
+                }
             }
 
             #endregion
 
             #region Validate action and component
 
-            var action = step.PracticeStepActions.FirstOrDefault(psa => psa.ActionId == input.ActionId && psa.IsDeleted != true);
-            
+            var action = step.PracticeStepActions.FirstOrDefault(psa => psa.Action.ActionKey == input.ActionKey && psa.IsDeleted != true);
+            if (action == null) 
+                throw new KeyNotFoundException($"Action with ID {input.ActionKey} not found for Step ID {step.Id}.");
+
             var component = step.PracticeStepComponents.FirstOrDefault(psc => psc.ComponentId == input.ComponentId && psc.IsDeleted != true);
-            
+            if (component == null) 
+                throw new KeyNotFoundException($"Component with ID {input.ComponentId} not found for Step ID {step.Id}.");
 
             #endregion
 
-            #region Process result
-            if (action != null && component != null)
-            {
-                stepAttempt.IsPass = true;
-                stepAttempt.Score = 1000;
-                stepAttempt.Description = "Step completed successfully.";
-            }
-            else
-            {
-                stepAttempt.IsPass = false;
-                stepAttempt.Score = 0;
-
-                if (action == null && component == null)
-                    stepAttempt.Description = "Incorrect action and component.";
-                else if (action == null)
-                    stepAttempt.Description = "Incorrect action for this step.";
-                else if (action == null)
-                    stepAttempt.Description = "Incorrect component for this step.";
-            }
-
-            #endregion
-
-            #region Both conditions pass, so update step attempt to completed
+            stepAttempt.IsPass = true;
+            stepAttempt.Score = 100;
+            stepAttempt.Description = "Pass";
 
             await _unitOfWork.SectionPracticeAttemptStepRepository.UpdateAsync(stepAttempt);
             await _unitOfWork.SaveChangesAsync();
-            #endregion
 
             return true;
 
