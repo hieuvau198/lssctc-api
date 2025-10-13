@@ -34,6 +34,21 @@ namespace Lssctc.SimulationManagement.SectionPractice.Controllers
 
             return Ok(page); 
         }
+        /// <summary>
+        /// get section practices by classId with pagination
+        /// </summary>
+         // GET /api/section-practices/by-class/1/paged?page=1&pageSize=20
+        [HttpGet("by-class/{classId:int}/paged")]
+        public async Task<IActionResult> GetSectionPracticesByClassId(int classId, int page = 1, int pageSize = 20)
+        {
+            try
+            {
+                var result = await _svc.GetSectionPracticesByClassId(classId, page, pageSize);
+                return Ok(result);
+            }
+            catch (KeyNotFoundException ex) { return NotFound(new { error = ex.Message }); }
+            catch (ValidationException ex) { return BadRequest(new { error = ex.Message }); }
+        }
 
         // GET: /api/SectionPractices/5
         [HttpGet("{id:int}")]
