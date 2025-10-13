@@ -74,32 +74,32 @@ namespace Lssctc.ProgramManagement.Classes.Controller
         }
 
 
-        /// <summary>
-        /// get classes by instructor id
-        /// </summary>
-
-        [HttpGet("by-instructor/{instructorId:int}")]
-        public async Task<IActionResult> GetByInstructor([FromRoute] int instructorId)
+        /// <summary>Get classes by instructor id </summary>
+        [HttpGet("by-instructor/{instructorId:int}/paged")]
+        public async Task<IActionResult> GetByInstructorPaged(int instructorId, int page = 1, int pageSize = 20)
         {
             try
             {
-                var items = await _classService.GetClassesByInstructorAsync(instructorId);
-                return Ok(new
-                {
-                    success = true,
-                    total = items.Count(),
-                    items
-                });
+                var result = await _classService.GetClassesByInstructorId(instructorId, page, pageSize);
+
+                if (result.TotalCount == 0)
+                    return Ok("Instructor currently has no class.");
+
+                return Ok(result.Items); // trả thẳng list class
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(new { success = false, message = ex.Message });
+                return NotFound(ex.Message);
             }
             catch (ValidationException ex)
             {
-                return BadRequest(new { success = false, message = ex.Message });
+                return BadRequest(ex.Message);
             }
         }
+
+
+
+
 
         [HttpGet("myclasses/{traineeId}")]
         public async Task<IActionResult> GetMyClasses(int traineeId)

@@ -445,27 +445,50 @@ namespace Lssctc.ProgramManagement.Classes.Services
             return instructorDTO;
         }
 
-        public async Task<IEnumerable<ClassDto>> GetClassesByInstructorAsync(int instructorId)
+        public async Task<PagedResult<ClassBasicDto>> GetClassesByInstructorId(int instructorId, int page, int pageSize)
         {
-            if (instructorId <= 0)
-                throw new ValidationException("InstructorId is invalid.");
+            if (instructorId <= 0) throw new ValidationException("InstructorId is invalid.");
+            if (page < 1) page = 1;
+            if (pageSize < 1 || pageSize > 200) pageSize = 20;
 
             var exists = await _unitOfWork.InstructorRepository.ExistsAsync(x => x.Id == instructorId);
-            if (!exists)
-                throw new KeyNotFoundException($"Instructor {instructorId} not found.");
+            if (!exists) throw new KeyNotFoundException($"Instructor {instructorId} not found.");
 
-            var query = from ci in _unitOfWork.ClassInstructorRepository.GetAllAsQueryable()
-                        join c in _unitOfWork.ClassRepository.GetAllAsQueryable() on ci.ClassId equals c.Id
-                        where ci.InstructorId == instructorId
-                        select c;
+            //ci = ClassInstructor, c = Class
+            var baseQuery =
+                from ci in _unitOfWork.ClassInstructorRepository.GetAllAsQueryable()
+                join c in _unitOfWork.ClassRepository.GetAllAsQueryable() on ci.ClassId equals c.Id
+                where ci.InstructorId == instructorId
+                select c;
 
-            var classes = await query
-                .AsNoTracking()
+            var total = await baseQuery.CountAsync();
+
+            var items = await baseQuery
                 .OrderByDescending(c => c.Id)
-                .ProjectTo<ClassDto>(_mapper.ConfigurationProvider)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(c => new ClassBasicDto
+                {
+                    Id = c.Id,
+                    Name = c.Name,
+                    StartDate = c.StartDate,
+                    EndDate = c.EndDate,
+                    Capacity = c.Capacity,
+                    ProgramCourseId = c.ProgramCourseId,
+                    ClassCodeId = c.ClassCodeId,
+                    Description = c.Description,
+                    Status = c.Status
+                })
+                .AsNoTracking()
                 .ToListAsync();
 
-            return classes;
+            return new PagedResult<ClassBasicDto>
+            {
+                Items = items,
+                TotalCount = total,
+                Page = page,
+                PageSize = pageSize
+            };
         }
 
 
