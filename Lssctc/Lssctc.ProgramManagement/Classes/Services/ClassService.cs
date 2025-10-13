@@ -404,16 +404,40 @@ namespace Lssctc.ProgramManagement.Classes.Services
             return _mapper.Map<ClassMemberDto>(member);
         }
 
-        public async Task<IEnumerable<ClassMemberDto>> GetMembersByClassId(int classId)
+        public async Task<PagedResult<ClassMemberDto>> GetMembersByClassId(
+      int classId, int page, int pageSize)
         {
-            var members = await _unitOfWork.ClassMemberRepository
+            if (classId <= 0) throw new ValidationException("ClassId is invalid.");
+            if (page < 1) page = 1;
+            if (pageSize < 1 || pageSize > 200) pageSize = 20;
+
+            // Base query
+            var q = _unitOfWork.ClassMemberRepository
                 .GetAllAsQueryable()
-                .Include(cm => cm.Trainee)
-                .Where(cm => cm.ClassId == classId)
+                .Where(cm => cm.ClassId == classId);
+
+            // Đếm tổng
+            var total = await q.CountAsync();
+
+            // Lấy trang
+            var items = await q
+                .OrderByDescending(cm => cm.Id)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                // Nếu bạn có cấu hình AutoMapper cho ClassMemberDto, dùng ProjectTo để query hiệu quả
+                .ProjectTo<ClassMemberDto>(_mapper.ConfigurationProvider)
+                .AsNoTracking()
                 .ToListAsync();
 
-            return _mapper.Map<IEnumerable<ClassMemberDto>>(members);
+            return new PagedResult<ClassMemberDto>
+            {
+                Items = items,
+                TotalCount = total,
+                Page = page,
+                PageSize = pageSize
+            };
         }
+
 
         public async Task<InstructorDto> GetInstructorByClassId(int classId)
         {
@@ -445,28 +469,63 @@ namespace Lssctc.ProgramManagement.Classes.Services
             return instructorDTO;
         }
 
-        public async Task<IEnumerable<ClassDto>> GetClassesByInstructorAsync(int instructorId)
+        public async Task<PagedResult<ClassBasicDto>> GetClassesByInstructorId(
+      int instructorId, int page, int pageSize, int? status = null)
         {
             if (instructorId <= 0)
                 throw new ValidationException("InstructorId is invalid.");
+
+            if (page < 1) page = 1;
+            if (pageSize < 1 || pageSize > 200) pageSize = 20;
 
             var exists = await _unitOfWork.InstructorRepository.ExistsAsync(x => x.Id == instructorId);
             if (!exists)
                 throw new KeyNotFoundException($"Instructor {instructorId} not found.");
 
-            var query = from ci in _unitOfWork.ClassInstructorRepository.GetAllAsQueryable()
-                        join c in _unitOfWork.ClassRepository.GetAllAsQueryable() on ci.ClassId equals c.Id
-                        where ci.InstructorId == instructorId
-                        select c;
+            // Base query: join ClassInstructor & Class
+            var baseQuery =
+                from ci in _unitOfWork.ClassInstructorRepository.GetAllAsQueryable()
+                join c in _unitOfWork.ClassRepository.GetAllAsQueryable() on ci.ClassId equals c.Id
+                where ci.InstructorId == instructorId
+                select c;
 
-            var classes = await query
-                .AsNoTracking()
+            // Filter theo status
+            if (status.HasValue)
+                baseQuery = baseQuery.Where(c => c.Status == status.Value);
+
+            var total = await baseQuery.CountAsync();
+
+            if (total == 0)
+                throw new KeyNotFoundException($"Instructor {instructorId} has no classes{(status.HasValue ? $" with status = {status.Value}" : "")}.");
+
+            var items = await baseQuery
                 .OrderByDescending(c => c.Id)
-                .ProjectTo<ClassDto>(_mapper.ConfigurationProvider)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(c => new ClassBasicDto
+                {
+                    Id = c.Id,
+                    Name = c.Name,
+                    StartDate = c.StartDate,
+                    EndDate = c.EndDate,
+                    Capacity = c.Capacity,
+                    ProgramCourseId = c.ProgramCourseId,
+                    ClassCodeId = c.ClassCodeId,
+                    Description = c.Description,
+                    Status = c.Status
+                })
+                .AsNoTracking()
                 .ToListAsync();
 
-            return classes;
+            return new PagedResult<ClassBasicDto>
+            {
+                Items = items,
+                TotalCount = total,
+                Page = page,
+                PageSize = pageSize
+            };
         }
+
 
 
 

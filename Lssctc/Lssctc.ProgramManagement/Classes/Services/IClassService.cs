@@ -12,7 +12,8 @@ namespace Lssctc.ProgramManagement.Classes.Services
         Task<List<ClassDto>> GetClassesByProgramCourse(int programCourseId);
         Task<ClassDto> GetClassDetailById(int classId);
         Task<ClassEnrollmentDto> GetClassEnrollmentById(int classid);
-        Task<IEnumerable<ClassMemberDto>> GetMembersByClassId(int classId);
+        Task<PagedResult<ClassMemberDto>> GetMembersByClassId(
+    int classId, int page, int pageSize);
         Task<InstructorDto> GetInstructorByClassId(int classId);
         Task<List<MyClassDto>> GetMyClasses(int traineeId);
         // Class - manage
@@ -37,7 +38,7 @@ namespace Lssctc.ProgramManagement.Classes.Services
         Task<SyllabusSectionDto> CreateSyllabusSectionAsync(SyllabusSectionCreateDto dto);
 
         //get class by intructor id
-        Task<IEnumerable<ClassDto>> GetClassesByInstructorAsync(int instructorId);
+        Task<PagedResult<ClassBasicDto>> GetClassesByInstructorId(int instructorId, int page, int pageSize, int? status);
 
     }
 }
