@@ -12,7 +12,8 @@ namespace Lssctc.ProgramManagement.Classes.Services
         Task<List<ClassDto>> GetClassesByProgramCourse(int programCourseId);
         Task<ClassDto> GetClassDetailById(int classId);
         Task<ClassEnrollmentDto> GetClassEnrollmentById(int classid);
-        Task<IEnumerable<ClassMemberDto>> GetMembersByClassId(int classId);
+        Task<PagedResult<ClassMemberDto>> GetMembersByClassId(
+    int classId, int page, int pageSize);
         Task<InstructorDto> GetInstructorByClassId(int classId);
         Task<List<MyClassDto>> GetMyClasses(int traineeId);
         // Class - manage

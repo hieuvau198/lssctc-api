@@ -404,16 +404,40 @@ namespace Lssctc.ProgramManagement.Classes.Services
             return _mapper.Map<ClassMemberDto>(member);
         }
 
-        public async Task<IEnumerable<ClassMemberDto>> GetMembersByClassId(int classId)
+        public async Task<PagedResult<ClassMemberDto>> GetMembersByClassId(
+      int classId, int page, int pageSize)
         {
-            var members = await _unitOfWork.ClassMemberRepository
+            if (classId <= 0) throw new ValidationException("ClassId is invalid.");
+            if (page < 1) page = 1;
+            if (pageSize < 1 || pageSize > 200) pageSize = 20;
+
+            // Base query
+            var q = _unitOfWork.ClassMemberRepository
                 .GetAllAsQueryable()
-                .Include(cm => cm.Trainee)
-                .Where(cm => cm.ClassId == classId)
+                .Where(cm => cm.ClassId == classId);
+
+            // Đếm tổng
+            var total = await q.CountAsync();
+
+            // Lấy trang
+            var items = await q
+                .OrderByDescending(cm => cm.Id)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                // Nếu bạn có cấu hình AutoMapper cho ClassMemberDto, dùng ProjectTo để query hiệu quả
+                .ProjectTo<ClassMemberDto>(_mapper.ConfigurationProvider)
+                .AsNoTracking()
                 .ToListAsync();
 
-            return _mapper.Map<IEnumerable<ClassMemberDto>>(members);
+            return new PagedResult<ClassMemberDto>
+            {
+                Items = items,
+                TotalCount = total,
+                Page = page,
+                PageSize = pageSize
+            };
         }
+
 
         public async Task<InstructorDto> GetInstructorByClassId(int classId)
         {

@@ -295,19 +295,24 @@ namespace Lssctc.ProgramManagement.Classes.Controller
         /// Get all members of a class by ClassId
         /// </summary>
         [HttpGet("{classId}/members")]
-        public async Task<IActionResult> GetClassMembers(int classId)
+        public async Task<IActionResult> GetClassMembers(
+    int classId,
+    [FromQuery] int page = 1,
+    [FromQuery] int pageSize = 20)
         {
             try
             {
-                var result = await _classService.GetMembersByClassId(classId);
-                if (result == null || !result.Any())
-                    return NotFound("No members found for this class.");
-
+                var result = await _classService.GetMembersByClassId(classId, page, pageSize);
                 return Ok(result);
+            }
+            catch (ValidationException ex)
+            {
+                return BadRequest(ex.Message);
             }
             catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                
+                return StatusCode(500, "Unexpected error.");
             }
         }
 
