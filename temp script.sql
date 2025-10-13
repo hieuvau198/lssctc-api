@@ -51,6 +51,17 @@ SELECT TOP (1000) [id]
 FROM [dbo].[sections]
 
 SELECT TOP (1000) [id]
+      ,[section_partition_id]
+      ,[practice_id]
+      ,[custom_deadline]
+      ,[custom_description]
+      ,[status]
+      ,[is_active]
+      ,[is_deleted]
+  FROM [dbo].[section_practices]
+
+
+SELECT TOP (1000) [id]
       ,[description]
       ,[name]
       ,[pass_criteria]
@@ -168,6 +179,69 @@ SELECT TOP (1000) [id]
       ,[attempt_order]
       ,[is_pass]
   FROM [dbo].[section_quiz_attempts]
+
+
+
+
+  ------------------------------------------------------------------ SIMULATION
+
+  SELECT TOP (1000) [id]
+      ,[name]
+      ,[description]
+      ,[image_url]
+      ,[is_active]
+      ,[created_date]
+      ,[is_deleted]
+  FROM [dbo].[simulation_components]
+
+  SELECT TOP (1000) [id]
+      ,[name]
+      ,[description]
+      ,[action_key]
+      ,[is_active]
+      ,[is_deleted]
+  FROM [dbo].[sim_actions]
+
+
+  SELECT TOP (1000) [id]
+      ,[practice_name]
+      ,[practice_description]
+      ,[estimated_duration_minutes]
+      ,[difficulty_level]
+      ,[max_attempts]
+      ,[created_date]
+      ,[is_active]
+      ,[is_deleted]
+  FROM [dbo].[practices]
+
+
+SELECT TOP (1000) [id]
+    ,[practice_id]
+    ,[step_name]
+    ,[step_description]
+    ,[expected_result]
+    ,[step_order]
+    ,[is_deleted]
+FROM [dbo].[practice_steps]
+
+SELECT TOP (1000) [id]
+      ,[step_id]
+      ,[component_id]
+      ,[component_order]
+      ,[is_deleted]
+  FROM [dbo].[practice_step_components]
+
+
+  SELECT TOP (1000) [id]
+      ,[step_id]
+      ,[action_id]
+      ,[name]
+      ,[description]
+      ,[is_deleted]
+  FROM [dbo].[practice_step_actions]
+
+
+
 
 
 DELETE FROM [dbo].[learning_records];
