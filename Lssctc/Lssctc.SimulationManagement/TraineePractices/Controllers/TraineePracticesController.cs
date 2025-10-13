@@ -83,6 +83,34 @@ namespace Lssctc.SimulationManagement.TraineePractices.Controllers
                 var result = await _traineeStepService.GetTraineeStepByIdAndTraineeId(stepId, traineeId);
                 if (result == null)
                     return NotFound($"No step found for Step ID {stepId} and Trainee ID {traineeId}.");
+                return Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Conflict(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
+            }
+        }
+
+        [HttpGet("practice/{practiceId}/trainee/{traineeId}/steps")]
+        public async Task<IActionResult> GetTraineeStepsByPracticeIdAndTraineeId(int practiceId, int traineeId)
+        {
+            try
+            {
+                var result = await _traineeStepService.GetTraineeStepsByPracticeIdAndTraineeId(practiceId, traineeId);
+                if (result == null || !result.Any())
+                    return NotFound($"No steps found for Practice ID {practiceId} and Trainee ID {traineeId}.");
 
                 return Ok(result);
             }
@@ -102,6 +130,39 @@ namespace Lssctc.SimulationManagement.TraineePractices.Controllers
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
             }
+        }
+
+        [HttpPost("attempt/{attemptId}/trainee/{traineeId}/submit")]
+        public async Task<IActionResult> SubmitTraineeStepAttempt(
+        int attemptId,
+        int traineeId,
+        [FromBody] UpdateTraineeStepAttemptDto input)
+            {
+                try
+                {
+                    var result = await _traineeStepService.SubmitTraineeStepAttempt(attemptId, traineeId, input);
+
+                    if (!result)
+                        return BadRequest("Failed to submit trainee step attempt.");
+
+                    return Ok(new { message = "Trainee step attempt submitted successfully." });
+                }
+                catch (KeyNotFoundException ex)
+                {
+                    return NotFound(new { message = ex.Message });
+                }
+                catch (ArgumentException ex)
+                {
+                    return BadRequest(new { message = ex.Message });
+                }
+                catch (InvalidOperationException ex)
+                {
+                    return Conflict(new { message = ex.Message });
+                }
+                catch (Exception ex)
+                {
+                    return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
+                }
         }
     }
 }

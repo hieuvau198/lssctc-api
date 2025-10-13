@@ -18,4 +18,11 @@
         public string? ComponentDescription { get; set; } // SimulationComponent
         public string? ComponentImageUrl { get; set; } // SimulationComponent
     }
+    public class  UpdateTraineeStepAttemptDto
+    {
+        public int CurrentStepId { get; set; } // PracticeStep
+        public int? PreviousStepId { get; set; } // PracticeStep
+        public int ComponentId { get; set; } // SimulationComponent
+        public string? ActionKey { get; set; } // SimAction
+    }
 }
