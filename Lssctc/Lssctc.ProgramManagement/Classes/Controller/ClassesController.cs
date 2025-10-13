@@ -75,7 +75,7 @@ namespace Lssctc.ProgramManagement.Classes.Controller
 
 
         /// <summary>Get classes by instructor id </summary>
-        [HttpGet("by-instructor/{instructorId:int}/paged")]
+        [HttpGet("by-instructor/{instructorId:int}")]
         public async Task<IActionResult> GetByInstructorPaged(int instructorId, int page = 1, int pageSize = 20)
         {
             try
@@ -85,7 +85,7 @@ namespace Lssctc.ProgramManagement.Classes.Controller
                 if (result.TotalCount == 0)
                     return Ok("Instructor currently has no class.");
 
-                return Ok(result.Items); // trả thẳng list class
+                return Ok(result); // trả thẳng list class
             }
             catch (KeyNotFoundException ex)
             {
