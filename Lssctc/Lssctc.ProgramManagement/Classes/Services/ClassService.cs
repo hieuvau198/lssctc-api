@@ -445,23 +445,34 @@ namespace Lssctc.ProgramManagement.Classes.Services
             return instructorDTO;
         }
 
-        public async Task<PagedResult<ClassBasicDto>> GetClassesByInstructorId(int instructorId, int page, int pageSize)
+        public async Task<PagedResult<ClassBasicDto>> GetClassesByInstructorId(
+      int instructorId, int page, int pageSize, int? status = null)
         {
-            if (instructorId <= 0) throw new ValidationException("InstructorId is invalid.");
+            if (instructorId <= 0)
+                throw new ValidationException("InstructorId is invalid.");
+
             if (page < 1) page = 1;
             if (pageSize < 1 || pageSize > 200) pageSize = 20;
 
             var exists = await _unitOfWork.InstructorRepository.ExistsAsync(x => x.Id == instructorId);
-            if (!exists) throw new KeyNotFoundException($"Instructor {instructorId} not found.");
+            if (!exists)
+                throw new KeyNotFoundException($"Instructor {instructorId} not found.");
 
-            //ci = ClassInstructor, c = Class
+            // Base query: join ClassInstructor & Class
             var baseQuery =
                 from ci in _unitOfWork.ClassInstructorRepository.GetAllAsQueryable()
                 join c in _unitOfWork.ClassRepository.GetAllAsQueryable() on ci.ClassId equals c.Id
                 where ci.InstructorId == instructorId
                 select c;
 
+            // Filter theo status
+            if (status.HasValue)
+                baseQuery = baseQuery.Where(c => c.Status == status.Value);
+
             var total = await baseQuery.CountAsync();
+
+            if (total == 0)
+                throw new KeyNotFoundException($"Instructor {instructorId} has no classes{(status.HasValue ? $" with status = {status.Value}" : "")}.");
 
             var items = await baseQuery
                 .OrderByDescending(c => c.Id)
@@ -490,6 +501,7 @@ namespace Lssctc.ProgramManagement.Classes.Services
                 PageSize = pageSize
             };
         }
+
 
 
 

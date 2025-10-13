@@ -57,7 +57,7 @@ namespace Lssctc.ProgramManagement.SectionPartitions.Controllers
         /// </summary>
 
         // GET /api/section-partitions/by-section/5/paged?page=1&pageSize=10
-        [HttpGet("by-section/{sectionId:int}/paged")]
+        [HttpGet("by-section/{sectionId:int}")]
         public async Task<IActionResult> GetSectionPartitionBySectionId(int sectionId, int page = 1, int pageSize = 20)
         {
             try

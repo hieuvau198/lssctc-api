@@ -74,16 +74,24 @@ namespace Lssctc.ProgramManagement.Classes.Controller
         }
 
 
-        /// <summary>Get classes by instructor id </summary>
+        /// <summary>Get classes by instructor id</summary>
         [HttpGet("by-instructor/{instructorId:int}")]
-        public async Task<IActionResult> GetByInstructorPaged(int instructorId, int page = 1, int pageSize = 20)
+        public async Task<IActionResult> GetClassesByInstructorId(
+            int instructorId,
+            int page = 1,
+            int pageSize = 20,
+            int? status = null)
         {
             try
             {
-                var result = await _classService.GetClassesByInstructorId(instructorId, page, pageSize);
+                var result = await _classService.GetClassesByInstructorId(instructorId, page, pageSize, status);
 
                 if (result.TotalCount == 0)
+                {
+                    if (status.HasValue)
+                        return Ok($"Instructor currently has no class with status = {status.Value}.");
                     return Ok("Instructor currently has no class.");
+                }
 
                 return Ok(result); // trả thẳng list class
             }
@@ -96,6 +104,7 @@ namespace Lssctc.ProgramManagement.Classes.Controller
                 return BadRequest(ex.Message);
             }
         }
+
 
 
 
