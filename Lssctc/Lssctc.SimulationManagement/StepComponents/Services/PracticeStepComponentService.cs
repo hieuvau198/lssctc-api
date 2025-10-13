@@ -1,10 +1,10 @@
 ﻿using AutoMapper;
 using Lssctc.Share.Entities;
 using Lssctc.Share.Interfaces;
-using Lssctc.SimulationManagement.PracticeStepComponents.Dtos;
+using Lssctc.SimulationManagement.StepComponents.Dtos;
 using Microsoft.EntityFrameworkCore;
 
-namespace Lssctc.SimulationManagement.PracticeStepComponents.Services
+namespace Lssctc.SimulationManagement.StepComponents.Services
 {
     public class PracticeStepComponentService : IPracticeStepComponentService
     {
@@ -34,6 +34,25 @@ namespace Lssctc.SimulationManagement.PracticeStepComponents.Services
         // 2. Assign SimulationComponent to PracticeStep (create)
         public async Task<PracticeStepComponentDto> AssignSimulationComponentAsync(CreatePracticeStepComponentDto dto)
         {
+            if (dto == null) 
+                throw new ArgumentNullException(nameof(dto));
+            var existingPsc = await _unitOfWork.PracticeStepComponentRepository
+                .GetAllAsQueryable()
+                .FirstOrDefaultAsync(x => x.StepId == dto.PracticeStepId && x.IsDeleted != true);
+            if(existingPsc != null)
+                throw new InvalidOperationException($"One Component has already been assigned for PracticeStepId {dto.PracticeStepId}.");
+
+            var stepExists = await _unitOfWork.PracticeStepRepository
+                .GetAllAsQueryable()
+                .AnyAsync(s => s.Id == dto.PracticeStepId && s.IsDeleted != true);
+            if (!stepExists)
+                throw new InvalidOperationException($"No PracticeStep found with ID {dto.PracticeStepId}.");
+            var componentExists = await _unitOfWork.SimulationComponentRepository
+                .GetAllAsQueryable()
+                .AnyAsync(c => c.Id == dto.SimulationComponentId && c.IsDeleted != true);
+            if (!componentExists)
+                throw new InvalidOperationException($"No SimulationComponent found with ID {dto.SimulationComponentId}.");
+
             var entity = _mapper.Map<PracticeStepComponent>(dto);
             entity.IsDeleted = false;
             var created = await _unitOfWork.PracticeStepComponentRepository.CreateAsync(entity);
@@ -51,7 +70,7 @@ namespace Lssctc.SimulationManagement.PracticeStepComponents.Services
         {
             var entity = await _unitOfWork.PracticeStepComponentRepository.GetByIdAsync(id);
             if (entity == null || entity.IsDeleted == true)
-                return null;
+                throw new KeyNotFoundException($"PracticeStepComponent with ID {id} not found.");
 
             _mapper.Map(dto, entity);
             await _unitOfWork.PracticeStepComponentRepository.UpdateAsync(entity);

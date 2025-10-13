@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Lssctc.Share.Entities;
 
-public partial class SimulationComponentType
+public partial class SimAction
 {
     public int Id { get; set; }
 
@@ -11,5 +11,11 @@ public partial class SimulationComponentType
 
     public string? Description { get; set; }
 
+    public string? ActionKey { get; set; }
+
+    public bool? IsActive { get; set; }
+
     public bool? IsDeleted { get; set; }
+
+    public virtual ICollection<PracticeStepAction> PracticeStepActions { get; set; } = new List<PracticeStepAction>();
 }

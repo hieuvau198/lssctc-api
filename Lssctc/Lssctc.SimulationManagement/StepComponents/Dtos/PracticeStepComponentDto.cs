@@ -1,4 +1,4 @@
-﻿namespace Lssctc.SimulationManagement.PracticeStepComponents.Dtos
+﻿namespace Lssctc.SimulationManagement.StepComponents.Dtos
 {
     public class PracticeStepComponentDto
     {

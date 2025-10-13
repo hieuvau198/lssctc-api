@@ -32,12 +32,12 @@ namespace Lssctc.SimulationManagement.SectionPractice.Services
                 throw new KeyNotFoundException($"Practice with id={dto.PracticeId} not found.");
 
             var entity = _mapper.Map<Entities.SectionPractice>(dto);
+            entity.IsDeleted = false;
+            entity.Status = 1;
             await _uow.SectionPracticeRepository.CreateAsync(entity);
             await _uow.SaveChangesAsync();
             return entity.Id;
         }
-
-
 
         public async Task<bool> DeleteSectionPractice(int id)
         {
@@ -57,7 +57,6 @@ namespace Lssctc.SimulationManagement.SectionPractice.Services
             await _uow.SaveChangesAsync();
             return true;
         }
-
 
         public async Task<SectionPracticeDto?> GetSectionPracticeById(int id)
         {
@@ -93,7 +92,6 @@ namespace Lssctc.SimulationManagement.SectionPractice.Services
                 PageSize = pageSize
             };
         }
-
 
         public async Task<bool> UpdateSectionPractice(int id, UpdateSectionPracticeDto dto)
         {

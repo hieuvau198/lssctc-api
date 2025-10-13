@@ -1,6 +1,41 @@
+USE [lssctc-db]
+
+
+SELECT TOP (1000) [id]
+      ,[username]
+      ,[password]
+      ,[email]
+      ,[fullname]
+      ,[role]
+      ,[phone_number]
+      ,[avatar_url]
+      ,[is_active]
+      ,[is_deleted]
+  FROM [dbo].[users]
+
+
 SELECT TOP (1000) [id]
       ,[name]
   FROM [dbo].[learning_material_types]
+
+
+
+  SELECT TOP (1000) [id]
+      ,[name]
+      ,[start_date]
+      ,[end_date]
+      ,[capacity]
+      ,[program_course_id]
+      ,[class_code_id]
+      ,[description]
+      ,[status]
+  FROM [dbo].[classes]
+
+  SELECT TOP (1000) [id]
+      ,[class_id]
+      ,[instructor_id]
+      ,[position]
+  FROM [dbo].[class_instructors]
 
 
 SELECT TOP (1000) [id]
@@ -14,6 +49,17 @@ SELECT TOP (1000) [id]
       ,[end_date]
       ,[status]
 FROM [dbo].[sections]
+
+SELECT TOP (1000) [id]
+      ,[section_partition_id]
+      ,[practice_id]
+      ,[custom_deadline]
+      ,[custom_description]
+      ,[status]
+      ,[is_active]
+      ,[is_deleted]
+  FROM [dbo].[section_practices]
+
 
 SELECT TOP (1000) [id]
       ,[description]
@@ -45,7 +91,15 @@ SELECT TOP (1000) [id]
       ,[record_partition_order]
   FROM [dbo].[learning_record_partitions]
 
-
+  SELECT TOP (1000) [id]
+      ,[name]
+      ,[pass_score_criteria]
+      ,[created_at]
+      ,[updated_at]
+      ,[timelimit_minute]
+      ,[total_score]
+      ,[description]
+  FROM [dbo].[quizzes]
 
 SELECT TOP (1000) [id]
     ,[course_member_id]
@@ -112,6 +166,80 @@ SELECT TOP (1000) [id]
       ,[is_active]
       ,[is_deleted]
   FROM [dbo].[syllabuses]
+
+
+  SELECT TOP (1000) [id]
+      ,[section_quiz_id]
+      ,[name]
+      ,[attempt_score]
+      ,[learning_record_partition_id]
+      ,[max_score]
+      ,[quiz_attempt_date]
+      ,[status]
+      ,[attempt_order]
+      ,[is_pass]
+  FROM [dbo].[section_quiz_attempts]
+
+
+
+
+  ------------------------------------------------------------------ SIMULATION
+
+  SELECT TOP (1000) [id]
+      ,[name]
+      ,[description]
+      ,[image_url]
+      ,[is_active]
+      ,[created_date]
+      ,[is_deleted]
+  FROM [dbo].[simulation_components]
+
+  SELECT TOP (1000) [id]
+      ,[name]
+      ,[description]
+      ,[action_key]
+      ,[is_active]
+      ,[is_deleted]
+  FROM [dbo].[sim_actions]
+
+
+  SELECT TOP (1000) [id]
+      ,[practice_name]
+      ,[practice_description]
+      ,[estimated_duration_minutes]
+      ,[difficulty_level]
+      ,[max_attempts]
+      ,[created_date]
+      ,[is_active]
+      ,[is_deleted]
+  FROM [dbo].[practices]
+
+
+SELECT TOP (1000) [id]
+    ,[practice_id]
+    ,[step_name]
+    ,[step_description]
+    ,[expected_result]
+    ,[step_order]
+    ,[is_deleted]
+FROM [dbo].[practice_steps]
+
+SELECT TOP (1000) [id]
+      ,[step_id]
+      ,[component_id]
+      ,[component_order]
+      ,[is_deleted]
+  FROM [dbo].[practice_step_components]
+
+
+  SELECT TOP (1000) [id]
+      ,[step_id]
+      ,[action_id]
+      ,[name]
+      ,[description]
+      ,[is_deleted]
+  FROM [dbo].[practice_step_actions]
+
 
 
 

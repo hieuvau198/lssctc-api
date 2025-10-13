@@ -1,6 +1,6 @@
-﻿using Lssctc.SimulationManagement.PracticeStepComponents.Dtos;
+﻿using Lssctc.SimulationManagement.StepComponents.Dtos;
 
-namespace Lssctc.SimulationManagement.PracticeStepComponents.Services
+namespace Lssctc.SimulationManagement.StepComponents.Services
 {
     public interface IPracticeStepComponentService
     {
