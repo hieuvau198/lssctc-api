@@ -58,6 +58,66 @@ namespace Lssctc.SimulationManagement.SectionPractice.Services
             return true;
         }
 
+        // get section practices by classId with pagination
+        public async Task<PagedResult<SectionPracticeListDto>> GetSectionPracticesByClassId(int classId, int page, int pageSize)
+        {
+            if (classId <= 0) throw new ValidationException("ClassId is invalid.");
+            if (page < 1) page = 1;
+            if (pageSize < 1 || pageSize > 200) pageSize = 20;
+
+            var exists = await _uow.ClassRepository.ExistsAsync(c => c.Id == classId);
+            if (!exists) throw new KeyNotFoundException($"Class {classId} not found.");
+
+            var baseQuery =
+                from sp in _uow.SectionPracticeRepository.GetAllAsQueryable()
+                join part in _uow.SectionPartitionRepository.GetAllAsQueryable() on sp.SectionPartitionId equals part.Id
+                join sec in _uow.SectionRepository.GetAllAsQueryable() on part.SectionId equals sec.Id
+                join p in _uow.PracticeRepository.GetAllAsQueryable() on sp.PracticeId equals p.Id
+                where sec.ClassesId == classId
+                select new { sp, part, sec, p };
+            // sp = section_practices, part = section_partitions, sec = sections, p = practices
+
+            var total = await baseQuery.CountAsync();
+
+            var items = await baseQuery
+                .OrderBy(x => x.sec.Order)
+                .ThenBy(x => x.part.DisplayOrder)
+                .ThenBy(x => x.sp.Id)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(x => new SectionPracticeListDto
+                {
+                    Id = x.sp.Id,
+                    SectionId = x.sec.Id,
+                    SectionName = x.sec.Name,
+                    SectionOrder = x.sec.Order,
+                    SectionPartitionId = x.part.Id,
+                    PartitionName = x.part.Name,
+                    PartitionTypeId = x.part.PartitionTypeId,
+                    PracticeId = x.p.Id,
+                    // CHÚ Ý: tên property entity. Nếu entity là PracticeName thì dùng dòng dưới:
+                    PracticeName = x.p.PracticeName,
+                    
+
+                    CustomDeadline = x.sp.CustomDeadline,
+                    CustomDescription = x.sp.CustomDescription,
+                    Status = x.sp.Status ?? 1,
+                    IsActive = x.sp.IsActive ?? true,
+                    IsDeleted = x.sp.IsDeleted ?? false
+                })
+                .AsNoTracking()
+                .ToListAsync();
+
+            return new PagedResult<SectionPracticeListDto>
+            {
+                Items = items,
+                TotalCount = total,
+                Page = page,
+                PageSize = pageSize
+            };
+        }
+
+
         public async Task<SectionPracticeDto?> GetSectionPracticeById(int id)
         {
             var dto = await _uow.SectionPracticeRepository.GetAllAsQueryable()

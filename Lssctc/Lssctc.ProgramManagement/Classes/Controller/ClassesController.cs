@@ -74,32 +74,41 @@ namespace Lssctc.ProgramManagement.Classes.Controller
         }
 
 
-        /// <summary>
-        /// get classes by instructor id
-        /// </summary>
-
+        /// <summary>Get classes by instructor id</summary>
         [HttpGet("by-instructor/{instructorId:int}")]
-        public async Task<IActionResult> GetByInstructor([FromRoute] int instructorId)
+        public async Task<IActionResult> GetClassesByInstructorId(
+            int instructorId,
+            int page = 1,
+            int pageSize = 20,
+            int? status = null)
         {
             try
             {
-                var items = await _classService.GetClassesByInstructorAsync(instructorId);
-                return Ok(new
+                var result = await _classService.GetClassesByInstructorId(instructorId, page, pageSize, status);
+
+                if (result.TotalCount == 0)
                 {
-                    success = true,
-                    total = items.Count(),
-                    items
-                });
+                    if (status.HasValue)
+                        return Ok($"Instructor currently has no class with status = {status.Value}.");
+                    return Ok("Instructor currently has no class.");
+                }
+
+                return Ok(result); // trả thẳng list class
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(new { success = false, message = ex.Message });
+                return NotFound(ex.Message);
             }
             catch (ValidationException ex)
             {
-                return BadRequest(new { success = false, message = ex.Message });
+                return BadRequest(ex.Message);
             }
         }
+
+
+
+
+
 
         [HttpGet("myclasses/{traineeId}")]
         public async Task<IActionResult> GetMyClasses(int traineeId)
@@ -286,19 +295,24 @@ namespace Lssctc.ProgramManagement.Classes.Controller
         /// Get all members of a class by ClassId
         /// </summary>
         [HttpGet("{classId}/members")]
-        public async Task<IActionResult> GetClassMembers(int classId)
+        public async Task<IActionResult> GetClassMembers(
+    int classId,
+    [FromQuery] int page = 1,
+    [FromQuery] int pageSize = 20)
         {
             try
             {
-                var result = await _classService.GetMembersByClassId(classId);
-                if (result == null || !result.Any())
-                    return NotFound("No members found for this class.");
-
+                var result = await _classService.GetMembersByClassId(classId, page, pageSize);
                 return Ok(result);
+            }
+            catch (ValidationException ex)
+            {
+                return BadRequest(ex.Message);
             }
             catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                
+                return StatusCode(500, "Unexpected error.");
             }
         }
 
