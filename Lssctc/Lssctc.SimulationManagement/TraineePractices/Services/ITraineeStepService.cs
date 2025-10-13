@@ -8,5 +8,7 @@ namespace Lssctc.SimulationManagement.TraineePractices.Services
         Task<List<TraineeStepDto>> GetTraineeStepsByPracticeIdAndTraineeId(int practiceId, int traineeId);
         // get step by step id and trainee id
         Task<TraineeStepDto?> GetTraineeStepByIdAndTraineeId(int stepId, int traineeId);
+        // submit trainee step attempt
+        Task<bool> SubmitTraineeStepAttempt(int attemptId, int traineeId, UpdateTraineeStepAttemptDto input);
     }
 }
