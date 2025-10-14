@@ -29,31 +29,47 @@ namespace Lssctc.LearningManagement.Quizzes.Services
             return entity == null ? null : _mapper.Map<QuizDto>(entity);
         }
 
-        public async Task<PagedResult<QuizDetailDto>> GetDetailQuizzes(int pageIndex, int pageSize)
+       
+
+        //get all quizzes paged
+        public async Task<PagedResult<QuizDto>> GetAllQuizzesPaged(int page, int pageSize)
         {
-            if (pageIndex < 1) pageIndex = 1;
-            if (pageSize <= 0 || pageSize > 200) pageSize = 20;
+            if (page < 1) page = 1;
+            if (pageSize < 1 || pageSize > 200) pageSize = 20;
 
             var query = _uow.QuizRepository.GetAllAsQueryable();
 
             var total = await query.CountAsync();
 
-            var items = await query
-                .Skip((pageIndex - 1) * pageSize)
+            var quizzes = await query
+                .OrderByDescending(x => x.UpdatedAt)
+                .ThenByDescending(x => x.Id)
+                .Skip((page - 1) * pageSize)
                 .Take(pageSize)
-                .ProjectTo<QuizDetailDto>(_mapper.ConfigurationProvider)
                 .AsNoTracking()
                 .ToListAsync();
 
-            return new PagedResult<QuizDetailDto>
+            //  Map Quiz to QuizDto
+            var items = quizzes.Select(q => new QuizDto
+            {
+                Id = q.Id,
+                Name = q.Name,
+                Description = q.Description,
+                TotalScore = q.TotalScore,
+                PassScoreCriteria = q.PassScoreCriteria,
+                TimelimitMinute = q.TimelimitMinute,
+                CreatedAt = q.CreatedAt,
+                UpdatedAt = q.UpdatedAt
+            }).ToList();
+
+            return new PagedResult<QuizDto>
             {
                 Items = items,
                 TotalCount = total,
-                Page = pageIndex,
+                Page = page,
                 PageSize = pageSize
             };
         }
-
 
 
         public async Task<int> CreateQuiz(CreateQuizDto dto)
@@ -106,6 +122,48 @@ namespace Lssctc.LearningManagement.Quizzes.Services
             return quizDetail;
         }
 
+        // get questions no option by quiz id paged
+        public async Task<PagedResult<QuizQuestionNoOptionsDto>> GetQuestionsByQuizIdPaged(int quizId, int page, int pageSize)
+        {
+            if (quizId <= 0) return new PagedResult<QuizQuestionNoOptionsDto>
+            {
+                Items = Array.Empty<QuizQuestionNoOptionsDto>(),
+                TotalCount = 0,
+                Page = 1,
+                PageSize = pageSize > 0 && pageSize <= 200 ? pageSize : 20
+            };
+
+            if (page < 1) page = 1;
+            if (pageSize < 1 || pageSize > 200) pageSize = 20;
+
+            var q = _uow.QuizQuestionRepository.GetAllAsQueryable()
+                                               .Where(x => x.QuizId == quizId);
+
+            var total = await q.CountAsync();
+
+            var items = await q.OrderBy(x => x.Id)
+                               .Skip((page - 1) * pageSize)
+                               .Take(pageSize)
+                               .Select(x => new QuizQuestionNoOptionsDto
+                               {
+                                   Id = x.Id,
+                                   QuizId = x.QuizId,
+                                   Name = x.Name,
+                                   Description = x.Description,
+                                   QuestionScore = x.QuestionScore,
+                                   IsMultipleAnswers = x.IsMultipleAnswers
+                               })
+                               .AsNoTracking()
+                               .ToListAsync();
+
+            return new PagedResult<QuizQuestionNoOptionsDto>
+            {
+                Items = items,
+                TotalCount = total,
+                Page = page,
+                PageSize = pageSize
+            };
+        }
 
         //====== get quiz with questions and options for trainee
         public async Task<QuizTraineeDetailDto?> GetQuizDetailForTrainee(
