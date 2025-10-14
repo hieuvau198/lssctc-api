@@ -3,6 +3,7 @@ using Lssctc.LearningManagement.Quizzes.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
+using static Lssctc.LearningManagement.Quizzes.DTOs.QuizQuestionDto;
 
 namespace Lssctc.LearningManagement.Quizzes.Controllers
 {
@@ -27,7 +28,7 @@ namespace Lssctc.LearningManagement.Quizzes.Controllers
             if (pageIndex < 1) return BadRequest("pageIndex must be >= 1.");
             if (pageSize < 1 || pageSize > 200) return BadRequest("pageSize must be between 1 and 200.");
 
-            var result = await _quizService.GetDetailQuizzes(pageIndex, pageSize);
+            var result = await _quizService.GetAllQuizzesPaged(pageIndex, pageSize);
 
             // Cho phép FE đọc header này qua CORS
             Response.Headers["X-Total-Count"] = result.TotalCount.ToString();
@@ -36,6 +37,7 @@ namespace Lssctc.LearningManagement.Quizzes.Controllers
             return Ok(result);
         }
 
+       
 
         [HttpGet("{id:int}")]
         public async Task<IActionResult> GetById([FromRoute] int id)
@@ -133,10 +135,15 @@ namespace Lssctc.LearningManagement.Quizzes.Controllers
 
         // get only in4 of quiz for teacher 
         [HttpGet("{id:int}/questions")]
-        public async Task<IActionResult> GetDetail(int id, CancellationToken ct = default)
+        public async Task<IActionResult> GetQuestionsPaged(
+             [FromRoute] int id,
+             [FromQuery] int page = 1,
+             [FromQuery] int pageSize = 20)
         {
-            var dto = await _quizService.GetQuizDetail(id, ct);
-            return dto is null ? NotFound() : Ok(dto);
+            if (id <= 0) return BadRequest("id must be a positive integer.");
+
+            var result = await _quizService.GetQuestionsByQuizIdPaged(id, page, pageSize);
+            return Ok(result);
         }
 
         // get quiz detail for trainee (no correct option info)
@@ -188,20 +195,24 @@ namespace Lssctc.LearningManagement.Quizzes.Controllers
 
         // create question and option by quiz id
 
+        // POST: /api/quizzes/{quizId}/questions-with-options
         [HttpPost("{quizId:int}/questions-with-options")]
         public async Task<IActionResult> CreateQuestionWithOptions(
-    [FromRoute] int quizId,
-    [FromBody] CreateQuizQuestionWithOptionsDto dto)
+            [FromRoute] int quizId,
+            [FromBody] CreateQuizQuestionWithOptionsDto dto)
         {
+            if (quizId <= 0) return BadRequest("quizId must be a positive integer.");
+            if (dto is null) return BadRequest("Body is required.");
+
             try
             {
                 var questionId = await _quizService.CreateQuestionWithOptionsByQuizId(quizId, dto);
 
-                // có thể trả về link xem quiz detail của teacher hoặc trainee
+                // Điều hướng tới GET /api/quizzes/{id}/questions?page=1&pageSize=20 (endpoint mới)
                 return CreatedAtAction(
-                    nameof(GetDetail), // GET: /api/quizzes/{id}/questions
-                    new { id = quizId },
-                    new { id = questionId }
+                    nameof(GetQuestionsPaged),
+                    new { id = quizId, page = 1, pageSize = 20 }, // route values khớp action đích
+                    new { id = questionId }                        // body trả về
                 );
             }
             catch (KeyNotFoundException ex) { return NotFound(new { error = ex.Message }); }

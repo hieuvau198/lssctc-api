@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using static Lssctc.LearningManagement.Quizzes.DTOs.QuizQuestionDto;
 
 namespace Lssctc.LearningManagement.Quizzes.DTOs
 {
@@ -12,7 +13,7 @@ namespace Lssctc.LearningManagement.Quizzes.DTOs
         public string? Description { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
-        public List<QuizQuestionDto> Questions { get; set; } = new();
+        
     }
 
     public class QuizDetailDto

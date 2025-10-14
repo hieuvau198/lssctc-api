@@ -112,7 +112,7 @@
         public DateTime? EndDate { get; set; }
         public int? Capacity { get; set; }
         public int ProgramCourseId { get; set; }
-        public int? ClassCodeId { get; set; }
+        public string? ClassCode { get; set; }
         public string Description { get; set; } = null!;
         public int Status { get; set; }
     }

@@ -5,13 +5,13 @@ namespace Lssctc.LearningManagement.Quizzes.Services
 {
     public interface IQuizService
     {
-        Task<PagedResult<QuizDetailDto>> GetDetailQuizzes(int pageIndex, int pageSize);
+     
         Task<QuizDto?> GetQuizById(int id);
         Task<int> CreateQuiz(CreateQuizDto dto);
         Task<bool> UpdateQuizById(int id, UpdateQuizDto dto);
         Task<bool> DeleteQuizById(int id);
-       
-        Task<QuizDetailDto?> GetQuizDetail(int quizId, CancellationToken ct = default);
+
+        Task<PagedResult<QuizQuestionNoOptionsDto>> GetQuestionsByQuizIdPaged(int quizId, int page, int pageSize);
         Task<QuizTraineeDetailDto?> GetQuizDetailForTrainee(
     int quizId, CancellationToken ct = default);
 
@@ -22,6 +22,9 @@ namespace Lssctc.LearningManagement.Quizzes.Services
         Task<IReadOnlyList<QuizDetailQuestionOptionDto>> GetOptionsByQuestionId(
         int questionId, CancellationToken ct = default);
         Task<QuizQuestionOptionDto?> GetOptionById(int optionId);
+
+        //get all quizzes paged
+        Task<PagedResult<QuizDto>> GetAllQuizzesPaged(int page, int pageSize);
 
         // get quizzes by Section Quiz id
         Task<QuizTraineeDetailDto?> GetQuizTraineeDetailBySectionQuizIdAsync(
