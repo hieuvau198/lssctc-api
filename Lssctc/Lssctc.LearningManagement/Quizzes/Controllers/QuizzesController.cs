@@ -195,25 +195,29 @@ namespace Lssctc.LearningManagement.Quizzes.Controllers
 
         // create question and option by quiz id
 
-    //    [HttpPost("{quizId:int}/questions-with-options")]
-    //    public async Task<IActionResult> CreateQuestionWithOptions(
-    //[FromRoute] int quizId,
-    //[FromBody] CreateQuizQuestionWithOptionsDto dto)
-    //    {
-    //        try
-    //        {
-    //            var questionId = await _quizService.CreateQuestionWithOptionsByQuizId(quizId, dto);
+        // POST: /api/quizzes/{quizId}/questions-with-options
+        [HttpPost("{quizId:int}/questions-with-options")]
+        public async Task<IActionResult> CreateQuestionWithOptions(
+            [FromRoute] int quizId,
+            [FromBody] CreateQuizQuestionWithOptionsDto dto)
+        {
+            if (quizId <= 0) return BadRequest("quizId must be a positive integer.");
+            if (dto is null) return BadRequest("Body is required.");
 
-    //            // có thể trả về link xem quiz detail của teacher hoặc trainee
-    //            return CreatedAtAction(
-    //                nameof(GetDetail), // GET: /api/quizzes/{id}/questions
-    //                new { id = quizId },
-    //                new { id = questionId }
-    //            );
-    //        }
-    //        catch (KeyNotFoundException ex) { return NotFound(new { error = ex.Message }); }
-    //        catch (ValidationException ex) { return BadRequest(new { error = ex.Message }); }
-    //    }
+            try
+            {
+                var questionId = await _quizService.CreateQuestionWithOptionsByQuizId(quizId, dto);
+
+                // Điều hướng tới GET /api/quizzes/{id}/questions?page=1&pageSize=20 (endpoint mới)
+                return CreatedAtAction(
+                    nameof(GetQuestionsPaged),
+                    new { id = quizId, page = 1, pageSize = 20 }, // route values khớp action đích
+                    new { id = questionId }                        // body trả về
+                );
+            }
+            catch (KeyNotFoundException ex) { return NotFound(new { error = ex.Message }); }
+            catch (ValidationException ex) { return BadRequest(new { error = ex.Message }); }
+        }
 
 
 
