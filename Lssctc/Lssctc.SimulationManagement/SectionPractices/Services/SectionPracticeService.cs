@@ -2,12 +2,12 @@
 using AutoMapper.QueryableExtensions;
 using Lssctc.Share.Common;
 using Lssctc.Share.Interfaces;
-using Lssctc.SimulationManagement.SectionPractice.Dtos;
+using Lssctc.SimulationManagement.SectionPractices.Dtos;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 using Entities = Lssctc.Share.Entities;
 
-namespace Lssctc.SimulationManagement.SectionPractice.Services
+namespace Lssctc.SimulationManagement.SectionPractices.Services
 {
     public class SectionPracticeService : ISectionPracticeService
     {

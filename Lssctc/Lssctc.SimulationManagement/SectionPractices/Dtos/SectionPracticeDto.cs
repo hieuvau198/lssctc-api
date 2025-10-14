@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace Lssctc.SimulationManagement.SectionPractice.Dtos
+namespace Lssctc.SimulationManagement.SectionPractices.Dtos
 {
     public class SectionPracticeDto
     {

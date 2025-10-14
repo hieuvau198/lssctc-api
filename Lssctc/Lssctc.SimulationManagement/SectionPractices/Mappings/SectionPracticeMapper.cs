@@ -1,8 +1,8 @@
 ﻿using AutoMapper;
-using Lssctc.SimulationManagement.SectionPractice.Dtos;
+using Lssctc.SimulationManagement.SectionPractices.Dtos;
 using Entities = Lssctc.Share.Entities;
 
-namespace Lssctc.SimulationManagement.SectionPractice.Mappings
+namespace Lssctc.SimulationManagement.SectionPractices.Mappings
 {
     public class SectionPracticeMapper : Profile
     {
