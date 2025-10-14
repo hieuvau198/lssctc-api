@@ -1,10 +1,10 @@
 ﻿using Lssctc.Share.Common;
-using Lssctc.SimulationManagement.SectionPractice.Dtos;
-using Lssctc.SimulationManagement.SectionPractice.Services;
+using Lssctc.SimulationManagement.SectionPractices.Dtos;
+using Lssctc.SimulationManagement.SectionPractices.Services;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
 
-namespace Lssctc.SimulationManagement.SectionPractice.Controllers
+namespace Lssctc.SimulationManagement.SectionPractices.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]

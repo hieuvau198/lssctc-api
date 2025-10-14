@@ -181,6 +181,27 @@ SELECT TOP (1000) [id]
   FROM [dbo].[section_quiz_attempts]
 
 
+  SELECT TOP (1000) [id]
+      ,[section_practice_id]
+      ,[learning_record_partition_id]
+      ,[score]
+      ,[attempt_date]
+      ,[attempt_status]
+      ,[description]
+      ,[is_pass]
+      ,[is_deleted]
+  FROM [dbo].[section_practice_attempts]
+
+  SELECT TOP (1000) [id]
+      ,[attempt_id]
+      ,[practice_step_id]
+      ,[score]
+      ,[description]
+      ,[is_pass]
+      ,[is_deleted]
+  FROM [dbo].[section_practice_attempt_steps]
+
+
 
 
   ------------------------------------------------------------------ SIMULATION

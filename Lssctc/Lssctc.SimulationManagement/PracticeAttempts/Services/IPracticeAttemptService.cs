@@ -12,5 +12,7 @@ namespace Lssctc.SimulationManagement.PracticeAttempts.Services
         Task<PracticeAttemptDto> CreatePracticeAttempt(int sectionPracticeId, int traineeId);
         // delete practice attempt
         Task<bool> DeletePracticeAttempt(int attemptId);
+        // confirm practice attempt is complete
+        Task<PracticeAttemptDto> ConfirmPracticeAttemptComplete(int attemptId);
     }
 }

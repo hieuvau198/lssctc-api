@@ -89,7 +89,7 @@ namespace Lssctc.SimulationManagement.TraineePractices.Services
                 .Include(ps => ps.PracticeStepActions)
                     .ThenInclude(psa => psa.Action)
                 .FirstOrDefaultAsync() 
-                ?? throw new KeyNotFoundException($"Step not found for Step ID {input.CurrentStepId}.");
+                ?? throw new KeyNotFoundException($"Wrong step! Step not found for Step ID {input.CurrentStepId}.");
 
             #endregion
 
