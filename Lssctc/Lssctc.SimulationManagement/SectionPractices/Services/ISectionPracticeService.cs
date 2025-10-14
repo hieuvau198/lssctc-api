@@ -1,7 +1,7 @@
 ﻿using Lssctc.Share.Common;
-using Lssctc.SimulationManagement.SectionPractice.Dtos;
+using Lssctc.SimulationManagement.SectionPractices.Dtos;
 
-namespace Lssctc.SimulationManagement.SectionPractice.Services
+namespace Lssctc.SimulationManagement.SectionPractices.Services
 {
     public interface ISectionPracticeService
     {

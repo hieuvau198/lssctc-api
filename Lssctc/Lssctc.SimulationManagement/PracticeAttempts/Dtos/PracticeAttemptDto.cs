@@ -8,15 +8,15 @@
 
         public int LearningRecordPartitionId { get; set; } // LearningRecordPartition
 
-        public decimal? Score { get; set; } 
+        public decimal? Score { get; set; } // SectionPracticeAttempt
 
-        public DateTime AttemptDate { get; set; } 
+        public DateTime AttemptDate { get; set; }  // SectionPracticeAttempt
 
-        public int? AttemptStatus { get; set; } 
+        public int? AttemptStatus { get; set; } // SectionPracticeAttempt
 
-        public string? Description { get; set; }
+        public string? Description { get; set; } // SectionPracticeAttempt
 
-        public bool? IsPass { get; set; }
+        public bool? IsPass { get; set; } // SectionPracticeAttempt
     }
 
 }
