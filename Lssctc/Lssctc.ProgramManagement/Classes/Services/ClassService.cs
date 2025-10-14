@@ -510,7 +510,7 @@ namespace Lssctc.ProgramManagement.Classes.Services
                     EndDate = c.EndDate,
                     Capacity = c.Capacity,
                     ProgramCourseId = c.ProgramCourseId,
-                    ClassCodeId = c.ClassCodeId,
+                    ClassCode = c.ClassCode != null ? c.ClassCode.Name : null,
                     Description = c.Description,
                     Status = c.Status
                 })
