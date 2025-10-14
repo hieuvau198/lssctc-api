@@ -115,5 +115,27 @@ namespace Lssctc.SimulationManagement.PracticeAttempts.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
             }
         }
+
+        [HttpPut("attempt/{attemptId}/complete")]
+        public async Task<IActionResult> UpdatePracticeAttemptCompleteByAttemptId(int attemptId)
+        {
+            try
+            {
+                var result = await _practiceAttemptService.ConfirmPracticeAttemptComplete(attemptId);
+                return Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = "An unexpected error occurred.", detail = ex.Message });
+            }
+        }
     }
 }
