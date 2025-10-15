@@ -1,7 +1,8 @@
-﻿using Lssctc.LearningManagement.Quizzes.DTOs;
+﻿
+using Lssctc.ProgramManagement.QuizQuestionOptions.DTOs;
 using System.ComponentModel.DataAnnotations;
 
-namespace Lssctc.LearningManagement.QuizQuestions.DTOs
+namespace Lssctc.ProgramManagement.QuizQuestions.DTOs
 {
     public class QuizQuestionDto
     {

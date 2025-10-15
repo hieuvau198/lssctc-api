@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace Lssctc.ProgramManagement.Quizzes.DTOs
+namespace Lssctc.ProgramManagement.QuizQuestionOptions.DTOs
 {
     public class QuizQuestionOptionDto
     {

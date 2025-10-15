@@ -1,11 +1,12 @@
-﻿using Lssctc.LearningManagement.QuizQuestions.DTOs;
+﻿
+using Lssctc.ProgramManagement.QuizQuestions.DTOs;
 using Lssctc.Share.Common;
 using Lssctc.Share.Entities;
 using Lssctc.Share.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 
-namespace Lssctc.LearningManagement.QuizQuestions.Services
+namespace Lssctc.ProgramManagement.QuizQuestions.Services
 {
     public class QuizQuestionService : IQuizQuestionService
     {

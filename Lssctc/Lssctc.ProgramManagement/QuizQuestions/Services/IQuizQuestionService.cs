@@ -1,7 +1,8 @@
-﻿using Lssctc.LearningManagement.QuizQuestions.DTOs;
+﻿
+using Lssctc.ProgramManagement.QuizQuestions.DTOs;
 using Lssctc.Share.Common;
 
-namespace Lssctc.LearningManagement.QuizQuestions.Services
+namespace Lssctc.ProgramManagement.QuizQuestions.Services
 {
     public interface IQuizQuestionService
     {
