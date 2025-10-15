@@ -13,7 +13,6 @@ using Lssctc.ProgramManagement.Learnings.LearningsQuizzes.Services;
 using Lssctc.ProgramManagement.Learnings.LearningsSections.Services;
 using Lssctc.ProgramManagement.Programs.Mappings;
 using Lssctc.ProgramManagement.Programs.Services;
-using Lssctc.ProgramManagement.QuizQuestionOptions.Services;
 using Lssctc.ProgramManagement.QuizQuestions.Services;
 using Lssctc.ProgramManagement.Quizzes.Services;
 using Lssctc.ProgramManagement.SectionMaterials.Services;
@@ -83,7 +82,6 @@ builder.Services.AddScoped<ILearningsSectionPartitionService, LearningsSectionPa
 builder.Services.AddScoped<ILearningsSectionMaterialService, LearningsSectionMaterialService>();
 builder.Services.AddScoped<ILearningsSectionQuizService, LearningsSectionQuizService>();
 builder.Services.AddScoped<IQuizQuestionService, QuizQuestionService>();
-builder.Services.AddScoped<IQuizQuestionOptionsService, QuizQuestionOptionsService>();
 #endregion
 
 #region CORS

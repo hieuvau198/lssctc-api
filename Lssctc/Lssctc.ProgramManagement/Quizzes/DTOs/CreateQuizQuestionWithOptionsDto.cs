@@ -1,6 +1,4 @@
-﻿using Lssctc.ProgramManagement.QuizQuestionOptions.DTOs;
-
-namespace Lssctc.ProgramManagement.Quizzes.DTOs
+﻿namespace Lssctc.ProgramManagement.Quizzes.DTOs
 {
     public class CreateQuizQuestionWithOptionsDto
     {
