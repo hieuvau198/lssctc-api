@@ -1,6 +1,7 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using Lssctc.LearningManagement.Quizzes.DTOs;
+using System.ComponentModel.DataAnnotations;
 
-namespace Lssctc.LearningManagement.Quizzes.DTOs
+namespace Lssctc.LearningManagement.QuizQuestions.DTOs
 {
     public class QuizQuestionDto
     {
@@ -61,6 +62,7 @@ namespace Lssctc.LearningManagement.Quizzes.DTOs
 
         [StringLength(2000, ErrorMessage = "Description must be at most 2000 characters.")]
         public string? Description { get; set; }
+        public bool IsMultipleAnswers { get; set; }
     }
 
     public class UpdateQuizQuestionDto
@@ -68,5 +70,6 @@ namespace Lssctc.LearningManagement.Quizzes.DTOs
         public string? Name { get; set; }
         public decimal? QuestionScore { get; set; }
         public string? Description { get; set; }
+        public bool? IsMultipleAnswers { get; set; }
     }
 }

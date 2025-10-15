@@ -1,4 +1,5 @@
-﻿using Lssctc.LearningManagement.Quizzes.Mappings;
+﻿using Lssctc.LearningManagement.QuizQuestions.Services;
+using Lssctc.LearningManagement.Quizzes.Mappings;
 using Lssctc.LearningManagement.Quizzes.Services;
 using Lssctc.LearningManagement.Section.Mappings;
 using Lssctc.LearningManagement.Section.Services;
@@ -36,6 +37,7 @@ builder.Services.AddScoped<IQuizService, QuizService>();
 builder.Services.AddScoped<ISectionService, SectionService>();
 builder.Services.AddScoped<ISectionPartitionService, SectionPartitionService>();
 builder.Services.AddScoped<ISectionMaterialService, SectionMaterialService>();
+builder.Services.AddScoped<IQuizQuestionService, QuizQuestionService>();
 #endregion
 
 // ================== ADD CORS ==================
