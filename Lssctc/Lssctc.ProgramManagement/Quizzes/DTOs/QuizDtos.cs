@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using Lssctc.ProgramManagement.QuizQuestions.DTOs;
+using System.ComponentModel.DataAnnotations;
 
 namespace Lssctc.ProgramManagement.Quizzes.DTOs
 {

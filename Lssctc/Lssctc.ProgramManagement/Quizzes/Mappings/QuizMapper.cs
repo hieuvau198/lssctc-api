@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using Lssctc.ProgramManagement.QuizQuestions.DTOs;
 using Lssctc.ProgramManagement.Quizzes.DTOs;
 using Lssctc.Share.Entities;
 

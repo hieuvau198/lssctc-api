@@ -150,74 +150,9 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
 
 
 
-        public async Task<int> CreateQuestionByQuizId(int quizId, CreateQuizQuestionDto dto)
-        {
-            if (dto == null) throw new ValidationException("Body is required.");
-
-            var quiz = await _uow.QuizRepository.GetByIdAsync(quizId);
-            if (quiz is null) throw new KeyNotFoundException($"Quiz {quizId} not found.");
-
-            var rawName = (dto.Name ?? string.Empty).Trim();
-            if (string.IsNullOrWhiteSpace(rawName))
-                throw new ValidationException("Name is required.");
-
-            if (rawName.Length > 500)
-                throw new ValidationException("Name must be at most 500 characters.");
-
-            // Chuẩn hoá khoảng trắng (gộp nhiều khoảng trắng thành 1)
-            var normalizedName = string.Join(" ", rawName.Split(' ', StringSplitOptions.RemoveEmptyEntries));
-
-            //  Tên câu hỏi phải duy nhất trong 1 quiz (so sánh không phân biệt hoa thường)
-            var nameExists = await _uow.QuizQuestionRepository.ExistsAsync(x =>
-                x.QuizId == quizId &&
-                x.Name != null &&
-                x.Name.ToLower() == normalizedName.ToLower());
-
-            if (nameExists)
-                throw new ValidationException("A question with the same name already exists in this quiz.");
-
-            //  Validate Description 
-            if (dto.Description != null && dto.Description.Length > 2000)
-                throw new ValidationException("Description must be at most 2000 characters.");
-
-            //  Validate QuestionScore (>= 0, làm tròn 2 chữ số)
-            decimal? score = dto.QuestionScore;
-            if (score.HasValue)
-            {
-                if (score.Value < 0m)
-                    throw new ValidationException("QuestionScore must be greater than or equal to 0.");
-
-                score = Math.Round(score.Value, 2, MidpointRounding.AwayFromZero);
-
-                //  Không vượt tổng điểm quiz (nếu quiz.TotalScore có giá trị)
-                if (quiz.TotalScore.HasValue)
-                {
-                    var used = await _uow.QuizQuestionRepository.GetAllAsQueryable()
-                        .Where(q => q.QuizId == quizId && q.QuestionScore != null)
-                        .SumAsync(q => q.QuestionScore) ?? 0m;
-
-                    var willBe = used + score.Value;
-                    if (willBe > quiz.TotalScore.Value + 0.0001m)
-                        throw new ValidationException(
-                            $"Total question scores ({willBe}) would exceed quiz.TotalScore ({quiz.TotalScore.Value}).");
-                }
-            }
+       
 
 
-            //================== Option ==============
-
-            // Create question
-            var entity = _mapper.Map<QuizQuestion>(dto);
-            entity.QuizId = quizId;
-            entity.Name = normalizedName;
-            entity.QuestionScore = score;
-
-         
-
-            await _uow.QuizQuestionRepository.CreateAsync(entity);
-            await _uow.SaveChangesAsync();
-            return entity.Id;
-        }
 
         public async Task<int> CreateOption(int questionId, CreateQuizQuestionOptionDto dto)
         {

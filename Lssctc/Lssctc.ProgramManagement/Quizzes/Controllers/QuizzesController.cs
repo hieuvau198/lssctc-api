@@ -65,23 +65,7 @@ namespace Lssctc.ProgramManagement.Quizzes.Controllers
         }
 
 
-        [HttpPost("{quizId:int}/questions")]
-        public async Task<IActionResult> CreateQuestion([FromRoute] int quizId, [FromBody] CreateQuizQuestionDto dto)
-        {
-            try
-            {
-                var id = await _quizService.CreateQuestionByQuizId(quizId, dto);
-                return CreatedAtAction(nameof(GetById), new { quizId, id }, new { id });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new { error = ex.Message });
-            }
-            catch (ValidationException ex)
-            {
-                return BadRequest(new { error = ex.Message });
-            }
-        }
+        
 
 
         [HttpPost("questions/{questionId:int}/options")]
