@@ -1,4 +1,5 @@
-﻿using Lssctc.ProgramManagement.Quizzes.DTOs;
+﻿using Lssctc.ProgramManagement.QuizQuestionOptions.DTOs;
+using Lssctc.ProgramManagement.Quizzes.DTOs;
 using Lssctc.Share.Common;
 
 namespace Lssctc.ProgramManagement.Quizzes.Services
@@ -11,9 +12,8 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
         Task<QuizDetailDto?> GetQuizDetail(int quizId, CancellationToken ct = default);
         Task<QuizDetailDto?> GetQuizDetailNoAnswer(int quizId, CancellationToken ct = default);
         Task<QuizTraineeDetailDto?> GetQuizDetailForTrainee(int quizId, CancellationToken ct = default);
-        Task<IReadOnlyList<QuizDetailQuestionOptionDto>> GetOptionsByQuestionId(
-        int questionId, CancellationToken ct = default);
-        Task<QuizQuestionOptionDto?> GetOptionById(int optionId);
+       
+
         Task<QuizTraineeDetailDto?> GetQuizTraineeDetailBySectionQuizIdAsync(int sectionQuizId, CancellationToken ct = default);
         #endregion
 
@@ -22,7 +22,7 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
         Task<bool> UpdateQuizById(int id, UpdateQuizDto dto);
         Task<bool> DeleteQuizById(int id);
        
-        Task<int> CreateOption(int questionId, CreateQuizQuestionOptionDto dto);
+      
         Task<int> CreateQuestionWithOptionsByQuizId(int quizId, CreateQuizQuestionWithOptionsDto dto);
         #endregion
     }

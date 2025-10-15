@@ -1,4 +1,5 @@
-﻿using Lssctc.ProgramManagement.Quizzes.DTOs;
+﻿using Lssctc.ProgramManagement.QuizQuestionOptions.DTOs;
+using Lssctc.ProgramManagement.Quizzes.DTOs;
 using Lssctc.ProgramManagement.Quizzes.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -68,40 +69,7 @@ namespace Lssctc.ProgramManagement.Quizzes.Controllers
         
 
 
-        [HttpPost("questions/{questionId:int}/options")]
-        public async Task<IActionResult> CreateOption(
-     [FromRoute] int questionId,
-     [FromBody] CreateQuizQuestionOptionDto dto)
-        {
-            try
-            {
-                var id = await _quizService.CreateOption(questionId, dto);
 
-                return CreatedAtAction(
-                    nameof(GetOptionById),
-                    new { questionId, optionId = id },
-                    new { id }
-                );
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new { error = ex.Message });
-            }
-            catch (ValidationException ex)
-            {
-                return BadRequest(new { error = ex.Message });
-            }
-        }
-
-
-        [HttpGet("questions/{questionId:int}/options/{optionId:int}")]
-        public async Task<IActionResult> GetOptionById(
-    [FromRoute] int questionId,
-    [FromRoute] int optionId)
-        {
-            var dto = await _quizService.GetOptionById(optionId);
-            return dto is null ? NotFound() : Ok(dto);
-        }
 
 
         [HttpGet("{questionId:int}/options/{id:int}")]
@@ -129,17 +97,7 @@ namespace Lssctc.ProgramManagement.Quizzes.Controllers
             return dto is null ? NotFound() : Ok(dto);
         }
 
-        [HttpGet("questions/{questionId:int}/options")]
-        public async Task<IActionResult> GetOptionsByQuestionIdFlat(int questionId, CancellationToken ct = default)
-        {
-            try
-            {
-                var items = await _quizService.GetOptionsByQuestionId(questionId, ct);
-                return Ok(new { questionId, total = items.Count, items });
-            }
-            catch (KeyNotFoundException ex) { return NotFound(new { error = ex.Message }); }
-            catch (ValidationException ex) { return BadRequest(new { error = ex.Message }); }
-        }
+        
 
 
         [HttpGet("by-section-quiz/{sectionQuizId:int}/trainee-view")]
