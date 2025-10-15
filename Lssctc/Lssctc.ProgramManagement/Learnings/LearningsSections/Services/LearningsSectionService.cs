@@ -1,11 +1,11 @@
-﻿using Lssctc.ProgramManagement.Learnings.Dtos;
+﻿using Lssctc.ProgramManagement.Learnings.LearningsSections.Dtos;
 using Lssctc.Share.Common;
 using Lssctc.Share.Entities;
 using Lssctc.Share.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using System.Threading.Tasks;
 
-namespace Lssctc.ProgramManagement.Learnings.Services
+namespace Lssctc.ProgramManagement.Learnings.LearningsSections.Services
 {
     public class LearningsSectionService : ILearningsSectionService
     {

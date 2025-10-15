@@ -1,5 +1,6 @@
-﻿using System.ComponentModel.DataAnnotations;
-using static Lssctc.LearningManagement.Quizzes.DTOs.QuizQuestionDto;
+﻿using Lssctc.LearningManagement.QuizQuestions.DTOs;
+using System.ComponentModel.DataAnnotations;
+using static Lssctc.LearningManagement.QuizQuestions.DTOs.QuizQuestionDto;
 
 namespace Lssctc.LearningManagement.Quizzes.DTOs
 {

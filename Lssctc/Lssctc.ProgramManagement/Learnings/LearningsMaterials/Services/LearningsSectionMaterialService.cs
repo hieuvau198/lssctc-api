@@ -1,9 +1,10 @@
-﻿using Lssctc.ProgramManagement.Learnings.Dtos;
+﻿using Lssctc.ProgramManagement.Learnings.LearningsMaterials.Dtos;
+using Lssctc.ProgramManagement.Learnings.LearningsPartitions.Services;
 using Lssctc.Share.Entities;
 using Lssctc.Share.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
-namespace Lssctc.ProgramManagement.Learnings.Services
+namespace Lssctc.ProgramManagement.Learnings.LearningsMaterials.Services
 {
     public class LearningsSectionMaterialService : ILearningsSectionMaterialService
     {   

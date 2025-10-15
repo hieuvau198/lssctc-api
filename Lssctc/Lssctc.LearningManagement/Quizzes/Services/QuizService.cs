@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using AutoMapper.QueryableExtensions;
+using Lssctc.LearningManagement.QuizQuestions.DTOs;
 using Lssctc.LearningManagement.Quizzes.DTOs;
 using Lssctc.Share.Common;
 using Lssctc.Share.Entities;

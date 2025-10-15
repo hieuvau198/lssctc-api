@@ -1,5 +1,9 @@
-﻿using Lssctc.ProgramManagement.Learnings.Dtos;
-using Lssctc.ProgramManagement.Learnings.Services;
+﻿using Lssctc.ProgramManagement.Learnings.LearningsClasses.Services;
+using Lssctc.ProgramManagement.Learnings.LearningsMaterials.Services;
+using Lssctc.ProgramManagement.Learnings.LearningsPartitions.Services;
+using Lssctc.ProgramManagement.Learnings.LearningsQuizzes.Dtos;
+using Lssctc.ProgramManagement.Learnings.LearningsQuizzes.Services;
+using Lssctc.ProgramManagement.Learnings.LearningsSections.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
