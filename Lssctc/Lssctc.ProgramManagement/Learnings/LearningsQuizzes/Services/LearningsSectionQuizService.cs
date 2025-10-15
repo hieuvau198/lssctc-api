@@ -1,9 +1,10 @@
-﻿using Lssctc.ProgramManagement.Learnings.Dtos;
+﻿using Lssctc.ProgramManagement.Learnings.LearningsPartitions.Services;
+using Lssctc.ProgramManagement.Learnings.LearningsQuizzes.Dtos;
 using Lssctc.Share.Entities;
 using Lssctc.Share.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
-namespace Lssctc.ProgramManagement.Learnings.Services
+namespace Lssctc.ProgramManagement.Learnings.LearningsQuizzes.Services
 {
     public class LearningsSectionQuizService : ILearningsSectionQuizService
     {
@@ -123,7 +124,7 @@ namespace Lssctc.ProgramManagement.Learnings.Services
                     .ToList();
                 var isCorrect = correctOptionIds.Count == ans.SelectedOptionIds.Intersect(correctOptionIds).Count()
                     && correctOptionIds.Count == ans.SelectedOptionIds.Count;
-                var questionScore = isCorrect ? (question.QuestionScore ?? 0) : 0;
+                var questionScore = isCorrect ? question.QuestionScore ?? 0 : 0;
                 totalScore += questionScore;
                 var sqaQuestion = new SectionQuizAttemptQuestion
                 {
@@ -143,7 +144,7 @@ namespace Lssctc.ProgramManagement.Learnings.Services
                         continue; // skip if invalid option id
 
                     var isOptionCorrect = selectedOption.IsCorrect; // true or false from DB
-                    var optionScore = isOptionCorrect ? (selectedOption.OptionScore ?? 0) : 0;
+                    var optionScore = isOptionCorrect ? selectedOption.OptionScore ?? 0 : 0;
 
                     var sqaAnswer = new SectionQuizAttemptAnswer
                     {
