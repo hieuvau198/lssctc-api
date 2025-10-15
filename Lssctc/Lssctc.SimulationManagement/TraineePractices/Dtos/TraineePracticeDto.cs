@@ -2,15 +2,15 @@
 {
     public class TraineePracticeDto
     {
-        public int SectionPracticeId { get; set; }
-        public int PartitionId { get; set; }
-        public int PracticeId { get; set; }
-        public DateTime? CustomDeadline { get; set; }
-        public string? Status { get; set; }
-        public bool? IsCompleted { get; set; }
-        public string? PracticeName { get; set; }
-        public string? PracticeDescription { get; set; }
-        public int? EstimatedDurationMinutes { get; set; }
-        public string? DifficultyLevel { get; set; }
+        public int SectionPracticeId { get; set; } // SectionPractice
+        public int PartitionId { get; set; } // SectionPartition
+        public int PracticeId { get; set; } // Practice
+        public DateTime? CustomDeadline { get; set; } // SectionPractice
+        public string? Status { get; set; } // SectionPractice
+        public bool? IsCompleted { get; set; } // SectionPractice
+        public string? PracticeName { get; set; } // Practice
+        public string? PracticeDescription { get; set; } // Practice
+        public int? EstimatedDurationMinutes { get; set; } // Practice
+        public string? DifficultyLevel { get; set; } // Practice
     }
 }
