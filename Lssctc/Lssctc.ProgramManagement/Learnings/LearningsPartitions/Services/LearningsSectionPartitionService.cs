@@ -1,11 +1,12 @@
-﻿using Lssctc.ProgramManagement.Learnings.Dtos;
+﻿using Lssctc.ProgramManagement.Learnings.LearningsPartitions.Dtos;
+using Lssctc.ProgramManagement.Learnings.LearningsSections.Services;
 using Lssctc.Share.Common;
 using Lssctc.Share.Entities;
 using Lssctc.Share.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using System.Threading.Tasks;
 
-namespace Lssctc.ProgramManagement.Learnings.Services
+namespace Lssctc.ProgramManagement.Learnings.LearningsPartitions.Services
 {
     public class LearningsSectionPartitionService : ILearningsSectionPartitionService
     {

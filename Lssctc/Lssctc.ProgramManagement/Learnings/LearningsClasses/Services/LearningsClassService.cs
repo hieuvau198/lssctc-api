@@ -1,10 +1,10 @@
-﻿using Lssctc.ProgramManagement.Learnings.Dtos;
+﻿using Lssctc.ProgramManagement.Learnings.LearningsClasses.Dtos;
 using Lssctc.Share.Common;
 using Lssctc.Share.Enums;
 using Lssctc.Share.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
-namespace Lssctc.ProgramManagement.Learnings.Services
+namespace Lssctc.ProgramManagement.Learnings.LearningsClasses.Services
 {
     public class LearningsClassService : ILearningsClassService
     {
@@ -75,11 +75,11 @@ namespace Lssctc.ProgramManagement.Learnings.Services
             };
         }
 
-        private LearningsClassDto MapToLearningsClassDto( Lssctc.Share.Entities.Class c, int traineeId)
+        private LearningsClassDto MapToLearningsClassDto( Share.Entities.Class c, int traineeId)
         {
             var member = c.ClassMembers.FirstOrDefault(cm => cm.TraineeId == traineeId);
             var course = c.ProgramCourse?.Courses;
-            var progress = ((decimal?)member?.TrainingProgresses?.FirstOrDefault()?.ProgressPercentage) ?? 0;
+            var progress = (decimal?)member?.TrainingProgresses?.FirstOrDefault()?.ProgressPercentage ?? 0;
 
             string classStatusName = Enum.IsDefined(typeof(ClassStatus), c.Status)
                 ? ((ClassStatus)c.Status).ToString()

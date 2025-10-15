@@ -1,7 +1,7 @@
-﻿using Lssctc.ProgramManagement.Learnings.Dtos;
+﻿using Lssctc.ProgramManagement.Learnings.LearningsSections.Dtos;
 using Lssctc.Share.Common;
 
-namespace Lssctc.ProgramManagement.Learnings.Services
+namespace Lssctc.ProgramManagement.Learnings.LearningsSections.Services
 {
     public interface ILearningsSectionService
     {

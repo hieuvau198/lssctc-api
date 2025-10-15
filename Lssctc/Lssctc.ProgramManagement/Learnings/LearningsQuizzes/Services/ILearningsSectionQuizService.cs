@@ -1,6 +1,6 @@
-﻿using Lssctc.ProgramManagement.Learnings.Dtos;
+﻿using Lssctc.ProgramManagement.Learnings.LearningsQuizzes.Dtos;
 
-namespace Lssctc.ProgramManagement.Learnings.Services
+namespace Lssctc.ProgramManagement.Learnings.LearningsQuizzes.Services
 {
     public interface ILearningsSectionQuizService
     {

@@ -1,6 +1,6 @@
-﻿using Lssctc.ProgramManagement.Learnings.Dtos;
+﻿using Lssctc.ProgramManagement.Learnings.LearningsMaterials.Dtos;
 
-namespace Lssctc.ProgramManagement.Learnings.Services
+namespace Lssctc.ProgramManagement.Learnings.LearningsMaterials.Services
 {
     public interface ILearningsSectionMaterialService
     {

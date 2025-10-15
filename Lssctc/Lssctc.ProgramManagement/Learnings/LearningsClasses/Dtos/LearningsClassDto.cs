@@ -1,4 +1,4 @@
-﻿namespace Lssctc.ProgramManagement.Learnings.Dtos
+﻿namespace Lssctc.ProgramManagement.Learnings.LearningsClasses.Dtos
 {
     public class LearningsClassDto
     {

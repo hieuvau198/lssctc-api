@@ -1,4 +1,4 @@
-﻿namespace Lssctc.ProgramManagement.Learnings.Dtos
+﻿namespace Lssctc.ProgramManagement.Learnings.LearningsPartitions.Dtos
 {
     public class LearningsSectionPartitionDto
     {
