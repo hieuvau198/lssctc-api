@@ -1,22 +1,19 @@
-﻿using AutoMapper;
-using AutoMapper.QueryableExtensions;
-using Lssctc.ProgramManagement.SectionPartitions.DTOs;
+﻿using Lssctc.ProgramManagement.SectionPartitions.DTOs;
 using Lssctc.Share.Common;
 using Lssctc.Share.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 using Entities = Lssctc.Share.Entities;
+
 namespace Lssctc.ProgramManagement.SectionPartitions.Services
 {
     public class SectionPartitionService : ISectionPartitionService
     {
         private readonly IUnitOfWork _uow;
-        private readonly IMapper _mapper;
 
-        public SectionPartitionService(IUnitOfWork uow, IMapper mapper)
+        public SectionPartitionService(IUnitOfWork uow)
         {
             _uow = uow;
-            _mapper = mapper;
         }
 
         public async Task<PagedResult<SectionPartitionDto>> GetSectionPartitionsPaged(int pageIndex, int pageSize)
@@ -31,7 +28,15 @@ namespace Lssctc.ProgramManagement.SectionPartitions.Services
             var items = await q
                 .Skip((pageIndex - 1) * pageSize)
                 .Take(pageSize)
-                .ProjectTo<SectionPartitionDto>(_mapper.ConfigurationProvider)
+                .Select(x => new SectionPartitionDto
+                {
+                    Id = x.Id,
+                    SectionId = x.SectionId,
+                    Name = x.Name,
+                    PartitionTypeId = x.PartitionTypeId,
+                    DisplayOrder = x.DisplayOrder,
+                    Description = x.Description
+                })
                 .AsNoTracking()
                 .ToListAsync();
 
@@ -48,7 +53,15 @@ namespace Lssctc.ProgramManagement.SectionPartitions.Services
         {
             return await _uow.SectionPartitionRepository.GetAllAsQueryable()
                 .OrderByDescending(x => x.Id) // giữ đồng nhất style
-                .ProjectTo<SectionPartitionDto>(_mapper.ConfigurationProvider)
+                .Select(x => new SectionPartitionDto
+                {
+                    Id = x.Id,
+                    SectionId = x.SectionId,
+                    Name = x.Name,
+                    PartitionTypeId = x.PartitionTypeId,
+                    DisplayOrder = x.DisplayOrder,
+                    Description = x.Description
+                })
                 .AsNoTracking()
                 .ToListAsync();
         }
@@ -99,13 +112,22 @@ namespace Lssctc.ProgramManagement.SectionPartitions.Services
 
         public async Task<SectionPartitionDto?> GetSectionPartitionById(int id)
         {
-            var dto = await _uow.SectionPartitionRepository.GetAllAsQueryable()
+            var entity = await _uow.SectionPartitionRepository.GetAllAsQueryable()
                 .Where(x => x.Id == id)
-                .ProjectTo<SectionPartitionDto>(_mapper.ConfigurationProvider)
-                .AsNoTracking()
                 .FirstOrDefaultAsync();
 
-            return dto;
+            if (entity == null) 
+                return null;
+
+            return new SectionPartitionDto
+            {
+                Id = entity.Id,
+                SectionId = entity.SectionId,
+                Name = entity.Name,
+                PartitionTypeId = entity.PartitionTypeId,
+                DisplayOrder = entity.DisplayOrder,
+                Description = entity.Description
+            };
         }
 
         public async Task<int> CreateSectionPartition(CreateSectionPartitionDto dto)
@@ -132,7 +154,14 @@ namespace Lssctc.ProgramManagement.SectionPartitions.Services
                 if (dup) throw new InvalidOperationException("Name already exists in this Section.");
             }
 
-            var entity = _mapper.Map<Entities.SectionPartition>(dto);
+            var entity = new Entities.SectionPartition
+            {
+                SectionId = dto.SectionId,
+                Name = dto.Name,
+                PartitionTypeId = dto.PartitionTypeId,
+                Description = dto.Description
+            };
+
             await _uow.SectionPartitionRepository.CreateAsync(entity);
             await _uow.SaveChangesAsync();
             return entity.Id;
@@ -170,7 +199,16 @@ namespace Lssctc.ProgramManagement.SectionPartitions.Services
                 }
             }
 
-            _mapper.Map(dto, entity);
+            // Manual mapping for update
+            if (dto.Name != null)
+                entity.Name = dto.Name;
+
+            if (dto.PartitionTypeId.HasValue)
+                entity.PartitionTypeId = dto.PartitionTypeId.Value;
+
+            if (dto.Description != null)
+                entity.Description = dto.Description;
+
             await _uow.SectionPartitionRepository.UpdateAsync(entity);
             await _uow.SaveChangesAsync();
             return true;
