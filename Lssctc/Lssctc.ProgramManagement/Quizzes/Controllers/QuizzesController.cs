@@ -82,23 +82,12 @@ namespace Lssctc.ProgramManagement.Quizzes.Controllers
             return dto is null ? NotFound() : Ok(dto);
         }
 
-        [HttpGet("{id:int}/no-answer")]
-        public async Task<IActionResult> GetDetailNoAnswer(int id, CancellationToken ct = default)
-        {
-            var dto = await _quizService.GetQuizDetailNoAnswer(id, ct);
-            return dto is null ? NotFound() : Ok(dto);
-        }
-
-
         [HttpGet("{id:int}/traineequiz-view")]
         public async Task<IActionResult> GetQuizForTrainee(int id, CancellationToken ct = default)
         {
             var dto = await _quizService.GetQuizDetailForTrainee(id, ct);
             return dto is null ? NotFound() : Ok(dto);
         }
-
-        
-
 
         [HttpGet("by-section-quiz/{sectionQuizId:int}/trainee-view")]
         public async Task<IActionResult> GetQuizTraineeViewBySectionQuiz(

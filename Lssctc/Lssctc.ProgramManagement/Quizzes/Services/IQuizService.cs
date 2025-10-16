@@ -10,10 +10,7 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
         Task<QuizDto?> GetQuizById(int id);
         Task<PagedResult<QuizDetailDto>> GetDetailQuizzes(int pageIndex, int pageSize);
         Task<QuizDetailDto?> GetQuizDetail(int quizId, CancellationToken ct = default);
-        Task<QuizDetailDto?> GetQuizDetailNoAnswer(int quizId, CancellationToken ct = default);
         Task<QuizTraineeDetailDto?> GetQuizDetailForTrainee(int quizId, CancellationToken ct = default);
-       
-
         Task<QuizTraineeDetailDto?> GetQuizTraineeDetailBySectionQuizIdAsync(int sectionQuizId, CancellationToken ct = default);
         #endregion
 
@@ -21,8 +18,6 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
         Task<int> CreateQuiz(CreateQuizDto dto);
         Task<bool> UpdateQuizById(int id, UpdateQuizDto dto);
         Task<bool> DeleteQuizById(int id);
-       
-      
         Task<int> CreateQuestionWithOptionsByQuizId(int quizId, CreateQuizQuestionWithOptionsDto dto);
         #endregion
     }
