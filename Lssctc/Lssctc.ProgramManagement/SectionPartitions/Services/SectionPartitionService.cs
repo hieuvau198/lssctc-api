@@ -1,22 +1,19 @@
-﻿using AutoMapper;
-using AutoMapper.QueryableExtensions;
-using Lssctc.ProgramManagement.SectionPartitions.DTOs;
+﻿using Lssctc.ProgramManagement.SectionPartitions.DTOs;
 using Lssctc.Share.Common;
 using Lssctc.Share.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 using Entities = Lssctc.Share.Entities;
+
 namespace Lssctc.ProgramManagement.SectionPartitions.Services
 {
     public class SectionPartitionService : ISectionPartitionService
     {
         private readonly IUnitOfWork _uow;
-        private readonly IMapper _mapper;
 
-        public SectionPartitionService(IUnitOfWork uow, IMapper mapper)
+        public SectionPartitionService(IUnitOfWork uow)
         {
             _uow = uow;
-            _mapper = mapper;
         }
 
         public async Task<PagedResult<SectionPartitionDto>> GetSectionPartitionsPaged(int pageIndex, int pageSize)
@@ -31,7 +28,15 @@ namespace Lssctc.ProgramManagement.SectionPartitions.Services
             var items = await q
                 .Skip((pageIndex - 1) * pageSize)
                 .Take(pageSize)
-                .ProjectTo<SectionPartitionDto>(_mapper.ConfigurationProvider)
+                .Select(x => new SectionPartitionDto
+                {
+                    Id = x.Id,
+                    SectionId = x.SectionId,
+                    Name = x.Name,
+                    PartitionTypeId = x.PartitionTypeId,
+                    DisplayOrder = x.DisplayOrder,
+                    Description = x.Description
+                })
                 .AsNoTracking()
                 .ToListAsync();
 
@@ -48,7 +53,15 @@ namespace Lssctc.ProgramManagement.SectionPartitions.Services
         {
             return await _uow.SectionPartitionRepository.GetAllAsQueryable()
                 .OrderByDescending(x => x.Id) // giữ đồng nhất style
-                .ProjectTo<SectionPartitionDto>(_mapper.ConfigurationProvider)
+                .Select(x => new SectionPartitionDto
+                {
+                    Id = x.Id,
+                    SectionId = x.SectionId,
+                    Name = x.Name,
+                    PartitionTypeId = x.PartitionTypeId,
+                    DisplayOrder = x.DisplayOrder,
+                    Description = x.Description
+                })
                 .AsNoTracking()
                 .ToListAsync();
         }
@@ -99,13 +112,22 @@ namespace Lssctc.ProgramManagement.SectionPartitions.Services
 
         public async Task<SectionPartitionDto?> GetSectionPartitionById(int id)
         {
-            var dto = await _uow.SectionPartitionRepository.GetAllAsQueryable()
+            var entity = await _uow.SectionPartitionRepository.GetAllAsQueryable()
                 .Where(x => x.Id == id)
-                .ProjectTo<SectionPartitionDto>(_mapper.ConfigurationProvider)
-                .AsNoTracking()
                 .FirstOrDefaultAsync();
 
-            return dto;
+            if (entity == null) 
+                return null;
+
+            return new SectionPartitionDto
+            {
+                Id = entity.Id,
+                SectionId = entity.SectionId,
+                Name = entity.Name,
+                PartitionTypeId = entity.PartitionTypeId,
+                DisplayOrder = entity.DisplayOrder,
+                Description = entity.Description
+            };
         }
 
         public async Task<int> CreateSectionPartition(CreateSectionPartitionDto dto)
@@ -114,8 +136,12 @@ namespace Lssctc.ProgramManagement.SectionPartitions.Services
             if (dto.SectionId <= 0) throw new ValidationException("SectionId is invalid.");
             if (dto.PartitionTypeId <= 0) throw new ValidationException("PartitionTypeId is invalid.");
 
-            if (!await _uow.SectionRepository.ExistsAsync(s => s.Id == dto.SectionId))
+            var section = await _uow.SectionRepository.GetByIdAsync(dto.SectionId);
+            if (section == null)
                 throw new KeyNotFoundException($"Section {dto.SectionId} not found.");
+
+            // Kiểm tra Section đã bắt đầu chưa
+            await ValidateSectionCanBeModified(section);
 
             if (!await _uow.SectionPartitionTypeRepository.ExistsAsync(t => t.Id == dto.PartitionTypeId))
                 throw new KeyNotFoundException($"PartitionType {dto.PartitionTypeId} not found.");
@@ -132,7 +158,14 @@ namespace Lssctc.ProgramManagement.SectionPartitions.Services
                 if (dup) throw new InvalidOperationException("Name already exists in this Section.");
             }
 
-            var entity = _mapper.Map<Entities.SectionPartition>(dto);
+            var entity = new Entities.SectionPartition
+            {
+                SectionId = dto.SectionId,
+                Name = dto.Name,
+                PartitionTypeId = dto.PartitionTypeId,
+                Description = dto.Description
+            };
+
             await _uow.SectionPartitionRepository.CreateAsync(entity);
             await _uow.SaveChangesAsync();
             return entity.Id;
@@ -142,6 +175,14 @@ namespace Lssctc.ProgramManagement.SectionPartitions.Services
         {
             var entity = await _uow.SectionPartitionRepository.GetByIdAsync(id);
             if (entity == null) return false;
+
+            // Lấy thông tin Section để kiểm tra trạng thái
+            var section = await _uow.SectionRepository.GetByIdAsync(entity.SectionId);
+            if (section == null)
+                throw new KeyNotFoundException($"Section {entity.SectionId} not found.");
+
+            // Kiểm tra Section đã bắt đầu chưa
+            await ValidateSectionCanBeModified(section);
 
             if (dto.PartitionTypeId.HasValue)
             {
@@ -170,7 +211,16 @@ namespace Lssctc.ProgramManagement.SectionPartitions.Services
                 }
             }
 
-            _mapper.Map(dto, entity);
+            // Manual mapping for update
+            if (dto.Name != null)
+                entity.Name = dto.Name;
+
+            if (dto.PartitionTypeId.HasValue)
+                entity.PartitionTypeId = dto.PartitionTypeId.Value;
+
+            if (dto.Description != null)
+                entity.Description = dto.Description;
+
             await _uow.SectionPartitionRepository.UpdateAsync(entity);
             await _uow.SaveChangesAsync();
             return true;
@@ -180,6 +230,14 @@ namespace Lssctc.ProgramManagement.SectionPartitions.Services
         {
             var entity = await _uow.SectionPartitionRepository.GetByIdAsync(id);
             if (entity == null) return false;
+
+            // Lấy thông tin Section để kiểm tra trạng thái
+            var section = await _uow.SectionRepository.GetByIdAsync(entity.SectionId);
+            if (section == null)
+                throw new KeyNotFoundException($"Section {entity.SectionId} not found.");
+
+            // Kiểm tra Section đã bắt đầu chưa
+            await ValidateSectionCanBeModified(section);
 
             var inUse =
                 await _uow.LearningRecordPartitionRepository.ExistsAsync(x => x.SectionPartitionId == id)
@@ -193,6 +251,110 @@ namespace Lssctc.ProgramManagement.SectionPartitions.Services
             await _uow.SectionPartitionRepository.DeleteAsync(entity);
             await _uow.SaveChangesAsync();
             return true;
+        }
+
+        public async Task<SectionPartitionDto> AssignSectionPartition(AssignSectionPartitionDto dto)
+        {
+            if (dto == null) throw new ValidationException("Body is required.");
+            if (dto.SectionId <= 0) throw new ValidationException("SectionId is invalid.");
+            if (dto.PartitionTypeId <= 0) throw new ValidationException("PartitionTypeId is invalid.");
+
+            var section = await _uow.SectionRepository.GetByIdAsync(dto.SectionId);
+            if (section == null)
+                throw new KeyNotFoundException($"Section {dto.SectionId} not found.");
+
+            // Kiểm tra Section đã bắt đầu chưa
+            await ValidateSectionCanBeModified(section);
+
+            if (!await _uow.SectionPartitionTypeRepository.ExistsAsync(t => t.Id == dto.PartitionTypeId))
+                throw new KeyNotFoundException($"PartitionType {dto.PartitionTypeId} not found.");
+
+            // Tìm existing section partition by SectionId và Name (nếu có Name)
+            Entities.SectionPartition? existingEntity = null;
+            
+            if (!string.IsNullOrWhiteSpace(dto.Name))
+            {
+                var normalizedName = string.Join(" ", dto.Name.Trim()
+                    .Split(' ', StringSplitOptions.RemoveEmptyEntries));
+                
+                existingEntity = await _uow.SectionPartitionRepository.GetAllAsQueryable()
+                    .Where(x => x.SectionId == dto.SectionId && 
+                               x.Name != null && 
+                               x.Name.ToLower() == normalizedName.ToLower())
+                    .FirstOrDefaultAsync();
+            }
+
+            if (existingEntity != null)
+            {
+                // Update existing partition
+                existingEntity.PartitionTypeId = dto.PartitionTypeId;
+                existingEntity.Description = dto.Description;
+                if (dto.DisplayOrder.HasValue)
+                    existingEntity.DisplayOrder = dto.DisplayOrder.Value;
+
+                await _uow.SectionPartitionRepository.UpdateAsync(existingEntity);
+                await _uow.SaveChangesAsync();
+
+                return new SectionPartitionDto
+                {
+                    Id = existingEntity.Id,
+                    SectionId = existingEntity.SectionId,
+                    Name = existingEntity.Name,
+                    PartitionTypeId = existingEntity.PartitionTypeId,
+                    DisplayOrder = existingEntity.DisplayOrder,
+                    Description = existingEntity.Description
+                };
+            }
+            else
+            {
+                // Create new partition
+                var newEntity = new Entities.SectionPartition
+                {
+                    SectionId = dto.SectionId,
+                    Name = dto.Name,
+                    PartitionTypeId = dto.PartitionTypeId,
+                    Description = dto.Description,
+                    DisplayOrder = dto.DisplayOrder
+                };
+
+                await _uow.SectionPartitionRepository.CreateAsync(newEntity);
+                await _uow.SaveChangesAsync();
+
+                return new SectionPartitionDto
+                {
+                    Id = newEntity.Id,
+                    SectionId = newEntity.SectionId,
+                    Name = newEntity.Name,
+                    PartitionTypeId = newEntity.PartitionTypeId,
+                    DisplayOrder = newEntity.DisplayOrder,
+                    Description = newEntity.Description
+                };
+            }
+        }
+
+        /// <summary>
+        /// Kiểm tra Section có thể được chỉnh sửa hay không
+        /// Section chỉ có thể chỉnh sửa khi chưa bắt đầu (StartDate > DateTime.Now và Status cho phép)
+        /// </summary>
+      
+        private async Task ValidateSectionCanBeModified(Entities.Section section)
+        {
+            var currentTime = DateTime.UtcNow;
+            
+            // Kiểm tra ngày bắt đầu
+            var hasStarted = section.StartDate <= currentTime;
+            
+            // Kiểm tra trạng thái ( Status = 1 là active , 0 là chưa active)
+          
+            var isActiveOrCompleted = section.Status >= 1; 
+            
+            if (hasStarted && isActiveOrCompleted)
+            {
+                throw new InvalidOperationException(
+                    $"Cannot modify Section Partition because Section '{section.Name}' has already started on {section.StartDate:yyyy-MM-dd HH:mm:ss} UTC.");
+            }
+            
+            await Task.CompletedTask; // For async consistency
         }
     }
 }

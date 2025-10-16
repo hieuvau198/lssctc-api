@@ -98,6 +98,29 @@ namespace Lssctc.ProgramManagement.SectionPartitions.Controllers
             }
         }
 
+        // POST: /api/SectionPartitions/assign
+        [HttpPost("assign")]
+        public async Task<IActionResult> AssignSectionPartition([FromBody] AssignSectionPartitionDto dto)
+        {
+            try
+            {
+                var result = await _svc.AssignSectionPartition(dto);
+                return Ok(result);
+            }
+            catch (ValidationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Conflict(new { message = ex.Message });
+            }
+        }
+
         // PUT: /api/SectionPartitions/5
         [HttpPut("{id:int}")]
         public async Task<IActionResult> UpdateSectionPartition([FromRoute] int id, [FromBody] UpdateSectionPartitionDto dto)

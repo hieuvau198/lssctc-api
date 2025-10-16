@@ -1,10 +1,9 @@
-﻿using Lssctc.LearningManagement.QuizQuestions.DTOs;
-using Lssctc.LearningManagement.Quizzes.DTOs;
+﻿using Lssctc.LearningManagement.Quizzes.DTOs;
 using Lssctc.LearningManagement.Quizzes.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
-using static Lssctc.LearningManagement.QuizQuestions.DTOs.QuizQuestionDto;
+using static Lssctc.LearningManagement.Quizzes.DTOs.QuizQuestionDto;
 
 namespace Lssctc.LearningManagement.Quizzes.Controllers
 {
