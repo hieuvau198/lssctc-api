@@ -136,8 +136,12 @@ namespace Lssctc.ProgramManagement.SectionPartitions.Services
             if (dto.SectionId <= 0) throw new ValidationException("SectionId is invalid.");
             if (dto.PartitionTypeId <= 0) throw new ValidationException("PartitionTypeId is invalid.");
 
-            if (!await _uow.SectionRepository.ExistsAsync(s => s.Id == dto.SectionId))
+            var section = await _uow.SectionRepository.GetByIdAsync(dto.SectionId);
+            if (section == null)
                 throw new KeyNotFoundException($"Section {dto.SectionId} not found.");
+
+            // Kiểm tra Section đã bắt đầu chưa
+            await ValidateSectionCanBeModified(section);
 
             if (!await _uow.SectionPartitionTypeRepository.ExistsAsync(t => t.Id == dto.PartitionTypeId))
                 throw new KeyNotFoundException($"PartitionType {dto.PartitionTypeId} not found.");
@@ -171,6 +175,14 @@ namespace Lssctc.ProgramManagement.SectionPartitions.Services
         {
             var entity = await _uow.SectionPartitionRepository.GetByIdAsync(id);
             if (entity == null) return false;
+
+            // Lấy thông tin Section để kiểm tra trạng thái
+            var section = await _uow.SectionRepository.GetByIdAsync(entity.SectionId);
+            if (section == null)
+                throw new KeyNotFoundException($"Section {entity.SectionId} not found.");
+
+            // Kiểm tra Section đã bắt đầu chưa
+            await ValidateSectionCanBeModified(section);
 
             if (dto.PartitionTypeId.HasValue)
             {
@@ -219,6 +231,14 @@ namespace Lssctc.ProgramManagement.SectionPartitions.Services
             var entity = await _uow.SectionPartitionRepository.GetByIdAsync(id);
             if (entity == null) return false;
 
+            // Lấy thông tin Section để kiểm tra trạng thái
+            var section = await _uow.SectionRepository.GetByIdAsync(entity.SectionId);
+            if (section == null)
+                throw new KeyNotFoundException($"Section {entity.SectionId} not found.");
+
+            // Kiểm tra Section đã bắt đầu chưa
+            await ValidateSectionCanBeModified(section);
+
             var inUse =
                 await _uow.LearningRecordPartitionRepository.ExistsAsync(x => x.SectionPartitionId == id)
              || await _uow.SectionMaterialRepository.ExistsAsync(x => x.SectionPartitionId == id)
@@ -231,6 +251,31 @@ namespace Lssctc.ProgramManagement.SectionPartitions.Services
             await _uow.SectionPartitionRepository.DeleteAsync(entity);
             await _uow.SaveChangesAsync();
             return true;
+        }
+
+        /// <summary>
+        /// Kiểm tra Section có thể được chỉnh sửa hay không
+        /// Section chỉ có thể chỉnh sửa khi chưa bắt đầu (StartDate > DateTime.Now và Status cho phép)
+        /// </summary>
+      
+        private async Task ValidateSectionCanBeModified(Entities.Section section)
+        {
+            var currentTime = DateTime.UtcNow;
+            
+            // Kiểm tra ngày bắt đầu
+            var hasStarted = section.StartDate <= currentTime;
+            
+            // Kiểm tra trạng thái ( Status = 1 là active , 0 là chưa active)
+          
+            var isActiveOrCompleted = section.Status >= 1; 
+            
+            if (hasStarted && isActiveOrCompleted)
+            {
+                throw new InvalidOperationException(
+                    $"Cannot modify Section Partition because Section '{section.Name}' has already started on {section.StartDate:yyyy-MM-dd HH:mm:ss} UTC.");
+            }
+            
+            await Task.CompletedTask; // For async consistency
         }
     }
 }
