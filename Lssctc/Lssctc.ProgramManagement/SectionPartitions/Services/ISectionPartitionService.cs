@@ -19,6 +19,6 @@ namespace Lssctc.ProgramManagement.SectionPartitions.Services
 
         Task<bool> DeleteSectionPartition(int id);
 
+        Task<SectionPartitionDto> AssignSectionPartition(AssignSectionPartitionDto dto);
     }
-
 }

@@ -253,6 +253,85 @@ namespace Lssctc.ProgramManagement.SectionPartitions.Services
             return true;
         }
 
+        public async Task<SectionPartitionDto> AssignSectionPartition(AssignSectionPartitionDto dto)
+        {
+            if (dto == null) throw new ValidationException("Body is required.");
+            if (dto.SectionId <= 0) throw new ValidationException("SectionId is invalid.");
+            if (dto.PartitionTypeId <= 0) throw new ValidationException("PartitionTypeId is invalid.");
+
+            var section = await _uow.SectionRepository.GetByIdAsync(dto.SectionId);
+            if (section == null)
+                throw new KeyNotFoundException($"Section {dto.SectionId} not found.");
+
+            // Kiểm tra Section đã bắt đầu chưa
+            await ValidateSectionCanBeModified(section);
+
+            if (!await _uow.SectionPartitionTypeRepository.ExistsAsync(t => t.Id == dto.PartitionTypeId))
+                throw new KeyNotFoundException($"PartitionType {dto.PartitionTypeId} not found.");
+
+            // Tìm existing section partition by SectionId và Name (nếu có Name)
+            Entities.SectionPartition? existingEntity = null;
+            
+            if (!string.IsNullOrWhiteSpace(dto.Name))
+            {
+                var normalizedName = string.Join(" ", dto.Name.Trim()
+                    .Split(' ', StringSplitOptions.RemoveEmptyEntries));
+                
+                existingEntity = await _uow.SectionPartitionRepository.GetAllAsQueryable()
+                    .Where(x => x.SectionId == dto.SectionId && 
+                               x.Name != null && 
+                               x.Name.ToLower() == normalizedName.ToLower())
+                    .FirstOrDefaultAsync();
+            }
+
+            if (existingEntity != null)
+            {
+                // Update existing partition
+                existingEntity.PartitionTypeId = dto.PartitionTypeId;
+                existingEntity.Description = dto.Description;
+                if (dto.DisplayOrder.HasValue)
+                    existingEntity.DisplayOrder = dto.DisplayOrder.Value;
+
+                await _uow.SectionPartitionRepository.UpdateAsync(existingEntity);
+                await _uow.SaveChangesAsync();
+
+                return new SectionPartitionDto
+                {
+                    Id = existingEntity.Id,
+                    SectionId = existingEntity.SectionId,
+                    Name = existingEntity.Name,
+                    PartitionTypeId = existingEntity.PartitionTypeId,
+                    DisplayOrder = existingEntity.DisplayOrder,
+                    Description = existingEntity.Description
+                };
+            }
+            else
+            {
+                // Create new partition
+                var newEntity = new Entities.SectionPartition
+                {
+                    SectionId = dto.SectionId,
+                    Name = dto.Name,
+                    PartitionTypeId = dto.PartitionTypeId,
+                    Description = dto.Description,
+                    DisplayOrder = dto.DisplayOrder
+                };
+
+                await _uow.SectionPartitionRepository.CreateAsync(newEntity);
+                await _uow.SaveChangesAsync();
+
+                return new SectionPartitionDto
+                {
+                    Id = newEntity.Id,
+                    SectionId = newEntity.SectionId,
+                    Name = newEntity.Name,
+                    PartitionTypeId = newEntity.PartitionTypeId,
+                    DisplayOrder = newEntity.DisplayOrder,
+                    Description = newEntity.Description
+                };
+            }
+        }
+
         /// <summary>
         /// Kiểm tra Section có thể được chỉnh sửa hay không
         /// Section chỉ có thể chỉnh sửa khi chưa bắt đầu (StartDate > DateTime.Now và Status cho phép)
