@@ -35,6 +35,84 @@ namespace Lssctc.SimulationManagement.TraineePractices.Services
             return await MapToTraineeStepDtoAsync(practiceStep, lrp);
         }
 
+        public async Task<List<TraineeStepDto>> GetTraineeStepsByAttemptId(int attemptId)
+        {
+            // Step 1: Get attempt with related data
+            var attempt = await _unitOfWork.SectionPracticeAttemptRepository
+                .GetAllAsQueryable()
+                .Where(spa => spa.Id == attemptId && spa.IsDeleted != true)
+                .Include(spa => spa.LearningRecordPartition)
+                .Include(spa => spa.SectionPractice)
+                    .ThenInclude(sp => sp.Practice)
+                .Include(spa => spa.SectionPracticeAttemptSteps)
+                .FirstOrDefaultAsync()
+                ?? throw new KeyNotFoundException($"No SectionPracticeAttempt found with ID {attemptId}.");
+
+            // Step 2: Get all steps for the Practice
+            var practiceSteps = await _unitOfWork.PracticeStepRepository
+                .GetAllAsQueryable()
+                .Include(ps => ps.Practice)
+                .Where(ps =>
+                    ps.PracticeId == attempt.SectionPractice.PracticeId &&
+                    ps.IsDeleted != true)
+                .ToListAsync();
+
+            if (practiceSteps == null || !practiceSteps.Any())
+                throw new KeyNotFoundException($"No PracticeSteps found for Practice ID {attempt.SectionPractice.PracticeId}.");
+
+            // Step 3: Map to DTOs
+            var dtos = new List<TraineeStepDto>();
+            foreach (var step in practiceSteps)
+            {
+                // Find matching attempt step (if exists)
+                var attemptStep = attempt.SectionPracticeAttemptSteps
+                    .FirstOrDefault(spas => spas.PracticeStepId == step.Id && spas.IsDeleted != true);
+
+                // Get action and component (similar to MapToTraineeStepDtoAsync)
+                var action = await _unitOfWork.PracticeStepActionRepository
+                    .GetAllAsQueryable()
+                    .Where(psa => psa.StepId == step.Id && psa.IsDeleted != true)
+                    .Select(psa => psa.Action)
+                    .FirstOrDefaultAsync();
+
+                var component = await _unitOfWork.PracticeStepComponentRepository
+                    .GetAllAsQueryable()
+                    .Where(psc => psc.StepId == step.Id && psc.IsDeleted != true)
+                    .Select(psc => psc.Component)
+                    .FirstOrDefaultAsync();
+
+                if (action == null)
+                    throw new InvalidOperationException($"No SimAction assigned to PracticeStep ID {step.Id}.");
+                if (component == null)
+                    throw new InvalidOperationException($"No SimulationComponent assigned to PracticeStep ID {step.Id}.");
+
+                var dto = new TraineeStepDto
+                {
+                    StepId = step.Id,
+                    StepName = step.StepName ?? "Step Name",
+                    StepDescription = step.StepDescription ?? "Step Description",
+                    ExpectedResult = step.ExpectedResult ?? "Expected Result",
+                    StepOrder = step.StepOrder,
+                    IsCompleted = attemptStep?.IsPass ?? false, // ✅ Key difference
+                    PracticeId = step.PracticeId,
+                    ActionId = action.Id,
+                    ActionName = action.Name,
+                    ActionDescription = action.Description,
+                    ActionKey = action.ActionKey,
+                    ComponentId = component.Id,
+                    ComponentName = component.Name,
+                    ComponentDescription = component.Description,
+                    ComponentImageUrl = component.ImageUrl
+                };
+
+                dtos.Add(dto);
+            }
+
+            // Step 4: Return ordered list
+            return dtos.OrderBy(dto => dto.StepOrder).ToList();
+        }
+
+
         public async Task<List<TraineeStepDto>> GetTraineeStepsByPracticeIdAndTraineeId(
             int practiceId, 
             int traineeId)

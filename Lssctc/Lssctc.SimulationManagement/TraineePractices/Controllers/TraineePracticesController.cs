@@ -46,6 +46,36 @@ namespace Lssctc.SimulationManagement.TraineePractices.Controllers
             }
         }
 
+        [HttpGet("attempt/{attemptId}/steps")]
+        public async Task<IActionResult> GetTraineeStepsByAttemptId(int attemptId)
+        {
+            try
+            {
+                var result = await _traineeStepService.GetTraineeStepsByAttemptId(attemptId);
+                if (result == null || !result.Any())
+                    return NotFound($"No trainee steps found for Attempt ID {attemptId}.");
+
+                return Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Conflict(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
+            }
+        }
+
+
         [HttpGet("trainee/{traineeId}/class/{classId}")]
         public async Task<IActionResult> GetTraineePracticesByTraineeIdAndClassId(int traineeId, int classId)
         {
