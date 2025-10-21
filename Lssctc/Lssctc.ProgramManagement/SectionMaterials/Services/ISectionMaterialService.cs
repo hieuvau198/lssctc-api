@@ -13,5 +13,6 @@ namespace Lssctc.ProgramManagement.SectionMaterials.Services
         Task<int> CreateSectionMateria(CreateSectionMaterialDto dto);
         Task<bool> UpdateSectionMateria(int id, UpdateSectionMaterialDto dto);
         Task<bool> DeleteSectionMateria(int id);
+        Task<SectionMaterialDto> UpsertSectionMaterial(UpsertSectionMaterialDto dto);
     }
 }

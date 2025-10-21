@@ -16,6 +16,7 @@ namespace Lssctc.ProgramManagement.SectionMaterials.Services
             _uow = uow;
         }
 
+        //map respone
         private static SectionMaterialDto MapToDto(Entities.SectionMaterial entity)
         {
             return new SectionMaterialDto
@@ -23,11 +24,24 @@ namespace Lssctc.ProgramManagement.SectionMaterials.Services
                 Id = entity.Id,
                 SectionPartitionId = entity.SectionPartitionId,
                 LearningMaterialId = entity.LearningMaterialId,
+                Name = entity.Name,
                 Description = entity.Description
             };
         }
 
         private static Entities.SectionMaterial MapToEntity(CreateSectionMaterialDto dto)
+        {
+            return new Entities.SectionMaterial
+            {
+                SectionPartitionId = dto.SectionPartitionId,
+                LearningMaterialId = dto.LearningMaterialId,
+                Name = dto.Name ?? "",
+                Description = dto.Description ?? ""
+            };
+        }
+
+        // map to create SectionMaterial (UpsertSectionMaterial)
+        private static Entities.SectionMaterial MapToEntity(UpsertSectionMaterialDto dto)
         {
             return new Entities.SectionMaterial
             {
@@ -45,6 +59,19 @@ namespace Lssctc.ProgramManagement.SectionMaterials.Services
             
             if (dto.LearningMaterialId.HasValue)
                 entity.LearningMaterialId = dto.LearningMaterialId.Value;
+            
+            if (dto.Name != null)
+                entity.Name = dto.Name;
+            
+            if (dto.Description != null)
+                entity.Description = dto.Description;
+        }
+
+        //map to update (UpsertSectionMaterial )
+        private static void MapToEntity(UpsertSectionMaterialDto dto, Entities.SectionMaterial entity)
+        {
+            entity.SectionPartitionId = dto.SectionPartitionId;
+            entity.LearningMaterialId = dto.LearningMaterialId;
             
             if (dto.Name != null)
                 entity.Name = dto.Name;
@@ -148,6 +175,43 @@ namespace Lssctc.ProgramManagement.SectionMaterials.Services
             await _uow.SectionMaterialRepository.DeleteAsync(entity);
             await _uow.SaveChangesAsync();
             return true;
+        }
+
+        public async Task<SectionMaterialDto> UpsertSectionMaterial(UpsertSectionMaterialDto dto)
+        {
+            if (dto == null) throw new ValidationException("Body is required.");
+            if (dto.SectionPartitionId <= 0) throw new ValidationException("SectionPartitionId is invalid.");
+            if (dto.LearningMaterialId <= 0) throw new ValidationException("LearningMaterialId is invalid.");
+
+            // Validate that SectionPartition exists
+            if (!await _uow.SectionPartitionRepository.ExistsAsync(s => s.Id == dto.SectionPartitionId))
+                throw new KeyNotFoundException($"SectionPartition {dto.SectionPartitionId} not found.");
+
+            // Validate that LearningMaterial exists
+            if (!await _uow.LearningMaterialRepository.ExistsAsync(m => m.Id == dto.LearningMaterialId))
+                throw new KeyNotFoundException($"LearningMaterial {dto.LearningMaterialId} not found.");
+
+            // Check if SectionMaterial already exists for this combination
+            var existingEntity = await _uow.SectionMaterialRepository.GetAllAsQueryable()
+                .Where(sm => sm.SectionPartitionId == dto.SectionPartitionId && sm.LearningMaterialId == dto.LearningMaterialId)
+                .FirstOrDefaultAsync();
+
+            if (existingEntity != null)
+            {
+                // Update existing entity
+                MapToEntity(dto, existingEntity);
+                await _uow.SectionMaterialRepository.UpdateAsync(existingEntity);
+                await _uow.SaveChangesAsync();
+                return MapToDto(existingEntity);
+            }
+            else
+            {
+                // Create new entity
+                var newEntity = MapToEntity(dto);
+                await _uow.SectionMaterialRepository.CreateAsync(newEntity);
+                await _uow.SaveChangesAsync();
+                return MapToDto(newEntity);
+            }
         }
     }
 }

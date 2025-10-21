@@ -59,6 +59,18 @@ namespace Lssctc.ProgramManagement.SectionMaterials.Controllers
             catch (KeyNotFoundException ex) { return NotFound(new { error = ex.Message }); }
         }
 
+        [HttpPost("upsert")]
+        public async Task<IActionResult> UpsertSectionMaterial([FromBody] UpsertSectionMaterialDto dto)
+        {
+            try
+            {
+                var result = await _svc.UpsertSectionMaterial(dto);
+                return Ok(result);
+            }
+            catch (ValidationException ex) { return BadRequest(new { error = ex.Message }); }
+            catch (KeyNotFoundException ex) { return NotFound(new { error = ex.Message }); }
+        }
+
         [HttpPut("{id:int}")]
         public async Task<IActionResult> UpdateSectionMateria([FromRoute] int id, [FromBody] UpdateSectionMaterialDto dto)
         {
