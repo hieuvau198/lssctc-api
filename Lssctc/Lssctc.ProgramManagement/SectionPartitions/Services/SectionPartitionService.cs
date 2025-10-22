@@ -116,7 +116,7 @@ namespace Lssctc.ProgramManagement.SectionPartitions.Services
                 .Where(x => x.Id == id)
                 .FirstOrDefaultAsync();
 
-            if (entity == null) 
+            if (entity == null)
                 return null;
 
             return new SectionPartitionDto
@@ -239,14 +239,25 @@ namespace Lssctc.ProgramManagement.SectionPartitions.Services
             // Kiểm tra Section đã bắt đầu chưa
             await ValidateSectionCanBeModified(section);
 
-            var inUse =
-                await _uow.LearningRecordPartitionRepository.ExistsAsync(x => x.SectionPartitionId == id)
-             || await _uow.SectionMaterialRepository.ExistsAsync(x => x.SectionPartitionId == id)
-             || await _uow.SectionPracticeRepository.ExistsAsync(x => x.SectionPartitionId == id)
-             || await _uow.SectionQuizRepository.ExistsAsync(x => x.SectionPartitionId == id);
+            // Check if this partition has any materials - specific check for instructors
+            var hasMaterials = await _uow.SectionMaterialRepository.ExistsAsync(x => x.SectionPartitionId == id);
+            if (hasMaterials)
+                throw new InvalidOperationException("Cannot delete this partition because it contains materials. Please remove all materials from this partition before deleting it.");
 
-            if (inUse)
-                throw new InvalidOperationException("Cannot delete: partition is in use (materials/practices/quizzes/records exist).");
+            // Check if this partition has any quizzes - specific check for instructors
+            var hasQuizzes = await _uow.SectionQuizRepository.ExistsAsync(x => x.SectionPartitionId == id);
+            if (hasQuizzes)
+                throw new InvalidOperationException("Cannot delete this partition because it contains quizzes. Please remove all quizzes from this partition before deleting it.");
+
+            // Check if this partition has any practices - specific check for instructors
+            var hasPractices = await _uow.SectionPracticeRepository.ExistsAsync(x => x.SectionPartitionId == id);
+            if (hasPractices)
+                throw new InvalidOperationException("Cannot delete this partition because it contains practices. Please remove all practices from this partition before deleting it.");
+
+            // Check other dependencies (learning records)
+            var hasLearningRecords = await _uow.LearningRecordPartitionRepository.ExistsAsync(x => x.SectionPartitionId == id);
+            if (hasLearningRecords)
+                throw new InvalidOperationException("Cannot delete this partition because it has associated learning records.");
 
             await _uow.SectionPartitionRepository.DeleteAsync(entity);
             await _uow.SaveChangesAsync();
@@ -271,15 +282,15 @@ namespace Lssctc.ProgramManagement.SectionPartitions.Services
 
             // Tìm existing section partition by SectionId và Name (nếu có Name)
             Entities.SectionPartition? existingEntity = null;
-            
+
             if (!string.IsNullOrWhiteSpace(dto.Name))
             {
                 var normalizedName = string.Join(" ", dto.Name.Trim()
                     .Split(' ', StringSplitOptions.RemoveEmptyEntries));
-                
+
                 existingEntity = await _uow.SectionPartitionRepository.GetAllAsQueryable()
-                    .Where(x => x.SectionId == dto.SectionId && 
-                               x.Name != null && 
+                    .Where(x => x.SectionId == dto.SectionId &&
+                               x.Name != null &&
                                x.Name.ToLower() == normalizedName.ToLower())
                     .FirstOrDefaultAsync();
             }
@@ -336,24 +347,24 @@ namespace Lssctc.ProgramManagement.SectionPartitions.Services
         /// Kiểm tra Section có thể được chỉnh sửa hay không
         /// Section chỉ có thể chỉnh sửa khi chưa bắt đầu (StartDate > DateTime.Now và Status cho phép)
         /// </summary>
-      
+
         private async Task ValidateSectionCanBeModified(Entities.Section section)
         {
             var currentTime = DateTime.UtcNow;
-            
+
             // Kiểm tra ngày bắt đầu
             var hasStarted = section.StartDate <= currentTime;
-            
+
             // Kiểm tra trạng thái ( Status = 1 là active , 0 là chưa active)
-          
-            var isActiveOrCompleted = section.Status >= 1; 
-            
+
+            var isActiveOrCompleted = section.Status >= 1;
+
             if (hasStarted && isActiveOrCompleted)
             {
                 throw new InvalidOperationException(
                     $"Cannot modify Section Partition because Section '{section.Name}' has already started on {section.StartDate:yyyy-MM-dd HH:mm:ss} UTC.");
             }
-            
+
             await Task.CompletedTask; // For async consistency
         }
     }
