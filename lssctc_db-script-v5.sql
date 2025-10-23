@@ -253,13 +253,6 @@ CREATE TABLE [dbo].[practice_step_actions] (
     FOREIGN KEY ([action_id]) REFERENCES [dbo].[sim_actions]([id])
 );
 
-CREATE TABLE [dbo].[practice_step_warning_types] (
-    [id] INT IDENTITY(1,1) PRIMARY KEY,
-    [name] NVARCHAR(100) NOT NULL,
-    [description] NVARCHAR(2000),
-    [is_failed_criteria] BIT DEFAULT 0
-);
-
 CREATE TABLE [dbo].[practice_step_warnings] (
     [id] INT IDENTITY(1,1) PRIMARY KEY,
     [practice_step_id] INT NOT NULL,
@@ -619,61 +612,6 @@ CREATE TABLE [dbo].[section_practice_attempt_steps] (
     FOREIGN KEY ([attempt_id]) REFERENCES [dbo].[section_practice_attempts]([id]),
     FOREIGN KEY ([practice_step_id]) REFERENCES [dbo].[practice_steps]([id])
 );
-
-
-
-
-
-CREATE TABLE [dbo].[payments] (
-    [id] INT IDENTITY(1,1) PRIMARY KEY,
-    [trainee_id] INT NOT NULL,
-    [amount] DECIMAL(10, 2) NOT NULL,
-    [currency] NVARCHAR(10) DEFAULT 'VND',
-    [payment_method] NVARCHAR(50),
-    [payment_date] DATETIME2(0) NOT NULL DEFAULT SYSDATETIME(),
-    [status] INT NOT NULL DEFAULT 1,
-    [note] NVARCHAR(2000),
-    FOREIGN KEY ([trainee_id]) REFERENCES [dbo].[trainees]([id])
-);
-
-CREATE TABLE [dbo].[transactions] (
-    [id] INT IDENTITY(1,1) PRIMARY KEY,
-    [transaction_code] NVARCHAR(255) NOT NULL UNIQUE,  
-    [message] NVARCHAR(2000) NOT NULL,
-    [payer_name] NVARCHAR(2000) NOT NULL,
-    [receiver_name] NVARCHAR(2000) NOT NULL,
-    [amount] DECIMAL(10,2) NOT NULL,
-    [currency] NVARCHAR(10) DEFAULT 'VND',            
-    [transaction_type] NVARCHAR(50),                  
-    [description] NVARCHAR(2000),
-    [status] INT NOT NULL DEFAULT 1,                  
-    [issued_at] DATETIME2(0) NOT NULL DEFAULT SYSDATETIME(),
-    [paid_at] DATETIME2(0),
-    [payer_id] INT,                                   
-    [receiver_id] INT,                                
-    [note] NVARCHAR(2000)
-);
-
-CREATE TABLE [dbo].[payment_transactions] (
-    [id] INT IDENTITY(1,1) PRIMARY KEY,
-    [payment_id] INT NOT NULL,
-    [transaction_id] INT NOT NULL,
-    [amount] DECIMAL(10,2) NOT NULL,
-    [created_at] DATETIME2(0) NOT NULL DEFAULT SYSDATETIME(),
-    FOREIGN KEY ([payment_id]) REFERENCES [dbo].[payments]([id]),
-    FOREIGN KEY ([transaction_id]) REFERENCES [dbo].[transactions]([id])
-);
-
-CREATE TABLE [dbo].[transaction_programs] (
-    [id] INT IDENTITY(1,1) PRIMARY KEY,
-    [transaction_id] INT NOT NULL,
-    [program_id] INT NOT NULL,
-    FOREIGN KEY ([transaction_id]) REFERENCES [dbo].[transactions]([id]),
-    FOREIGN KEY ([program_id]) REFERENCES [dbo].[training_programs]([id])
-);
-
-
-
 
     COMMIT TRANSACTION;
 END TRY
