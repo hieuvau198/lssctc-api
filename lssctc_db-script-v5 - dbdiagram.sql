@@ -26,11 +26,6 @@ CREATE TABLE [simulation_managers] (
     FOREIGN KEY ([id]) REFERENCES [users]([id])
 );
 
-CREATE TABLE [program_managers] (
-    [id] INT PRIMARY KEY,
-    FOREIGN KEY ([id]) REFERENCES [users]([id])
-);
-
 CREATE TABLE [instructors] (
     [id] INT PRIMARY KEY,
     [hire_date] DATETIME2(0),
@@ -602,4 +597,3 @@ CREATE TABLE [section_practice_attempt_steps] (
     FOREIGN KEY ([attempt_id]) REFERENCES [section_practice_attempts]([id]),
     FOREIGN KEY ([practice_step_id]) REFERENCES [practice_steps]([id])
 );
-

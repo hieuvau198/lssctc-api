@@ -35,11 +35,6 @@ CREATE TABLE [dbo].[simulation_managers] (
     FOREIGN KEY ([id]) REFERENCES [dbo].[users]([id])
 );
 
-CREATE TABLE [dbo].[program_managers] (
-    [id] INT PRIMARY KEY,
-    FOREIGN KEY ([id]) REFERENCES [dbo].[users]([id])
-);
-
 CREATE TABLE [dbo].[instructors] (
     [id] INT PRIMARY KEY,
     [hire_date] DATETIME2(0),
