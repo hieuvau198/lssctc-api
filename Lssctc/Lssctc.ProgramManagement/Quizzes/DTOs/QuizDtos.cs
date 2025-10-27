@@ -28,6 +28,18 @@ namespace Lssctc.ProgramManagement.Quizzes.DTOs
         public List<QuizDetailQuestionDto> Questions { get; set; } = new();
     }
 
+    public class QuizSummaryDto
+    {
+        public int Id { get; set; }
+        public string? Name { get; set; }
+        public decimal? PassScoreCriteria { get; set; }
+        public int? TimelimitMinute { get; set; }
+        public decimal? TotalScore { get; set; }
+        public string? Description { get; set; }
+
+        public List<QuizQuestionNoOptionsDto> Questions { get; set; } = new();
+    }
+
     public class QuizTraineeDetailDto
     {
         public int Id { get; set; }

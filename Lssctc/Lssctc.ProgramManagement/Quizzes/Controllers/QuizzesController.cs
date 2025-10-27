@@ -19,7 +19,7 @@ namespace Lssctc.ProgramManagement.Quizzes.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetDetailQuizzes(
+        public async Task<IActionResult> GetQuizzes(
             [FromQuery] int pageIndex = 1,
             [FromQuery] int pageSize = 20,
             CancellationToken ct = default)
@@ -27,7 +27,7 @@ namespace Lssctc.ProgramManagement.Quizzes.Controllers
             if (pageIndex < 1) return BadRequest("pageIndex must be >= 1.");
             if (pageSize < 1 || pageSize > 200) return BadRequest("pageSize must be between 1 and 200.");
 
-            var result = await _quizService.GetDetailQuizzes(pageIndex, pageSize);
+            var result = await _quizService.GetQuizzes(pageIndex, pageSize, ct);
 
             Response.Headers["X-Total-Count"] = result.TotalCount.ToString();
             Response.Headers["Access-Control-Expose-Headers"] = "X-Total-Count";
