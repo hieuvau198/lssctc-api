@@ -11,7 +11,6 @@ using Lssctc.ProgramManagement.Learnings.LearningsMaterials.Services;
 using Lssctc.ProgramManagement.Learnings.LearningsPartitions.Services;
 using Lssctc.ProgramManagement.Learnings.LearningsQuizzes.Services;
 using Lssctc.ProgramManagement.Learnings.LearningsSections.Services;
-using Lssctc.ProgramManagement.Programs.Mappings;
 using Lssctc.ProgramManagement.Programs.Services;
 using Lssctc.ProgramManagement.QuizQuestionOptions.Services;
 using Lssctc.ProgramManagement.QuizQuestions.Services;
@@ -57,7 +56,6 @@ builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepositor
 //builder.Services.AddAutoMapper(typeof(CoursesMappingProfile));
 //builder.Services.AddScoped<ICoursesService, CoursesService>();
 builder.Services.AddAutoMapper(typeof(CourseMapper));
-builder.Services.AddAutoMapper(typeof(ProgramMapper));
 builder.Services.AddAutoMapper(typeof(ClassMapper));
 builder.Services.AddAutoMapper(typeof(LearningMaterialMapper).Assembly);
 builder.Services.AddAutoMapper(typeof(SectionMapper).Assembly);

@@ -8,7 +8,8 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
     {
         #region Gets
         Task<QuizDto?> GetQuizById(int id);
-        Task<PagedResult<QuizDetailDto>> GetDetailQuizzes(int pageIndex, int pageSize);
+        Task<PagedResult<QuizOnlyDto>> GetQuizzes(int pageIndex, int pageSize, CancellationToken ct = default);
+        Task<PagedResult<QuizDetailDto>> GetDetailQuizzes(int pageIndex, int pageSize, CancellationToken ct = default);
         Task<QuizDetailDto?> GetQuizDetail(int quizId, CancellationToken ct = default);
         Task<QuizTraineeDetailDto?> GetQuizDetailForTrainee(int quizId, CancellationToken ct = default);
         Task<QuizTraineeDetailDto?> GetQuizTraineeDetailBySectionQuizIdAsync(int sectionQuizId, CancellationToken ct = default);

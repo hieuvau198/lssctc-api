@@ -1,5 +1,4 @@
-﻿using AutoMapper;
-using Lssctc.ProgramManagement.HttpCustomResponse;
+﻿using Lssctc.ProgramManagement.HttpCustomResponse;
 using Lssctc.ProgramManagement.Programs.DTOs;
 using Lssctc.Share.Common;
 using Lssctc.Share.Entities;
@@ -11,13 +10,65 @@ namespace Lssctc.ProgramManagement.Programs.Services
     public class ProgramService : IProgramService
     {
         private readonly IUnitOfWork _unitOfWork;
-        private readonly IMapper _mapper;
 
-        public ProgramService(IUnitOfWork unitOfWork, IMapper mapper)
+        public ProgramService(IUnitOfWork unitOfWork)
         {
             _unitOfWork = unitOfWork;
-            _mapper = mapper;
         }
+
+        #region Mapping Helper Methods
+
+        private static ProgramDto MapToProgramDto(TrainingProgram entity)
+        {
+            return new ProgramDto
+            {
+                Id = entity.Id,
+                Name = entity.Name,
+                Description = entity.Description,
+                IsDeleted = entity.IsDeleted,
+                IsActive = entity.IsActive,
+                DurationHours = entity.DurationHours,
+                TotalCourses = entity.TotalCourses,
+                ImageUrl = entity.ImageUrl,
+                Courses = entity.ProgramCourses?.Select(MapToProgramCourseDto).ToList() ?? new List<ProgramCourseDto>(),
+                EntryRequirements = entity.ProgramEntryRequirements?.Select(MapToEntryRequirementDto).ToList() ?? new List<EntryRequirementDto>()
+            };
+        }
+
+        private static ProgramCourseDto MapToProgramCourseDto(ProgramCourse entity)
+        {
+            return new ProgramCourseDto
+            {
+                Id = entity.Id,
+                CoursesId = entity.CoursesId,
+                CourseOrder = entity.CourseOrder,
+                Name = entity.Name,
+                Description = entity.Description
+            };
+        }
+
+        private static EntryRequirementDto MapToEntryRequirementDto(ProgramEntryRequirement entity)
+        {
+            return new EntryRequirementDto
+            {
+                Name = entity.Name,
+                Description = entity.Description,
+                DocumentUrl = entity.DocumentUrl
+            };
+        }
+
+        private static TrainingProgram MapToTrainingProgram(CreateProgramDto dto)
+        {
+            return new TrainingProgram
+            {
+                Name = dto.Name,
+                Description = dto.Description,
+                DurationHours = dto.DurationHours,
+                ImageUrl = dto.ImageUrl
+            };
+        }
+
+        #endregion
 
         public async Task<List<ProgramDto>> GetAllPrograms()
         {
@@ -27,7 +78,8 @@ namespace Lssctc.ProgramManagement.Programs.Services
                     .ThenInclude(pc => pc.Courses)
                 .Where(p => p.IsDeleted != true)
                 .ToListAsync();
-            var dtoList = _mapper.Map<List<ProgramDto>>(programs);
+            
+            var dtoList = programs.Select(MapToProgramDto).ToList();
             foreach (var dto in dtoList)
             {
                 dto.Courses = dto.Courses.OrderBy(c => c.CourseOrder).ToList();
@@ -51,10 +103,6 @@ namespace Lssctc.ProgramManagement.Programs.Services
                 .Include(p => p.ProgramCourses)
                     .ThenInclude(pc => pc.Courses);
 
-
-
-
-
             var totalCount = await query.CountAsync();
 
             var programs = await query
@@ -62,7 +110,7 @@ namespace Lssctc.ProgramManagement.Programs.Services
                 .Take(parameters.PageSize)
                 .ToListAsync();
 
-            var dtoList = _mapper.Map<List<ProgramDto>>(programs);
+            var dtoList = programs.Select(MapToProgramDto).ToList();
 
             // Order Course in the program by CourseOrder
             foreach (var dto in dtoList)
@@ -87,10 +135,10 @@ namespace Lssctc.ProgramManagement.Programs.Services
                 .ThenInclude(pc => pc.Courses)
                 .FirstOrDefaultAsync(p => p.Id == id);
 
-            if (program == null )
+            if (program == null)
                 return null;
 
-            var dto = _mapper.Map<ProgramDto>(program);
+            var dto = MapToProgramDto(program);
             dto.Courses = dto.Courses.OrderBy(c => c.CourseOrder).ToList();
 
             return dto;
@@ -98,7 +146,7 @@ namespace Lssctc.ProgramManagement.Programs.Services
 
         public async Task<ProgramDto> CreateProgram(CreateProgramDto dto)
         {
-            var entity = _mapper.Map<TrainingProgram>(dto);
+            var entity = MapToTrainingProgram(dto);
             entity.IsActive = true;
             entity.IsDeleted = false;
             entity.TotalCourses = 0;
@@ -107,8 +155,9 @@ namespace Lssctc.ProgramManagement.Programs.Services
             await _unitOfWork.ProgramRepository.CreateAsync(entity);
             await _unitOfWork.SaveChangesAsync();
 
-            return _mapper.Map<ProgramDto>(entity);
+            return MapToProgramDto(entity);
         }
+
         public async Task<ProgramDto?> AddCourseToProgram(int programId, int courseId)
         {
             var program = await _unitOfWork.ProgramRepository.GetAllAsQueryable()
@@ -150,11 +199,12 @@ namespace Lssctc.ProgramManagement.Programs.Services
             await _unitOfWork.ProgramRepository.UpdateAsync(program);
             await _unitOfWork.SaveChangesAsync();
 
-            var result = _mapper.Map<ProgramDto>(program);
+            var result = MapToProgramDto(program);
             result.Courses = result.Courses.OrderBy(c => c.CourseOrder).ToList();
 
             return result;
         }
+
         public async Task<ProgramDto?> AddCoursesToProgram(int programId, List<CourseOrderDto> coursesToAdd)
         {
             var program = await _unitOfWork.ProgramRepository.GetAllAsQueryable()
@@ -162,7 +212,7 @@ namespace Lssctc.ProgramManagement.Programs.Services
                 .ThenInclude(pc => pc.Courses)
                 .FirstOrDefaultAsync(p => p.Id == programId);
 
-            if (program == null )
+            if (program == null)
                 return null;
 
             if (coursesToAdd == null || !coursesToAdd.Any())
@@ -208,7 +258,7 @@ namespace Lssctc.ProgramManagement.Programs.Services
             await _unitOfWork.ProgramRepository.UpdateAsync(program);
             await _unitOfWork.SaveChangesAsync();
 
-            var result = _mapper.Map<ProgramDto>(program);
+            var result = MapToProgramDto(program);
             result.Courses = result.Courses.OrderBy(c => c.CourseOrder).ToList();
             return result;
         }
@@ -219,7 +269,7 @@ namespace Lssctc.ProgramManagement.Programs.Services
                 .Include(p => p.ProgramEntryRequirements)
                 .FirstOrDefaultAsync(p => p.Id == programId);
 
-            if (program == null )
+            if (program == null)
                 return null;
 
             if (prerequisitesToAdd == null || !prerequisitesToAdd.Any())
@@ -239,7 +289,7 @@ namespace Lssctc.ProgramManagement.Programs.Services
             await _unitOfWork.ProgramRepository.UpdateAsync(program);
             await _unitOfWork.SaveChangesAsync();
 
-            var result = _mapper.Map<ProgramDto>(program);
+            var result = MapToProgramDto(program);
             result.Courses = result.Courses.OrderBy(c => c.CourseOrder).ToList();
             // Assuming ProgramDto has a collection of prerequisites too
             result.EntryRequirements = result.EntryRequirements.OrderBy(p => p.Name).ToList();
@@ -247,13 +297,10 @@ namespace Lssctc.ProgramManagement.Programs.Services
             return result;
         }
 
-
-
-
         public async Task<ProgramDto?> UpdateProgram(int id, UpdateProgramInfoDto dto)
         {
             var program = await _unitOfWork.ProgramRepository.GetByIdAsync(id);
-            if (program == null ) return null;
+            if (program == null) return null;
 
             program.Name = dto.Name;
             program.Description = dto.Description;
@@ -261,7 +308,7 @@ namespace Lssctc.ProgramManagement.Programs.Services
             program.IsActive = dto.IsActive ?? program.IsActive;
 
             await _unitOfWork.SaveChangesAsync();
-            return _mapper.Map<ProgramDto>(program);
+            return MapToProgramDto(program);
         }
 
         public async Task<ProgramDto?> UpdateProgramCourses(int id, ICollection<ProgramCourseOrderDto> courses)
@@ -271,7 +318,7 @@ namespace Lssctc.ProgramManagement.Programs.Services
                     .ThenInclude(pc => pc.Classes)
                 .FirstOrDefaultAsync(p => p.Id == id);
 
-            if (program == null ) return null;
+            if (program == null) return null;
 
             var oldCourseIds = program.ProgramCourses.Select(pc => pc.CoursesId).ToList();
             var newCourseIds = courses.Select(c => c.CourseId).ToList();
@@ -329,7 +376,7 @@ namespace Lssctc.ProgramManagement.Programs.Services
 
             await _unitOfWork.SaveChangesAsync();
 
-            var result = _mapper.Map<ProgramDto>(program);
+            var result = MapToProgramDto(program);
             result.Courses = result.Courses.OrderBy(c => c.CourseOrder).ToList();
             return result;
         }
@@ -337,16 +384,19 @@ namespace Lssctc.ProgramManagement.Programs.Services
         public async Task<EntryRequirementDto?> UpdateProgramEntryRequirement(int id, UpdateEntryRequirementDto entryRequirement)
         {
             var existingReq = await _unitOfWork.ProgramEntryRequirementRepository.GetByIdAsync(id);
-            if (existingReq == null ) return null;
-            if(entryRequirement.Name != null)
+            if (existingReq == null) return null;
+            
+            if (entryRequirement.Name != null)
                 existingReq.Name = entryRequirement.Name;
-            if(entryRequirement.Description != null)
+            if (entryRequirement.Description != null)
                 existingReq.Description = entryRequirement.Description;
-            if(entryRequirement.DocumentUrl != null)
+            if (entryRequirement.DocumentUrl != null)
                 existingReq.DocumentUrl = entryRequirement.DocumentUrl;
+                
             await _unitOfWork.ProgramEntryRequirementRepository.UpdateAsync(existingReq);
             await _unitOfWork.SaveChangesAsync();
-            return _mapper.Map<EntryRequirementDto>(existingReq);
+            
+            return MapToEntryRequirementDto(existingReq);
         }
 
         public async Task<ProgramDto?> UpdateProgramEntryRequirements(int id, ICollection<UpdateEntryRequirementDto> entryRequirements)
@@ -355,7 +405,7 @@ namespace Lssctc.ProgramManagement.Programs.Services
                 .Include(p => p.ProgramEntryRequirements)
                 .FirstOrDefaultAsync(p => p.Id == id);
 
-            if (program == null ) return null;
+            if (program == null) return null;
 
             // Explicitly delete all existing entry requirements
             foreach (var oldReq in program.ProgramEntryRequirements.ToList())
@@ -387,22 +437,14 @@ namespace Lssctc.ProgramManagement.Programs.Services
                 .Include(p => p.ProgramEntryRequirements)
                 .FirstOrDefaultAsync(p => p.Id == id);
 
-            return _mapper.Map<ProgramDto>(result);
+            return MapToProgramDto(result);
         }
-
-
-
-
-
-
-
-
 
         public async Task<bool> DeleteProgram(int id)
         {
             var program = await _unitOfWork.ProgramRepository.GetByIdAsync(id);
 
-            if (program == null )
+            if (program == null)
                 return false;
 
             program.IsDeleted = true;

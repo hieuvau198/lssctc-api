@@ -68,6 +68,33 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
             };
         }
 
+        private static QuizOnlyDto MapToQuizSummaryDto(Quiz entity)
+        {
+            return new QuizOnlyDto
+            {
+                Id = entity.Id,
+                Name = entity.Name,
+                PassScoreCriteria = entity.PassScoreCriteria,
+                TimelimitMinute = entity.TimelimitMinute,
+                TotalScore = entity.TotalScore,
+                Description = entity.Description,
+               
+            };
+        }
+
+        private static QuizQuestionNoOptionsDto MapToQuizQuestionNoOptionsDto(QuizQuestion entity)
+        {
+            return new QuizQuestionNoOptionsDto
+            {
+                Id = entity.Id,
+                QuizId = entity.QuizId,
+                Name = entity.Name,
+                QuestionScore = entity.QuestionScore,
+                Description = entity.Description,
+                IsMultipleAnswers = entity.IsMultipleAnswers
+            };
+        }
+
         private static QuizDetailDto MapToQuizDetailDto(Quiz entity)
         {
             return new QuizDetailDto
@@ -192,22 +219,49 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
             return entity == null ? null : MapToQuizDto(entity);
         }
 
-        public async Task<PagedResult<QuizDetailDto>> GetDetailQuizzes(int pageIndex, int pageSize)
+        public async Task<PagedResult<QuizOnlyDto>> GetQuizzes(int pageIndex, int pageSize, CancellationToken ct = default)
         {
             if (pageIndex < 1) pageIndex = 1;
             if (pageSize <= 0 || pageSize > 200) pageSize = 20;
 
-            var query = _uow.QuizRepository.GetAllAsQueryable();
+            var query = _uow.QuizRepository.GetAllAsQueryable()
+                .Include(q => q.QuizQuestions);
 
-            var total = await query.CountAsync();
+            var total = await query.CountAsync(ct);
 
             var items = await query
                 .Skip((pageIndex - 1) * pageSize)
                 .Take(pageSize)
-                .Include(q => q.QuizQuestions)
-                    .ThenInclude(qq => qq.QuizQuestionOptions)
                 .AsNoTracking()
-                .ToListAsync();
+                .ToListAsync(ct);
+
+            var mappedItems = items.Select(MapToQuizSummaryDto).ToList();
+
+            return new PagedResult<QuizOnlyDto>
+            {
+                Items = mappedItems,
+                TotalCount = total,
+                Page = pageIndex,
+                PageSize = pageSize
+            };
+        }
+
+        public async Task<PagedResult<QuizDetailDto>> GetDetailQuizzes(int pageIndex, int pageSize, CancellationToken ct = default)
+        {
+            if (pageIndex < 1) pageIndex = 1;
+            if (pageSize <= 0 || pageSize > 200) pageSize = 20;
+
+            var query = _uow.QuizRepository.GetAllAsQueryable()
+                .Include(q => q.QuizQuestions)
+                    .ThenInclude(qq => qq.QuizQuestionOptions);
+
+            var total = await query.CountAsync(ct);
+
+            var items = await query
+                .Skip((pageIndex - 1) * pageSize)
+                .Take(pageSize)
+                .AsNoTracking()
+                .ToListAsync(ct);
 
             var mappedItems = items.Select(MapToQuizDetailDto).ToList();
 
