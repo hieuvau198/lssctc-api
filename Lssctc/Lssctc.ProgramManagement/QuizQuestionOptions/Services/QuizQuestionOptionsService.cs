@@ -32,6 +32,25 @@ namespace Lssctc.ProgramManagement.QuizQuestionOptions.Services
             {
                 throw new ValidationException($"DisplayOrder {displayOrder} already exists globally in the system.");
             }
+
+            // Validate Description - không được trùng với option khác trong cùng question
+            if (!string.IsNullOrEmpty(dto.Description))
+            {
+                var normalizedDescription = dto.Description.Trim();
+                if (!string.IsNullOrEmpty(normalizedDescription))
+                {
+                    var isDuplicateDescription = await _uow.QuizQuestionOptionRepository
+                        .ExistsAsync(x => x.QuizQuestionId == questionId 
+                                       && x.Description != null 
+                                       && x.Description.Trim().ToLower() == normalizedDescription.ToLower());
+
+                    if (isDuplicateDescription)
+                    {
+                        throw new ValidationException("Description already exists in another option within this question.");
+                    }
+                }
+            }
+
             // validate score
             decimal? optionScore = dto.OptionScore;
             if (optionScore.HasValue)
@@ -147,6 +166,100 @@ namespace Lssctc.ProgramManagement.QuizQuestionOptions.Services
             return items;
         }
 
+        public async Task UpdateOption(int optionId, UpdateQuizQuestionOptionDto dto)
+        {
+            // Kiểm tra option tồn tại
+            var option = await _uow.QuizQuestionOptionRepository.GetByIdAsync(optionId);
+            if (option == null)
+                throw new KeyNotFoundException($"QuizQuestionOption with ID {optionId} not found.");
+
+            // Lấy thông tin question để validate score
+            var question = await _uow.QuizQuestionRepository.GetByIdAsync(option.QuizQuestionId);
+            if (question == null)
+                throw new KeyNotFoundException($"Question with ID {option.QuizQuestionId} not found.");
+
+            // Validate và cập nhật DisplayOrder nếu có thay đổi
+            if (dto.DisplayOrder.HasValue && dto.DisplayOrder.Value != option.DisplayOrder)
+            {
+                var isDuplicate = await _uow.QuizQuestionOptionRepository
+                    .ExistsAsync(x => x.DisplayOrder == dto.DisplayOrder.Value && x.Id != optionId);
+
+                if (isDuplicate)
+                {
+                    throw new ValidationException($"DisplayOrder {dto.DisplayOrder.Value} already exists globally in the system.");
+                }
+                option.DisplayOrder = dto.DisplayOrder.Value;
+            }
+
+            // Validate Description - không được trùng với option khác trong cùng question
+            if (dto.Description != null)
+            {
+                // Chuẩn hóa Description (trim và kiểm tra empty)
+                var normalizedDescription = dto.Description.Trim();
+                
+                // Nếu Description không rỗng, kiểm tra trùng lặp
+                if (!string.IsNullOrEmpty(normalizedDescription))
+                {
+                    var isDuplicateDescription = await _uow.QuizQuestionOptionRepository
+                        .ExistsAsync(x => x.QuizQuestionId == option.QuizQuestionId 
+                                       && x.Id != optionId 
+                                       && x.Description != null 
+                                       && x.Description.Trim().ToLower() == normalizedDescription.ToLower());
+
+                    if (isDuplicateDescription)
+                    {
+                        throw new ValidationException("Description already exists in another option within this question.");
+                    }
+                }
+                
+                option.Description = dto.Description;
+            }
+
+            // Validate và cập nhật OptionScore nếu có thay đổi
+            if (dto.OptionScore.HasValue)
+            {
+                var optionScore = dto.OptionScore.Value;
+
+                // Miền giá trị + làm tròn 2 chữ số
+                if (optionScore < 0m || optionScore > 999.99m)
+                    throw new ValidationException("OptionScore must be between 0 and 999.99.");
+
+                optionScore = Math.Round(optionScore, 2, MidpointRounding.AwayFromZero);
+
+                // Không vượt tổng điểm câu hỏi (nếu câu hỏi có đặt QuestionScore)
+                if (question.QuestionScore.HasValue)
+                {
+                    var used = await _uow.QuizQuestionOptionRepository.GetAllAsQueryable()
+                        .Where(o => o.QuizQuestionId == option.QuizQuestionId && o.OptionScore != null && o.Id != optionId)
+                        .SumAsync(o => o.OptionScore) ?? 0m;
+
+                    var willBe = used + optionScore;
+                    if (willBe > question.QuestionScore.Value + 0.0001m)
+                        throw new ValidationException(
+                            $"Total option scores ({willBe}) would exceed question score ({question.QuestionScore.Value}).");
+                }
+
+                option.OptionScore = optionScore;
+            }
+
+            // Cập nhật các trường khác nếu có giá trị
+            if (dto.Name != null)
+            {
+                if (string.IsNullOrWhiteSpace(dto.Name))
+                    throw new ValidationException("Name cannot be empty or whitespace.");
+                option.Name = dto.Name;
+            }
+
+            if (dto.IsCorrect.HasValue)
+                option.IsCorrect = dto.IsCorrect.Value;
+
+            if (dto.Explanation != null)
+                option.Explanation = dto.Explanation;
+
+            // Lưu thay đổi
+            await _uow.QuizQuestionOptionRepository.UpdateAsync(option);
+            await _uow.SaveChangesAsync();
+        }
 
     }
 }

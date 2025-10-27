@@ -65,5 +65,24 @@ namespace Lssctc.ProgramManagement.QuizQuestionOptions.Controllers
             catch (ValidationException ex) { return BadRequest(new { error = ex.Message }); }
         }
 
+        [HttpPut("options/{optionId:int}")]
+        public async Task<IActionResult> UpdateOption(
+            [FromRoute] int optionId,
+            [FromBody] UpdateQuizQuestionOptionDto dto)
+        {
+            try
+            {
+                await _quizService.UpdateOption(optionId, dto);
+                return NoContent();
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { error = ex.Message });
+            }
+            catch (ValidationException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+        }
     }
 }
