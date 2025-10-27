@@ -28,7 +28,7 @@ namespace Lssctc.ProgramManagement.Quizzes.DTOs
         public List<QuizDetailQuestionDto> Questions { get; set; } = new();
     }
 
-    public class QuizSummaryDto
+    public class QuizOnlyDto
     {
         public int Id { get; set; }
         public string? Name { get; set; }
@@ -37,7 +37,7 @@ namespace Lssctc.ProgramManagement.Quizzes.DTOs
         public decimal? TotalScore { get; set; }
         public string? Description { get; set; }
 
-        public List<QuizQuestionNoOptionsDto> Questions { get; set; } = new();
+        
     }
 
     public class QuizTraineeDetailDto

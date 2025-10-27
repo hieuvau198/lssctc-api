@@ -68,9 +68,9 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
             };
         }
 
-        private static QuizSummaryDto MapToQuizSummaryDto(Quiz entity)
+        private static QuizOnlyDto MapToQuizSummaryDto(Quiz entity)
         {
-            return new QuizSummaryDto
+            return new QuizOnlyDto
             {
                 Id = entity.Id,
                 Name = entity.Name,
@@ -78,8 +78,7 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
                 TimelimitMinute = entity.TimelimitMinute,
                 TotalScore = entity.TotalScore,
                 Description = entity.Description,
-                Questions = entity.QuizQuestions?.OrderBy(q => q.Id)
-                    .Select(MapToQuizQuestionNoOptionsDto).ToList() ?? new List<QuizQuestionNoOptionsDto>()
+               
             };
         }
 
@@ -220,7 +219,7 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
             return entity == null ? null : MapToQuizDto(entity);
         }
 
-        public async Task<PagedResult<QuizSummaryDto>> GetQuizzes(int pageIndex, int pageSize, CancellationToken ct = default)
+        public async Task<PagedResult<QuizOnlyDto>> GetQuizzes(int pageIndex, int pageSize, CancellationToken ct = default)
         {
             if (pageIndex < 1) pageIndex = 1;
             if (pageSize <= 0 || pageSize > 200) pageSize = 20;
@@ -238,7 +237,7 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
 
             var mappedItems = items.Select(MapToQuizSummaryDto).ToList();
 
-            return new PagedResult<QuizSummaryDto>
+            return new PagedResult<QuizOnlyDto>
             {
                 Items = mappedItems,
                 TotalCount = total,
