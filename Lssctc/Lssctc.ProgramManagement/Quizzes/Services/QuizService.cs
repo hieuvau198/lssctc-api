@@ -388,25 +388,7 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
             if (dto.Description != null && dto.Description.Length > 2000)
                 throw new ValidationException("Description must be at most 2000 characters.");
 
-            decimal? questionScore = dto.QuestionScore;
-            if (questionScore.HasValue)
-            {
-                if (questionScore.Value < 0m)
-                    throw new ValidationException("QuestionScore must be >= 0.");
-                questionScore = Math.Round(questionScore.Value, 2, MidpointRounding.AwayFromZero);
-
-                if (quiz.TotalScore.HasValue)
-                {
-                    var used = await _uow.QuizQuestionRepository.GetAllAsQueryable()
-                        .Where(q => q.QuizId == quizId && q.QuestionScore != null)
-                        .SumAsync(q => q.QuestionScore) ?? 0m;
-
-                    var willBe = used + questionScore.Value;
-                    if (willBe > quiz.TotalScore.Value + 0.0001m)
-                        throw new ValidationException(
-                            $"Total question scores ({willBe}) would exceed quiz.TotalScore ({quiz.TotalScore.Value}).");
-                }
-            }
+            // NOTE: Question score will be computed from option scores (user should not supply QuestionScore)
 
             // --- Validate Options ---
             if (dto.Options == null || dto.Options.Count < 2)
@@ -417,6 +399,7 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
                 throw new ValidationException("At least one correct option is required.");
             if (!dto.IsMultipleAnswers && correctCount != 1)
                 throw new ValidationException("Exactly 1 correct option is required when IsMultipleAnswers = false.");
+           
 
             decimal totalOptionScore = 0m;
             var normalizedOptions = new List<(string Name, string? Desc, bool IsCorrect, decimal? Score)>();
@@ -443,11 +426,23 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
                 normalizedOptions.Add((optName, o.Description, o.IsCorrect, o.OptionScore));
             }
 
-            if (questionScore.HasValue && totalOptionScore > questionScore.Value + 0.0001m)
-                throw new ValidationException(
-                    $"Sum of option scores ({totalOptionScore}) exceeds QuestionScore ({questionScore.Value}).");
+            // Compute question score as sum of option scores (rounded)
+            var questionScore = Math.Round(totalOptionScore, 2, MidpointRounding.AwayFromZero);
 
-            // --- Create Question tr??c ?? có Id ---
+            // Validate against quiz total
+            if (quiz.TotalScore.HasValue)
+            {
+                var used = await _uow.QuizQuestionRepository.GetAllAsQueryable()
+                    .Where(q => q.QuizId == quizId && q.QuestionScore != null)
+                    .SumAsync(q => q.QuestionScore) ?? 0m;
+
+                var willBe = used + questionScore;
+                if (willBe > quiz.TotalScore.Value + 0.0001m)
+                    throw new ValidationException(
+                        $"Total question scores ({willBe}) would exceed quiz.TotalScore ({quiz.TotalScore.Value}).");
+            }
+
+            // --- Create Question to get Id ---
             var question = new QuizQuestion
             {
                 QuizId = quizId,
@@ -457,9 +452,9 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
                 IsMultipleAnswers = dto.IsMultipleAnswers
             };
             await _uow.QuizQuestionRepository.CreateAsync(question);
-            await _uow.SaveChangesAsync(); // c?n question.Id
+            await _uow.SaveChangesAsync(); // need question.Id
 
-            // --- Chu?n b? Option entities (ch?a set DisplayOrder) ---
+            // Prepare Option entities (DisplayOrder set later) 
             var optionEntities = normalizedOptions.Select(o => new QuizQuestionOption
             {
                 QuizQuestionId = question.Id,
@@ -467,29 +462,28 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
                 Description = o.Desc,
                 IsCorrect = o.IsCorrect,
                 OptionScore = o.Score
-                // DisplayOrder s? set ngay tr??c khi Save
+                // DisplayOrder will be set just before Save
             }).ToList();
 
-            // --- Optimistic retry: per-question tr??c, fail thì fallback to global ---
+            // Optimistic retry: per-question first, fallback to global 
             const int maxRetries = 2;
             for (int attempt = 0; attempt <= maxRetries; attempt++)
             {
-                // 1) Tính MAX theo câu h?i
+                // 1) Get max per-question
                 var maxPerQuestion = await _uow.QuizQuestionOptionRepository.GetAllAsQueryable()
                     .Where(o => o.QuizQuestionId == question.Id)
                     .Select(o => o.DisplayOrder)
                     .MaxAsync() ?? 0;
 
-                // 2) Gán order 1..n d?a trên per-question
+                // 2) Assign order 1..n based on per-question
                 int next = maxPerQuestion + 1;
                 foreach (var e in optionEntities)
                     e.DisplayOrder = next++;
 
                 try
                 {
-                    // Add (n?u ch?a add) — n?u ?ã add ? vòng tr??c, EF v?n gi? state Added; c? Save là ??
                     foreach (var e in optionEntities)
-                        if (e.Id == 0 && e.DisplayOrder > 0) // heuristic nh?
+                        if (e.Id == 0 && e.DisplayOrder > 0)
                             await _uow.QuizQuestionOptionRepository.CreateAsync(e);
 
                     await _uow.SaveChangesAsync();
@@ -497,7 +491,7 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
                 }
                 catch (DbUpdateException ex) when (IsUniqueViolation(ex) && attempt < maxRetries)
                 {
-                    // Fallback: DB có UNIQUE display_order toàn b?ng ? gán theo GLOBAL MAX và th? l?i
+                    // Fallback: assign based on global max and retry
                     var maxGlobal = await _uow.QuizQuestionOptionRepository.GetAllAsQueryable()
                         .Select(o => o.DisplayOrder)
                         .MaxAsync() ?? 0;
@@ -513,7 +507,6 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
                     }
                     catch (DbUpdateException ex2) when (IsUniqueViolation(ex2) && attempt < maxRetries)
                     {
-                        // Có th? có ti?n trình khác v?a chen; l?p l?i vòng for ?? tính l?i MAX m?i nh?t
                         continue;
                     }
                 }
@@ -521,6 +514,10 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
 
             throw new ValidationException("Could not assign DisplayOrder due to concurrent inserts. Please retry.");
 
+
+            // 2627: Violation of PRIMARY KEY or UNIQUE constraint (duplicate key value)
+            // 2601: Violation of UNIQUE INDEX (duplicate key value in an indexed column)
+            // => Used to detect duplicate data errors when inserting or updating records
             static bool IsUniqueViolation(DbUpdateException ex)
                 => ex.InnerException is SqlException sql && (sql.Number == 2627 || sql.Number == 2601);
         }
