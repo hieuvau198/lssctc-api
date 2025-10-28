@@ -190,7 +190,7 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
                 Name = dto.Name,
                 PassScoreCriteria = dto.PassScoreCriteria,
                 TimelimitMinute = dto.TimelimitMinute,
-                TotalScore = dto.TotalScore,
+                TotalScore = 10m, // fixed default, user cannot change
                 Description = dto.Description,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -202,7 +202,7 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
             entity.Name = dto.Name;
             entity.PassScoreCriteria = dto.PassScoreCriteria;
             entity.TimelimitMinute = dto.TimelimitMinute;
-            entity.TotalScore = dto.TotalScore;
+            entity.TotalScore = 10m; // keep default 10 and do not allow change
             entity.Description = dto.Description;
             entity.UpdatedAt = DateTime.UtcNow;
         }
@@ -313,6 +313,10 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
 
         public async Task<int> CreateQuiz(CreateQuizDto dto)
         {
+            // Validate PassScoreCriteria vs fixed TotalScore (10)
+            if (dto.PassScoreCriteria.HasValue && dto.PassScoreCriteria.Value >= 10m)
+                throw new ValidationException("PassScoreCriteria must be less than TotalScore (10).");
+
             var entity = MapToQuizEntity(dto);
             await _uow.QuizRepository.CreateAsync(entity);
             await _uow.SaveChangesAsync();
@@ -323,6 +327,10 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
         {
             var entity = await _uow.QuizRepository.GetByIdAsync(id);
             if (entity == null) return false;
+
+            // Validate PassScoreCriteria vs fixed TotalScore (10)
+            if (dto.PassScoreCriteria.HasValue && dto.PassScoreCriteria.Value >= 10m)
+                throw new ValidationException("PassScoreCriteria must be less than TotalScore (10).");
 
             UpdateQuizEntity(entity, dto);
             await _uow.QuizRepository.UpdateAsync(entity);
