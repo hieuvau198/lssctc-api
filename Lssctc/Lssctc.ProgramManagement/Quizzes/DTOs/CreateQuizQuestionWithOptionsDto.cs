@@ -6,7 +6,6 @@ namespace Lssctc.ProgramManagement.Quizzes.DTOs
     {
         // Question
         public string Name { get; set; } = null!;
-        public decimal? QuestionScore { get; set; }
         public string? Description { get; set; }
         public bool IsMultipleAnswers { get; set; }
 
