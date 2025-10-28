@@ -10,5 +10,7 @@ namespace Lssctc.ProgramManagement.QuizQuestionOptions.Services
 
         Task<IReadOnlyList<QuizDetailQuestionOptionDto>> GetOptionsByQuestionId(
        int questionId, CancellationToken ct = default);
+
+        Task UpdateOption(int optionId, UpdateQuizQuestionOptionDto dto);
     }
 }

@@ -80,13 +80,22 @@ namespace Lssctc.ProgramManagement.QuizQuestionOptions.DTOs
      }
 
 
-   
-
     public class UpdateQuizQuestionOptionDto
     {
+        [StringLength(100, ErrorMessage = "Name must be at most 100 characters.")]
         public string? Name { get; set; }
+
+        [StringLength(2000, ErrorMessage = "Description must be at most 2000 characters.")]
+        public string? Description { get; set; }
+
         public bool? IsCorrect { get; set; }
+
         public int? DisplayOrder { get; set; }
+
+        [StringLength(2000, ErrorMessage = "Explanation must be at most 2000 characters.")]
         public string? Explanation { get; set; }
+
+        [Range(0, 999.99, ErrorMessage = "OptionScore must be between 0 and 999.99.")]
+        public decimal? OptionScore { get; set; }
     }
 }
