@@ -314,7 +314,7 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
         public async Task<int> CreateQuiz(CreateQuizDto dto)
         {
             // Validate PassScoreCriteria vs fixed TotalScore (10)
-            if (dto.PassScoreCriteria.HasValue && dto.PassScoreCriteria.Value >= 10m)
+            if (dto.PassScoreCriteria.HasValue && dto.PassScoreCriteria.Value > 10m)
                 throw new ValidationException("PassScoreCriteria must be less than TotalScore (10).");
 
             var entity = MapToQuizEntity(dto);
@@ -329,7 +329,7 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
             if (entity == null) return false;
 
             // Validate PassScoreCriteria vs fixed TotalScore (10)
-            if (dto.PassScoreCriteria.HasValue && dto.PassScoreCriteria.Value >= 10m)
+            if (dto.PassScoreCriteria.HasValue && dto.PassScoreCriteria.Value > 10m)
                 throw new ValidationException("PassScoreCriteria must be less than TotalScore (10).");
 
             UpdateQuizEntity(entity, dto);
