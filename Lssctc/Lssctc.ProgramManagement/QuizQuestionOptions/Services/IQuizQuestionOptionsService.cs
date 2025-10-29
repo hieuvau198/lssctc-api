@@ -12,5 +12,8 @@ namespace Lssctc.ProgramManagement.QuizQuestionOptions.Services
        int questionId, CancellationToken ct = default);
 
         Task UpdateOption(int optionId, UpdateQuizQuestionOptionDto dto);
+
+        // Delete option and adjust related question and quiz scores
+        Task DeleteOption(int optionId);
     }
 }
