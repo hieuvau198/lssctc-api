@@ -84,5 +84,23 @@ namespace Lssctc.ProgramManagement.QuizQuestionOptions.Controllers
                 return BadRequest(new { error = ex.Message });
             }
         }
+
+        [HttpDelete("options/{optionId:int}")]
+        public async Task<IActionResult> DeleteOption([FromRoute] int optionId)
+        {
+            try
+            {
+                await _quizService.DeleteOption(optionId);
+                return NoContent();
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { error = ex.Message });
+            }
+            catch (ValidationException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+        }
     }
 }

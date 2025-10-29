@@ -261,5 +261,49 @@ namespace Lssctc.ProgramManagement.QuizQuestionOptions.Services
             await _uow.SaveChangesAsync();
         }
 
+        // Delete option and update related question and quiz scores
+        public async Task DeleteOption(int optionId)
+        {
+            var option = await _uow.QuizQuestionOptionRepository.GetByIdAsync(optionId);
+            if (option == null)
+                throw new KeyNotFoundException($"QuizQuestionOption with ID {optionId} not found.");
+
+            var question = await _uow.QuizQuestionRepository.GetByIdAsync(option.QuizQuestionId);
+            if (question == null)
+                throw new KeyNotFoundException($"Question with ID {option.QuizQuestionId} not found.");
+
+            // delete option
+            await _uow.QuizQuestionOptionRepository.DeleteAsync(option);
+
+            // Recalculate remaining option scores for the question (exclude the option being deleted)
+            var sumRemaining = await _uow.QuizQuestionOptionRepository.GetAllAsQueryable()
+                .Where(o => o.QuizQuestionId == question.Id && o.Id != optionId && o.OptionScore != null)
+                .SumAsync(o => (decimal?)o.OptionScore) ?? 0m;
+
+            // If the question had a QuestionScore defined, update it to reflect remaining option scores
+            if (question.QuestionScore.HasValue)
+            {
+                question.QuestionScore = Math.Round(sumRemaining, 2, MidpointRounding.AwayFromZero);
+                await _uow.QuizQuestionRepository.UpdateAsync(question);
+
+                // Update quiz total score if it's set
+                var quiz = await _uow.QuizRepository.GetByIdAsync(question.QuizId);
+                if (quiz != null && quiz.TotalScore.HasValue)
+                {
+                    // Sum QuestionScore of all other questions (exclude current question) and add the updated question.QuestionScore
+                    var totalExcludingCurrent = await _uow.QuizQuestionRepository.GetAllAsQueryable()
+                        .Where(q => q.QuizId == quiz.Id && q.Id != question.Id && q.QuestionScore != null)
+                        .SumAsync(q => (decimal?)q.QuestionScore) ?? 0m;
+
+                    var totalQuestionsScore = totalExcludingCurrent + (question.QuestionScore ?? 0m);
+
+                    quiz.TotalScore = Math.Round(totalQuestionsScore, 2, MidpointRounding.AwayFromZero);
+                    await _uow.QuizRepository.UpdateAsync(quiz);
+                }
+            }
+
+            await _uow.SaveChangesAsync();
+        }
+
     }
 }
