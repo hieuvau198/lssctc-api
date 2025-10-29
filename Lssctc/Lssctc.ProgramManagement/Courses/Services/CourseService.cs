@@ -36,7 +36,9 @@ namespace Lssctc.ProgramManagement.Courses.Services
             IQueryable<Course> query = _unitOfWork.CourseRepository.GetAllAsQueryable()
                 .Include(c => c.Category)
                 .Include(c => c.Level)
-                .Include(c => c.CourseCode);
+                .Include(c => c.CourseCode)
+                .Where(predicate: c => c.IsDeleted == false)
+                ;
 
             // 🔍 Filtering
             if (!string.IsNullOrEmpty(parameters.SearchTerm))
