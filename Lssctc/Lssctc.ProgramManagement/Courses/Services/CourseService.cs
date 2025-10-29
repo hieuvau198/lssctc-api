@@ -1,5 +1,4 @@
-﻿using AutoMapper;
-using Lssctc.ProgramManagement.Courses.DTOs;
+﻿using Lssctc.ProgramManagement.Courses.DTOs;
 using Lssctc.ProgramManagement.HttpCustomResponse;
 using Lssctc.Share.Common;
 using Lssctc.Share.Entities;
@@ -11,12 +10,97 @@ namespace Lssctc.ProgramManagement.Courses.Services
     public class CourseService : ICourseService
     {
         private readonly IUnitOfWork _unitOfWork;
-        private readonly IMapper _mapper;
 
-        public CourseService(IUnitOfWork unitOfWork, IMapper mapper)
+        public CourseService(IUnitOfWork unitOfWork)
         {
             _unitOfWork = unitOfWork;
-            _mapper = mapper;
+        }
+
+        // Manual mapping methods
+        private CourseDto MapCourseToDto(Course course)
+        {
+            return new CourseDto
+            {
+                Id = course.Id,
+                Name = course.Name,
+                Description = course.Description,
+                CategoryId = course.CategoryId,
+                CategoryName = course.Category?.Name,
+                LevelId = course.LevelId,
+                LevelName = course.Level?.Name,
+                Price = course.Price,
+                IsActive = course.IsActive,
+                ImageUrl = course.ImageUrl,
+                DurationHours = course.DurationHours,
+                CourseCodeName = course.CourseCode?.Name
+            };
+        }
+
+        private Course MapCreateDtoToCourse(CreateCourseDto dto)
+        {
+            return new Course
+            {
+                Name = dto.Name,
+                Description = dto.Description,
+                CategoryId = dto.CategoryId,
+                LevelId = dto.LevelId,
+                Price = dto.Price,
+                ImageUrl = dto.ImageUrl,
+                DurationHours = dto.DurationHours
+            };
+        }
+
+        private void MapUpdateDtoToCourse(UpdateCourseDto dto, Course course)
+        {
+            course.Name = dto.Name;
+            course.Description = dto.Description;
+            course.CategoryId = dto.CategoryId;
+            course.LevelId = dto.LevelId;
+            course.Price = dto.Price;
+            course.IsActive = dto.IsActive;
+            course.ImageUrl = dto.ImageUrl;
+            course.DurationHours = dto.DurationHours;
+        }
+
+        private CourseSyllabusDto MapCourseSyllabusToDto(CourseSyllabuse courseSyllabus)
+        {
+            return new CourseSyllabusDto
+            {
+                Id = courseSyllabus.Id,
+                CourseId = courseSyllabus.CourseId,
+                SyllabusId = courseSyllabus.SyllabusId,
+                CourseName = courseSyllabus.Course?.Name,
+                SyllabusName = courseSyllabus.Syllabus?.Name,
+                SyllabusDescription = courseSyllabus.Syllabus?.Description
+            };
+        }
+
+        private CourseSyllabuse MapCreateSyllabusDtoToEntity(CourseSyllabusCreateDto dto)
+        {
+            return new CourseSyllabuse
+            {
+                CourseId = dto.CourseId
+            };
+        }
+
+        private CourseCategoryDto MapCourseCategoryToDto(CourseCategory category)
+        {
+            return new CourseCategoryDto
+            {
+                Id = category.Id,
+                Name = category.Name,
+                Description = category.Description
+            };
+        }
+
+        private CourseLevelDto MapCourseLevelToDto(CourseLevel level)
+        {
+            return new CourseLevelDto
+            {
+                Id = level.Id,
+                Name = level.Name,
+                Description = level.Description
+            };
         }
 
         public async Task<List<CourseDto>> GetAllCourses()
@@ -28,7 +112,8 @@ namespace Lssctc.ProgramManagement.Courses.Services
                 .Where(c => c.IsDeleted == false)
                 .OrderBy(c => c.Id)
                 .ToListAsync();
-            return _mapper.Map<List<CourseDto>>(courses);
+            
+            return courses.Select(MapCourseToDto).ToList();
         }
 
         public async Task<PagedResult<CourseDto>> GetCourses(CourseQueryParameters parameters)
@@ -67,7 +152,7 @@ namespace Lssctc.ProgramManagement.Courses.Services
 
             return new PagedResult<CourseDto>
             {
-                Items = pagedResult.Items.Select(c => _mapper.Map<CourseDto>(c)),
+                Items = pagedResult.Items.Select(MapCourseToDto),
                 TotalCount = pagedResult.TotalCount,
                 Page = pagedResult.Page,
                 PageSize = pagedResult.PageSize
@@ -83,8 +168,9 @@ namespace Lssctc.ProgramManagement.Courses.Services
                 .Include(c => c.CourseCode)
                 .FirstOrDefaultAsync(c => c.Id == id);
 
-            return course == null ? null : _mapper.Map<CourseDto>(course);
+            return course == null ? null : MapCourseToDto(course);
         }
+
         public async Task<PagedResult<CourseDto>> GetCoursesByCategoryId(int categoryId, int pageNumber, int pageSize)
         {
             var query = _unitOfWork.CourseRepository.GetAllAsQueryable()
@@ -98,7 +184,7 @@ namespace Lssctc.ProgramManagement.Courses.Services
 
             return new PagedResult<CourseDto>
             {
-                Items = pagedResult.Items.Select(c => _mapper.Map<CourseDto>(c)),
+                Items = pagedResult.Items.Select(MapCourseToDto),
                 TotalCount = pagedResult.TotalCount,
                 Page = pagedResult.Page,
                 PageSize = pagedResult.PageSize
@@ -118,12 +204,13 @@ namespace Lssctc.ProgramManagement.Courses.Services
 
             return new PagedResult<CourseDto>
             {
-                Items = pagedResult.Items.Select(c => _mapper.Map<CourseDto>(c)),
+                Items = pagedResult.Items.Select(MapCourseToDto),
                 TotalCount = pagedResult.TotalCount,
                 Page = pagedResult.Page,
                 PageSize = pagedResult.PageSize
             };
         }
+
         public async Task<PagedResult<CourseDto>> GetCoursesByFilter(int? categoryId, int? levelId, int pageNumber, int pageSize)
         {
             IQueryable<Course> query = _unitOfWork.CourseRepository.GetAllAsQueryable()
@@ -143,7 +230,7 @@ namespace Lssctc.ProgramManagement.Courses.Services
 
             return new PagedResult<CourseDto>
             {
-                Items = pagedResult.Items.Select(c => _mapper.Map<CourseDto>(c)),
+                Items = pagedResult.Items.Select(MapCourseToDto),
                 TotalCount = pagedResult.TotalCount,
                 Page = pagedResult.Page,
                 PageSize = pagedResult.PageSize
@@ -181,7 +268,7 @@ namespace Lssctc.ProgramManagement.Courses.Services
             await _unitOfWork.SaveChangesAsync();
 
             // map dto → entity
-            var newCourse = _mapper.Map<Course>(dto);
+            var newCourse = MapCreateDtoToCourse(dto);
             newCourse.CourseCodeId = newCourseCode.Id;
             newCourse.IsActive = true;
             newCourse.IsDeleted = false;
@@ -189,14 +276,14 @@ namespace Lssctc.ProgramManagement.Courses.Services
             await _unitOfWork.CourseRepository.CreateAsync(newCourse);
             await _unitOfWork.SaveChangesAsync();
 
-            return _mapper.Map<CourseDto>(newCourse);
+            return MapCourseToDto(newCourse);
         }
-
 
         public async Task<CourseDto?> UpdateCourseById(int id, UpdateCourseDto dto)
         {
             var course = await _unitOfWork.CourseRepository.GetByIdAsync(id);
             if (course == null || course.IsDeleted == true) return null;
+            
             //  Validate CategoryId
             if (dto.CategoryId.HasValue)
             {
@@ -218,16 +305,18 @@ namespace Lssctc.ProgramManagement.Courses.Services
                 throw new BadRequestException("Price is required.");
             else if (dto.Price < 0)
                 throw new BadRequestException("Price cannot be negative.");
-            _mapper.Map(dto, course);
+            
+            MapUpdateDtoToCourse(dto, course);
             await _unitOfWork.CourseRepository.UpdateAsync(course);
             await _unitOfWork.SaveChangesAsync();
 
-            return _mapper.Map<CourseDto>(course);
+            return MapCourseToDto(course);
         }
 
         public async Task<bool> DeleteCourseById(int id)
         {
             var course = await _unitOfWork.CourseRepository.GetByIdAsync(id);
+
             if (course == null || course.IsDeleted == true) return false;
 
             // Soft delete
@@ -254,7 +343,8 @@ namespace Lssctc.ProgramManagement.Courses.Services
                 .Include(c => c.CourseCode)
                 .FirstOrDefaultAsync(c => c.Id == dto.CourseId);
 
-            var newCourseSyllabus = _mapper.Map<CourseSyllabuse>(dto);
+            var newCourseSyllabus = MapCreateSyllabusDtoToEntity(dto);
+            
             //create syllabus
             var sysllbus = new Syllabuse
             {
@@ -268,6 +358,7 @@ namespace Lssctc.ProgramManagement.Courses.Services
             await _unitOfWork.SyllabuseRepository.CreateAsync(sysllbus);
 
             await _unitOfWork.SaveChangesAsync();
+            
             //create coursesyllabus
             newCourseSyllabus.SyllabusId = sysllbus.Id;
             await _unitOfWork.CourseSyllabuseRepository.CreateAsync(newCourseSyllabus);
@@ -280,9 +371,9 @@ namespace Lssctc.ProgramManagement.Courses.Services
                 .Include(cl => cl.Syllabus)
                 .FirstOrDefaultAsync(cl => cl.Id == newCourseSyllabus.Id);
                 
-
-            return _mapper.Map<CourseSyllabusDto>(newCourseSyllabus);
+            return MapCourseSyllabusToDto(newCourseSyllabus);
         }
+
         public async Task<CourseSyllabusDto?> UpdateSyllabusById(int courseSyllabusId, UpdateCourseSyllabusDto dto)
         {
             var courseSyllabus = await _unitOfWork.CourseSyllabuseRepository
@@ -294,18 +385,16 @@ namespace Lssctc.ProgramManagement.Courses.Services
             if (courseSyllabus == null)
                 return null;
 
-
             // Update syllabus details
-
             courseSyllabus.Syllabus.Name = dto.Name;
             courseSyllabus.Syllabus.Description = dto.Description;
-            // for test: courseSyllabus.SyllabusId = another
 
             await _unitOfWork.SyllabuseRepository.UpdateAsync(courseSyllabus.Syllabus);
             await _unitOfWork.SaveChangesAsync();
 
-            return _mapper.Map<CourseSyllabusDto>(courseSyllabus);
+            return MapCourseSyllabusToDto(courseSyllabus);
         }
+
         public async Task<CourseSyllabusDto> GetSyllabusByCourseId(int courseId)
         {
             var courseSyllabuses = await _unitOfWork.CourseSyllabuseRepository
@@ -314,8 +403,9 @@ namespace Lssctc.ProgramManagement.Courses.Services
                 .Include(cs => cs.Syllabus)
                 .Include(cs => cs.Course).FirstOrDefaultAsync();
 
-            return _mapper.Map<CourseSyllabusDto>(courseSyllabuses);
+            return MapCourseSyllabusToDto(courseSyllabuses);
         }
+
         public async Task<IEnumerable<CourseCategoryDto>> GetAllCourseCategoriesAsync()
         {
             var categories = await _unitOfWork.CourseCategoryRepository
@@ -323,7 +413,7 @@ namespace Lssctc.ProgramManagement.Courses.Services
                 .OrderBy(c => c.Name)
                 .ToListAsync();
 
-            return _mapper.Map<IEnumerable<CourseCategoryDto>>(categories);
+            return categories.Select(MapCourseCategoryToDto);
         }
 
         public async Task<IEnumerable<CourseLevelDto>> GetAllCourseLevelsAsync()
@@ -333,8 +423,7 @@ namespace Lssctc.ProgramManagement.Courses.Services
                 .OrderBy(l => l.Name)
                 .ToListAsync();
 
-            return _mapper.Map<IEnumerable<CourseLevelDto>>(levels);
+            return levels.Select(MapCourseLevelToDto);
         }
-
     }
 }

@@ -1,6 +1,5 @@
 using Lssctc.ProgramManagement.Classes.Mappings;
 using Lssctc.ProgramManagement.Classes.Services;
-using Lssctc.ProgramManagement.Courses.Mappings;
 using Lssctc.ProgramManagement.Courses.Services;
 using Lssctc.ProgramManagement.LearningMaterials.Mappings;
 using Lssctc.ProgramManagement.LearningMaterials.Services;
@@ -55,7 +54,6 @@ builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepositor
 #region Application Services
 //builder.Services.AddAutoMapper(typeof(CoursesMappingProfile));
 //builder.Services.AddScoped<ICoursesService, CoursesService>();
-builder.Services.AddAutoMapper(typeof(CourseMapper));
 builder.Services.AddAutoMapper(typeof(ClassMapper));
 builder.Services.AddAutoMapper(typeof(LearningMaterialMapper).Assembly);
 builder.Services.AddAutoMapper(typeof(SectionMapper).Assembly);
