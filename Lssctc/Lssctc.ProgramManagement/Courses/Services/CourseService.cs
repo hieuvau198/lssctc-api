@@ -261,6 +261,16 @@ namespace Lssctc.ProgramManagement.Courses.Services
             if (dto.Price < 0)
                 throw new BadRequestException("Price cannot be negative.");
 
+            // validate course code uniqueness when provided
+            if (!string.IsNullOrWhiteSpace(dto.CourseCodeName))
+            {
+                var existingCode = await _unitOfWork.CourseCodeRepository
+                    .GetAllAsQueryable()
+                    .FirstOrDefaultAsync(cc => cc.Name == dto.CourseCodeName);
+                if (existingCode != null)
+                    throw new BadRequestException($"Course code '{dto.CourseCodeName}' already exists.");
+            }
+
             // ✅ create course code
             var newCourseCode = new CourseCode
             {
