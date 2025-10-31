@@ -11,7 +11,7 @@ public partial class Activity
 
     public string? ActivityDescription { get; set; }
 
-    public string? ActivityType { get; set; }
+    public int? ActivityType { get; set; }
 
     public int? EstimatedDurationMinutes { get; set; }
 

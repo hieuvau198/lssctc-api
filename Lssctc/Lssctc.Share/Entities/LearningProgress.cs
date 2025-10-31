@@ -9,9 +9,15 @@ public partial class LearningProgress
 
     public int EnrollmentId { get; set; }
 
-    public int Status { get; set; }
+    public int? Status { get; set; }
 
-    public double? ProgressPercentage { get; set; }
+    public decimal? ProgressPercentage { get; set; }
+
+    public decimal? TheoryScore { get; set; }
+
+    public decimal? PracticalScore { get; set; }
+
+    public decimal? FinalScore { get; set; }
 
     public DateTime StartDate { get; set; }
 

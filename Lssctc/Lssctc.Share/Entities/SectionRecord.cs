@@ -11,6 +11,8 @@ public partial class SectionRecord
 
     public int LearningProgressId { get; set; }
 
+    public int? SectionId { get; set; }
+
     public string? SectionName { get; set; }
 
     public bool IsCompleted { get; set; }

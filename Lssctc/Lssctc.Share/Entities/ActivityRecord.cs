@@ -9,6 +9,8 @@ public partial class ActivityRecord
 
     public int SectionRecordId { get; set; }
 
+    public int? ActivityId { get; set; }
+
     public int? Status { get; set; }
 
     public decimal? Score { get; set; }

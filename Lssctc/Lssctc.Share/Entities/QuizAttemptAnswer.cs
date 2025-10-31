@@ -9,6 +9,8 @@ public partial class QuizAttemptAnswer
 
     public int QuizAttemptQuestionId { get; set; }
 
+    public int? QuizOptionId { get; set; }
+
     public decimal? AttemptScore { get; set; }
 
     public bool IsCorrect { get; set; }

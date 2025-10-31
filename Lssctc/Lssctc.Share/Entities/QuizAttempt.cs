@@ -9,6 +9,8 @@ public partial class QuizAttempt
 
     public int ActivityRecordId { get; set; }
 
+    public int? QuizId { get; set; }
+
     public string Name { get; set; } = null!;
 
     public decimal? AttemptScore { get; set; }

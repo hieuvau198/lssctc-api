@@ -9,6 +9,8 @@ public partial class PracticeAttempt
 
     public int ActivityRecordId { get; set; }
 
+    public int? PracticeId { get; set; }
+
     public decimal? Score { get; set; }
 
     public DateTime AttemptDate { get; set; }

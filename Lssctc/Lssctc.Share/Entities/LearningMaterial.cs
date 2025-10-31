@@ -7,7 +7,7 @@ public partial class LearningMaterial
 {
     public int Id { get; set; }
 
-    public string LearningMaterialType { get; set; } = null!;
+    public int? LearningMaterialType { get; set; }
 
     public string Name { get; set; } = null!;
 

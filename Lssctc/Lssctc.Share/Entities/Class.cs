@@ -21,7 +21,7 @@ public partial class Class
 
     public string Description { get; set; } = null!;
 
-    public int Status { get; set; }
+    public int? Status { get; set; }
 
     public virtual ClassCode? ClassCode { get; set; }
 

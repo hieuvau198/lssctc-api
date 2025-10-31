@@ -11,9 +11,9 @@ public partial class PracticeTask
 
     public int TaskId { get; set; }
 
-    public int Status { get; set; }
+    public int? Status { get; set; }
 
     public virtual Practice Practice { get; set; } = null!;
 
-    public virtual Task Task { get; set; } = null!;
+    public virtual SimTask Task { get; set; } = null!;
 }

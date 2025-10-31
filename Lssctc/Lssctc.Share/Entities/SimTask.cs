@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Lssctc.Share.Entities;
 
-public partial class Task
+public partial class SimTask
 {
     public int Id { get; set; }
 

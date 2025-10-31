@@ -9,6 +9,8 @@ public partial class PracticeAttemptTask
 
     public int PracticeAttemptId { get; set; }
 
+    public int? TaskId { get; set; }
+
     public decimal? Score { get; set; }
 
     public string? Description { get; set; }

@@ -172,14 +172,14 @@ CREATE TABLE [dbo].[activities] (
     [id] INT IDENTITY(1,1) PRIMARY KEY,
     [activity_title] NVARCHAR(200) NOT NULL,
     [activity_description] NVARCHAR(1000),
-    [activity_type] NVARCHAR(100),
+    [activity_type] INT DEFAULT 1,
     [estimated_duration_minutes] INT,
     [is_deleted] BIT DEFAULT 0
 );
 
 CREATE TABLE [dbo].[learning_materials] (
     [id] INT IDENTITY(1,1) PRIMARY KEY,
-    [learning_material_type] NVARCHAR(100) NOT NULL,
+    [learning_material_type] INT DEFAULT 1,
     [name] NVARCHAR(100) NOT NULL,
     [description] NVARCHAR(1000) NOT NULL,
     [material_url] NVARCHAR(1000) NOT NULL
@@ -269,23 +269,25 @@ CREATE TABLE [dbo].[practices] (
     [is_deleted] BIT DEFAULT 0
 );
 
-CREATE TABLE [dbo].[practice_tasks] (
-    [id] INT IDENTITY(1,1) PRIMARY KEY,
-    [practice_id] INT NOT NULL,
-    [task_id] INT NOT NULL,
-    [status] INT NOT NULL DEFAULT 1,
-    FOREIGN KEY ([practice_id]) REFERENCES [dbo].[practices]([id]),
-    FOREIGN KEY ([task_id]) REFERENCES [dbo].[tasks]([id])
-
-);
-
-CREATE TABLE [dbo].[tasks] (
+CREATE TABLE [dbo].[sim_tasks] (
     [id] INT IDENTITY(1,1) PRIMARY KEY,
     [task_name] NVARCHAR(1000) NOT NULL,
     [task_description] NVARCHAR(1000),
     [expected_result] NVARCHAR(1000),
     [is_deleted] BIT DEFAULT 0,
 );
+
+CREATE TABLE [dbo].[practice_tasks] (
+    [id] INT IDENTITY(1,1) PRIMARY KEY,
+    [practice_id] INT NOT NULL,
+    [task_id] INT NOT NULL,
+    [status] INT DEFAULT 1,
+    FOREIGN KEY ([practice_id]) REFERENCES [dbo].[practices]([id]),
+    FOREIGN KEY ([task_id]) REFERENCES [dbo].[sim_tasks]([id])
+
+);
+
+
 
 CREATE TABLE [dbo].[activity_practices] (
     [id] INT IDENTITY(1,1) PRIMARY KEY,
@@ -346,7 +348,7 @@ CREATE TABLE [dbo].[classes] (
     [program_course_id] INT NOT NULL,
     [class_code_id] INT,
     [description] NVARCHAR(1000) NOT NULL,
-    [status] INT NOT NULL DEFAULT 1,
+    [status] INT DEFAULT 1,
     FOREIGN KEY ([program_course_id]) REFERENCES [dbo].[program_courses]([id]),
     FOREIGN KEY ([class_code_id]) REFERENCES [dbo].[class_codes]([id])
 );
@@ -408,8 +410,11 @@ CREATE TABLE [dbo].[trainee_certificates] (
 CREATE TABLE [dbo].[learning_progresses] (
     [id] INT IDENTITY(1,1) PRIMARY KEY,
     [enrollment_id] INT NOT NULL,
-    [status] INT NOT NULL DEFAULT 1,
-    [progress_percentage] FLOAT,
+    [status] INT DEFAULT 1,
+    [progress_percentage] DECIMAL(5, 2) DEFAULT 0,
+	[theory_score] DECIMAL(5, 2) DEFAULT 0,
+	[practical_score] DECIMAL(5, 2) DEFAULT 0,
+	[final_score] DECIMAL(5, 2) DEFAULT 0,
     [start_date] DATETIME2(0) NOT NULL DEFAULT SYSDATETIME(),
     [last_updated] DATETIME2(0),
     [name] NVARCHAR(100),
@@ -421,6 +426,7 @@ CREATE TABLE [dbo].[section_records] (
     [id] INT IDENTITY(1,1) PRIMARY KEY,
     [name] NVARCHAR(100),
     [learning_progress_id] INT NOT NULL,
+	[section_id] INT DEFAULT -1,
     [section_name] NVARCHAR(255),
     [is_completed] BIT NOT NULL DEFAULT 1,
     [is_trainee_attended] BIT NOT NULL DEFAULT 1,
@@ -431,6 +437,7 @@ CREATE TABLE [dbo].[section_records] (
 CREATE TABLE [dbo].[activity_records] (
     [id] INT IDENTITY(1,1) PRIMARY KEY,
     [section_record_id] INT NOT NULL,
+	[activity_id] INT DEFAULT -1,
     [status] INT DEFAULT 1,
     [score] DECIMAL(5,2),
     [is_completed] BIT DEFAULT 0,
@@ -446,6 +453,7 @@ CREATE TABLE [dbo].[activity_records] (
 CREATE TABLE [dbo].[practice_attempts] (
     [id] INT IDENTITY(1,1) PRIMARY KEY,
     [activity_record_id] INT NOT NULL,
+	[practice_id] INT DEFAULT -1,
     [score] DECIMAL(5,2),
     [attempt_date] DATETIME2(0) NOT NULL DEFAULT SYSDATETIME(),
     [attempt_status] INT DEFAULT 1,
@@ -458,6 +466,7 @@ CREATE TABLE [dbo].[practice_attempts] (
 CREATE TABLE [dbo].[practice_attempt_tasks] (
     [id] INT IDENTITY(1,1) PRIMARY KEY,
     [practice_attempt_id] INT NOT NULL,
+	[task_id] INT DEFAULT -1,
     [score] DECIMAL(5,2),
     [description] NVARCHAR(1000),
     [is_pass] BIT DEFAULT 0,
@@ -468,6 +477,7 @@ CREATE TABLE [dbo].[practice_attempt_tasks] (
 CREATE TABLE [dbo].[quiz_attempts] (
     [id] INT IDENTITY(1,1) PRIMARY KEY,
     [activity_record_id] INT NOT NULL,
+	[quiz_id] INT DEFAULT -1,
     [name] NVARCHAR(100) NOT NULL,
     [attempt_score] DECIMAL(5,2),
     [max_score] DECIMAL(5,2),
@@ -481,6 +491,7 @@ CREATE TABLE [dbo].[quiz_attempts] (
 CREATE TABLE [dbo].[quiz_attempt_questions] (
     [id] INT IDENTITY(1,1) PRIMARY KEY,
     [quiz_attempt_id] INT NOT NULL,
+	[question_id] INT DEFAULT -1,
     [attempt_score] DECIMAL(5,2),
     [question_score] DECIMAL(5,2),
     [is_correct] BIT NOT NULL DEFAULT 1,
@@ -493,6 +504,7 @@ CREATE TABLE [dbo].[quiz_attempt_questions] (
 CREATE TABLE [dbo].[quiz_attempt_answers] (
     [id] INT IDENTITY(1,1) PRIMARY KEY,
     [quiz_attempt_question_id] INT NOT NULL,
+	[quiz_option_id] INT DEFAULT -1, 
     [attempt_score] DECIMAL(5,2),
     [is_correct] BIT NOT NULL DEFAULT 1,
     [description] NVARCHAR(1000),
