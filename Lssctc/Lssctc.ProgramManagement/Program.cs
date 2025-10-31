@@ -1,4 +1,5 @@
 
+using Lssctc.ProgramManagement.Quizzes.Services;
 using Lssctc.Share.Contexts;
 using Lssctc.Share.Implements;
 using Lssctc.Share.Interfaces;
@@ -26,6 +27,7 @@ builder.Services.AddSwaggerGen(c =>
 #region Domain
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
+builder.Services.AddScoped<IQuizService, QuizService>();
 
 #endregion
 
