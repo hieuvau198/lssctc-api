@@ -27,11 +27,7 @@ public partial class Class
 
     public virtual ICollection<ClassInstructor> ClassInstructors { get; set; } = new List<ClassInstructor>();
 
-    public virtual ICollection<ClassMember> ClassMembers { get; set; } = new List<ClassMember>();
-
-    public virtual ICollection<ClassRegistration> ClassRegistrations { get; set; } = new List<ClassRegistration>();
+    public virtual ICollection<Enrollment> Enrollments { get; set; } = new List<Enrollment>();
 
     public virtual ProgramCourse ProgramCourse { get; set; } = null!;
-
-    public virtual ICollection<Section> Sections { get; set; } = new List<Section>();
 }

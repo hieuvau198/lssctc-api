@@ -33,7 +33,7 @@ public partial class Course
 
     public virtual CourseCode? CourseCode { get; set; }
 
-    public virtual ICollection<CourseSyllabuse> CourseSyllabuses { get; set; } = new List<CourseSyllabuse>();
+    public virtual ICollection<CourseSection> CourseSections { get; set; } = new List<CourseSection>();
 
     public virtual CourseLevel? Level { get; set; }
 

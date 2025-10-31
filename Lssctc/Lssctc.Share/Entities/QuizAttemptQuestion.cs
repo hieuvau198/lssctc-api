@@ -3,11 +3,11 @@ using System.Collections.Generic;
 
 namespace Lssctc.Share.Entities;
 
-public partial class SectionQuizAttemptQuestion
+public partial class QuizAttemptQuestion
 {
     public int Id { get; set; }
 
-    public int SectionQuizAttemptId { get; set; }
+    public int QuizAttemptId { get; set; }
 
     public decimal? AttemptScore { get; set; }
 
@@ -21,7 +21,7 @@ public partial class SectionQuizAttemptQuestion
 
     public string? Description { get; set; }
 
-    public virtual SectionQuizAttempt SectionQuizAttempt { get; set; } = null!;
+    public virtual QuizAttempt QuizAttempt { get; set; } = null!;
 
-    public virtual ICollection<SectionQuizAttemptAnswer> SectionQuizAttemptAnswers { get; set; } = new List<SectionQuizAttemptAnswer>();
+    public virtual ICollection<QuizAttemptAnswer> QuizAttemptAnswers { get; set; } = new List<QuizAttemptAnswer>();
 }

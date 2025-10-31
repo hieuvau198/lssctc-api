@@ -7,7 +7,7 @@ public partial class LearningMaterial
 {
     public int Id { get; set; }
 
-    public int LearningMaterialTypeId { get; set; }
+    public string LearningMaterialType { get; set; } = null!;
 
     public string Name { get; set; } = null!;
 
@@ -15,7 +15,5 @@ public partial class LearningMaterial
 
     public string MaterialUrl { get; set; } = null!;
 
-    public virtual LearningMaterialType LearningMaterialType { get; set; } = null!;
-
-    public virtual ICollection<SectionMaterial> SectionMaterials { get; set; } = new List<SectionMaterial>();
+    public virtual ICollection<ActivityMaterial> ActivityMaterials { get; set; } = new List<ActivityMaterial>();
 }

@@ -11,6 +11,8 @@ public partial class QuizQuestionOption
 
     public string? Description { get; set; }
 
+    public string? Explanation { get; set; }
+
     public bool IsCorrect { get; set; }
 
     public int? DisplayOrder { get; set; }
@@ -18,8 +20,6 @@ public partial class QuizQuestionOption
     public decimal? OptionScore { get; set; }
 
     public string Name { get; set; } = null!;
-
-    public string? Explanation { get; set; }
 
     public virtual QuizQuestion QuizQuestion { get; set; } = null!;
 }

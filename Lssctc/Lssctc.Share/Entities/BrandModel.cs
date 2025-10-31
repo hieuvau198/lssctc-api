@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Lssctc.Share.Entities;
 
-public partial class SimAction
+public partial class BrandModel
 {
     public int Id { get; set; }
 
@@ -11,11 +11,13 @@ public partial class SimAction
 
     public string? Description { get; set; }
 
-    public string? ActionKey { get; set; }
+    public string? Manufacturer { get; set; }
+
+    public string? CountryOfOrigin { get; set; }
 
     public bool? IsActive { get; set; }
 
     public bool? IsDeleted { get; set; }
 
-    public virtual ICollection<PracticeStepAction> PracticeStepActions { get; set; } = new List<PracticeStepAction>();
+    public virtual ICollection<SimulationComponent> SimulationComponents { get; set; } = new List<SimulationComponent>();
 }

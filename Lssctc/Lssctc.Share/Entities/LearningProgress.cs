@@ -3,11 +3,11 @@ using System.Collections.Generic;
 
 namespace Lssctc.Share.Entities;
 
-public partial class TrainingProgress
+public partial class LearningProgress
 {
     public int Id { get; set; }
 
-    public int CourseMemberId { get; set; }
+    public int EnrollmentId { get; set; }
 
     public int Status { get; set; }
 
@@ -21,9 +21,7 @@ public partial class TrainingProgress
 
     public string? Description { get; set; }
 
-    public virtual ClassMember CourseMember { get; set; } = null!;
+    public virtual Enrollment Enrollment { get; set; } = null!;
 
-    public virtual ICollection<LearningRecord> LearningRecords { get; set; } = new List<LearningRecord>();
-
-    public virtual ICollection<TrainingResult> TrainingResults { get; set; } = new List<TrainingResult>();
+    public virtual ICollection<SectionRecord> SectionRecords { get; set; } = new List<SectionRecord>();
 }

@@ -11,13 +11,9 @@ public partial class Certificate
 
     public string? Description { get; set; }
 
-    public int? EffectiveTime { get; set; }
+    public string? TemplateUrl { get; set; }
 
-    public string? Requirement { get; set; }
-
-    public string? CertifyingAuthority { get; set; }
-
-    public string? ImageUrl { get; set; }
+    public bool? IsActive { get; set; }
 
     public virtual ICollection<CourseCertificate> CourseCertificates { get; set; } = new List<CourseCertificate>();
 }

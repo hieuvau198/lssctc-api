@@ -7,6 +7,8 @@ public partial class SimulationComponent
 {
     public int Id { get; set; }
 
+    public int BrandModelId { get; set; }
+
     public string Name { get; set; } = null!;
 
     public string? Description { get; set; }
@@ -19,5 +21,5 @@ public partial class SimulationComponent
 
     public bool? IsDeleted { get; set; }
 
-    public virtual ICollection<PracticeStepComponent> PracticeStepComponents { get; set; } = new List<PracticeStepComponent>();
+    public virtual BrandModel BrandModel { get; set; } = null!;
 }

@@ -3,11 +3,11 @@ using System.Collections.Generic;
 
 namespace Lssctc.Share.Entities;
 
-public partial class SectionMaterial
+public partial class ActivityMaterial
 {
     public int Id { get; set; }
 
-    public int SectionPartitionId { get; set; }
+    public int ActivityId { get; set; }
 
     public int LearningMaterialId { get; set; }
 
@@ -15,7 +15,7 @@ public partial class SectionMaterial
 
     public string Description { get; set; } = null!;
 
-    public virtual LearningMaterial LearningMaterial { get; set; } = null!;
+    public virtual Activity Activity { get; set; } = null!;
 
-    public virtual SectionPartition SectionPartition { get; set; } = null!;
+    public virtual LearningMaterial LearningMaterial { get; set; } = null!;
 }

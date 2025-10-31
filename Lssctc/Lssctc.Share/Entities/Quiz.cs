@@ -21,7 +21,7 @@ public partial class Quiz
 
     public string? Description { get; set; }
 
-    public virtual ICollection<QuizQuestion> QuizQuestions { get; set; } = new List<QuizQuestion>();
+    public virtual ICollection<ActivityQuiz> ActivityQuizzes { get; set; } = new List<ActivityQuiz>();
 
-    public virtual ICollection<SectionQuiz> SectionQuizzes { get; set; } = new List<SectionQuiz>();
+    public virtual ICollection<QuizQuestion> QuizQuestions { get; set; } = new List<QuizQuestion>();
 }

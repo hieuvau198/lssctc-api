@@ -29,8 +29,6 @@ public partial class User
 
     public virtual Instructor? Instructor { get; set; }
 
-    public virtual ProgramManager? ProgramManager { get; set; }
-
     public virtual SimulationManager? SimulationManager { get; set; }
 
     public virtual Trainee? Trainee { get; set; }

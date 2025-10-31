@@ -7,23 +7,15 @@ public partial class TraineeCertificate
 {
     public int Id { get; set; }
 
-    public string Name { get; set; } = null!;
+    public int EnrollmentId { get; set; }
 
-    public string? Description { get; set; }
+    public int CourseCertificateId { get; set; }
 
-    public int? CourseCertificateId { get; set; }
+    public DateTime? IssuedDate { get; set; }
 
-    public DateTime? ValidDateEnd { get; set; }
+    public string? CertificateCode { get; set; }
 
-    public int? TraineeId { get; set; }
+    public virtual CourseCertificate CourseCertificate { get; set; } = null!;
 
-    public DateTime IssuedDateStart { get; set; }
-
-    public DateTime? IssuedDateEnd { get; set; }
-
-    public int Status { get; set; }
-
-    public virtual CourseCertificate? CourseCertificate { get; set; }
-
-    public virtual Trainee? Trainee { get; set; }
+    public virtual Enrollment Enrollment { get; set; } = null!;
 }
