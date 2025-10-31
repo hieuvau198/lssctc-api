@@ -1,10 +1,11 @@
-﻿namespace Lssctc.LearningManagement.Quizzes.DTOs
+﻿using Lssctc.LearningManagement.QuizQuestionOptions.DTOs;
+
+namespace Lssctc.LearningManagement.Quizzes.DTOs
 {
     public class CreateQuizQuestionWithOptionsDto
     {
         // Question
         public string Name { get; set; } = null!;
-        public decimal? QuestionScore { get; set; }
         public string? Description { get; set; }
         public bool IsMultipleAnswers { get; set; }
 

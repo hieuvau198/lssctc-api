@@ -1,39 +1,25 @@
 ﻿using Lssctc.LearningManagement.Quizzes.DTOs;
+using Lssctc.ProgramManagement.QuizQuestionOptions.DTOs;
 using Lssctc.Share.Common;
 
 namespace Lssctc.LearningManagement.Quizzes.Services
 {
     public interface IQuizService
     {
-     
+        #region Gets
         Task<QuizDto?> GetQuizById(int id);
+        Task<PagedResult<QuizOnlyDto>> GetQuizzes(int pageIndex, int pageSize, CancellationToken ct = default);
+        Task<PagedResult<QuizDetailDto>> GetDetailQuizzes(int pageIndex, int pageSize, CancellationToken ct = default);
+        Task<QuizDetailDto?> GetQuizDetail(int quizId, CancellationToken ct = default);
+        Task<QuizTraineeDetailDto?> GetQuizDetailForTrainee(int quizId, CancellationToken ct = default);
+        Task<QuizTraineeDetailDto?> GetQuizTraineeDetailBySectionQuizIdAsync(int sectionQuizId, CancellationToken ct = default);
+        #endregion
+
+        #region Manage
         Task<int> CreateQuiz(CreateQuizDto dto);
         Task<bool> UpdateQuizById(int id, UpdateQuizDto dto);
         Task<bool> DeleteQuizById(int id);
-
-        Task<PagedResult<QuizQuestionNoOptionsDto>> GetQuestionsByQuizIdPaged(int quizId, int page, int pageSize);
-        Task<QuizTraineeDetailDto?> GetQuizDetailForTrainee(
-    int quizId, CancellationToken ct = default);
-
-        Task<int> CreateQuestionByQuizId(int quizId, CreateQuizQuestionDto dto);
-        
-        Task<int> CreateOption(int questionId, CreateQuizQuestionOptionDto dto);
-        
-        Task<IReadOnlyList<QuizDetailQuestionOptionDto>> GetOptionsByQuestionId(
-        int questionId, CancellationToken ct = default);
-        Task<QuizQuestionOptionDto?> GetOptionById(int optionId);
-
-        //get all quizzes paged
-        Task<PagedResult<QuizDto>> GetAllQuizzesPaged(int page, int pageSize);
-
-        // get quizzes by Section Quiz id
-        Task<QuizTraineeDetailDto?> GetQuizTraineeDetailBySectionQuizIdAsync(
-     int sectionQuizId, CancellationToken ct = default);
-
-        //create question and option question by quiz id
-        Task<int> CreateQuestionWithOptionsByQuizId(
-    int quizId, CreateQuizQuestionWithOptionsDto dto);
-
-
+        Task<int> CreateQuestionWithOptionsByQuizId(int quizId, CreateQuizQuestionWithOptionsDto dto);
+        #endregion
     }
 }
