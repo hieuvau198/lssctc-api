@@ -1,0 +1,18 @@
+﻿using Lssctc.LearningManagement.SectionMaterials.DTOs;
+using Lssctc.Share.Common;
+
+namespace Lssctc.LearningManagement.SectionMaterials.Services
+{
+    public interface ISectionMaterialService
+    {
+        // get all without pagination
+
+        Task<PagedResult<SectionMaterialDto>> GetSectionMaterialsPaged(int pageIndex, int pageSize);
+        Task<IReadOnlyList<SectionMaterialDto>> GetAllSectionMaterialsAsync();
+        Task<SectionMaterialDto?> GetSectionMateriaById(int id);
+        Task<int> CreateSectionMateria(CreateSectionMaterialDto dto);
+        Task<bool> UpdateSectionMateria(int id, UpdateSectionMaterialDto dto);
+        Task<bool> DeleteSectionMateria(int id);
+        Task<SectionMaterialDto> UpsertSectionMaterial(UpsertSectionMaterialDto dto);
+    }
+}

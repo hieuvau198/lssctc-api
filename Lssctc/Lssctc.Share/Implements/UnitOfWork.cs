@@ -8,67 +8,49 @@ namespace Lssctc.Share.Implements
     {
         private readonly LssctcDbContext _context;
 
+        private IGenericRepository<Activity>? _activityRepository;
+        private IGenericRepository<ActivityMaterial>? _activityMaterialRepository;
+        private IGenericRepository<ActivityPractice>? _activityPracticeRepository;
+        private IGenericRepository<ActivityQuiz>? _activityQuizRepository;
+        private IGenericRepository<ActivityRecord>? _activityRecordRepository;
         private IGenericRepository<Admin>? _adminRepository;
+        private IGenericRepository<BrandModel>? _brandModelRepository;
         private IGenericRepository<Certificate>? _certificateRepository;
         private IGenericRepository<Class>? _classRepository;
         private IGenericRepository<ClassCode>? _classCodeRepository;
-        private IGenericRepository<ClassRegistration>? _classRegisRepository;
         private IGenericRepository<ClassInstructor>? _classInstructorRepository;
-        private IGenericRepository<ClassMember>? _classMemberRepository;
         private IGenericRepository<Course>? _courseRepository;
         private IGenericRepository<CourseCategory>? _courseCategoryRepository;
         private IGenericRepository<CourseCertificate>? _courseCertificateRepository;
         private IGenericRepository<CourseCode>? _courseCodeRepository;
         private IGenericRepository<CourseLevel>? _courseLevelRepository;
-        private IGenericRepository<CourseSyllabuse>? _courseSyllabuseRepository;
+        private IGenericRepository<CourseSection>? _courseSectionRepository;
+        private IGenericRepository<Enrollment>? _enrollmentRepository;
         private IGenericRepository<Instructor>? _instructorRepository;
         private IGenericRepository<InstructorProfile>? _instructorProfileRepository;
         private IGenericRepository<LearningMaterial>? _learningMaterialRepository;
-        private IGenericRepository<LearningMaterialType>? _learningMaterialTypeRepository;
-        private IGenericRepository<LearningRecord>? _learningRecordRepository;
-        private IGenericRepository<LearningRecordPartition>? _learningRecordPartitionRepository;
-        private IGenericRepository<Payment>? _paymentRepository;
-        private IGenericRepository<PaymentTransaction>? _paymentTransactionRepository;
+        private IGenericRepository<LearningProgress>? _learningProgressRepository;
         private IGenericRepository<Practice>? _practiceRepository;
-        private IGenericRepository<PracticeStep>? _practiceStepRepository;
-        private IGenericRepository<PracticeStepComponent>? _practiceStepComponentRepository;
-        private IGenericRepository<PracticeStepAction>? _practiceStepActionRepository;
-        private IGenericRepository<PracticeStepWarning>? _practiceStepWarningRepository;
-        private IGenericRepository<PracticeStepWarningType>? _practiceStepWarningTypeRepository;
+        private IGenericRepository<PracticeAttempt>? _practiceAttemptRepository;
+        private IGenericRepository<PracticeAttemptTask>? _practiceAttemptTaskRepository;
+        private IGenericRepository<PracticeTask>? _practiceTaskRepository;
         private IGenericRepository<ProgramCourse>? _programCourseRepository;
-        private IGenericRepository<ProgramEntryRequirement>? _programEntryRequirementRepository;
-        private IGenericRepository<ProgramManager>? _programManagerRepository;
         private IGenericRepository<Quiz>? _quizRepository;
+        private IGenericRepository<QuizAttempt>? _quizAttemptRepository;
+        private IGenericRepository<QuizAttemptAnswer>? _quizAttemptAnswerRepository;
+        private IGenericRepository<QuizAttemptQuestion>? _quizAttemptQuestionRepository;
         private IGenericRepository<QuizQuestion>? _quizQuestionRepository;
         private IGenericRepository<QuizQuestionOption>? _quizQuestionOptionRepository;
         private IGenericRepository<Section>? _sectionRepository;
-        private IGenericRepository<SectionMaterial>? _sectionMaterialRepository;
-        private IGenericRepository<SectionPartition>? _sectionPartitionRepository;
-        private IGenericRepository<SectionPartitionType>? _sectionPartitionTypeRepository;
-        private IGenericRepository<SectionPractice>? _sectionPracticeRepository;
-        private IGenericRepository<SectionPracticeAttempt>? _sectionPracticeAttemptRepository;
-        private IGenericRepository<SectionPracticeAttemptStep>? _sectionPracticeAttemptStepRepository;
-        private IGenericRepository<SectionPracticeTimeslot>? _sectionPracticeTimeslotRepository;
-        private IGenericRepository<SectionQuiz>? _sectionQuizRepository;
-        private IGenericRepository<SectionQuizAttempt>? _sectionQuizAttemptRepository;
-        private IGenericRepository<SectionQuizAttemptAnswer>? _sectionQuizAttemptAnswerRepository;
-        private IGenericRepository<SectionQuizAttemptQuestion>? _sectionQuizAttemptQuestionRepository;
+        private IGenericRepository<SectionActivity>? _sectionActivityRepository;
+        private IGenericRepository<SectionRecord>? _sectionRecordRepository;
+        private IGenericRepository<SimTask>? _simTaskRepository;
         private IGenericRepository<SimulationComponent>? _simulationComponentRepository;
-        private IGenericRepository<SimAction>? _simActionRepository;
         private IGenericRepository<SimulationManager>? _simulationManagerRepository;
-        private IGenericRepository<SimulationSetting>? _simulationSettingRepository;
-        private IGenericRepository<SimulationTimeslot>? _simulationTimeslotRepository;
-        private IGenericRepository<SyllabusSection>? _syllabusSectionRepository;
-        private IGenericRepository<Syllabuse>? _syllabuseRepository;
         private IGenericRepository<Trainee>? _traineeRepository;
         private IGenericRepository<TraineeCertificate>? _traineeCertificateRepository;
         private IGenericRepository<TraineeProfile>? _traineeProfileRepository;
         private IGenericRepository<TrainingProgram>? _programRepository;
-        private IGenericRepository<TrainingProgress>? _trainingProgressRepository;
-        private IGenericRepository<TrainingResult>? _trainingResultRepository;
-        private IGenericRepository<TrainingResultType>? _trainingResultTypeRepository;
-        private IGenericRepository<Transaction>? _transactionRepository;
-        private IGenericRepository<TransactionProgram>? _transactionProgramRepository;
         private IGenericRepository<User>? _userRepository;
 
         public UnitOfWork(LssctcDbContext context)
@@ -76,8 +58,26 @@ namespace Lssctc.Share.Implements
             _context = context;
         }
 
+        public IGenericRepository<Activity> ActivityRepository =>
+            _activityRepository ??= new GenericRepository<Activity>(_context);
+
+        public IGenericRepository<ActivityMaterial> ActivityMaterialRepository =>
+            _activityMaterialRepository ??= new GenericRepository<ActivityMaterial>(_context);
+
+        public IGenericRepository<ActivityPractice> ActivityPracticeRepository =>
+            _activityPracticeRepository ??= new GenericRepository<ActivityPractice>(_context);
+
+        public IGenericRepository<ActivityQuiz> ActivityQuizRepository =>
+            _activityQuizRepository ??= new GenericRepository<ActivityQuiz>(_context);
+
+        public IGenericRepository<ActivityRecord> ActivityRecordRepository =>
+            _activityRecordRepository ??= new GenericRepository<ActivityRecord>(_context);
+
         public IGenericRepository<Admin> AdminRepository =>
             _adminRepository ??= new GenericRepository<Admin>(_context);
+
+        public IGenericRepository<BrandModel> BrandModelRepository =>
+            _brandModelRepository ??= new GenericRepository<BrandModel>(_context);
 
         public IGenericRepository<Certificate> CertificateRepository =>
             _certificateRepository ??= new GenericRepository<Certificate>(_context);
@@ -88,14 +88,8 @@ namespace Lssctc.Share.Implements
         public IGenericRepository<ClassCode> ClassCodeRepository =>
             _classCodeRepository ??= new GenericRepository<ClassCode>(_context);
 
-        public IGenericRepository<ClassRegistration> ClassRegisRepository =>
-            _classRegisRepository ??= new GenericRepository<ClassRegistration>(_context);
-
         public IGenericRepository<ClassInstructor> ClassInstructorRepository =>
             _classInstructorRepository ??= new GenericRepository<ClassInstructor>(_context);
-
-        public IGenericRepository<ClassMember> ClassMemberRepository =>
-            _classMemberRepository ??= new GenericRepository<ClassMember>(_context);
 
         public IGenericRepository<Course> CourseRepository =>
             _courseRepository ??= new GenericRepository<Course>(_context);
@@ -112,8 +106,11 @@ namespace Lssctc.Share.Implements
         public IGenericRepository<CourseLevel> CourseLevelRepository =>
             _courseLevelRepository ??= new GenericRepository<CourseLevel>(_context);
 
-        public IGenericRepository<CourseSyllabuse> CourseSyllabuseRepository =>
-            _courseSyllabuseRepository ??= new GenericRepository<CourseSyllabuse>(_context);
+        public IGenericRepository<CourseSection> CourseSectionRepository =>
+            _courseSectionRepository ??= new GenericRepository<CourseSection>(_context);
+
+        public IGenericRepository<Enrollment> EnrollmentRepository =>
+            _enrollmentRepository ??= new GenericRepository<Enrollment>(_context);
 
         public IGenericRepository<Instructor> InstructorRepository =>
             _instructorRepository ??= new GenericRepository<Instructor>(_context);
@@ -124,50 +121,35 @@ namespace Lssctc.Share.Implements
         public IGenericRepository<LearningMaterial> LearningMaterialRepository =>
             _learningMaterialRepository ??= new GenericRepository<LearningMaterial>(_context);
 
-        public IGenericRepository<LearningMaterialType> LearningMaterialTypeRepository =>
-            _learningMaterialTypeRepository ??= new GenericRepository<LearningMaterialType>(_context);
-
-        public IGenericRepository<LearningRecord> LearningRecordRepository =>
-            _learningRecordRepository ??= new GenericRepository<LearningRecord>(_context);
-
-        public IGenericRepository<LearningRecordPartition> LearningRecordPartitionRepository =>
-            _learningRecordPartitionRepository ??= new GenericRepository<LearningRecordPartition>(_context);
-
-        public IGenericRepository<Payment> PaymentRepository =>
-            _paymentRepository ??= new GenericRepository<Payment>(_context);
-
-        public IGenericRepository<PaymentTransaction> PaymentTransactionRepository =>
-            _paymentTransactionRepository ??= new GenericRepository<PaymentTransaction>(_context);
+        public IGenericRepository<LearningProgress> LearningProgressRepository =>
+            _learningProgressRepository ??= new GenericRepository<LearningProgress>(_context);
 
         public IGenericRepository<Practice> PracticeRepository =>
             _practiceRepository ??= new GenericRepository<Practice>(_context);
 
-        public IGenericRepository<PracticeStep> PracticeStepRepository =>
-            _practiceStepRepository ??= new GenericRepository<PracticeStep>(_context);
+        public IGenericRepository<PracticeAttempt> PracticeAttemptRepository =>
+            _practiceAttemptRepository ??= new GenericRepository<PracticeAttempt>(_context);
 
-        public IGenericRepository<PracticeStepComponent> PracticeStepComponentRepository =>
-            _practiceStepComponentRepository ??= new GenericRepository<PracticeStepComponent>(_context);
+        public IGenericRepository<PracticeAttemptTask> PracticeAttemptTaskRepository =>
+            _practiceAttemptTaskRepository ??= new GenericRepository<PracticeAttemptTask>(_context);
 
-        public IGenericRepository<PracticeStepAction> PracticeStepActionRepository =>
-            _practiceStepActionRepository ??= new GenericRepository<PracticeStepAction>(_context);
-
-        public IGenericRepository<PracticeStepWarning> PracticeStepWarningRepository =>
-            _practiceStepWarningRepository ??= new GenericRepository<PracticeStepWarning>(_context);
-
-        public IGenericRepository<PracticeStepWarningType> PracticeStepWarningTypeRepository =>
-            _practiceStepWarningTypeRepository ??= new GenericRepository<PracticeStepWarningType>(_context);
+        public IGenericRepository<PracticeTask> PracticeTaskRepository =>
+            _practiceTaskRepository ??= new GenericRepository<PracticeTask>(_context);
 
         public IGenericRepository<ProgramCourse> ProgramCourseRepository =>
             _programCourseRepository ??= new GenericRepository<ProgramCourse>(_context);
 
-        public IGenericRepository<ProgramEntryRequirement> ProgramEntryRequirementRepository =>
-            _programEntryRequirementRepository ??= new GenericRepository<ProgramEntryRequirement>(_context);
-
-        public IGenericRepository<ProgramManager> ProgramManagerRepository =>
-            _programManagerRepository ??= new GenericRepository<ProgramManager>(_context);
-
         public IGenericRepository<Quiz> QuizRepository =>
             _quizRepository ??= new GenericRepository<Quiz>(_context);
+
+        public IGenericRepository<QuizAttempt> QuizAttemptRepository =>
+            _quizAttemptRepository ??= new GenericRepository<QuizAttempt>(_context);
+
+        public IGenericRepository<QuizAttemptAnswer> QuizAttemptAnswerRepository =>
+            _quizAttemptAnswerRepository ??= new GenericRepository<QuizAttemptAnswer>(_context);
+
+        public IGenericRepository<QuizAttemptQuestion> QuizAttemptQuestionRepository =>
+            _quizAttemptQuestionRepository ??= new GenericRepository<QuizAttemptQuestion>(_context);
 
         public IGenericRepository<QuizQuestion> QuizQuestionRepository =>
             _quizQuestionRepository ??= new GenericRepository<QuizQuestion>(_context);
@@ -178,59 +160,20 @@ namespace Lssctc.Share.Implements
         public IGenericRepository<Section> SectionRepository =>
             _sectionRepository ??= new GenericRepository<Section>(_context);
 
-        public IGenericRepository<SectionMaterial> SectionMaterialRepository =>
-            _sectionMaterialRepository ??= new GenericRepository<SectionMaterial>(_context);
+        public IGenericRepository<SectionActivity> SectionActivityRepository =>
+            _sectionActivityRepository ??= new GenericRepository<SectionActivity>(_context);
 
-        public IGenericRepository<SectionPartition> SectionPartitionRepository =>
-            _sectionPartitionRepository ??= new GenericRepository<SectionPartition>(_context);
+        public IGenericRepository<SectionRecord> SectionRecordRepository =>
+            _sectionRecordRepository ??= new GenericRepository<SectionRecord>(_context);
 
-        public IGenericRepository<SectionPartitionType> SectionPartitionTypeRepository =>
-            _sectionPartitionTypeRepository ??= new GenericRepository<SectionPartitionType>(_context);
-
-        public IGenericRepository<SectionPractice> SectionPracticeRepository =>
-            _sectionPracticeRepository ??= new GenericRepository<SectionPractice>(_context);
-
-        public IGenericRepository<SectionPracticeAttempt> SectionPracticeAttemptRepository =>
-            _sectionPracticeAttemptRepository ??= new GenericRepository<SectionPracticeAttempt>(_context);
-
-        public IGenericRepository<SectionPracticeAttemptStep> SectionPracticeAttemptStepRepository =>
-            _sectionPracticeAttemptStepRepository ??= new GenericRepository<SectionPracticeAttemptStep>(_context);
-
-        public IGenericRepository<SectionPracticeTimeslot> SectionPracticeTimeslotRepository =>
-            _sectionPracticeTimeslotRepository ??= new GenericRepository<SectionPracticeTimeslot>(_context);
-
-        public IGenericRepository<SectionQuiz> SectionQuizRepository =>
-            _sectionQuizRepository ??= new GenericRepository<SectionQuiz>(_context);
-
-        public IGenericRepository<SectionQuizAttempt> SectionQuizAttemptRepository =>
-            _sectionQuizAttemptRepository ??= new GenericRepository<SectionQuizAttempt>(_context);
-
-        public IGenericRepository<SectionQuizAttemptAnswer> SectionQuizAttemptAnswerRepository =>
-            _sectionQuizAttemptAnswerRepository ??= new GenericRepository<SectionQuizAttemptAnswer>(_context);
-
-        public IGenericRepository<SectionQuizAttemptQuestion> SectionQuizAttemptQuestionRepository =>
-            _sectionQuizAttemptQuestionRepository ??= new GenericRepository<SectionQuizAttemptQuestion>(_context);
+        public IGenericRepository<SimTask> SimTaskRepository =>
+            _simTaskRepository ??= new GenericRepository<SimTask>(_context);
 
         public IGenericRepository<SimulationComponent> SimulationComponentRepository =>
             _simulationComponentRepository ??= new GenericRepository<SimulationComponent>(_context);
 
-        public IGenericRepository<SimAction> SimActionRepository =>
-            _simActionRepository ??= new GenericRepository<SimAction>(_context);
-
         public IGenericRepository<SimulationManager> SimulationManagerRepository =>
             _simulationManagerRepository ??= new GenericRepository<SimulationManager>(_context);
-
-        public IGenericRepository<SimulationSetting> SimulationSettingRepository =>
-            _simulationSettingRepository ??= new GenericRepository<SimulationSetting>(_context);
-
-        public IGenericRepository<SimulationTimeslot> SimulationTimeslotRepository =>
-            _simulationTimeslotRepository ??= new GenericRepository<SimulationTimeslot>(_context);
-
-        public IGenericRepository<SyllabusSection> SyllabusSectionRepository =>
-            _syllabusSectionRepository ??= new GenericRepository<SyllabusSection>(_context);
-
-        public IGenericRepository<Syllabuse> SyllabuseRepository =>
-            _syllabuseRepository ??= new GenericRepository<Syllabuse>(_context);
 
         public IGenericRepository<Trainee> TraineeRepository =>
             _traineeRepository ??= new GenericRepository<Trainee>(_context);
@@ -243,21 +186,6 @@ namespace Lssctc.Share.Implements
 
         public IGenericRepository<TrainingProgram> ProgramRepository =>
             _programRepository ??= new GenericRepository<TrainingProgram>(_context);
-
-        public IGenericRepository<TrainingProgress> TrainingProgressRepository =>
-            _trainingProgressRepository ??= new GenericRepository<TrainingProgress>(_context);
-
-        public IGenericRepository<TrainingResult> TrainingResultRepository =>
-            _trainingResultRepository ??= new GenericRepository<TrainingResult>(_context);
-
-        public IGenericRepository<TrainingResultType> TrainingResultTypeRepository =>
-            _trainingResultTypeRepository ??= new GenericRepository<TrainingResultType>(_context);
-
-        public IGenericRepository<Transaction> TransactionRepository =>
-            _transactionRepository ??= new GenericRepository<Transaction>(_context);
-
-        public IGenericRepository<TransactionProgram> TransactionProgramRepository =>
-            _transactionProgramRepository ??= new GenericRepository<TransactionProgram>(_context);
 
         public IGenericRepository<User> UserRepository =>
             _userRepository ??= new GenericRepository<User>(_context);

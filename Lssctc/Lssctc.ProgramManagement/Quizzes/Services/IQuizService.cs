@@ -1,5 +1,4 @@
-﻿using Lssctc.ProgramManagement.QuizQuestionOptions.DTOs;
-using Lssctc.ProgramManagement.Quizzes.DTOs;
+﻿using Lssctc.ProgramManagement.Quizzes.DTOs;
 using Lssctc.Share.Common;
 
 namespace Lssctc.ProgramManagement.Quizzes.Services

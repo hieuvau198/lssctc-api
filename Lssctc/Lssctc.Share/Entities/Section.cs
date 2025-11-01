@@ -7,29 +7,17 @@ public partial class Section
 {
     public int Id { get; set; }
 
-    public string Name { get; set; } = null!;
+    public string SectionTitle { get; set; } = null!;
 
-    public string? Description { get; set; }
+    public string? SectionDescription { get; set; }
 
-    public int ClassesId { get; set; }
+    public int SectionOrder { get; set; }
 
-    public int SyllabusSectionId { get; set; }
+    public int? EstimatedDurationMinutes { get; set; }
 
-    public int? DurationMinutes { get; set; }
+    public bool? IsDeleted { get; set; }
 
-    public int Order { get; set; }
+    public virtual ICollection<CourseSection> CourseSections { get; set; } = new List<CourseSection>();
 
-    public DateTime StartDate { get; set; }
-
-    public DateTime? EndDate { get; set; }
-
-    public int Status { get; set; }
-
-    public virtual Class Classes { get; set; } = null!;
-
-    public virtual ICollection<LearningRecord> LearningRecords { get; set; } = new List<LearningRecord>();
-
-    public virtual ICollection<SectionPartition> SectionPartitions { get; set; } = new List<SectionPartition>();
-
-    public virtual SyllabusSection SyllabusSection { get; set; } = null!;
+    public virtual ICollection<SectionActivity> SectionActivities { get; set; } = new List<SectionActivity>();
 }

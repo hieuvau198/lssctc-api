@@ -1,323 +1,59 @@
-using Lssctc.ProgramManagement.QuizQuestionOptions.DTOs;
-using Lssctc.ProgramManagement.QuizQuestions.DTOs;
-using Lssctc.ProgramManagement.Quizzes.DTOs;
+﻿using Lssctc.ProgramManagement.Quizzes.DTOs;
 using Lssctc.Share.Common;
 using Lssctc.Share.Entities;
 using Lssctc.Share.Interfaces;
-using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
+using System.Linq;
+using System.Threading;
 
 namespace Lssctc.ProgramManagement.Quizzes.Services
 {
     public class QuizService : IQuizService
     {
         private readonly IUnitOfWork _uow;
-
         public QuizService(IUnitOfWork uow)
         {
             _uow = uow;
         }
 
-        #region Mapping Helper Methods
-
-        private static QuizDto MapToQuizDto(Quiz entity)
+        public async Task<int> CreateQuiz(CreateQuizDto dto)
         {
-            return new QuizDto
-            {
-                Id = entity.Id,
-                Name = entity.Name,
-                PassScoreCriteria = entity.PassScoreCriteria,
-                TimelimitMinute = entity.TimelimitMinute,
-                TotalScore = entity.TotalScore,
-                Description = entity.Description,
-                CreatedAt = entity.CreatedAt,
-                UpdatedAt = entity.UpdatedAt,
-                Questions = entity.QuizQuestions?.OrderBy(q => q.Id)
-                    .Select(MapToQuizQuestionDto).ToList() ?? new List<QuizQuestionDto>()
-            };
-        }
+            if (dto == null) throw new ValidationException("Body is required.");
 
-        private static QuizQuestionDto MapToQuizQuestionDto(QuizQuestion entity)
-        {
-            return new QuizQuestionDto
-            {
-                Id = entity.Id,
-                QuizId = entity.QuizId,
-                Name = entity.Name,
-                QuestionScore = entity.QuestionScore,
-                Description = entity.Description,
-                IsMultipleAnswers = entity.IsMultipleAnswers,
-                Options = entity.QuizQuestionOptions?.OrderBy(o => o.DisplayOrder)
-                    .Select(MapToQuizQuestionOptionDto).ToList() ?? new List<QuizQuestionOptionDto>()
-            };
-        }
+            var rawName = (dto.Name ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(rawName))
+                throw new ValidationException("Name is required.");
 
-        private static QuizQuestionOptionDto MapToQuizQuestionOptionDto(QuizQuestionOption entity)
-        {
-            return new QuizQuestionOptionDto
-            {
-                Id = entity.Id,
-                QuizQuestionId = entity.QuizQuestionId,
-                Name = entity.Name,
-                Description = entity.Description,
-                IsCorrect = entity.IsCorrect,
-                DisplayOrder = entity.DisplayOrder,
-                OptionScore = entity.OptionScore,
-                Explanation = entity.Explanation
-            };
-        }
+            if (rawName.Length > 100)
+                throw new ValidationException("Name must be at most 100 characters.");
 
-        private static QuizOnlyDto MapToQuizSummaryDto(Quiz entity)
-        {
-            return new QuizOnlyDto
-            {
-                Id = entity.Id,
-                Name = entity.Name,
-                PassScoreCriteria = entity.PassScoreCriteria,
-                TimelimitMinute = entity.TimelimitMinute,
-                TotalScore = entity.TotalScore,
-                Description = entity.Description,
-               
-            };
-        }
+            // Normalize whitespace
+            var normalizedName = string.Join(' ', rawName.Split(' ', StringSplitOptions.RemoveEmptyEntries));
 
-        private static QuizQuestionNoOptionsDto MapToQuizQuestionNoOptionsDto(QuizQuestion entity)
-        {
-            return new QuizQuestionNoOptionsDto
-            {
-                Id = entity.Id,
-                QuizId = entity.QuizId,
-                Name = entity.Name,
-                QuestionScore = entity.QuestionScore,
-                Description = entity.Description,
-                IsMultipleAnswers = entity.IsMultipleAnswers
-            };
-        }
+            // TotalScore fixed to 10 (BR-37)
+            var totalScore = 10m;
 
-        private static QuizDetailDto MapToQuizDetailDto(Quiz entity)
-        {
-            return new QuizDetailDto
+            // Validate PassScoreCriteria: must be >0 and <= totalScore
+            if (dto.PassScoreCriteria.HasValue)
             {
-                Id = entity.Id,
-                Name = entity.Name,
-                PassScoreCriteria = entity.PassScoreCriteria,
-                TimelimitMinute = entity.TimelimitMinute,
-                TotalScore = entity.TotalScore,
-                Description = entity.Description,
-                Questions = entity.QuizQuestions?.OrderBy(q => q.Id)
-                    .Select(MapToQuizDetailQuestionDto).ToList() ?? new List<QuizDetailQuestionDto>()
-            };
-        }
+                var pass = Math.Round(dto.PassScoreCriteria.Value, 2, MidpointRounding.AwayFromZero);
+                if (pass <= 0m || pass > totalScore)
+                    throw new ValidationException($"PassScoreCriteria must be greater than 0 and less than or equal to {totalScore}.");
+            }
 
-        private static QuizDetailQuestionDto MapToQuizDetailQuestionDto(QuizQuestion entity)
-        {
-            return new QuizDetailQuestionDto
+            // Create quiz
+            var entity = new Quiz
             {
-                Id = entity.Id,
-                QuizId = entity.QuizId,
-                Name = entity.Name,
-                QuestionScore = entity.QuestionScore,
-                Description = entity.Description,
-                IsMultipleAnswers = entity.IsMultipleAnswers,
-                Options = entity.QuizQuestionOptions?.OrderBy(o => o.DisplayOrder)
-                    .Select(MapToQuizDetailQuestionOptionDto).ToList() ?? new List<QuizDetailQuestionOptionDto>()
-            };
-        }
-
-        private static QuizDetailQuestionOptionDto MapToQuizDetailQuestionOptionDto(QuizQuestionOption entity)
-        {
-            return new QuizDetailQuestionOptionDto
-            {
-                Id = entity.Id,
-                QuizQuestionId = entity.QuizQuestionId,
-                Name = entity.Name,
-                Description = entity.Description,
-                IsCorrect = entity.IsCorrect,
-                DisplayOrder = entity.DisplayOrder,
-                OptionScore = entity.OptionScore
-            };
-        }
-
-        private static QuizTraineeDetailDto MapToQuizTraineeDetailDto(Quiz entity)
-        {
-            return new QuizTraineeDetailDto
-            {
-                Id = entity.Id,
-                Name = entity.Name,
-                PassScoreCriteria = entity.PassScoreCriteria,
-                TimelimitMinute = entity.TimelimitMinute,
-                TotalScore = entity.TotalScore,
-                Description = entity.Description,
-                Questions = entity.QuizQuestions?.OrderBy(q => q.Id)
-                    .Select(MapToQuizTraineeQuestionDto).ToList() ?? new List<QuizTraineeQuestionDto>()
-            };
-        }
-
-        private static QuizTraineeQuestionDto MapToQuizTraineeQuestionDto(QuizQuestion entity)
-        {
-            return new QuizTraineeQuestionDto
-            {
-                Id = entity.Id,
-                QuizId = entity.QuizId,
-                Name = entity.Name,
-                QuestionScore = entity.QuestionScore,
-                Description = entity.Description,
-                IsMultipleAnswers = entity.IsMultipleAnswers,
-                Options = entity.QuizQuestionOptions?.OrderBy(o => o.DisplayOrder)
-                    .Select(MapToQuizTraineeQuestionOptionDto).ToList() ?? new List<QuizTraineeQuestionOptionDto>()
-            };
-        }
-
-        private static QuizTraineeQuestionOptionDto MapToQuizTraineeQuestionOptionDto(QuizQuestionOption entity)
-        {
-            return new QuizTraineeQuestionOptionDto
-            {
-                Id = entity.Id,
-                QuizQuestionId = entity.QuizQuestionId,
-                Name = entity.Name,
-                Description = entity.Description,
-                DisplayOrder = entity.DisplayOrder,
-                OptionScore = entity.OptionScore
-                // Note: IsCorrect is intentionally excluded for trainee DTOs
-            };
-        }
-
-        private static Quiz MapToQuizEntity(CreateQuizDto dto)
-        {
-            return new Quiz
-            {
-                Name = dto.Name,
-                PassScoreCriteria = dto.PassScoreCriteria,
+                Name = normalizedName,
+                PassScoreCriteria = dto.PassScoreCriteria.HasValue ? Math.Round(dto.PassScoreCriteria.Value, 2, MidpointRounding.AwayFromZero) : null,
                 TimelimitMinute = dto.TimelimitMinute,
-                TotalScore = 10m, // fixed default, user cannot change
                 Description = dto.Description,
+                TotalScore = totalScore,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
-        }
 
-        private static void UpdateQuizEntity(Quiz entity, UpdateQuizDto dto)
-        {
-            entity.Name = dto.Name;
-            entity.PassScoreCriteria = dto.PassScoreCriteria;
-            entity.TimelimitMinute = dto.TimelimitMinute;
-            entity.TotalScore = 10m; // keep default 10 and do not allow change
-            entity.Description = dto.Description;
-            entity.UpdatedAt = DateTime.UtcNow;
-        }
-
-        #endregion
-
-        public async Task<QuizDto?> GetQuizById(int id)
-        {
-            var entity = await _uow.QuizRepository.GetAllAsQueryable()
-                .Include(q => q.QuizQuestions)
-                    .ThenInclude(qq => qq.QuizQuestionOptions)
-                .FirstOrDefaultAsync(q => q.Id == id);
-
-            return entity == null ? null : MapToQuizDto(entity);
-        }
-
-        public async Task<PagedResult<QuizOnlyDto>> GetQuizzes(int pageIndex, int pageSize, CancellationToken ct = default)
-        {
-            if (pageIndex < 1) pageIndex = 1;
-            if (pageSize <= 0 || pageSize > 200) pageSize = 20;
-
-            var query = _uow.QuizRepository.GetAllAsQueryable()
-                .Include(q => q.QuizQuestions);
-
-            var total = await query.CountAsync(ct);
-
-            var items = await query
-                .Skip((pageIndex - 1) * pageSize)
-                .Take(pageSize)
-                .AsNoTracking()
-                .ToListAsync(ct);
-
-            var mappedItems = items.Select(MapToQuizSummaryDto).ToList();
-
-            return new PagedResult<QuizOnlyDto>
-            {
-                Items = mappedItems,
-                TotalCount = total,
-                Page = pageIndex,
-                PageSize = pageSize
-            };
-        }
-
-        public async Task<PagedResult<QuizDetailDto>> GetDetailQuizzes(int pageIndex, int pageSize, CancellationToken ct = default)
-        {
-            if (pageIndex < 1) pageIndex = 1;
-            if (pageSize <= 0 || pageSize > 200) pageSize = 20;
-
-            var query = _uow.QuizRepository.GetAllAsQueryable()
-                .Include(q => q.QuizQuestions)
-                    .ThenInclude(qq => qq.QuizQuestionOptions);
-
-            var total = await query.CountAsync(ct);
-
-            var items = await query
-                .Skip((pageIndex - 1) * pageSize)
-                .Take(pageSize)
-                .AsNoTracking()
-                .ToListAsync(ct);
-
-            var mappedItems = items.Select(MapToQuizDetailDto).ToList();
-
-            return new PagedResult<QuizDetailDto>
-            {
-                Items = mappedItems,
-                TotalCount = total,
-                Page = pageIndex,
-                PageSize = pageSize
-            };
-        }
-
-        public async Task<QuizDetailDto?> GetQuizDetail(int quizId, CancellationToken ct = default)
-        {
-            var quizDetail = await _uow.QuizRepository.GetAllAsQueryable()
-                .Where(q => q.Id == quizId)
-                .Include(q => q.QuizQuestions)
-                    .ThenInclude(qq => qq.QuizQuestionOptions)
-                .AsNoTracking()
-                .FirstOrDefaultAsync(ct);
-
-            if (quizDetail == null)
-            {
-                return null;
-            }
-
-            return MapToQuizDetailDto(quizDetail);
-        }
-
-        public async Task<QuizTraineeDetailDto?> GetQuizDetailForTrainee(int quizId, CancellationToken ct = default)
-        {
-            if (ct.IsCancellationRequested)
-                ct.ThrowIfCancellationRequested();
-
-            var quizDetail = await _uow.QuizRepository.GetAllAsQueryable()
-                .Where(q => q.Id == quizId)
-                .Include(q => q.QuizQuestions)
-                    .ThenInclude(qq => qq.QuizQuestionOptions)
-                .AsNoTracking()
-                .FirstOrDefaultAsync(ct);
-
-            if (quizDetail == null)
-            {
-                return null;
-            }
-
-            return MapToQuizTraineeDetailDto(quizDetail);
-        }
-
-        public async Task<int> CreateQuiz(CreateQuizDto dto)
-        {
-            // Validate PassScoreCriteria vs fixed TotalScore (10)
-            if (dto.PassScoreCriteria.HasValue && dto.PassScoreCriteria.Value > 10m)
-                throw new ValidationException("PassScoreCriteria must be less than TotalScore (10).");
-
-            var entity = MapToQuizEntity(dto);
             await _uow.QuizRepository.CreateAsync(entity);
             await _uow.SaveChangesAsync();
             return entity.Id;
@@ -325,14 +61,48 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
 
         public async Task<bool> UpdateQuizById(int id, UpdateQuizDto dto)
         {
+            if (dto == null) throw new ValidationException("Body is required.");
+
             var entity = await _uow.QuizRepository.GetByIdAsync(id);
             if (entity == null) return false;
 
-            // Validate PassScoreCriteria vs fixed TotalScore (10)
-            if (dto.PassScoreCriteria.HasValue && dto.PassScoreCriteria.Value > 10m)
-                throw new ValidationException("PassScoreCriteria must be less than TotalScore (10).");
+            if (!string.IsNullOrEmpty(dto.Name))
+            {
+                var rawName = dto.Name.Trim();
+                if (string.IsNullOrWhiteSpace(rawName))
+                    throw new ValidationException("Name cannot be empty.");
+                if (rawName.Length > 100)
+                    throw new ValidationException("Name must be at most 100 characters.");
 
-            UpdateQuizEntity(entity, dto);
+                entity.Name = string.Join(' ', rawName.Split(' ', StringSplitOptions.RemoveEmptyEntries));
+            }
+
+            if (dto.PassScoreCriteria.HasValue)
+            {
+                var total = entity.TotalScore ?? 10m;
+                var pass = Math.Round(dto.PassScoreCriteria.Value, 2, MidpointRounding.AwayFromZero);
+                if (pass <= 0m || pass > total)
+                    throw new ValidationException($"PassScoreCriteria must be greater than 0 and less than or equal to {total}.");
+
+                entity.PassScoreCriteria = pass;
+            }
+
+            if (dto.TimelimitMinute.HasValue)
+            {
+                if (dto.TimelimitMinute < 1 || dto.TimelimitMinute > 600)
+                    throw new ValidationException("TimelimitMinute must be between 1 and 600 minutes.");
+                entity.TimelimitMinute = dto.TimelimitMinute;
+            }
+
+            if (dto.Description != null)
+            {
+                if (dto.Description.Length > 2000)
+                    throw new ValidationException("Description must be at most 2000 characters.");
+                entity.Description = dto.Description;
+            }
+
+            entity.UpdatedAt = DateTime.UtcNow;
+
             await _uow.QuizRepository.UpdateAsync(entity);
             await _uow.SaveChangesAsync();
             return true;
@@ -343,183 +113,342 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
             var entity = await _uow.QuizRepository.GetByIdAsync(id);
             if (entity == null) return false;
 
+            // Prevent deletion if quiz has questions or is used in activities or attempts
+            var hasQuestions = await _uow.QuizQuestionRepository.ExistsAsync(q => q.QuizId == id);
+            if (hasQuestions)
+                throw new ValidationException("Cannot delete quiz that has questions. Please delete questions first.");
+
+            var usedInActivity = await _uow.ActivityQuizRepository.ExistsAsync(aq => aq.QuizId == id);
+            if (usedInActivity)
+                throw new ValidationException("Cannot delete quiz that is used in an activity.");
+
+            var hasAttempts = await _uow.QuizAttemptRepository.ExistsAsync(a => a.QuizId == id);
+            if (hasAttempts)
+                throw new ValidationException("Cannot delete quiz that has attempts recorded.");
+
             await _uow.QuizRepository.DeleteAsync(entity);
             await _uow.SaveChangesAsync();
             return true;
         }
 
-        //==== section quiz ======
-        public async Task<QuizTraineeDetailDto?> GetQuizTraineeDetailBySectionQuizIdAsync(
-            int sectionQuizId, CancellationToken ct = default)
+        public async Task<PagedResult<QuizOnlyDto>> GetQuizzes(int pageIndex, int pageSize, CancellationToken ct = default)
         {
-            var quiz = await _uow.SectionQuizRepository.GetAllAsQueryable()
-                .Where(sq => sq.Id == sectionQuizId)
-                .Select(sq => sq.Quiz)
+            if (pageIndex < 1) pageIndex = 1;
+            if (pageSize < 1) pageSize = 10;
+
+            var query = _uow.QuizRepository.GetAllAsQueryable();
+            var total = await query.CountAsync(ct);
+            var items = await query
+                .OrderBy(q => q.Id)
+                .Skip((pageIndex - 1) * pageSize)
+                .Take(pageSize)
+                .Select(q => new QuizOnlyDto
+                {
+                    Id = q.Id,
+                    Name = q.Name,
+                    PassScoreCriteria = q.PassScoreCriteria,
+                    TimelimitMinute = q.TimelimitMinute,
+                    TotalScore = q.TotalScore,
+                    Description = q.Description
+                })
+                .ToListAsync(ct);
+
+            return new PagedResult<QuizOnlyDto>
+            {
+                Items = items,
+                Page = pageIndex,
+                PageSize = pageSize,
+                TotalCount = total
+            };
+        }
+
+        public async Task<PagedResult<QuizDetailDto>> GetDetailQuizzes(int pageIndex, int pageSize, CancellationToken ct = default)
+        {
+            if (pageIndex < 1) pageIndex = 1;
+            if (pageSize < 1) pageSize = 10;
+
+            var query = _uow.QuizRepository.GetAllAsQueryable();
+            var total = await query.CountAsync(ct);
+
+            var entities = await query
+                .OrderBy(q => q.Id)
+                .Skip((pageIndex - 1) * pageSize)
+                .Take(pageSize)
                 .Include(q => q.QuizQuestions)
                     .ThenInclude(qq => qq.QuizQuestionOptions)
                 .AsNoTracking()
-                .FirstOrDefaultAsync(ct);
+                .ToListAsync(ct);
 
-            return quiz == null ? null : MapToQuizTraineeDetailDto(quiz);
+            var items = entities.Select(q => new QuizDetailDto
+            {
+                Id = q.Id,
+                Name = q.Name,
+                PassScoreCriteria = q.PassScoreCriteria,
+                TimelimitMinute = q.TimelimitMinute,
+                TotalScore = q.TotalScore,
+                Description = q.Description,
+                Questions = q.QuizQuestions.Select(qq => new QuizDetailQuestionDto
+                {
+                    Id = qq.Id,
+                    QuizId = qq.QuizId,
+                    Name = qq.Name,
+                    QuestionScore = qq.QuestionScore,
+                    Description = qq.Description,
+                    IsMultipleAnswers = qq.IsMultipleAnswers,
+                    Options = qq.QuizQuestionOptions
+                        .OrderBy(o => o.DisplayOrder ?? int.MaxValue)
+                        .Select(o => new QuizDetailQuestionOptionDto
+                        {
+                            Id = o.Id,
+                            QuizQuestionId = o.QuizQuestionId,
+                            Name = o.Name,
+                            Description = o.Description,
+                            IsCorrect = o.IsCorrect,
+                            DisplayOrder = o.DisplayOrder,
+                            OptionScore = o.OptionScore
+                        }).ToList()
+                }).ToList()
+            }).ToList();
+
+            return new PagedResult<QuizDetailDto>
+            {
+                Items = items,
+                Page = pageIndex,
+                PageSize = pageSize,
+                TotalCount = total
+            };
         }
 
-        //==== create question and options by quiz id
-        public async Task<int> CreateQuestionWithOptionsByQuizId(
-            int quizId, CreateQuizQuestionWithOptionsDto dto)
+        public async Task<QuizDto?> GetQuizById(int id)
+        {
+            var q = await _uow.QuizRepository.GetAllAsQueryable()
+                .Where(x => x.Id == id)
+                .Select(x => new QuizDto
+                {
+                    Id = x.Id,
+                    Name = x.Name,
+                    PassScoreCriteria = x.PassScoreCriteria,
+                    TimelimitMinute = x.TimelimitMinute,
+                    TotalScore = x.TotalScore,
+                    Description = x.Description,
+                    CreatedAt = x.CreatedAt,
+                    UpdatedAt = x.UpdatedAt,
+                    Questions = x.QuizQuestions.Select(qq => new QuizQuestionDto
+                    {
+                        Id = qq.Id,
+                        QuizId = qq.QuizId,
+                        Name = qq.Name,
+                        QuestionScore = qq.QuestionScore,
+                        Description = qq.Description,
+                        IsMultipleAnswers = qq.IsMultipleAnswers,
+                        Options = qq.QuizQuestionOptions.Select(o => new QuizQuestionOptionDto
+                        {
+                            Id = o.Id,
+                            QuizQuestionId = o.QuizQuestionId,
+                            Name = o.Name,
+                            Description = o.Description,
+                            IsCorrect = o.IsCorrect,
+                            Explanation = o.Explanation,
+                            DisplayOrder = o.DisplayOrder,
+                            OptionScore = o.OptionScore
+                        }).ToList()
+                    }).ToList()
+                })
+                .FirstOrDefaultAsync();
+
+            return q;
+        }
+
+        public async Task<QuizDetailDto?> GetQuizDetail(int quizId, CancellationToken ct = default)
+        {
+            var q = await _uow.QuizRepository.GetAllAsQueryable()
+                .Where(x => x.Id == quizId)
+                .Select(x => new QuizDetailDto
+                {
+                    Id = x.Id,
+                    Name = x.Name,
+                    PassScoreCriteria = x.PassScoreCriteria,
+                    TimelimitMinute = x.TimelimitMinute,
+                    TotalScore = x.TotalScore,
+                    Description = x.Description,
+                    Questions = x.QuizQuestions.Select(qq => new QuizDetailQuestionDto
+                    {
+                        Id = qq.Id,
+                        QuizId = qq.QuizId,
+                        Name = qq.Name,
+                        QuestionScore = qq.QuestionScore,
+                        Description = qq.Description,
+                        IsMultipleAnswers = qq.IsMultipleAnswers,
+                        Options = qq.QuizQuestionOptions.Select(o => new QuizDetailQuestionOptionDto
+                        {
+                            Id = o.Id,
+                            QuizQuestionId = o.QuizQuestionId,
+                            Name = o.Name,
+                            Description = o.Description,
+                            IsCorrect = o.IsCorrect,
+                            DisplayOrder = o.DisplayOrder,
+                            OptionScore = o.OptionScore
+                        }).OrderBy(o => o.DisplayOrder ?? int.MaxValue).ToList()
+                    }).ToList()
+                })
+                .FirstOrDefaultAsync(ct);
+
+            return q;
+        }
+
+        public async Task<QuizTraineeDetailDto?> GetQuizDetailForTrainee(int quizId, CancellationToken ct = default)
+        {
+            // return quiz detail for trainee (no IsCorrect on options)
+            var q = await _uow.QuizRepository.GetAllAsQueryable()
+                .Where(x => x.Id == quizId)
+                .Select(x => new QuizTraineeDetailDto
+                {
+                    Id = x.Id,
+                    Name = x.Name,
+                    PassScoreCriteria = x.PassScoreCriteria,
+                    TimelimitMinute = x.TimelimitMinute,
+                    TotalScore = x.TotalScore,
+                    Description = x.Description,
+                    Questions = x.QuizQuestions.Select(qq => new QuizTraineeQuestionDto
+                    {
+                        Id = qq.Id,
+                        QuizId = qq.QuizId,
+                        Name = qq.Name,
+                        QuestionScore = qq.QuestionScore,
+                        Description = qq.Description,
+                        IsMultipleAnswers = qq.IsMultipleAnswers,
+                        Options = qq.QuizQuestionOptions.Select(o => new QuizTraineeQuestionOptionDto
+                        {
+                            Id = o.Id,
+                            QuizQuestionId = o.QuizQuestionId,
+                            Name = o.Name,
+                            Description = o.Description,
+                            DisplayOrder = o.DisplayOrder,
+                            OptionScore = o.OptionScore
+                        }).OrderBy(o => o.DisplayOrder ?? int.MaxValue).ToList()
+                    }).ToList()
+                })
+                .FirstOrDefaultAsync(ct);
+
+            return q;
+        }
+
+        public async Task<QuizTraineeDetailDto?> GetQuizTraineeDetailBySectionQuizIdAsync(int sectionQuizId, CancellationToken ct = default)
+        {
+            // Find ActivityQuiz -> SectionQuiz mapping
+            var activityQuiz = await _uow.ActivityQuizRepository.GetByIdAsync(sectionQuizId);
+            if (activityQuiz == null) return null;
+
+            return await GetQuizDetailForTrainee(activityQuiz.QuizId, ct);
+        }
+
+        public async Task<int> CreateQuestionWithOptionsByQuizId(int quizId, CreateQuizQuestionWithOptionsDto dto)
         {
             if (dto == null) throw new ValidationException("Body is required.");
 
-            // --- Validate Quiz + Question ---
             var quiz = await _uow.QuizRepository.GetByIdAsync(quizId);
-            if (quiz is null) throw new KeyNotFoundException($"Quiz {quizId} not found.");
+            if (quiz == null) throw new KeyNotFoundException($"Quiz {quizId} not found.");
 
+            // validate question name
             var rawName = (dto.Name ?? string.Empty).Trim();
             if (string.IsNullOrWhiteSpace(rawName))
                 throw new ValidationException("Name is required.");
-            var qName = string.Join(" ", rawName.Split(' ', StringSplitOptions.RemoveEmptyEntries));
-            if (qName.Length > 500)
+            if (rawName.Length > 500)
                 throw new ValidationException("Name must be at most 500 characters.");
+            var normalizedName = string.Join(' ', rawName.Split(' ', StringSplitOptions.RemoveEmptyEntries));
 
-            var dupName = await _uow.QuizQuestionRepository.ExistsAsync(q =>
-                q.QuizId == quizId && q.Name != null && q.Name.ToLower() == qName.ToLower());
-            if (dupName)
-                throw new ValidationException("A question with the same name already exists in this quiz.");
+            var nameExists = await _uow.QuizQuestionRepository.ExistsAsync(x => x.QuizId == quizId && x.Name != null && x.Name.ToLower() == normalizedName.ToLower());
+            if (nameExists) throw new ValidationException("A question with the same name already exists in this quiz.");
 
-            if (dto.Description != null && dto.Description.Length > 2000)
-                throw new ValidationException("Description must be at most 2000 characters.");
+            // check max questions (BR-35)
+            var questionCount = await _uow.QuizQuestionRepository.GetAllAsQueryable().CountAsync(q => q.QuizId == quizId);
+            if (questionCount >= 100) throw new ValidationException("A quiz cannot contain more than 100 questions.");
 
-            // NOTE: Question score will be computed from option scores (user should not supply QuestionScore)
+            // Validate options
+            if (dto.Options == null || dto.Options.Count == 0)
+                throw new ValidationException("Options are required.");
 
-            // --- Validate Options ---
-            if (dto.Options == null || dto.Options.Count < 2)
-                throw new ValidationException("At least 2 options are required.");
+            if (dto.Options.Count > 20) throw new ValidationException("A quiz question cannot have more than 20 answer options.");
 
-            var correctCount = dto.Options.Count(o => o.IsCorrect);
-            if (correctCount == 0)
-                throw new ValidationException("At least one correct option is required.");
-            if (!dto.IsMultipleAnswers && correctCount != 1)
-                throw new ValidationException("Exactly 1 correct option is required when IsMultipleAnswers = false.");
-           
+            // At least one correct option
+            if (!dto.Options.Any(o => o.IsCorrect))
+                throw new ValidationException("At least one option must be marked as correct.");
 
-            decimal totalOptionScore = 0m;
-            var normalizedOptions = new List<(string Name, string? Desc, bool IsCorrect, decimal? Score)>();
-            for (int i = 0; i < dto.Options.Count; i++)
+            // Validate QuestionScore: must be >0 and <10 (BR-38)
+            // For this DTO there is no QuestionScore field; derive question score from sum of option scores if provided, or default to 0 - not allowed
+            decimal? questionScore = null;
+            var optionsWithScore = dto.Options.Where(o => o.OptionScore.HasValue).ToList();
+            if (optionsWithScore.Count > 0)
             {
-                var o = dto.Options[i];
-                var rawOptName = (o.Name ?? string.Empty).Trim();
-                if (string.IsNullOrWhiteSpace(rawOptName))
-                    throw new ValidationException($"Option[{i}].Name is required.");
-                var optName = string.Join(" ", rawOptName.Split(' ', StringSplitOptions.RemoveEmptyEntries));
-                if (optName.Length > 500)
-                    throw new ValidationException($"Option[{i}].Name must be at most 500 characters.");
-                if (o.Description != null && o.Description.Length > 2000)
-                    throw new ValidationException($"Option[{i}].Description must be at most 2000 characters.");
-
-                if (o.OptionScore.HasValue)
-                {
-                    var v = o.OptionScore.Value;
-                    if (v < 0m || v > 999.99m)
-                        throw new ValidationException($"Option[{i}].OptionScore must be between 0 and 999.99.");
-                    totalOptionScore += Math.Round(v, 2, MidpointRounding.AwayFromZero);
-                }
-
-                normalizedOptions.Add((optName, o.Description, o.IsCorrect, o.OptionScore));
+                questionScore = Math.Round(optionsWithScore.Sum(o => o.OptionScore!.Value), 2, MidpointRounding.AwayFromZero);
             }
 
-            // Compute question score as sum of option scores (rounded)
-            var questionScore = Math.Round(totalOptionScore, 2, MidpointRounding.AwayFromZero);
-
-            // Validate against quiz total
-            if (quiz.TotalScore.HasValue)
+            if (!questionScore.HasValue)
             {
-                var used = await _uow.QuizQuestionRepository.GetAllAsQueryable()
-                    .Where(q => q.QuizId == quizId && q.QuestionScore != null)
-                    .SumAsync(q => q.QuestionScore) ?? 0m;
-
-                var willBe = used + questionScore;
-                if (willBe > quiz.TotalScore.Value + 0.0001m)
-                    throw new ValidationException(
-                        $"Total question scores ({willBe}) would exceed quiz.TotalScore ({quiz.TotalScore.Value}).");
+                throw new ValidationException("QuestionScore must be provided via option OptionScore values.");
             }
 
-            // --- Create Question to get Id ---
+            if (questionScore <= 0m || questionScore >= 10m)
+                throw new ValidationException("The score of any single question must be greater than 0 and less than 10.");
+
+            // Check that adding this question won't make total question scores exceed quiz.TotalScore (BR-39/37)
+            var used = await _uow.QuizQuestionRepository.GetAllAsQueryable()
+                .Where(q => q.QuizId == quizId && q.QuestionScore != null)
+                .SumAsync(q => q.QuestionScore) ?? 0m;
+
+            var willBe = used + questionScore.Value;
+            var quizTotal = quiz.TotalScore ?? 10m;
+            if (willBe > quizTotal + 0.0001m)
+                throw new ValidationException($"Total question scores ({willBe}) would exceed quiz.TotalScore ({quizTotal}).");
+
+            // Create question
             var question = new QuizQuestion
             {
                 QuizId = quizId,
-                Name = qName,
+                Name = normalizedName,
                 Description = dto.Description,
-                QuestionScore = questionScore,
-                IsMultipleAnswers = dto.IsMultipleAnswers
+                IsMultipleAnswers = dto.IsMultipleAnswers,
+                QuestionScore = questionScore
             };
+
             await _uow.QuizQuestionRepository.CreateAsync(question);
-            await _uow.SaveChangesAsync(); // need question.Id
+            await _uow.SaveChangesAsync();
 
-            // Prepare Option entities (DisplayOrder set later) 
-            var optionEntities = normalizedOptions.Select(o => new QuizQuestionOption
+            // Create options
+            // compute next global displayOrder if needed
+            var maxDisplay = await _uow.QuizQuestionOptionRepository.GetAllAsQueryable().Select(x => x.DisplayOrder).MaxAsync();
+            var nextDisplayBase = (maxDisplay ?? 0) + 1;
+            int idx = 0;
+            foreach (var opt in dto.Options)
             {
-                QuizQuestionId = question.Id,
-                Name = o.Name,
-                Description = o.Desc,
-                IsCorrect = o.IsCorrect,
-                OptionScore = o.Score
-                // DisplayOrder will be set just before Save
-            }).ToList();
-
-            // Optimistic retry: per-question first, fallback to global 
-            const int maxRetries = 2;
-            for (int attempt = 0; attempt <= maxRetries; attempt++)
-            {
-                // 1) Get max per-question
-                var maxPerQuestion = await _uow.QuizQuestionOptionRepository.GetAllAsQueryable()
-                    .Where(o => o.QuizQuestionId == question.Id)
-                    .Select(o => o.DisplayOrder)
-                    .MaxAsync() ?? 0;
-
-                // 2) Assign order 1..n based on per-question
-                int next = maxPerQuestion + 1;
-                foreach (var e in optionEntities)
-                    e.DisplayOrder = next++;
-
-                try
+                var displayOrder = opt.DisplayOrder ?? (nextDisplayBase + idx);
+                // ensure displayOrder not duplicate
+                var dup = await _uow.QuizQuestionOptionRepository.ExistsAsync(x => x.DisplayOrder == displayOrder);
+                if (dup)
                 {
-                    foreach (var e in optionEntities)
-                        if (e.Id == 0 && e.DisplayOrder > 0)
-                            await _uow.QuizQuestionOptionRepository.CreateAsync(e);
-
-                    await _uow.SaveChangesAsync();
-                    return question.Id; // OK
+                    displayOrder = (await _uow.QuizQuestionOptionRepository.GetAllAsQueryable().Select(x => x.DisplayOrder).MaxAsync()) ?? 0;
+                    displayOrder++;
                 }
-                catch (DbUpdateException ex) when (IsUniqueViolation(ex) && attempt < maxRetries)
+
+                var optionEntity = new QuizQuestionOption
                 {
-                    // Fallback: assign based on global max and retry
-                    var maxGlobal = await _uow.QuizQuestionOptionRepository.GetAllAsQueryable()
-                        .Select(o => o.DisplayOrder)
-                        .MaxAsync() ?? 0;
+                    QuizQuestionId = question.Id,
+                    Name = opt.Name,
+                    Description = opt.Description,
+                    IsCorrect = opt.IsCorrect,
+                    DisplayOrder = displayOrder,
+                    OptionScore = opt.OptionScore
+                };
 
-                    int gnext = maxGlobal + 1;
-                    foreach (var e in optionEntities)
-                        e.DisplayOrder = gnext++;
-
-                    try
-                    {
-                        await _uow.SaveChangesAsync();
-                        return question.Id;
-                    }
-                    catch (DbUpdateException ex2) when (IsUniqueViolation(ex2) && attempt < maxRetries)
-                    {
-                        continue;
-                    }
-                }
+                await _uow.QuizQuestionOptionRepository.CreateAsync(optionEntity);
+                idx++;
             }
 
-            throw new ValidationException("Could not assign DisplayOrder due to concurrent inserts. Please retry.");
+            // Update quiz.TotalScore if needed (keep as 10)
+            // If after adding questions the used sum equals quiz.TotalScore, good. We don't enforce equality here to allow incremental additions.
+            await _uow.SaveChangesAsync();
 
-
-            // 2627: Violation of PRIMARY KEY or UNIQUE constraint (duplicate key value)
-            // 2601: Violation of UNIQUE INDEX (duplicate key value in an indexed column)
-            // => Used to detect duplicate data errors when inserting or updating records
-            static bool IsUniqueViolation(DbUpdateException ex)
-                => ex.InnerException is SqlException sql && (sql.Number == 2627 || sql.Number == 2601);
+            return question.Id;
         }
     }
 }

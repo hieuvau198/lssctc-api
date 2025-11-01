@@ -14,10 +14,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Classes\" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\Lssctc.Share\Lssctc.Share.csproj" />
   </ItemGroup>
 

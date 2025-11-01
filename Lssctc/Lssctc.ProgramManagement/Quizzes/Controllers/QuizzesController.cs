@@ -1,9 +1,6 @@
-﻿using Lssctc.ProgramManagement.QuizQuestionOptions.DTOs;
-using Lssctc.ProgramManagement.Quizzes.DTOs;
+﻿using Lssctc.ProgramManagement.Quizzes.DTOs;
 using Lssctc.ProgramManagement.Quizzes.Services;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using System.ComponentModel.DataAnnotations;
 
 namespace Lssctc.ProgramManagement.Quizzes.Controllers
 {
@@ -11,128 +8,100 @@ namespace Lssctc.ProgramManagement.Quizzes.Controllers
     [ApiController]
     public class QuizzesController : ControllerBase
     {
-        private readonly IQuizService _quizService;
+        private readonly IQuizService _service;
 
-        public QuizzesController(IQuizService quizService)
+        public QuizzesController(IQuizService service)
         {
-            _quizService = quizService;
+            _service = service;
         }
 
+        [HttpGet("ping")]
+        public IActionResult Ping() => Ok("pong");
+
         [HttpGet]
-        public async Task<IActionResult> GetQuizzes(
-            [FromQuery] int pageIndex = 1,
-            [FromQuery] int pageSize = 20,
-            CancellationToken ct = default)
+        public async Task<IActionResult> GetQuizzes([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10)
         {
-            if (pageIndex < 1) return BadRequest("pageIndex must be >= 1.");
-            if (pageSize < 1 || pageSize > 200) return BadRequest("pageSize must be between 1 and 200.");
-
-            var result = await _quizService.GetQuizzes(pageIndex, pageSize, ct);
-
-            Response.Headers["X-Total-Count"] = result.TotalCount.ToString();
-            Response.Headers["Access-Control-Expose-Headers"] = "X-Total-Count";
-
+            var result = await _service.GetQuizzes(pageIndex, pageSize);
             return Ok(result);
         }
 
-
-        [HttpGet("{id:int}")]
-        public async Task<IActionResult> GetById([FromRoute] int id)
+        [HttpGet("detail")]
+        public async Task<IActionResult> GetDetailQuizzes([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10)
         {
-            var quiz = await _quizService.GetQuizById(id);
-            return quiz is null ? NotFound() : Ok(quiz);
+            var result = await _service.GetDetailQuizzes(pageIndex, pageSize);
+            return Ok(result);
+        }
+
+        [HttpGet("debug/summary")]
+        public async Task<IActionResult> GetDebugSummary([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 100)
+        {
+            var details = await _service.GetDetailQuizzes(pageIndex, pageSize);
+            var summary = details.Items.Select(q => new
+            {
+                q.Id,
+                q.Name,
+                QuestionCount = q.Questions?.Count ?? 0,
+                OptionsCount = q.Questions?.Sum(qq => qq.Options?.Count ?? 0) ?? 0
+            }).ToList();
+
+            return Ok(new { details.Page, details.PageSize, details.TotalCount, Summary = summary });
+        }
+
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetQuizById(int id)
+        {
+            var dto = await _service.GetQuizById(id);
+            if (dto == null) return NotFound();
+            return Ok(dto);
+        }
+
+        [HttpGet("{id}/full")]
+        public async Task<IActionResult> GetQuizDetail(int id)
+        {
+            var dto = await _service.GetQuizDetail(id);
+            if (dto == null) return NotFound();
+            return Ok(dto);
+        }
+
+        [HttpGet("{id}/for-trainee")]
+        public async Task<IActionResult> GetQuizForTrainee(int id)
+        {
+            var dto = await _service.GetQuizDetailForTrainee(id);
+            if (dto == null) return NotFound();
+            return Ok(dto);
         }
 
         [HttpPost]
-        public async Task<IActionResult> Create([FromBody] CreateQuizDto dto)
+        public async Task<IActionResult> CreateQuiz([FromBody] CreateQuizDto dto)
         {
-            var id = await _quizService.CreateQuiz(dto);
-            return CreatedAtAction(nameof(GetById), new { id }, new { id });
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+            var id = await _service.CreateQuiz(dto);
+            return CreatedAtAction(nameof(GetQuizById), new { id }, null);
         }
 
-        [HttpPut("{id:int}")]
-        public async Task<IActionResult> Update([FromRoute] int id, [FromBody] UpdateQuizDto dto)
+        [HttpPut("{id}")]
+        public async Task<IActionResult> UpdateQuiz(int id, [FromBody] UpdateQuizDto dto)
         {
-            var ok = await _quizService.UpdateQuizById(id, dto);
-            return ok ? NoContent() : NotFound();
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+            var ok = await _service.UpdateQuizById(id, dto);
+            if (!ok) return NotFound();
+            return NoContent();
         }
 
-
-        [HttpDelete("{id:int}")]
-        public async Task<IActionResult> Delete([FromRoute] int id)
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteQuiz(int id)
         {
-            var ok = await _quizService.DeleteQuizById(id);
-            return ok ? NoContent() : NotFound();
+            var ok = await _service.DeleteQuizById(id);
+            if (!ok) return NotFound();
+            return NoContent();
         }
 
-
-        
-
-
-
-
-
-        [HttpGet("{questionId:int}/options/{id:int}")]
-        public IActionResult GetById(int questionId, int id) => Ok();
-
-        [HttpGet("{id:int}/questions")]
-        public async Task<IActionResult> GetDetail(int id, CancellationToken ct = default)
+        [HttpPost("{quizId}/questions")]
+        public async Task<IActionResult> CreateQuestionWithOptions(int quizId, [FromBody] CreateQuizQuestionWithOptionsDto dto)
         {
-            var dto = await _quizService.GetQuizDetail(id, ct);
-            return dto is null ? NotFound() : Ok(dto);
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+            var questionId = await _service.CreateQuestionWithOptionsByQuizId(quizId, dto);
+            return CreatedAtAction(nameof(GetQuizDetail), new { id = quizId }, null);
         }
-
-        [HttpGet("{id:int}/traineequiz-view")]
-        public async Task<IActionResult> GetQuizForTrainee(int id, CancellationToken ct = default)
-        {
-            var dto = await _quizService.GetQuizDetailForTrainee(id, ct);
-            return dto is null ? NotFound() : Ok(dto);
-        }
-
-        [HttpGet("by-section-quiz/{sectionQuizId:int}/trainee-view")]
-        public async Task<IActionResult> GetQuizTraineeViewBySectionQuiz(
-            [FromRoute] int sectionQuizId,
-            CancellationToken ct = default)
-        {
-            if (sectionQuizId <= 0)
-                return BadRequest(new { error = "sectionQuizId must be a positive integer." });
-
-            try
-            {
-                var dto = await _quizService.GetQuizTraineeDetailBySectionQuizIdAsync(sectionQuizId, ct);
-                if (dto == null)
-                    return NotFound(new { error = $"No quiz (trainee view) found for section_quiz id = {sectionQuizId}." });
-
-                return Ok(dto);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(StatusCodes.Status500InternalServerError,
-                    new { error = "Unexpected error.", detail = ex.Message });
-            }
-        }
-
-
-        [HttpPost("{quizId:int}/questions-with-options")]
-        public async Task<IActionResult> CreateQuestionWithOptions(
-    [FromRoute] int quizId,
-    [FromBody] CreateQuizQuestionWithOptionsDto dto)
-        {
-            try
-            {
-                var questionId = await _quizService.CreateQuestionWithOptionsByQuizId(quizId, dto);
-
-                return CreatedAtAction(
-                    nameof(GetDetail), 
-                    new { id = quizId },
-                    new { id = questionId }
-                );
-            }
-            catch (KeyNotFoundException ex) { return NotFound(new { error = ex.Message }); }
-            catch (ValidationException ex) { return BadRequest(new { error = ex.Message }); }
-        }
-
-
-
     }
 }

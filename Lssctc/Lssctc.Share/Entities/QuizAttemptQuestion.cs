@@ -1,0 +1,29 @@
+﻿using System;
+using System.Collections.Generic;
+
+namespace Lssctc.Share.Entities;
+
+public partial class QuizAttemptQuestion
+{
+    public int Id { get; set; }
+
+    public int QuizAttemptId { get; set; }
+
+    public int? QuestionId { get; set; }
+
+    public decimal? AttemptScore { get; set; }
+
+    public decimal? QuestionScore { get; set; }
+
+    public bool IsCorrect { get; set; }
+
+    public bool IsMultipleAnswers { get; set; }
+
+    public string Name { get; set; } = null!;
+
+    public string? Description { get; set; }
+
+    public virtual QuizAttempt QuizAttempt { get; set; } = null!;
+
+    public virtual ICollection<QuizAttemptAnswer> QuizAttemptAnswers { get; set; } = new List<QuizAttemptAnswer>();
+}

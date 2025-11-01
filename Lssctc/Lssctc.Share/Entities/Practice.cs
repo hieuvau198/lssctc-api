@@ -23,7 +23,7 @@ public partial class Practice
 
     public bool? IsDeleted { get; set; }
 
-    public virtual ICollection<PracticeStep> PracticeSteps { get; set; } = new List<PracticeStep>();
+    public virtual ICollection<ActivityPractice> ActivityPractices { get; set; } = new List<ActivityPractice>();
 
-    public virtual ICollection<SectionPractice> SectionPractices { get; set; } = new List<SectionPractice>();
+    public virtual ICollection<PracticeTask> PracticeTasks { get; set; } = new List<PracticeTask>();
 }
