@@ -13,6 +13,7 @@ namespace Lssctc.ProgramManagement.Programs.Services
         {
             _uow = uow;
         }
+        #region Programs
         public async Task<IEnumerable<ProgramDto>> GetAllProgramsAsync()
         {
             var programs = await _uow.ProgramRepository
@@ -140,6 +141,7 @@ namespace Lssctc.ProgramManagement.Programs.Services
             // save changes at last to ensure all operations are successful
             await _uow.SaveChangesAsync();
         }
+        #endregion
 
         #region Private Mapping Methods
 
