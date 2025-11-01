@@ -12,7 +12,6 @@ namespace Lssctc.LearningManagement.Programs.Services
         // New method for add only one course each time, keep origin data
         Task<ProgramDto?> AddCourseToProgram(int programId, int courseId);
         Task<ProgramDto?> AddCoursesToProgram(int programId, List<CourseOrderDto> coursesToAdd);
-        Task<ProgramDto?> AddPrerequisitesToProgram(int programId, List<EntryRequirementDto> prerequisitesToAdd);
         Task<ProgramDto?> UpdateProgram(int id, UpdateProgramInfoDto dto);
         Task<ProgramDto?> UpdateProgramCourses(int id, ICollection<ProgramCourseOrderDto> courses);
         // New method for update only entry requirement by entry requirement id

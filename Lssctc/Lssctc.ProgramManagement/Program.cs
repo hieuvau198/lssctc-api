@@ -1,4 +1,5 @@
 
+using Lssctc.ProgramManagement.Programs.Services;
 using Lssctc.Share.Contexts;
 using Lssctc.Share.Implements;
 using Lssctc.Share.Interfaces;
@@ -30,7 +31,7 @@ builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepositor
 #endregion
 
 #region Application Services
-
+builder.Services.AddScoped<IProgramsService, ProgramsService>();
 #endregion
 
 #region CORS
