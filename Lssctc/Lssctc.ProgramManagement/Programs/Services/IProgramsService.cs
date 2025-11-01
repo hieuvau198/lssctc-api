@@ -17,10 +17,5 @@ namespace Lssctc.ProgramManagement.Programs.Services
         Task<ProgramDto> UpdateProgramAsync(int id, UpdateProgramDto updateDto);
         // delete program
         Task DeleteProgramAsync(int id);
-
-        // add course to program
-        // change program course
-        // remove course from program
-
     }
 }

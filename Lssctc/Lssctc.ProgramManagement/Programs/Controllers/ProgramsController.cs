@@ -11,10 +11,14 @@ namespace Lssctc.ProgramManagement.Programs.Controllers
     public class ProgramsController : ControllerBase
     {
         private readonly IProgramsService _programsService;
-        public ProgramsController(IProgramsService programsService)
+        private readonly IProgramCoursesService _programCoursesService;
+        public ProgramsController(IProgramsService programsService, IProgramCoursesService programCoursesService)
         {
             _programsService = programsService;
+            _programCoursesService = programCoursesService;
         }
+        #region Programs
+
         [HttpGet]
         [ProducesResponseType(typeof(IEnumerable<ProgramDto>), 200)]
         [ProducesResponseType(500)]
@@ -145,5 +149,79 @@ namespace Lssctc.ProgramManagement.Programs.Controllers
                 return StatusCode(500, $"An internal server error occurred: {ex.Message}");
             }
         }
+
+        #endregion
+
+        #region Program Courses
+
+        [HttpPost("{programId}/courses/{courseId}")]
+        [ProducesResponseType(200)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(404)]
+        [ProducesResponseType(500)]
+        public async Task<IActionResult> AddCourseToProgram(int programId, int courseId)
+        {
+            try
+            {
+                await _programCoursesService.AddCourseToProgramAsync(programId, courseId);
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                if (ex is ArgumentException)
+                    return BadRequest(ex.Message);
+                if (ex is KeyNotFoundException)
+                    return NotFound(ex.Message);
+                if (ex is InvalidOperationException)
+                    return BadRequest(ex.Message);
+                return StatusCode(500, $"An internal server error occurred: {ex.Message}");
+            }
+        }
+
+        [HttpDelete("{programId}/courses/{courseId}")]
+        [ProducesResponseType(204)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(404)]
+        [ProducesResponseType(500)]
+        public async Task<IActionResult> RemoveCourseFromProgram(int programId, int courseId)
+        {
+            try
+            {
+                await _programCoursesService.RemoveCourseFromProgramAsync(programId, courseId);
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                if (ex is ArgumentException)
+                    return BadRequest(ex.Message);
+                if (ex is KeyNotFoundException)
+                    return NotFound(ex.Message);
+                return StatusCode(500, $"An internal server error occurred: {ex.Message}");
+            }
+        }
+
+        [HttpPut("{programId}/courses/{courseId}/order/{newOrder}")]
+        [ProducesResponseType(200)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(404)]
+        [ProducesResponseType(500)]
+        public async Task<IActionResult> UpdateProgramCourseOrder(int programId, int courseId, int newOrder)
+        {
+            try
+            {
+                await _programCoursesService.UpdateProgramCourseAsync(programId, courseId, newOrder);
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                if (ex is ArgumentException)
+                    return BadRequest(ex.Message);
+                if (ex is KeyNotFoundException)
+                    return NotFound(ex.Message);
+                return StatusCode(500, $"An internal server error occurred: {ex.Message}");
+            }
+        }
+
+        #endregion
     }
 }

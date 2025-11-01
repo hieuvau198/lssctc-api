@@ -28,12 +28,15 @@ builder.Services.AddSwaggerGen(c =>
 #region Domain
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
-builder.Services.AddScoped<IQuizService, QuizService>();
+
 
 #endregion
 
 #region Application Services
 builder.Services.AddScoped<IProgramsService, ProgramsService>();
+builder.Services.AddScoped<IProgramCoursesService, ProgramCoursesService>();
+
+builder.Services.AddScoped<IQuizService, QuizService>();
 #endregion
 
 #region CORS
