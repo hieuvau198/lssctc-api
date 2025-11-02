@@ -150,7 +150,6 @@ CREATE TABLE [dbo].[sections] (
     Id INT IDENTITY(1,1) PRIMARY KEY,
     [section_title] NVARCHAR(200) NOT NULL,
     [section_description] NVARCHAR(1000),
-    [section_order] INT NOT NULL,
     [estimated_duration_minutes] INT,
     [is_deleted] BIT DEFAULT 0
 );
@@ -159,6 +158,7 @@ CREATE TABLE [dbo].[course_sections](
     Id INT IDENTITY(1,1) PRIMARY KEY,
     [course_id] INT NOT NULL,
     [section_id] INT NOT NULL,
+	[section_order] INT NOT NULL DEFAULT 0,
     FOREIGN KEY ([course_id]) REFERENCES [dbo].[courses]([id]),
     FOREIGN KEY ([section_id]) REFERENCES [dbo].[sections]([id])
 );

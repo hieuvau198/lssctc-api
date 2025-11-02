@@ -514,6 +514,7 @@ public partial class LssctcDbContext : DbContext
 
             entity.Property(e => e.CourseId).HasColumnName("course_id");
             entity.Property(e => e.SectionId).HasColumnName("section_id");
+            entity.Property(e => e.SectionOrder).HasColumnName("section_order");
 
             entity.HasOne(d => d.Course).WithMany(p => p.CourseSections)
                 .HasForeignKey(d => d.CourseId)
@@ -1036,7 +1037,6 @@ public partial class LssctcDbContext : DbContext
             entity.Property(e => e.SectionDescription)
                 .HasMaxLength(1000)
                 .HasColumnName("section_description");
-            entity.Property(e => e.SectionOrder).HasColumnName("section_order");
             entity.Property(e => e.SectionTitle)
                 .HasMaxLength(200)
                 .HasColumnName("section_title");

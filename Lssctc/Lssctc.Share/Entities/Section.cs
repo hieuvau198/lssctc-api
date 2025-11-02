@@ -11,8 +11,6 @@ public partial class Section
 
     public string? SectionDescription { get; set; }
 
-    public int SectionOrder { get; set; }
-
     public int? EstimatedDurationMinutes { get; set; }
 
     public bool? IsDeleted { get; set; }
