@@ -33,3 +33,13 @@ EXEC sp_executesql @sql;
 
 DROP TABLE [dbo].[simulation_component_types];
 DROP TABLE [dbo].[practice_step_types];
+
+
+
+
+ALTER TABLE [dbo].[course_sections]
+ADD [section_order] INT NOT NULL DEFAULT 0;
+
+
+ALTER TABLE [dbo].[sections]
+DROP COLUMN [section_order];
