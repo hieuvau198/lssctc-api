@@ -146,7 +146,6 @@ namespace Lssctc.ProgramManagement.Quizzes.DTOs
         public string? Description { get; set; }
         public int? DisplayOrder { get; set; }
         public decimal? OptionScore { get; set; }
-        // KHÔNG có IsCorrect
     }
 
     public class QuizQuestionNoOptionsDto
