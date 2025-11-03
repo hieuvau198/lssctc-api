@@ -1,6 +1,7 @@
 
 using Lssctc.ProgramManagement.Activities.Services;
 using Lssctc.ProgramManagement.Courses.Services;
+using Lssctc.ProgramManagement.Materials.Services;
 using Lssctc.ProgramManagement.Programs.Services;
 using Lssctc.ProgramManagement.Quizzes.Services;
 using Lssctc.ProgramManagement.Sections.Services;
@@ -42,6 +43,8 @@ builder.Services.AddScoped<ICoursesService, CoursesService>();
 
 builder.Services.AddScoped<ISectionsService, SectionsService>();
 builder.Services.AddScoped<IActivitiesService, ActivitiesService>();
+
+builder.Services.AddScoped<IMaterialsService, MaterialsService>();
 
 builder.Services.AddScoped<IQuizService, QuizService>();
 #endregion
