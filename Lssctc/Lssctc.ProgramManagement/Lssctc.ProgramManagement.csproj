@@ -17,4 +17,8 @@
     <ProjectReference Include="..\Lssctc.Share\Lssctc.Share.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Materials\" />
+  </ItemGroup>
+
 </Project>
