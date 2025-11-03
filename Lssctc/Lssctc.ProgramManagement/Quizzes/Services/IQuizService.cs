@@ -5,6 +5,8 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
 {
     public interface IQuizService
     {
+        // Issue todos:
+        // remove cancellation token
         #region Gets
         Task<QuizDto?> GetQuizById(int id);
         Task<PagedResult<QuizOnlyDto>> GetQuizzes(int pageIndex, int pageSize, CancellationToken ct = default);
