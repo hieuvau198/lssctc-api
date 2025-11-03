@@ -17,6 +17,8 @@ namespace Lssctc.ProgramManagement.Activities.Controllers
             _activitiesService = activitiesService;
         }
 
+        #region Activities
+
         [HttpGet]
         public async Task<IActionResult> GetAllActivities()
         {
@@ -126,5 +128,88 @@ namespace Lssctc.ProgramManagement.Activities.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
+
+        #endregion
+
+        #region Section Activities
+
+        [HttpGet("section/{sectionId}")]
+        public async Task<IActionResult> GetActivitiesBySectionId(int sectionId)
+        {
+            try
+            {
+                var activities = await _activitiesService.GetActivitiesBySectionIdAsync(sectionId);
+                return Ok(activities);
+            }
+            catch (Exception)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+            }
+        }
+
+        [HttpPost("section/{sectionId}/activity/{activityId}")]
+        public async Task<IActionResult> AddActivityToSection(int sectionId, int activityId)
+        {
+            try
+            {
+                await _activitiesService.AddActivityToSectionAsync(sectionId, activityId);
+                return Ok(new { Message = "Activity successfully added to section." });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(ex.Message);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+            catch (Exception)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+            }
+        }
+
+        [HttpDelete("section/{sectionId}/activity/{activityId}")]
+        public async Task<IActionResult> RemoveActivityFromSection(int sectionId, int activityId)
+        {
+            try
+            {
+                await _activitiesService.RemoveActivityFromSectionAsync(sectionId, activityId);
+                return Ok(new { Message = "Activity successfully removed from section." });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(ex.Message);
+            }
+            catch (Exception)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+            }
+        }
+
+        [HttpPut("section/{sectionId}/activity/{activityId}/order")]
+        public async Task<IActionResult> UpdateSectionActivityOrder(int sectionId, int activityId, [FromQuery] int newOrder)
+        {
+            try
+            {
+                await _activitiesService.UpdateSectionActivityOrderAsync(sectionId, activityId, newOrder);
+                return Ok(new { Message = "Section activity order updated successfully." });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(ex.Message);
+            }
+            catch (ArgumentOutOfRangeException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+            catch (Exception)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+            }
+        }
+
+        #endregion
+
     }
 }

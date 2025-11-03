@@ -116,6 +116,140 @@ namespace Lssctc.ProgramManagement.Activities.Services
         }
         #endregion
 
+        #region Section Activities
+
+        public async Task<IEnumerable<ActivityDto>> GetActivitiesBySectionIdAsync(int sectionId)
+        {
+            var sectionActivities = await _uow.SectionActivityRepository
+                .GetAllAsQueryable()
+                .Where(sa => sa.SectionId == sectionId && sa.Activity.IsDeleted != true)
+                .Include(sa => sa.Activity)
+                .OrderBy(sa => sa.ActivityOrder)
+                .ToListAsync();
+
+            return sectionActivities.Select(sa => MapToDto(sa.Activity));
+        }
+
+        public async Task AddActivityToSectionAsync(int sectionId, int activityId)
+        {
+            var section = await _uow.SectionRepository.GetByIdAsync(sectionId);
+            if (section == null)
+                throw new KeyNotFoundException($"Section with ID {sectionId} not found.");
+
+            var activity = await _uow.ActivityRepository.GetByIdAsync(activityId);
+            if (activity == null || activity.IsDeleted == true)
+                throw new KeyNotFoundException($"Activity with ID {activityId} not found.");
+
+            bool alreadyExists = await _uow.SectionActivityRepository
+                .GetAllAsQueryable()
+                .AnyAsync(sa => sa.SectionId == sectionId && sa.ActivityId == activityId);
+
+            if (alreadyExists)
+                throw new InvalidOperationException("This activity is already assigned to the section.");
+
+            int newOrder = await GetNextAvailableOrderAsync(sectionId);
+
+            await EnsureUniqueOrderAsync(sectionId, newOrder);
+
+            var sectionActivity = new SectionActivity
+            {
+                SectionId = sectionId,
+                ActivityId = activityId,
+                ActivityOrder = newOrder
+            };
+
+            await _uow.SectionActivityRepository.CreateAsync(sectionActivity);
+            await _uow.SaveChangesAsync();
+        }
+
+        public async Task RemoveActivityFromSectionAsync(int sectionId, int activityId)
+        {
+            var sectionActivity = await _uow.SectionActivityRepository
+                .GetAllAsQueryable()
+                .Where(sa => sa.SectionId == sectionId && sa.ActivityId == activityId)
+                .FirstOrDefaultAsync();
+
+            if (sectionActivity == null)
+                throw new KeyNotFoundException($"Activity with ID {activityId} is not assigned to section ID {sectionId}.");
+
+            await _uow.SectionActivityRepository.DeleteAsync(sectionActivity);
+            await _uow.SaveChangesAsync();
+        }
+
+        public async Task UpdateSectionActivityOrderAsync(int sectionId, int activityId, int newOrder)
+        {
+            var current = await _uow.SectionActivityRepository
+                .GetAllAsQueryable()
+                .Where(sa => sa.SectionId == sectionId && sa.ActivityId == activityId)
+                .FirstOrDefaultAsync();
+
+            if (current == null)
+                throw new KeyNotFoundException($"Activity with ID {activityId} is not assigned to section ID {sectionId}.");
+
+            if (current.ActivityOrder == newOrder)
+                return;
+
+            await EnsureUniqueOrderAsync(sectionId, newOrder, current);
+
+            current.ActivityOrder = newOrder;
+            await _uow.SectionActivityRepository.UpdateAsync(current);
+            await _uow.SaveChangesAsync();
+        }
+
+
+        #endregion
+
+        #region Order Logic Handling
+        private async Task EnsureUniqueOrderAsync(int sectionId, int targetOrder, SectionActivity? current = null)
+        {
+            var target = await _uow.SectionActivityRepository
+                .GetAllAsQueryable()
+                .Where(sa => sa.SectionId == sectionId && sa.ActivityOrder == targetOrder)
+                .FirstOrDefaultAsync();
+
+            if (target != null)
+            {
+                if (current != null)
+                {
+                    var oldOrder = current.ActivityOrder;
+                    target.ActivityOrder = oldOrder;
+                    await _uow.SectionActivityRepository.UpdateAsync(target);
+                }
+                else
+                {
+                    await ShiftOrdersDownAsync(sectionId, targetOrder);
+                }
+            }
+        }
+
+        private async Task ShiftOrdersDownAsync(int sectionId, int fromOrder)
+        {
+            var sectionActivities = await _uow.SectionActivityRepository
+                .GetAllAsQueryable()
+                .Where(sa => sa.SectionId == sectionId && sa.ActivityOrder >= fromOrder)
+                .OrderByDescending(sa => sa.ActivityOrder) 
+                .ToListAsync();
+
+            foreach (var sa in sectionActivities)
+            {
+                sa.ActivityOrder += 1;
+                await _uow.SectionActivityRepository.UpdateAsync(sa);
+            }
+
+            await _uow.SaveChangesAsync();
+        }
+
+        private async Task<int> GetNextAvailableOrderAsync(int sectionId)
+        {
+            int maxOrder = await _uow.SectionActivityRepository
+                .GetAllAsQueryable()
+                .Where(sa => sa.SectionId == sectionId)
+                .MaxAsync(sa => (int?)sa.ActivityOrder) ?? 0;
+
+            return maxOrder + 1;
+        }
+        #endregion
+
         #region Mapping
         private static ActivityDto MapToDto(Activity a)
         {
@@ -143,6 +277,5 @@ namespace Lssctc.ProgramManagement.Activities.Services
             throw new ArgumentException($"Invalid ActivityType value: {activityType}");
         }
         #endregion
-
     }
 }

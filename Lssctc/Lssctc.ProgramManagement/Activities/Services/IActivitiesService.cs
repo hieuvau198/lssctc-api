@@ -6,12 +6,6 @@ namespace Lssctc.ProgramManagement.Activities.Services
     public interface IActivitiesService
     {
         #region Activities
-        // get all activities
-        // get activities paged
-        // get activity by id
-        // create activity
-        // update activity
-        // delete activity
         Task<IEnumerable<ActivityDto>> GetAllActivitiesAsync();
         Task<PagedResult<ActivityDto>> GetActivitiesAsync(int pageNumber, int pageSize);
         Task<ActivityDto?> GetActivityByIdAsync(int id);
@@ -21,10 +15,11 @@ namespace Lssctc.ProgramManagement.Activities.Services
         #endregion
 
         #region Section Activities
-        // get activities by section id
-        // add activity to section
-        // remove activity from section
-        // update section activity
+        Task<IEnumerable<ActivityDto>> GetActivitiesBySectionIdAsync(int sectionId);
+        Task AddActivityToSectionAsync(int sectionId, int activityId);
+        Task RemoveActivityFromSectionAsync(int sectionId, int activityId);
+        Task UpdateSectionActivityOrderAsync(int sectionId, int activityId, int newOrder);
         #endregion
+
     }
 }
