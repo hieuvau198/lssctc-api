@@ -15,8 +15,11 @@ namespace Lssctc.ProgramManagement.Courses.Services
         #endregion
 
         #region Program Courses
-
         Task<IEnumerable<CourseDto>> GetCoursesByProgramIdAsync(int programId);
+        #endregion
+
+        #region Course Categories and Levels
+        // To dos
         #endregion
 
     }
