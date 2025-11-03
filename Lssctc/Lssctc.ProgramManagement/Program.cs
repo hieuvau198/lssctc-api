@@ -2,6 +2,7 @@
 using Lssctc.ProgramManagement.Courses.Services;
 using Lssctc.ProgramManagement.Programs.Services;
 using Lssctc.ProgramManagement.Quizzes.Services;
+using Lssctc.ProgramManagement.Sections.Services;
 using Lssctc.Share.Contexts;
 using Lssctc.Share.Implements;
 using Lssctc.Share.Interfaces;
@@ -37,6 +38,8 @@ builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepositor
 builder.Services.AddScoped<IProgramsService, ProgramsService>();
 builder.Services.AddScoped<IProgramCoursesService, ProgramCoursesService>();
 builder.Services.AddScoped<ICoursesService, CoursesService>();
+
+builder.Services.AddScoped<ISectionsService, SectionsService>();
 
 builder.Services.AddScoped<IQuizService, QuizService>();
 #endregion
