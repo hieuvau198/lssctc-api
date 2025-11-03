@@ -101,12 +101,16 @@ namespace Lssctc.ProgramManagement.Practices.Services
             if (practice == null)
                 throw new KeyNotFoundException($"Practice with ID {id} not found.");
 
-            if (practice.ActivityPractices.Any())
+            if (practice.ActivityPractices != null && practice.ActivityPractices.Any())
                 throw new InvalidOperationException("Cannot delete a practice linked to activities.");
 
-            await _uow.PracticeRepository.DeleteAsync(practice);
+            // Soft delete only
+            practice.IsDeleted = true;
+
+            await _uow.PracticeRepository.UpdateAsync(practice);
             await _uow.SaveChangesAsync();
         }
+
 
         #endregion
 

@@ -48,6 +48,7 @@ builder.Services.AddScoped<IActivitiesService, ActivitiesService>();
 builder.Services.AddScoped<IMaterialsService, MaterialsService>();
 builder.Services.AddScoped<IQuizService, QuizService>();
 builder.Services.AddScoped<IPracticesService, PracticesService>();
+builder.Services.AddScoped<ITasksService, TasksService>();
 
 #endregion
 

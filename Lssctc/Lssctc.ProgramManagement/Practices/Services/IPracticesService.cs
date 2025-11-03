@@ -12,11 +12,13 @@ namespace Lssctc.ProgramManagement.Practices.Services
         Task<PracticeDto?> GetPracticeByIdAsync(int id);
         Task<PracticeDto> CreatePracticeAsync(CreatePracticeDto createDto);
         Task<PracticeDto> UpdatePracticeAsync(int id, UpdatePracticeDto updateDto);
+        // BR: allow for soft delete only
+        // BR: allow for delete only if practice is not linked to any activity
         Task DeletePracticeAsync(int id);
         #endregion
 
         #region Activity Practices
-        // business rules: one practice can belong to many activities, one activity can have only one practice (if activity has quiz or material, it can not have practice)
+        // BR: one practice can belong to many activities, one activity can have only one practice (if activity has quiz or material, it can not have practice)
         Task<IEnumerable<PracticeDto>> GetPracticesByActivityAsync(int activityId);
         Task AddPracticeToActivityAsync(int activityId, int practiceId);
         Task RemovePracticeFromActivityAsync(int activityId, int practiceId);
