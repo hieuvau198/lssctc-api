@@ -22,6 +22,7 @@ namespace Lssctc.ProgramManagement.Accounts.Managemetns.Controllers
         #region Users
 
         [HttpGet]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<IEnumerable<UserDto>>> GetAllUsers()
         {
             try
@@ -55,6 +56,7 @@ namespace Lssctc.ProgramManagement.Accounts.Managemetns.Controllers
         }
 
         [HttpGet("trainees")]
+        [Authorize(Roles = "Admin,Instructor,SimulationManager")]
         public async Task<ActionResult<IEnumerable<UserDto>>> GetAllTrainees()
         {
             try
@@ -69,6 +71,7 @@ namespace Lssctc.ProgramManagement.Accounts.Managemetns.Controllers
         }
 
         [HttpGet("instructors")]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<IEnumerable<UserDto>>> GetAllInstructors()
         {
             try
@@ -83,6 +86,7 @@ namespace Lssctc.ProgramManagement.Accounts.Managemetns.Controllers
         }
 
         [HttpGet("simulation-managers")]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<IEnumerable<UserDto>>> GetAllSimulationManagers()
         {
             try
@@ -97,6 +101,7 @@ namespace Lssctc.ProgramManagement.Accounts.Managemetns.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<UserDto>> CreateUser([FromBody] CreateUserDto dto)
         {
             try
@@ -115,6 +120,7 @@ namespace Lssctc.ProgramManagement.Accounts.Managemetns.Controllers
         }
 
         [HttpPut("{id:int}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> UpdateUser(int id, [FromBody] UpdateUserDto dto)
         {
             try
@@ -133,6 +139,7 @@ namespace Lssctc.ProgramManagement.Accounts.Managemetns.Controllers
         }
 
         [HttpDelete("{id:int}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteUser(int id)
         {
             try

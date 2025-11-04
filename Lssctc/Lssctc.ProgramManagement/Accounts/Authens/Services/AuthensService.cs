@@ -22,7 +22,7 @@ namespace Lssctc.ProgramManagement.Accounts.Authens.Services
             _cache = cache;
         }
 
-        public async Task<LoginResponseModel> AuthenLogin(AuthensLoginDto request)
+        public async Task<LoginResponseModel> LoginWithUsername(LoginUsernameDto request)
         {
             if (string.IsNullOrEmpty(request.Username) || string.IsNullOrEmpty(request.Password))
             {
@@ -61,6 +61,48 @@ namespace Lssctc.ProgramManagement.Accounts.Authens.Services
             return new LoginResponseModel
             {
                 UserName = request.Username,
+                AccessToken = token,
+                ExpiresIn = expiresIn
+            };
+        }
+
+        public async Task<LoginResponseModel> LoginWithEmail(LoginEmailDto request)
+        {
+            if (string.IsNullOrEmpty(request.Email) || string.IsNullOrEmpty(request.Password))
+            {
+                throw new Exception("Email and password are required.");
+            }
+
+            var user = await _uow.UserRepository.GetAllAsQueryable()
+                .FirstOrDefaultAsync(x => x.Email.ToLower() == request.Email.ToLower() && !x.IsDeleted);
+
+            if (user == null)
+            {
+                throw new Exception("Invalid email or password.");
+            }
+
+            if (!PasswordHashHandler.VerifyPassword(request.Password, user.Password))
+            {
+                if (user.Password == request.Password)
+                {
+                    user.Password = PasswordHashHandler.HashPassword(request.Password);
+                    await _uow.SaveChangesAsync();
+                }
+                else
+                {
+                    throw new Exception("Invalid email or password.");
+                }
+            }
+
+            var (token, expiresIn) = JwtHandler.GenerateJwtToken(
+                user.Username,
+                user.Id,
+                user.Role,
+                _configuration);
+
+            return new LoginResponseModel
+            {
+                UserName = user.Username,
                 AccessToken = token,
                 ExpiresIn = expiresIn
             };
