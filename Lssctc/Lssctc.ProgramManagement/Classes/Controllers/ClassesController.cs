@@ -49,7 +49,7 @@ namespace Lssctc.ProgramManagement.Classes.Controllers
         }
 
         [HttpGet("{id}")]
-        [Authorize(Roles = "1,4")]
+        [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> GetById(int id)
         {
             try

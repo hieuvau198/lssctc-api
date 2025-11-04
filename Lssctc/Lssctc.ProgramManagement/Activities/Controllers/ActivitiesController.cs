@@ -22,7 +22,7 @@ namespace Lssctc.ProgramManagement.Activities.Controllers
         #region Activities
 
         [HttpGet]
-        [Authorize(Roles = "1,4")]
+        [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> GetAllActivities()
         {
             try
@@ -37,7 +37,7 @@ namespace Lssctc.ProgramManagement.Activities.Controllers
         }
 
         [HttpGet("paged")]
-        [Authorize(Roles = "1,4")]
+        [Authorize(Roles = "Admin, Instructor")]
         public async Task<ActionResult<PagedResult<ActivityDto>>> GetActivities([FromQuery] int pageNumber, [FromQuery] int pageSize)
         {
             try
@@ -52,7 +52,7 @@ namespace Lssctc.ProgramManagement.Activities.Controllers
         }
 
         [HttpGet("{id}")]
-        [Authorize(Roles = "4,5,1")]
+        [Authorize(Roles = "Admin, Instructor, Trainee")]
         public async Task<ActionResult<ActivityDto>> GetActivityById(int id)
         {
             try
@@ -71,7 +71,7 @@ namespace Lssctc.ProgramManagement.Activities.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "1,4")]
+        [Authorize(Roles = "Admin, Instructor")]
         public async Task<ActionResult<ActivityDto>> CreateActivity([FromBody] CreateActivityDto createDto)
         {
             if (createDto == null)
@@ -91,7 +91,7 @@ namespace Lssctc.ProgramManagement.Activities.Controllers
         }
 
         [HttpPut("{id}")]
-        [Authorize(Roles = "1,4")]
+        [Authorize(Roles = "Admin, Instructor")]
         public async Task<ActionResult<ActivityDto>> UpdateActivity(int id, [FromBody] UpdateActivityDto updateDto)
         {
             if (updateDto == null)
@@ -115,7 +115,7 @@ namespace Lssctc.ProgramManagement.Activities.Controllers
         }
 
         [HttpDelete("{id}")]
-        [Authorize(Roles = "1,4")]
+        [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> DeleteActivity(int id)
         {
             try
@@ -142,7 +142,7 @@ namespace Lssctc.ProgramManagement.Activities.Controllers
         #region Section Activities
 
         [HttpGet("section/{sectionId}")]
-        [Authorize(Roles = "1,4")]
+        [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> GetActivitiesBySectionId(int sectionId)
         {
             try
@@ -157,7 +157,7 @@ namespace Lssctc.ProgramManagement.Activities.Controllers
         }
 
         [HttpPost("section/{sectionId}/activity/{activityId}")]
-        [Authorize(Roles = "1,4")]
+        [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> AddActivityToSection(int sectionId, int activityId)
         {
             try
@@ -180,7 +180,7 @@ namespace Lssctc.ProgramManagement.Activities.Controllers
         }
 
         [HttpDelete("section/{sectionId}/activity/{activityId}")]
-        [Authorize(Roles = "1,4")]
+        [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> RemoveActivityFromSection(int sectionId, int activityId)
         {
             try
@@ -199,7 +199,7 @@ namespace Lssctc.ProgramManagement.Activities.Controllers
         }
 
         [HttpPut("section/{sectionId}/activity/{activityId}/order")]
-        [Authorize(Roles = "1,4")]
+        [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> UpdateSectionActivityOrder(int sectionId, int activityId, [FromQuery] int newOrder)
         {
             try

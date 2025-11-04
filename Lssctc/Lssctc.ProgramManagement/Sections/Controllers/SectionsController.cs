@@ -22,7 +22,7 @@ namespace Lssctc.ProgramManagement.Sections.Controllers
         #region Sections
 
         [HttpGet]
-        [Authorize(Roles = "1,4")]
+        [Authorize(Roles = "Admin, Instructor")]
         public async Task<ActionResult<IEnumerable<SectionDto>>> GetAllSections()
         {
             var sections = await _sectionsService.GetAllSectionsAsync();
@@ -30,7 +30,7 @@ namespace Lssctc.ProgramManagement.Sections.Controllers
         }
 
         [HttpGet("paged")]
-        [Authorize(Roles = "1,4")]
+        [Authorize(Roles = "Admin, Instructor")]
         public async Task<ActionResult<PagedResult<SectionDto>>> GetSections([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
             var pagedSections = await _sectionsService.GetSectionsAsync(pageNumber, pageSize);
@@ -38,7 +38,7 @@ namespace Lssctc.ProgramManagement.Sections.Controllers
         }
 
         [HttpGet("{id}")]
-        [Authorize(Roles = "1,4")]
+        [Authorize(Roles = "Admin, Instructor")]
         public async Task<ActionResult<SectionDto>> GetSectionById(int id)
         {
             var section = await _sectionsService.GetSectionByIdAsync(id);
@@ -47,7 +47,7 @@ namespace Lssctc.ProgramManagement.Sections.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "1,4")]
+        [Authorize(Roles = "Admin, Instructor")]
         public async Task<ActionResult<SectionDto>> CreateSection([FromBody] CreateSectionDto createDto)
         {
             try
@@ -62,7 +62,7 @@ namespace Lssctc.ProgramManagement.Sections.Controllers
         }
 
         [HttpPut("{id}")]
-        [Authorize(Roles = "1,4")]
+        [Authorize(Roles = "Admin, Instructor")]
         public async Task<ActionResult<SectionDto>> UpdateSection(int id, [FromBody] UpdateSectionDto updateDto)
         {
             try
@@ -81,7 +81,7 @@ namespace Lssctc.ProgramManagement.Sections.Controllers
         }
 
         [HttpDelete("{id}")]
-        [Authorize(Roles = "1,4")]
+        [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> DeleteSection(int id)
         {
             try
@@ -108,7 +108,7 @@ namespace Lssctc.ProgramManagement.Sections.Controllers
         #region Course-Section
 
         [HttpGet("course/{courseId}")]
-        [Authorize(Roles = "1,4")]
+        [Authorize(Roles = "Admin, Instructor")]
         public async Task<ActionResult<IEnumerable<SectionDto>>> GetSectionsByCourseId(int courseId)
         {
             var sections = await _sectionsService.GetSectionsByCourseIdAsync(courseId);
@@ -116,7 +116,7 @@ namespace Lssctc.ProgramManagement.Sections.Controllers
         }
 
         [HttpPost("course/{courseId}/section/{sectionId}")]
-        [Authorize(Roles = "1,4")]
+        [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> AddSectionToCourse(int courseId, int sectionId)
         {
             try
@@ -139,7 +139,7 @@ namespace Lssctc.ProgramManagement.Sections.Controllers
         }
 
         [HttpDelete("course/{courseId}/section/{sectionId}")]
-        [Authorize(Roles = "1,4")]
+        [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> RemoveSectionFromCourse(int courseId, int sectionId)
         {
             try
@@ -158,7 +158,7 @@ namespace Lssctc.ProgramManagement.Sections.Controllers
         }
 
         [HttpPut("course/{courseId}/section/{sectionId}/order/{newOrder}")]
-        [Authorize(Roles = "1,4")]
+        [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> UpdateCourseSectionOrder(int courseId, int sectionId, int newOrder)
         {
             try

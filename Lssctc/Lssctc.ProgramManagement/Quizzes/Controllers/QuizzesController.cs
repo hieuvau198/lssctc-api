@@ -20,7 +20,7 @@ namespace Lssctc.ProgramManagement.Quizzes.Controllers
        
 
         [HttpGet]
-        [Authorize(Roles = "4")]
+        [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> GetQuizzes([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10)
         {
             var result = await _service.GetQuizzes(pageIndex, pageSize);
@@ -28,6 +28,7 @@ namespace Lssctc.ProgramManagement.Quizzes.Controllers
         }
 
         [HttpGet("detail")]
+        [Authorize(Roles = "4")]
         public async Task<IActionResult> GetDetailQuizzes([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10)
         {
             var result = await _service.GetDetailQuizzes(pageIndex, pageSize);
@@ -37,7 +38,7 @@ namespace Lssctc.ProgramManagement.Quizzes.Controllers
       
 
         [HttpGet("{id}")]
-        [Authorize(Roles = "4")]
+        [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> GetQuizById(int id)
         {
             var dto = await _service.GetQuizById(id);
@@ -46,7 +47,7 @@ namespace Lssctc.ProgramManagement.Quizzes.Controllers
         }
 
         [HttpGet("{id}/full")]
-        [Authorize(Roles = "4")]
+        [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> GetQuizDetail(int id)
         {
             var dto = await _service.GetQuizDetail(id);
@@ -55,6 +56,7 @@ namespace Lssctc.ProgramManagement.Quizzes.Controllers
         }
 
         [HttpGet("{id}/for-trainee")]
+        [Authorize(Roles = "Trainee")]
         public async Task<IActionResult> GetQuizForTrainee(int id)
         {
             var dto = await _service.GetQuizDetailForTrainee(id);
@@ -63,7 +65,7 @@ namespace Lssctc.ProgramManagement.Quizzes.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "4")]
+        [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> CreateQuiz([FromBody] CreateQuizDto dto)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
@@ -72,7 +74,7 @@ namespace Lssctc.ProgramManagement.Quizzes.Controllers
         }
 
         [HttpPut("{id}")]
-        [Authorize(Roles = "4")]
+        [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> UpdateQuiz(int id, [FromBody] UpdateQuizDto dto)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
@@ -82,7 +84,7 @@ namespace Lssctc.ProgramManagement.Quizzes.Controllers
         }
 
         [HttpDelete("{id}")]
-        [Authorize(Roles = "4")]
+        [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> DeleteQuiz(int id)
         {
             var ok = await _service.DeleteQuizById(id);
@@ -91,7 +93,7 @@ namespace Lssctc.ProgramManagement.Quizzes.Controllers
         }
 
         [HttpPost("{quizId}/questions")]
-        [Authorize(Roles = "4")]
+        [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> CreateQuestionWithOptions(int quizId, [FromBody] CreateQuizQuestionWithOptionsDto dto)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
