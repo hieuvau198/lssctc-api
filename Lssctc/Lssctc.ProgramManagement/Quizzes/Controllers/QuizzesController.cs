@@ -1,11 +1,13 @@
 ﻿using Lssctc.ProgramManagement.Quizzes.DTOs;
 using Lssctc.ProgramManagement.Quizzes.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Lssctc.ProgramManagement.Quizzes.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class QuizzesController : ControllerBase
     {
         private readonly IQuizService _service;
@@ -15,8 +17,7 @@ namespace Lssctc.ProgramManagement.Quizzes.Controllers
             _service = service;
         }
 
-        [HttpGet("ping")]
-        public IActionResult Ping() => Ok("pong");
+       
 
         [HttpGet]
         public async Task<IActionResult> GetQuizzes([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10)
