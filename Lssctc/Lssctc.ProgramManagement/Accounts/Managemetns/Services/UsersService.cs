@@ -51,7 +51,6 @@ namespace Lssctc.ProgramManagement.Accounts.Managemetns.Services
             return await GetUsersByRole(UserRoleEnum.SimulationManager);
         }
 
-        // --- MODIFIED METHOD: CreateUserAsync is now CreateTraineeAccountAsync ---
         public async Task<UserDto> CreateTraineeAccountAsync(CreateUserDto dto)
         {
             // 1. Check for unique Username and Email
@@ -71,7 +70,6 @@ namespace Lssctc.ProgramManagement.Accounts.Managemetns.Services
             string traineeCode = await GenerateUniqueTraineeCode();
 
             // 4. Create the linked entities (Profile -> Trainee -> User)
-            // EF Core will link these using the shared primary key
 
             var traineeProfile = new TraineeProfile
             {
@@ -83,7 +81,7 @@ namespace Lssctc.ProgramManagement.Accounts.Managemetns.Services
                 TraineeCode = traineeCode,
                 IsActive = true,
                 IsDeleted = false,
-                TraineeProfile = traineeProfile // Link to the profile
+                TraineeProfile = traineeProfile
             };
 
             var user = new User
@@ -94,13 +92,65 @@ namespace Lssctc.ProgramManagement.Accounts.Managemetns.Services
                 Fullname = dto.Fullname,
                 PhoneNumber = dto.PhoneNumber,
                 AvatarUrl = dto.AvatarUrl,
-                Role = (int)UserRoleEnum.Trainee, // Force role to Trainee
+                Role = (int)UserRoleEnum.Trainee,
                 IsActive = true,
                 IsDeleted = false,
-                Trainee = trainee // Link to the trainee
+                Trainee = trainee
             };
 
-            // 5. Create the user (EF Core will cascade-create the Trainee and TraineeProfile)
+            await _uow.UserRepository.CreateAsync(user);
+            await _uow.SaveChangesAsync();
+
+            return MapToDto(user);
+        }
+
+        public async Task<UserDto> CreateInstructorAccountAsync(CreateUserDto dto)
+        {
+            // 1. Check for unique Username and Email
+            bool exists = await _uow.UserRepository
+                .GetAllAsQueryable()
+                .AnyAsync(u =>
+                (u.Username == dto.Username
+                || u.Email.ToLower() == dto.Email.ToLower())
+                && !u.IsDeleted);
+            if (exists)
+                throw new Exception("Username or Email already exists.");
+
+            // 2. Hash the password
+            string hashedPassword = PasswordHashHandler.HashPassword(dto.Password);
+
+            // 3. Generate a unique instructor code
+            string instructorCode = await GenerateUniqueInstructorCode();
+
+            // 4. Create the linked entities (Profile -> Instructor -> User)
+            var instructorProfile = new InstructorProfile
+            {
+                // Set any default non-nullable values here if needed
+            };
+
+            var instructor = new Instructor
+            {
+                InstructorCode = instructorCode,
+                IsActive = true,
+                IsDeleted = false,
+                InstructorProfile = instructorProfile // Link to the profile
+            };
+
+            var user = new User
+            {
+                Username = dto.Username,
+                Password = hashedPassword,
+                Email = dto.Email,
+                Fullname = dto.Fullname,
+                PhoneNumber = dto.PhoneNumber,
+                AvatarUrl = dto.AvatarUrl,
+                Role = (int)UserRoleEnum.Instructor, // Force role to Instructor
+                IsActive = true,
+                IsDeleted = false,
+                Instructor = instructor // Link to the instructor
+            };
+
+            // 5. Create the user (EF Core will cascade-create the Instructor and InstructorProfile)
             await _uow.UserRepository.CreateAsync(user);
             await _uow.SaveChangesAsync();
 
@@ -195,7 +245,6 @@ namespace Lssctc.ProgramManagement.Accounts.Managemetns.Services
                 .ToListAsync();
         }
 
-        // --- NEW HELPER METHOD ---
         private async Task<string> GenerateUniqueTraineeCode()
         {
             const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -204,14 +253,11 @@ namespace Lssctc.ProgramManagement.Accounts.Managemetns.Services
 
             do
             {
-                // Generate 6 random characters
                 var randomPart = new string(Enumerable.Repeat(chars, 6)
                     .Select(s => s[_random.Next(s.Length)]).ToArray());
 
                 traineeCode = "CS" + randomPart;
 
-                // Check for uniqueness in the Trainee table
-                // (Assumes _uow has a TraineeRepository)
                 isUnique = !await _uow.TraineeRepository
                     .GetAllAsQueryable()
                     .AnyAsync(t => t.TraineeCode == traineeCode);
@@ -219,6 +265,28 @@ namespace Lssctc.ProgramManagement.Accounts.Managemetns.Services
             } while (!isUnique);
 
             return traineeCode;
+        }
+
+        private async Task<string> GenerateUniqueInstructorCode()
+        {
+            const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+            string instructorCode;
+            bool isUnique;
+
+            do
+            {
+                var randomPart = new string(Enumerable.Repeat(chars, 6)
+                    .Select(s => s[_random.Next(s.Length)]).ToArray());
+
+                instructorCode = "INS" + randomPart;
+
+                isUnique = !await _uow.InstructorRepository
+                    .GetAllAsQueryable()
+                    .AnyAsync(i => i.InstructorCode == instructorCode);
+
+            } while (!isUnique);
+
+            return instructorCode;
         }
 
         #endregion

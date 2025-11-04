@@ -9,10 +9,14 @@ namespace Lssctc.ProgramManagement.Classes.Controllers
     public class ClassesController : ControllerBase
     {
         private readonly IClassesService _service;
-        public ClassesController(IClassesService service)
+        private readonly IClassInstructorsService _instructorsService;
+        public ClassesController(IClassesService service, IClassInstructorsService instructorsService)
         {
             _service = service;
+            _instructorsService = instructorsService;
         }
+
+        #region Class
 
         [HttpGet]
         public async Task<IActionResult> GetAll()
@@ -140,5 +144,53 @@ namespace Lssctc.ProgramManagement.Classes.Controllers
                 return BadRequest(ex.Message);
             }
         }
+        #endregion
+
+        #region Class Instructor
+
+        [HttpGet("{id}/instructor")]
+        public async Task<IActionResult> GetInstructor(int id)
+        {
+            try
+            {
+                var result = await _instructorsService.GetInstructorByClassIdAsync(id);
+                if (result == null) return NotFound("No instructor found for this class.");
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpPost("{id}/instructor")]
+        public async Task<IActionResult> AssignInstructor(int id, [FromBody] AssignInstructorDto dto)
+        {
+            try
+            {
+                await _instructorsService.AssignInstructorAsync(id, dto.InstructorId);
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpDelete("{id}/instructor")]
+        public async Task<IActionResult> RemoveInstructor(int id)
+        {
+            try
+            {
+                await _instructorsService.RemoveInstructorAsync(id);
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        #endregion
     }
 }
