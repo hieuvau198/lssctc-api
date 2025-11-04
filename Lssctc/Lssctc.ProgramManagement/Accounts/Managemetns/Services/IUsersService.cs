@@ -10,7 +10,7 @@ namespace Lssctc.ProgramManagement.Accounts.Managemetns.Services
         Task<IEnumerable<UserDto>> GetAllTraineesAsync();
         Task<IEnumerable<UserDto>> GetAllInstructorsAsync();
         Task<IEnumerable<UserDto>> GetAllSimulationManagersAsync();
-        Task<UserDto> CreateUserAsync(CreateUserDto dto);
+        Task<UserDto> CreateTraineeAccountAsync(CreateUserDto dto);
         Task<bool> UpdateUserAsync(int id, UpdateUserDto dto);
         Task<bool> DeleteUserAsync(int id);
         #endregion

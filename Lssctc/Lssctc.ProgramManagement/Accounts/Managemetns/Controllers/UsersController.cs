@@ -101,7 +101,7 @@ namespace Lssctc.ProgramManagement.Accounts.Managemetns.Controllers
         {
             try
             {
-                var newUser = await _usersService.CreateUserAsync(dto);
+                var newUser = await _usersService.CreateTraineeAccountAsync(dto);
                 return CreatedAtAction(nameof(GetUserById), new { id = newUser.Id }, newUser);
             }
             catch (Exception ex)

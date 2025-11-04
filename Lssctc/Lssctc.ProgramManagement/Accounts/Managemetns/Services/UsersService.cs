@@ -10,6 +10,8 @@ namespace Lssctc.ProgramManagement.Accounts.Managemetns.Services
     public class UsersService : IUsersService
     {
         private readonly IUnitOfWork _uow;
+        private static readonly Random _random = new Random(); // For trainee code generation
+
         public UsersService(IUnitOfWork uow)
         {
             _uow = uow;
@@ -49,24 +51,40 @@ namespace Lssctc.ProgramManagement.Accounts.Managemetns.Services
             return await GetUsersByRole(UserRoleEnum.SimulationManager);
         }
 
-        public async Task<UserDto> CreateUserAsync(CreateUserDto dto)
+        // --- MODIFIED METHOD: CreateUserAsync is now CreateTraineeAccountAsync ---
+        public async Task<UserDto> CreateTraineeAccountAsync(CreateUserDto dto)
         {
+            // 1. Check for unique Username and Email
             bool exists = await _uow.UserRepository
                 .GetAllAsQueryable()
-                .AnyAsync(u => 
-                (u.Username == dto.Username 
-                || u.Email.ToLower() == dto.Email.ToLower()) 
+                .AnyAsync(u =>
+                (u.Username == dto.Username
+                || u.Email.ToLower() == dto.Email.ToLower())
                 && !u.IsDeleted);
             if (exists)
                 throw new Exception("Username or Email already exists.");
 
+            // 2. Hash the password
             string hashedPassword = PasswordHashHandler.HashPassword(dto.Password);
 
-            UserRoleEnum? role = null;
-            if (!string.IsNullOrEmpty(dto.Role) && Enum.TryParse(dto.Role, true, out UserRoleEnum parsedRole))
+            // 3. Generate a unique trainee code
+            string traineeCode = await GenerateUniqueTraineeCode();
+
+            // 4. Create the linked entities (Profile -> Trainee -> User)
+            // EF Core will link these using the shared primary key
+
+            var traineeProfile = new TraineeProfile
             {
-                role = parsedRole;
-            }
+                // Set any default non-nullable values here if needed
+            };
+
+            var trainee = new Trainee
+            {
+                TraineeCode = traineeCode,
+                IsActive = true,
+                IsDeleted = false,
+                TraineeProfile = traineeProfile // Link to the profile
+            };
 
             var user = new User
             {
@@ -76,11 +94,13 @@ namespace Lssctc.ProgramManagement.Accounts.Managemetns.Services
                 Fullname = dto.Fullname,
                 PhoneNumber = dto.PhoneNumber,
                 AvatarUrl = dto.AvatarUrl,
-                Role = role.HasValue ? (int)role.Value : (int)UserRoleEnum.Trainee,
+                Role = (int)UserRoleEnum.Trainee, // Force role to Trainee
                 IsActive = true,
-                IsDeleted = false
+                IsDeleted = false,
+                Trainee = trainee // Link to the trainee
             };
 
+            // 5. Create the user (EF Core will cascade-create the Trainee and TraineeProfile)
             await _uow.UserRepository.CreateAsync(user);
             await _uow.SaveChangesAsync();
 
@@ -107,6 +127,13 @@ namespace Lssctc.ProgramManagement.Accounts.Managemetns.Services
             var user = await _uow.UserRepository.GetByIdAsync(id);
             if (user == null)
                 return false;
+
+            
+            var trainee = await _uow.TraineeRepository.GetByIdAsync(id);
+            if (trainee != null) 
+            {
+                trainee.IsDeleted = true;
+            }
 
             user.IsDeleted = true;
             user.IsActive = false;
@@ -166,6 +193,32 @@ namespace Lssctc.ProgramManagement.Accounts.Managemetns.Services
                 .Where(u => !u.IsDeleted && u.Role == (int)role)
                 .Select(u => MapToDto(u))
                 .ToListAsync();
+        }
+
+        // --- NEW HELPER METHOD ---
+        private async Task<string> GenerateUniqueTraineeCode()
+        {
+            const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+            string traineeCode;
+            bool isUnique;
+
+            do
+            {
+                // Generate 6 random characters
+                var randomPart = new string(Enumerable.Repeat(chars, 6)
+                    .Select(s => s[_random.Next(s.Length)]).ToArray());
+
+                traineeCode = "CS" + randomPart;
+
+                // Check for uniqueness in the Trainee table
+                // (Assumes _uow has a TraineeRepository)
+                isUnique = !await _uow.TraineeRepository
+                    .GetAllAsQueryable()
+                    .AnyAsync(t => t.TraineeCode == traineeCode);
+
+            } while (!isUnique);
+
+            return traineeCode;
         }
 
         #endregion
