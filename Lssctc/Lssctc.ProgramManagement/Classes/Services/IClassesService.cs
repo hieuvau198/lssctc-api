@@ -33,9 +33,10 @@ namespace Lssctc.ProgramManagement.Classes.Services
         #endregion
 
         #region Program Course Classes
-
+        // Todo: get classes by program id and course id
+        // Todo: get classes by course id
         #endregion
 
-
+        
     }
 }

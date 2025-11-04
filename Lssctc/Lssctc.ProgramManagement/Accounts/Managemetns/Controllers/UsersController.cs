@@ -100,13 +100,32 @@ namespace Lssctc.ProgramManagement.Accounts.Managemetns.Controllers
             }
         }
 
-        [HttpPost]
+        [HttpPost("trainees")]
         [Authorize(Roles = "Admin")]
         public async Task<ActionResult<UserDto>> CreateUser([FromBody] CreateUserDto dto)
         {
             try
             {
                 var newUser = await _usersService.CreateTraineeAccountAsync(dto);
+                return CreatedAtAction(nameof(GetUserById), new { id = newUser.Id }, newUser);
+            }
+            catch (Exception ex)
+            {
+                if (ex.Message == "Username already exists.")
+                {
+                    return BadRequest(ex.Message);
+                }
+                return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+            }
+        }
+
+        [HttpPost("instructors")]
+        [Authorize(Roles = "Admin")]
+        public async Task<ActionResult<UserDto>> CreateInstructor([FromBody] CreateUserDto dto)
+        {
+            try
+            {
+                var newUser = await _usersService.CreateInstructorAccountAsync(dto);
                 return CreatedAtAction(nameof(GetUserById), new { id = newUser.Id }, newUser);
             }
             catch (Exception ex)
