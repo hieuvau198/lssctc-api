@@ -1,6 +1,6 @@
-﻿using Lssctc.ProgramManagement.Authens.Dtos;
+﻿using Lssctc.ProgramManagement.Accounts.Authens.Dtos;
 
-namespace Lssctc.ProgramManagement.Authens.Services
+namespace Lssctc.ProgramManagement.Accounts.Authens.Services
 {
     public interface IAuthensService
     {

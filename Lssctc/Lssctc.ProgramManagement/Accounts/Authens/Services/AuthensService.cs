@@ -1,4 +1,5 @@
-﻿using Lssctc.ProgramManagement.Authens.Dtos;
+﻿using Lssctc.ProgramManagement.Accounts.Authens.Dtos;
+using Lssctc.ProgramManagement.Accounts.Helpers;
 using Lssctc.Share.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
@@ -6,7 +7,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 
-namespace Lssctc.ProgramManagement.Authens.Services
+namespace Lssctc.ProgramManagement.Accounts.Authens.Services
 {
     public class AuthensService : IAuthensService
     {
@@ -25,18 +26,25 @@ namespace Lssctc.ProgramManagement.Authens.Services
         {
             if (string.IsNullOrEmpty(request.Username) || string.IsNullOrEmpty(request.Password))
             {
-
                 throw new Exception("Username and password are required.");
             }
+
             var user = await _uow.UserRepository.GetAllAsQueryable()
                 .FirstOrDefaultAsync(x => x.Username == request.Username);
 
-            if (user == null || !PasswordHashHandler.VerifyPassword(request.Password, user.Password))
+            if (user == null)
             {
-                // Temporary fallback for plain text passwords (remove after hashing all passwords)
-                if (user != null && user.Password == request.Password)
+                throw new Exception("Invalid username or password.");
+            }
+
+            // Check for hashed password first
+            if (!PasswordHashHandler.VerifyPassword(request.Password, user.Password))
+            {
+                // If hash fails, check for plain text fallback
+                if (user.Password == request.Password)
                 {
-                    // Plain text match, but should hash the password
+                    user.Password = PasswordHashHandler.HashPassword(request.Password);
+                    await _uow.SaveChangesAsync();
                 }
                 else
                 {
@@ -44,37 +52,17 @@ namespace Lssctc.ProgramManagement.Authens.Services
                 }
             }
 
-            var issuer = _configuration["JwtConfig:Issuer"];
-            var audience = _configuration["JwtConfig:Audience"];
-            var key = _configuration["JwtConfig:Key"];
-            var tokenValidityMins = _configuration.GetValue<int>("JwtConfig:TokenValidityInMinutes");
-            var tokenExpriryTimeStamp = DateTime.UtcNow.AddMinutes(tokenValidityMins);
-
-            // create a jti so we can revoke the token later without DB
-            var jti = Guid.NewGuid().ToString();
-
-            var tokenDescriptor = new SecurityTokenDescriptor
-            {
-                Subject = new System.Security.Claims.ClaimsIdentity(new[]
-                {
-                    new Claim(JwtRegisteredClaimNames.Name, request.Username),
-                    new Claim(JwtRegisteredClaimNames.Jti, jti)
-                }),
-                Expires = tokenExpriryTimeStamp,
-                Issuer = issuer,
-                Audience = audience,
-                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(key)), SecurityAlgorithms.HmacSha256Signature)
-            };
-
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var token = tokenHandler.CreateToken(tokenDescriptor);
-            var jwtToken = tokenHandler.WriteToken(token);
+            var (token, expiresIn) = JwtHandler.GenerateJwtToken(
+                user.Username,
+                user.Id,
+                user.Role,
+                _configuration);
 
             return new LoginResponseModel
             {
                 UserName = request.Username,
-                AccessToken = jwtToken,
-                ExpiresIn = tokenValidityMins * 60
+                AccessToken = token,
+                ExpiresIn = expiresIn
             };
         }
 
@@ -94,14 +82,12 @@ namespace Lssctc.ProgramManagement.Authens.Services
                 return false;
             }
 
-            // try get jti claim
             var jti = jwt.Id;
             if (string.IsNullOrEmpty(jti))
             {
                 jti = jwt.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Jti)?.Value;
             }
 
-            // fallback to hashed token string if no jti
             if (string.IsNullOrEmpty(jti))
             {
                 jti = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(accessToken));
@@ -111,7 +97,6 @@ namespace Lssctc.ProgramManagement.Authens.Services
             var ttl = expires - DateTime.UtcNow;
             if (ttl <= TimeSpan.Zero)
             {
-                // token already expired
                 return true;
             }
 

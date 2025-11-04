@@ -1,10 +1,10 @@
-﻿using Lssctc.ProgramManagement.Authens.Dtos;
-using Lssctc.ProgramManagement.Authens.Services;
+﻿using Lssctc.ProgramManagement.Accounts.Authens.Dtos;
+using Lssctc.ProgramManagement.Accounts.Authens.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Lssctc.ProgramManagement.Authens.Controllers
+namespace Lssctc.ProgramManagement.Accounts.Authens.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]

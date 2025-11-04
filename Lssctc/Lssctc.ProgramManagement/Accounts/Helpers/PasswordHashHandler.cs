@@ -1,6 +1,6 @@
 ﻿using System.Security.Cryptography;
 
-namespace Lssctc.ProgramManagement.Authens.Services
+namespace Lssctc.ProgramManagement.Accounts.Helpers
 {
     public class PasswordHashHandler
     {
@@ -15,7 +15,11 @@ namespace Lssctc.ProgramManagement.Authens.Services
             var subkey = new Rfc2898DeriveBytes(password, salt, _iterations, HashAlgorithmName.SHA256).GetBytes(256 / 8);
             var outputBytes = new byte[13 + salt.Length + subkey.Length];
             outputBytes[0] = 0x01; // format marker
-            WriteNetworkByteOrder(outputBytes, 1, (uint)HashAlgorithmName.SHA256.GetHashCode());
+
+            // --- THIS IS THE FIX ---
+            // Was: (uint)HashAlgorithmName.SHA256.GetHashCode()
+            WriteNetworkByteOrder(outputBytes, 1, (uint)0x01); // Use a stable constant for the PRF
+
             WriteNetworkByteOrder(outputBytes, 5, (uint)_iterations);
             WriteNetworkByteOrder(outputBytes, 9, (uint)salt.Length);
             Buffer.BlockCopy(salt, 0, outputBytes, 13, salt.Length);
@@ -42,7 +46,10 @@ namespace Lssctc.ProgramManagement.Authens.Services
                 return false;
 
             uint algoCode = ReadNetworkByteOrder(hashBytes, 1);
-            if (algoCode != (uint)HashAlgorithmName.SHA256.GetHashCode())
+
+            // --- THIS IS THE FIX ---
+            // Was: (uint)HashAlgorithmName.SHA256.GetHashCode()
+            if (algoCode != (uint)0x01) // Check against the same stable constant
                 return false;
 
             uint iterations = ReadNetworkByteOrder(hashBytes, 5);

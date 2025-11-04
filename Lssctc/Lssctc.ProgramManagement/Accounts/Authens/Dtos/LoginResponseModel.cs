@@ -1,4 +1,4 @@
-﻿namespace Lssctc.ProgramManagement.Authens.Dtos
+﻿namespace Lssctc.ProgramManagement.Accounts.Authens.Dtos
 {
     public class LoginResponseModel
     {

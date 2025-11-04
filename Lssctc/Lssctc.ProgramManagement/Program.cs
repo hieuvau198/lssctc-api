@@ -1,5 +1,6 @@
+using Lssctc.ProgramManagement.Accounts.Authens.Services;
+using Lssctc.ProgramManagement.Accounts.Managemetns.Services;
 using Lssctc.ProgramManagement.Activities.Services;
-using Lssctc.ProgramManagement.Authens.Services;
 using Lssctc.ProgramManagement.Courses.Services;
 using Lssctc.ProgramManagement.Materials.Services;
 using Lssctc.ProgramManagement.Practices.Services;
@@ -43,7 +44,7 @@ builder.Services.AddAuthentication(options =>
             ValidateIssuerSigningKey = true,
             ValidIssuer = builder.Configuration["JwtConfig:Issuer"],
             ValidAudience = builder.Configuration["JwtConfig:Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(builder.Configuration["JwtConfig:Key"])),
+            IssuerSigningKey = new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(builder.Configuration["JwtConfig:Key"] ?? "JWT Key Not Found")),
             ClockSkew = TimeSpan.Zero
         };
 
@@ -135,7 +136,7 @@ builder.Services.AddScoped<IQuizService, QuizService>();
 builder.Services.AddScoped<IPracticesService, PracticesService>();
 builder.Services.AddScoped<ITasksService, TasksService>();
 
-
+builder.Services.AddScoped<IUsersService, UsersService>();
 builder.Services.AddScoped<IAuthensService, AuthensService>();
 
 #endregion
