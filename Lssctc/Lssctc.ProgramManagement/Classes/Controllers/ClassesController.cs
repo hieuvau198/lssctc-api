@@ -1,11 +1,13 @@
 ﻿using Lssctc.ProgramManagement.Classes.Dtos;
 using Lssctc.ProgramManagement.Classes.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Lssctc.ProgramManagement.Classes.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class ClassesController : ControllerBase
     {
         private readonly IClassesService _service;
@@ -47,6 +49,7 @@ namespace Lssctc.ProgramManagement.Classes.Controllers
         }
 
         [HttpGet("{id}")]
+        [Authorize(Roles = "1,4")]
         public async Task<IActionResult> GetById(int id)
         {
             try
