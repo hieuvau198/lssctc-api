@@ -2,7 +2,7 @@
 
 namespace Lssctc.ProgramManagement.Accounts.Authens.Dtos
 {
-    public class AuthensLoginDto
+    public class LoginUsernameDto
     {
         [Required]
         public string Username { get; set; } = null!;

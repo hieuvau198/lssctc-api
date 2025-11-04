@@ -4,8 +4,8 @@ namespace Lssctc.ProgramManagement.Accounts.Authens.Services
 {
     public interface IAuthensService
     {
-        Task<LoginResponseModel> AuthenLogin(AuthensLoginDto request);
+        Task<LoginResponseModel> LoginWithUsername(LoginUsernameDto request);
+        Task<LoginResponseModel> LoginWithEmail(LoginEmailDto request);
         Task<bool> Logout(string accessToken);
-       
     }    
 }

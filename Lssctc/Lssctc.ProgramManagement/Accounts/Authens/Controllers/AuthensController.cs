@@ -17,12 +17,26 @@ namespace Lssctc.ProgramManagement.Accounts.Authens.Controllers
             _authensService = authensService;
         }
 
-        [HttpPost("login")]
-        public async Task<IActionResult> Login([FromBody] AuthensLoginDto request)
+        [HttpPost("login-username")]
+        public async Task<IActionResult> LoginWithUsername([FromBody] LoginUsernameDto request)
         {
             try
             {
-                var result = await _authensService.AuthenLogin(request);
+                var result = await _authensService.LoginWithUsername(request);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        [HttpPost("login-email")]
+        public async Task<IActionResult> LoginWithEmail([FromBody] LoginEmailDto request)
+        {
+            try
+            {
+                var result = await _authensService.LoginWithEmail(request);
                 return Ok(result);
             }
             catch (Exception ex)
