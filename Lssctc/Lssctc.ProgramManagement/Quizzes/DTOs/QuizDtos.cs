@@ -2,6 +2,8 @@
 
 namespace Lssctc.ProgramManagement.Quizzes.DTOs
 {
+    #region Quiz DTOs
+
     public class QuizDto
     {
         public int Id { get; set; }
@@ -35,8 +37,6 @@ namespace Lssctc.ProgramManagement.Quizzes.DTOs
         public int? TimelimitMinute { get; set; }
         public decimal? TotalScore { get; set; }
         public string? Description { get; set; }
-
-
     }
 
     public class QuizTraineeDetailDto
@@ -49,7 +49,6 @@ namespace Lssctc.ProgramManagement.Quizzes.DTOs
         public string? Description { get; set; }
         public List<QuizTraineeQuestionDto> Questions { get; set; } = new();
     }
-
 
     public class CreateQuizDto
     {
@@ -67,10 +66,11 @@ namespace Lssctc.ProgramManagement.Quizzes.DTOs
         public string? Description { get; set; }
     }
 
-
-
     public class UpdateQuizDto : CreateQuizDto { }
 
+    #endregion
+
+    #region Question DTOs
 
     public class QuizQuestionDto
     {
@@ -82,24 +82,6 @@ namespace Lssctc.ProgramManagement.Quizzes.DTOs
         public bool IsMultipleAnswers { get; set; }
 
         public List<QuizQuestionOptionDto> Options { get; set; } = new();
-    }
-
-    public class QuizQuestionOptionDto
-    {
-        public int Id { get; set; }
-
-        public int QuizQuestionId { get; set; }
-
-        public string? Description { get; set; }
-
-        public bool IsCorrect { get; set; }
-        public string? Explanation { get; set; }
-
-        public int? DisplayOrder { get; set; }
-
-        public decimal? OptionScore { get; set; }
-
-        public string Name { get; set; } = null!;
     }
 
     public class QuizDetailQuestionDto
@@ -114,18 +96,6 @@ namespace Lssctc.ProgramManagement.Quizzes.DTOs
         public List<QuizDetailQuestionOptionDto> Options { get; set; } = new();
     }
 
-    public class QuizDetailQuestionOptionDto
-    {
-        public int Id { get; set; }
-        public int QuizQuestionId { get; set; }
-        public string? Description { get; set; }
-        public bool IsCorrect { get; set; }
-        public int? DisplayOrder { get; set; }
-        public decimal? OptionScore { get; set; }
-        public string Name { get; set; } = null!;
-    }
-
-
     public class QuizTraineeQuestionDto
     {
         public int Id { get; set; }
@@ -137,6 +107,43 @@ namespace Lssctc.ProgramManagement.Quizzes.DTOs
         public List<QuizTraineeQuestionOptionDto> Options { get; set; } = new();
     }
 
+    public class QuizQuestionNoOptionsDto
+    {
+        public int Id { get; set; }
+        public int QuizId { get; set; }
+        public string Name { get; set; } = null!;
+        public decimal? QuestionScore { get; set; }
+        public string? Description { get; set; }
+        public bool IsMultipleAnswers { get; set; }
+        public string? ImageUrl { get; set; }
+    }
+
+    #endregion
+
+    #region Option DTOs
+
+    public class QuizQuestionOptionDto
+    {
+        public int Id { get; set; }
+        public int QuizQuestionId { get; set; }
+        public string? Description { get; set; }
+        public bool IsCorrect { get; set; }
+        public string? Explanation { get; set; }
+        public int? DisplayOrder { get; set; }
+        public decimal? OptionScore { get; set; }
+        public string Name { get; set; } = null!;
+    }
+
+    public class QuizDetailQuestionOptionDto
+    {
+        public int Id { get; set; }
+        public int QuizQuestionId { get; set; }
+        public string? Description { get; set; }
+        public bool IsCorrect { get; set; }
+        public int? DisplayOrder { get; set; }
+        public decimal? OptionScore { get; set; }
+        public string Name { get; set; } = null!;
+    }
 
     public class QuizTraineeQuestionOptionDto
     {
@@ -148,15 +155,5 @@ namespace Lssctc.ProgramManagement.Quizzes.DTOs
         public decimal? OptionScore { get; set; }
     }
 
-    public class QuizQuestionNoOptionsDto
-    {
-        public int Id { get; set; }
-        public int QuizId { get; set; }
-        public string Name { get; set; } = null!;
-        public decimal? QuestionScore { get; set; }
-        public string? Description { get; set; }
-        public bool IsMultipleAnswers { get; set; }
-        public string? ImageUrl { get; set; }
-
-    }
+    #endregion
 }

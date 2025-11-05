@@ -156,7 +156,7 @@ builder.Services.AddScoped<IPracticeAttemptsService, PracticeAttemptsService>();
 builder.Services.AddScoped<IUsersService, UsersService>();
 builder.Services.AddScoped<IAuthensService, AuthensService>();
 builder.Services.AddScoped<IQuizQuestionService, QuizQuestionService>();
-
+builder.Services.AddScoped<IQuizQuestionOptionsService, QuizQuestionOptionsService>();
 #endregion
 
 #region CORS
