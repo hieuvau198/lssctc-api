@@ -1,4 +1,4 @@
-﻿namespace Lssctc.ProgramManagement.Classes.Dtos
+﻿namespace Lssctc.ProgramManagement.ClassManage.Classes.Dtos
 {
     public class ClassDto
     {

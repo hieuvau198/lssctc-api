@@ -1,7 +1,7 @@
-﻿using Lssctc.ProgramManagement.Classes.Dtos;
+﻿using Lssctc.ProgramManagement.ClassManage.Classes.Dtos;
 using Lssctc.Share.Common;
 
-namespace Lssctc.ProgramManagement.Classes.Services
+namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
 {
     public interface IClassesService
     {
@@ -25,6 +25,8 @@ namespace Lssctc.ProgramManagement.Classes.Services
         // startdate and enddate must be valid
         // must have at least one instructor assigned
         // must have at least one enrolled student
+        // after starting class, class status is 'In Progress'
+        // after starting class, automatically create progress, section record, activity record for each enrolled student
         Task StartClassAsync(int id);
         Task CompleteClassAsync(int id);
         // BR cancel class: allow for delete only if no enrolled students,

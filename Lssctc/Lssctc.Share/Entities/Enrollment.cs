@@ -19,6 +19,8 @@ public partial class Enrollment
 
     public bool? IsDeleted { get; set; }
 
+    public string? Note { get; set; }
+
     public virtual Class Class { get; set; } = null!;
 
     public virtual ICollection<LearningProgress> LearningProgresses { get; set; } = new List<LearningProgress>();

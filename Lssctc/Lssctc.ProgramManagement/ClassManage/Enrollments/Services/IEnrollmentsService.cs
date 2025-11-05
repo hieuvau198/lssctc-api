@@ -1,7 +1,7 @@
-﻿using Lssctc.ProgramManagement.Enrollments.Dtos;
+﻿using Lssctc.ProgramManagement.ClassManage.Enrollments.Dtos;
 using Lssctc.Share.Common;
 
-namespace Lssctc.ProgramManagement.Enrollments.Services
+namespace Lssctc.ProgramManagement.ClassManage.Enrollments.Services
 {
     public interface IEnrollmentsService
     {

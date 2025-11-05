@@ -113,10 +113,7 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
             var entity = await _uow.QuizRepository.GetByIdAsync(id);
             if (entity == null) return false;
 
-            // Prevent deletion if quiz has questions or is used in activities or attempts
-            var hasQuestions = await _uow.QuizQuestionRepository.ExistsAsync(q => q.QuizId == id);
-            if (hasQuestions)
-                throw new ValidationException("Cannot delete quiz that has questions. Please delete questions first.");
+          
 
             var usedInActivity = await _uow.ActivityQuizRepository.ExistsAsync(aq => aq.QuizId == id);
             if (usedInActivity)
@@ -125,6 +122,30 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
             var hasAttempts = await _uow.QuizAttemptRepository.ExistsAsync(a => a.QuizId == id);
             if (hasAttempts)
                 throw new ValidationException("Cannot delete quiz that has attempts recorded.");
+
+            var questions = await _uow.QuizQuestionRepository.GetAllAsQueryable()
+                .Where(qq => qq.QuizId == id)
+                .ToListAsync();
+
+            foreach (var question in questions)
+            {
+                var options = await _uow.QuizQuestionOptionRepository.GetAllAsQueryable()
+                    .Where(o => o.QuizQuestionId == question.Id)
+                    .ToListAsync();
+
+                foreach (var option in options)
+                {
+                   await _uow.QuizQuestionOptionRepository.DeleteAsync(option);
+                }
+
+
+            }
+
+            //delte all questions
+            foreach (var question in questions)
+            {
+                await _uow.QuizQuestionRepository.DeleteAsync(question);
+            }
 
             await _uow.QuizRepository.DeleteAsync(entity);
             await _uow.SaveChangesAsync();

@@ -1,6 +1,7 @@
 ﻿using Lssctc.ProgramManagement.Activities.Dtos;
 using Lssctc.ProgramManagement.Activities.Services;
 using Lssctc.Share.Common;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -8,6 +9,7 @@ namespace Lssctc.ProgramManagement.Activities.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class ActivitiesController : ControllerBase
     {
         private readonly IActivitiesService _activitiesService;
@@ -20,6 +22,7 @@ namespace Lssctc.ProgramManagement.Activities.Controllers
         #region Activities
 
         [HttpGet]
+        [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> GetAllActivities()
         {
             try
@@ -34,6 +37,7 @@ namespace Lssctc.ProgramManagement.Activities.Controllers
         }
 
         [HttpGet("paged")]
+        [Authorize(Roles = "Admin, Instructor")]
         public async Task<ActionResult<PagedResult<ActivityDto>>> GetActivities([FromQuery] int pageNumber, [FromQuery] int pageSize)
         {
             try
@@ -48,6 +52,7 @@ namespace Lssctc.ProgramManagement.Activities.Controllers
         }
 
         [HttpGet("{id}")]
+        [Authorize(Roles = "Admin, Instructor, Trainee")]
         public async Task<ActionResult<ActivityDto>> GetActivityById(int id)
         {
             try
@@ -66,6 +71,7 @@ namespace Lssctc.ProgramManagement.Activities.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "Admin, Instructor")]
         public async Task<ActionResult<ActivityDto>> CreateActivity([FromBody] CreateActivityDto createDto)
         {
             if (createDto == null)
@@ -85,6 +91,7 @@ namespace Lssctc.ProgramManagement.Activities.Controllers
         }
 
         [HttpPut("{id}")]
+        [Authorize(Roles = "Admin, Instructor")]
         public async Task<ActionResult<ActivityDto>> UpdateActivity(int id, [FromBody] UpdateActivityDto updateDto)
         {
             if (updateDto == null)
@@ -108,6 +115,7 @@ namespace Lssctc.ProgramManagement.Activities.Controllers
         }
 
         [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> DeleteActivity(int id)
         {
             try
@@ -134,6 +142,7 @@ namespace Lssctc.ProgramManagement.Activities.Controllers
         #region Section Activities
 
         [HttpGet("section/{sectionId}")]
+        [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> GetActivitiesBySectionId(int sectionId)
         {
             try
@@ -148,6 +157,7 @@ namespace Lssctc.ProgramManagement.Activities.Controllers
         }
 
         [HttpPost("section/{sectionId}/activity/{activityId}")]
+        [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> AddActivityToSection(int sectionId, int activityId)
         {
             try
@@ -170,6 +180,7 @@ namespace Lssctc.ProgramManagement.Activities.Controllers
         }
 
         [HttpDelete("section/{sectionId}/activity/{activityId}")]
+        [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> RemoveActivityFromSection(int sectionId, int activityId)
         {
             try
@@ -188,6 +199,7 @@ namespace Lssctc.ProgramManagement.Activities.Controllers
         }
 
         [HttpPut("section/{sectionId}/activity/{activityId}/order")]
+        [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> UpdateSectionActivityOrder(int sectionId, int activityId, [FromQuery] int newOrder)
         {
             try

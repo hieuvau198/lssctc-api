@@ -229,6 +229,7 @@ public partial class LssctcDbContext : DbContext
             entity.Property(e => e.ActivityId)
                 .HasDefaultValue(-1)
                 .HasColumnName("activity_id");
+            entity.Property(e => e.ActivityType).HasColumnName("activity_type");
             entity.Property(e => e.CompletedDate)
                 .HasPrecision(0)
                 .HasColumnName("completed_date");
@@ -545,6 +546,9 @@ public partial class LssctcDbContext : DbContext
             entity.Property(e => e.IsDeleted)
                 .HasDefaultValue(false)
                 .HasColumnName("is_deleted");
+            entity.Property(e => e.Note)
+                .HasMaxLength(500)
+                .HasColumnName("note");
             entity.Property(e => e.Status)
                 .HasDefaultValue(1)
                 .HasColumnName("status");

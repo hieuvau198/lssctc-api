@@ -19,6 +19,8 @@ public partial class ActivityRecord
 
     public DateTime? CompletedDate { get; set; }
 
+    public int? ActivityType { get; set; }
+
     public virtual ICollection<PracticeAttempt> PracticeAttempts { get; set; } = new List<PracticeAttempt>();
 
     public virtual ICollection<QuizAttempt> QuizAttempts { get; set; } = new List<QuizAttempt>();

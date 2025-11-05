@@ -1,11 +1,11 @@
-﻿using Lssctc.ProgramManagement.Enrollments.Dtos;
+﻿using Lssctc.ProgramManagement.ClassManage.Enrollments.Dtos;
 using Lssctc.Share.Common;
 using Lssctc.Share.Entities;
 using Lssctc.Share.Enums;
 using Lssctc.Share.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
-namespace Lssctc.ProgramManagement.Enrollments.Services
+namespace Lssctc.ProgramManagement.ClassManage.Enrollments.Services
 {
     public class EnrollmentsService : IEnrollmentsService
     {

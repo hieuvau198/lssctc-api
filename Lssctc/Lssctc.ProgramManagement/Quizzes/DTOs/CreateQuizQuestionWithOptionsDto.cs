@@ -30,4 +30,28 @@ namespace Lssctc.ProgramManagement.Quizzes.DTOs
         [Range(0, 999.99, ErrorMessage = "OptionScore must be between 0 and 999.99.")]
         public decimal? OptionScore { get; set; }
     }
+
+    //create and update quiz question 
+    public class CreateQuizQuestionDto
+    {
+        [Required(ErrorMessage = "Name is required.")]
+        [StringLength(100, ErrorMessage = "Name must be at most 100 characters.")]
+        public string Name { get; set; } = null!;
+
+        [Required(ErrorMessage = "QuestionScore is required.")]
+        [Range(0.01, 999.99, ErrorMessage = "QuestionScore must be between 0.01 and 999.99.")]
+        public decimal? QuestionScore { get; set; }
+
+        [StringLength(2000, ErrorMessage = "Description must be at most 2000 characters.")]
+        public string? Description { get; set; }
+        public bool IsMultipleAnswers { get; set; }
+    }
+
+    public class UpdateQuizQuestionDto
+    {
+        public string? Name { get; set; }
+        public decimal? QuestionScore { get; set; }
+        public string? Description { get; set; }
+        public bool? IsMultipleAnswers { get; set; }
+    }
 }

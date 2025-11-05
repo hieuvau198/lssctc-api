@@ -1,9 +1,10 @@
 using Lssctc.ProgramManagement.Accounts.Authens.Services;
 using Lssctc.ProgramManagement.Accounts.Managemetns.Services;
 using Lssctc.ProgramManagement.Activities.Services;
-using Lssctc.ProgramManagement.Classes.Services;
+using Lssctc.ProgramManagement.ClassManage.Classes.Services;
+using Lssctc.ProgramManagement.ClassManage.Enrollments.Services;
+using Lssctc.ProgramManagement.ClassManage.Progresses.Services;
 using Lssctc.ProgramManagement.Courses.Services;
-using Lssctc.ProgramManagement.Enrollments.Services;
 using Lssctc.ProgramManagement.Materials.Services;
 using Lssctc.ProgramManagement.Practices.Services;
 using Lssctc.ProgramManagement.Programs.Services;
@@ -141,9 +142,11 @@ builder.Services.AddScoped<ITasksService, TasksService>();
 builder.Services.AddScoped<IClassesService, ClassesService>();
 builder.Services.AddScoped<IClassInstructorsService, ClassInstructorsService>();
 builder.Services.AddScoped<IEnrollmentsService, EnrollmentsService>();
+builder.Services.AddScoped<IProgressesService, ProgressesService>();
 
 builder.Services.AddScoped<IUsersService, UsersService>();
 builder.Services.AddScoped<IAuthensService, AuthensService>();
+builder.Services.AddScoped<IQuizQuestionService, QuizQuestionService>();
 
 #endregion
 
