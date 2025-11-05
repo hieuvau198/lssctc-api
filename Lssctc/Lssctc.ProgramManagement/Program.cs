@@ -146,6 +146,7 @@ builder.Services.AddScoped<IProgressesService, ProgressesService>();
 
 builder.Services.AddScoped<IUsersService, UsersService>();
 builder.Services.AddScoped<IAuthensService, AuthensService>();
+builder.Services.AddScoped<IQuizQuestionService, QuizQuestionService>();
 
 #endregion
 
