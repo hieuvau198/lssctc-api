@@ -672,6 +672,7 @@ public partial class LssctcDbContext : DbContext
             entity.ToTable("learning_progresses");
 
             entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.CourseId).HasColumnName("course_id");
             entity.Property(e => e.Description)
                 .HasMaxLength(1000)
                 .HasColumnName("description");
@@ -760,6 +761,7 @@ public partial class LssctcDbContext : DbContext
             entity.Property(e => e.Description)
                 .HasMaxLength(1000)
                 .HasColumnName("description");
+            entity.Property(e => e.IsCurrent).HasColumnName("is_current");
             entity.Property(e => e.IsDeleted)
                 .HasDefaultValue(false)
                 .HasColumnName("is_deleted");
@@ -903,6 +905,7 @@ public partial class LssctcDbContext : DbContext
             entity.Property(e => e.AttemptScore)
                 .HasColumnType("decimal(5, 2)")
                 .HasColumnName("attempt_score");
+            entity.Property(e => e.IsCurrent).HasColumnName("is_current");
             entity.Property(e => e.IsPass).HasColumnName("is_pass");
             entity.Property(e => e.MaxScore)
                 .HasColumnType("decimal(5, 2)")
