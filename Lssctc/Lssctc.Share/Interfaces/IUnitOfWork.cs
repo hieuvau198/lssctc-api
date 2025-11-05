@@ -24,6 +24,7 @@ namespace Lssctc.Share.Interfaces
         IGenericRepository<Enrollment> EnrollmentRepository { get; }
         IGenericRepository<Instructor> InstructorRepository { get; }
         IGenericRepository<InstructorProfile> InstructorProfileRepository { get; }
+        IGenericRepository<InstructorFeedback> InstructorFeedbackRepository { get; }
         IGenericRepository<LearningMaterial> LearningMaterialRepository { get; }
         IGenericRepository<LearningProgress> LearningProgressRepository { get; }
         IGenericRepository<Practice> PracticeRepository { get; }

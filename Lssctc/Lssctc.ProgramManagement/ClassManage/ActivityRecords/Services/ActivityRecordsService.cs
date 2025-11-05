@@ -1,6 +1,170 @@
-﻿namespace Lssctc.ProgramManagement.ClassManage.ActivityRecords.Services
+﻿using Lssctc.ProgramManagement.ClassManage.ActivityRecords.Dtos;
+using Lssctc.Share.Entities;
+using Lssctc.Share.Enums;
+using Lssctc.Share.Interfaces;
+using Microsoft.EntityFrameworkCore;
+
+namespace Lssctc.ProgramManagement.ClassManage.ActivityRecords.Services
 {
-    public class ActivityRecordsService
+    public class ActivityRecordsService : IActivityRecordsService
     {
+        private readonly IUnitOfWork _uow;
+
+        public ActivityRecordsService(IUnitOfWork uow)
+        {
+            _uow = uow;
+        }
+
+        public async Task<IEnumerable<ActivityRecordDto>> GetActivityRecordsAsync(int classId, int sectionId, int traineeId)
+        {
+            var records = await GetActivityRecordQuery()
+                .Where(ar => ar.SectionRecord.LearningProgress.Enrollment.ClassId == classId &&
+                             ar.SectionRecord.SectionId == sectionId &&
+                             ar.SectionRecord.LearningProgress.Enrollment.TraineeId == traineeId)
+                .ToListAsync();
+
+            return records.Select(MapToDto);
+        }
+
+        public async Task<IEnumerable<ActivityRecordDto>> GetActivityRecordsByActivityAsync(int classId, int sectionId, int activityId)
+        {
+            var records = await GetActivityRecordQuery()
+                .Where(ar => ar.SectionRecord.LearningProgress.Enrollment.ClassId == classId &&
+                             ar.SectionRecord.SectionId == sectionId &&
+                             ar.ActivityId == activityId)
+                .ToListAsync();
+
+            return records.Select(MapToDto);
+        }
+
+        public async Task<ActivityRecordDto> SubmitActivityAsync(int traineeId, SubmitActivityRecordDto dto)
+        {
+            var activityRecord = await _uow.ActivityRecordRepository
+                .GetAllAsQueryable()
+                .Include(ar => ar.SectionRecord.LearningProgress.Enrollment)
+                .FirstOrDefaultAsync(ar => ar.Id == dto.ActivityRecordId);
+
+            if (activityRecord == null)
+                throw new KeyNotFoundException("Activity record not found.");
+
+            if (activityRecord.SectionRecord.LearningProgress.Enrollment.TraineeId != traineeId)
+                throw new UnauthorizedAccessException("You are not authorized to submit this activity.");
+
+            if (activityRecord.Status == (int)ActivityStatusEnum.Completed)
+                throw new InvalidOperationException("This activity has already been completed.");
+
+            if (activityRecord.ActivityType != (int)ActivityType.Material)
+            {
+                throw new InvalidOperationException("This endpoint is only for submitting 'Material' activities. Quiz and Practice must be submitted via their respective services.");
+            }
+
+            activityRecord.Status = (int)ActivityStatusEnum.Completed;
+            activityRecord.IsCompleted = true;
+            activityRecord.CompletedDate = DateTime.UtcNow;
+
+            await _uow.ActivityRecordRepository.UpdateAsync(activityRecord);
+            await _uow.SaveChangesAsync();
+
+            var updatedRecord = await GetActivityRecordQuery().FirstAsync(ar => ar.Id == activityRecord.Id);
+            return MapToDto(updatedRecord);
+        }
+
+        public async Task<FeedbackDto> AddFeedbackAsync(int activityRecordId, int instructorId, InstructorFeedbackDto dto)
+        {
+            var activityRecordExists = await _uow.ActivityRecordRepository
+                .GetAllAsQueryable()
+                .AnyAsync(ar => ar.Id == activityRecordId);
+
+            if (!activityRecordExists)
+                throw new KeyNotFoundException("Activity record not found.");
+
+            if (string.IsNullOrWhiteSpace(dto.FeedbackText))
+                throw new ArgumentException("Feedback text cannot be empty.");
+
+            var newFeedback = new InstructorFeedback
+            {
+                ActivityRecordId = activityRecordId,
+                InstructorId = instructorId,
+                FeedbackText = dto.FeedbackText,
+                CreatedDate = DateTime.UtcNow
+            };
+
+            await _uow.InstructorFeedbackRepository.CreateAsync(newFeedback);
+            await _uow.SaveChangesAsync();
+
+            return MapToFeedbackDto(newFeedback);
+        }
+
+        public async Task<IEnumerable<FeedbackDto>> GetFeedbacksAsync(int activityRecordId)
+        {
+            var activityRecordExists = await _uow.ActivityRecordRepository
+                .GetAllAsQueryable()
+                .AnyAsync(ar => ar.Id == activityRecordId);
+
+            if (!activityRecordExists)
+                throw new KeyNotFoundException("Activity record not found.");
+
+            var feedbacks = await _uow.InstructorFeedbackRepository
+                .GetAllAsQueryable()
+                .AsNoTracking()
+                .Where(f => f.ActivityRecordId == activityRecordId)
+                .OrderByDescending(f => f.CreatedDate)
+                .ToListAsync();
+
+            return feedbacks.Select(MapToFeedbackDto);
+        }
+
+
+        private IQueryable<ActivityRecord> GetActivityRecordQuery()
+        {
+            return _uow.ActivityRecordRepository
+                .GetAllAsQueryable()
+                .AsNoTracking()
+                .Include(ar => ar.SectionRecord)
+                    .ThenInclude(sr => sr.LearningProgress)
+                        .ThenInclude(lp => lp.Enrollment)
+                            .ThenInclude(e => e.Trainee)
+                                .ThenInclude(t => t.IdNavigation);
+        }
+
+        private static ActivityRecordDto MapToDto(ActivityRecord ar)
+        {
+            string status = ar.Status.HasValue
+                ? Enum.GetName(typeof(ActivityStatusEnum), ar.Status.Value) ?? "NotStarted"
+                : "NotStarted";
+
+            string type = ar.ActivityType.HasValue
+                ? Enum.GetName(typeof(ActivityType), ar.ActivityType.Value) ?? "Material"
+                : "Material";
+
+            return new ActivityRecordDto
+            {
+                Id = ar.Id,
+                SectionRecordId = ar.SectionRecordId,
+                ActivityId = ar.ActivityId,
+                Status = status,
+                Score = ar.Score,
+                IsCompleted = ar.IsCompleted,
+                CompletedDate = ar.CompletedDate,
+                ActivityType = type,
+                LearningProgressId = ar.SectionRecord.LearningProgressId,
+                SectionId = ar.SectionRecord.SectionId,
+                TraineeId = ar.SectionRecord.LearningProgress.Enrollment.TraineeId,
+                TraineeName = ar.SectionRecord.LearningProgress.Enrollment.Trainee.IdNavigation.Fullname ?? "N/A",
+                ClassId = ar.SectionRecord.LearningProgress.Enrollment.ClassId
+            };
+        }
+
+        private static FeedbackDto MapToFeedbackDto(InstructorFeedback f)
+        {
+            return new FeedbackDto
+            {
+                Id = f.Id,
+                ActivityRecordId = f.ActivityRecordId,
+                InstructorId = f.InstructorId,
+                FeedbackText = f.FeedbackText,
+                CreatedDate = f.CreatedDate
+            };
+        }
     }
 }

@@ -28,6 +28,7 @@ namespace Lssctc.Share.Implements
         private IGenericRepository<Enrollment>? _enrollmentRepository;
         private IGenericRepository<Instructor>? _instructorRepository;
         private IGenericRepository<InstructorProfile>? _instructorProfileRepository;
+        private IGenericRepository<InstructorFeedback>? _instructorFeedbackRepository;
         private IGenericRepository<LearningMaterial>? _learningMaterialRepository;
         private IGenericRepository<LearningProgress>? _learningProgressRepository;
         private IGenericRepository<Practice>? _practiceRepository;
@@ -117,6 +118,9 @@ namespace Lssctc.Share.Implements
 
         public IGenericRepository<InstructorProfile> InstructorProfileRepository =>
             _instructorProfileRepository ??= new GenericRepository<InstructorProfile>(_context);
+
+        public IGenericRepository<InstructorFeedback> InstructorFeedbackRepository =>
+            _instructorFeedbackRepository ??= new GenericRepository<InstructorFeedback>(_context);
 
         public IGenericRepository<LearningMaterial> LearningMaterialRepository =>
             _learningMaterialRepository ??= new GenericRepository<LearningMaterial>(_context);
