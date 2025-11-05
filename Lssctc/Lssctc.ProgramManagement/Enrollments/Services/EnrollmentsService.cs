@@ -244,7 +244,6 @@ namespace Lssctc.ProgramManagement.Enrollments.Services
         public async Task<EnrollmentDto> ApproveEnrollmentAsync(int enrollmentId)
         {
             var enrollment = await GetEnrollmentQuery()
-                .Include(e => e.Class.Enrollments) // Need class enrollments to check capacity
                 .FirstOrDefaultAsync(e => e.Id == enrollmentId);
 
             if (enrollment == null)
@@ -256,7 +255,10 @@ namespace Lssctc.ProgramManagement.Enrollments.Services
             // Check class capacity
             if (enrollment.Class.Capacity.HasValue)
             {
-                int currentEnrolled = enrollment.Class.Enrollments.Count(e => e.Status == (int)EnrollmentStatusEnum.Enrolled);
+                int currentEnrolled = await _uow.EnrollmentRepository
+                    .GetAllAsQueryable()
+                    .CountAsync(e => e.ClassId == enrollment.ClassId && e.Status == (int)EnrollmentStatusEnum.Enrolled);
+
                 if (currentEnrolled >= enrollment.Class.Capacity.Value)
                     throw new InvalidOperationException("Class is full. Cannot approve enrollment.");
             }
