@@ -10,12 +10,12 @@ namespace Lssctc.ProgramManagement.ClassManage.Progresses.Services
     public class ProgressesService : IProgressesService
     {
         private readonly IUnitOfWork _uow;
-        private readonly ClassManageHandler _handler;
+        private readonly ClassManageHandler _classHandler;
 
         public ProgressesService(IUnitOfWork uow)
         {
             _uow = uow;
-            _handler = new ClassManageHandler(uow);
+            _classHandler = new ClassManageHandler(uow);
         }
 
         #region Get Methods
@@ -67,7 +67,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Progresses.Services
             if (enrollment == null)
                 throw new KeyNotFoundException($"Enrollment with ID {dto.EnrollmentId} not found.");
 
-            await _handler.EnsureProgressScaffoldingForTraineeAsync(enrollment.ClassId, enrollment.TraineeId);
+            await _classHandler.EnsureProgressScaffoldingForTraineeAsync(enrollment.ClassId, enrollment.TraineeId);
 
             var progress = await GetProgressByClassAndTraineeAsync(enrollment.ClassId, enrollment.TraineeId);
 
@@ -78,7 +78,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Progresses.Services
         }
         public async Task<ProgressDto> CreateProgressForTraineeAsync(int classId, int traineeId)
         {
-            await _handler.EnsureProgressScaffoldingForTraineeAsync(classId, traineeId);
+            await _classHandler.EnsureProgressScaffoldingForTraineeAsync(classId, traineeId);
 
             var progress = await GetProgressByClassAndTraineeAsync(classId, traineeId);
 
@@ -90,7 +90,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Progresses.Services
 
         public async Task<IEnumerable<ProgressDto>> CreateProgressesForClassAsync(int classId)
         {
-            await _handler.EnsureProgressScaffoldingForClassAsync(classId);
+            await _classHandler.EnsureProgressScaffoldingForClassAsync(classId);
 
             return await GetAllProgressesByClassIdAsync(classId);
         }

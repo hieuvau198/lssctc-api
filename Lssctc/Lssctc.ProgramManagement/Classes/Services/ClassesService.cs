@@ -1,4 +1,5 @@
 ﻿using Lssctc.ProgramManagement.Classes.Dtos;
+using Lssctc.ProgramManagement.ClassManage.Helpers;
 using Lssctc.Share.Common;
 using Lssctc.Share.Entities;
 using Lssctc.Share.Enums;
@@ -10,9 +11,11 @@ namespace Lssctc.ProgramManagement.Classes.Services
     public class ClassesService : IClassesService
     {
         private readonly IUnitOfWork _uow;
+        private readonly ClassManageHandler _handler;
         public ClassesService(IUnitOfWork uow)
         {
             _uow = uow;
+            _handler = new ClassManageHandler(uow);
         }
 
         #region Classes
@@ -188,7 +191,7 @@ namespace Lssctc.ProgramManagement.Classes.Services
                 {
                     // Move enrolled students to Inprogress
                     enrollment.Status = (int)EnrollmentStatusEnum.Inprogress;
-                    await _uow.EnrollmentRepository.UpdateAsync(enrollment); // No await, just mark for update
+                    await _uow.EnrollmentRepository.UpdateAsync(enrollment);
                 }
                 else if (enrollment.Status == (int)EnrollmentStatusEnum.Pending)
                 {
@@ -199,8 +202,23 @@ namespace Lssctc.ProgramManagement.Classes.Services
             }
 
             existing.Status = (int)ClassStatusEnum.Inprogress;
-
             await _uow.ClassRepository.UpdateAsync(existing);
+
+            await _handler.EnsureProgressScaffoldingForClassAsync(id);
+
+            // Find all 'NotStarted' progresses for this class and set them to 'InProgress'
+            var progressesToStart = await _uow.LearningProgressRepository
+                .GetAllAsQueryable()
+                .Where(lp => lp.Enrollment.ClassId == id && lp.Status == (int)LearningProgressStatusEnum.NotStarted)
+                .ToListAsync();
+
+            foreach (var progress in progressesToStart)
+            {
+                progress.Status = (int)LearningProgressStatusEnum.InProgress;
+                progress.LastUpdated = DateTime.UtcNow;
+                await _uow.LearningProgressRepository.UpdateAsync(progress);
+            }
+
             await _uow.SaveChangesAsync();
         }
 
