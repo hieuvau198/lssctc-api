@@ -4,7 +4,9 @@ using Lssctc.ProgramManagement.Activities.Services;
 using Lssctc.ProgramManagement.ClassManage.ActivityRecords.Services;
 using Lssctc.ProgramManagement.ClassManage.Classes.Services;
 using Lssctc.ProgramManagement.ClassManage.Enrollments.Services;
+using Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services;
 using Lssctc.ProgramManagement.ClassManage.Progresses.Services;
+using Lssctc.ProgramManagement.ClassManage.QuizAttempts.Services;
 using Lssctc.ProgramManagement.ClassManage.SectionRecords.Services;
 using Lssctc.ProgramManagement.Courses.Services;
 using Lssctc.ProgramManagement.Materials.Services;
@@ -145,8 +147,11 @@ builder.Services.AddScoped<IClassesService, ClassesService>();
 builder.Services.AddScoped<IClassInstructorsService, ClassInstructorsService>();
 builder.Services.AddScoped<IEnrollmentsService, EnrollmentsService>();
 builder.Services.AddScoped<IProgressesService, ProgressesService>();
+
 builder.Services.AddScoped<ISectionRecordsService, SectionRecordsService>();
 builder.Services.AddScoped<IActivityRecordsService, ActivityRecordsService>();
+builder.Services.AddScoped<IQuizAttemptsService, QuizAttemptsService>();
+builder.Services.AddScoped<IPracticeAttemptsService, PracticeAttemptsService>();
 
 builder.Services.AddScoped<IUsersService, UsersService>();
 builder.Services.AddScoped<IAuthensService, AuthensService>();
