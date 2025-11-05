@@ -17,6 +17,8 @@ public partial class QuizQuestion
 
     public bool IsMultipleAnswers { get; set; }
 
+    public string? ImageUrl { get; set; }
+
     public virtual Quiz Quiz { get; set; } = null!;
 
     public virtual ICollection<QuizQuestionOption> QuizQuestionOptions { get; set; } = new List<QuizQuestionOption>();
