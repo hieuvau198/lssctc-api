@@ -1,4 +1,5 @@
-﻿using Lssctc.ProgramManagement.ClassManage.Progresses.Dtos;
+﻿using Lssctc.ProgramManagement.ClassManage.Helpers;
+using Lssctc.ProgramManagement.ClassManage.Progresses.Dtos;
 using Lssctc.Share.Entities;
 using Lssctc.Share.Enums;
 using Lssctc.Share.Interfaces;
@@ -9,10 +10,12 @@ namespace Lssctc.ProgramManagement.ClassManage.Progresses.Services
     public class ProgressesService : IProgressesService
     {
         private readonly IUnitOfWork _uow;
+        private readonly ClassManageHandler _handler;
 
         public ProgressesService(IUnitOfWork uow)
         {
             _uow = uow;
+            _handler = new ClassManageHandler(uow);
         }
 
         #region Get Methods
@@ -57,15 +60,6 @@ namespace Lssctc.ProgramManagement.ClassManage.Progresses.Services
 
         public async Task<ProgressDto> CreateProgressAsync(CreateProgressDto dto)
         {
-            // 1. Check if progress already exists
-            var existing = await _uow.LearningProgressRepository
-                .GetAllAsQueryable()
-                .FirstOrDefaultAsync(lp => lp.EnrollmentId == dto.EnrollmentId);
-
-            if (existing != null)
-                throw new InvalidOperationException($"Learning progress for enrollment ID {dto.EnrollmentId} already exists.");
-
-            // 2. Find the enrollment to link
             var enrollment = await _uow.EnrollmentRepository
                 .GetAllAsQueryable()
                 .FirstOrDefaultAsync(e => e.Id == dto.EnrollmentId);
@@ -73,108 +67,33 @@ namespace Lssctc.ProgramManagement.ClassManage.Progresses.Services
             if (enrollment == null)
                 throw new KeyNotFoundException($"Enrollment with ID {dto.EnrollmentId} not found.");
 
-            // 3. Create the parent LearningProgress entity
-            var newProgress = new LearningProgress
-            {
-                EnrollmentId = dto.EnrollmentId,
-                Status = (int)LearningProgressStatusEnum.NotStarted,
-                ProgressPercentage = 0,
-                StartDate = DateTime.UtcNow,
-                LastUpdated = DateTime.UtcNow,
-                Name = dto.Name,
-                Description = dto.Description,
-                SectionRecords = new List<SectionRecord>() // Empty list for now
-            };
+            await _handler.EnsureProgressScaffoldingForTraineeAsync(enrollment.ClassId, enrollment.TraineeId);
 
-            // 4. --- DEFERRED LOGIC ---
-            // As requested, we are NOT auto-populating SectionRecords here.
-            // When this is implemented, the logic would query the CourseSections
-            // associated with the enrollment's Class and create SectionRecord
-            // and ActivityRecord entities.
-            //
-            // TODO: Auto-populate SectionRecords based on the Course structure.
-            // This logic is deferred due to complex entity relationships
-            // (Class -> ProgramCourse -> Course -> CourseSections -> Section -> SectionActivities).
+            var progress = await GetProgressByClassAndTraineeAsync(enrollment.ClassId, enrollment.TraineeId);
 
-            await _uow.LearningProgressRepository.CreateAsync(newProgress);
-            await _uow.SaveChangesAsync();
+            if (progress == null)
+                throw new InvalidOperationException("Failed to create or find learning progress after scaffolding.");
 
-            // 5. Fetch the full DTO to return
-            var created = await GetProgressQuery().FirstAsync(lp => lp.Id == newProgress.Id);
-            return MapToDto(created);
+            return progress;
         }
-
         public async Task<ProgressDto> CreateProgressForTraineeAsync(int classId, int traineeId)
         {
-            var enrollment = await _uow.EnrollmentRepository
-                .GetAllAsQueryable()
-                .FirstOrDefaultAsync(e => e.ClassId == classId && e.TraineeId == traineeId);
+            await _handler.EnsureProgressScaffoldingForTraineeAsync(classId, traineeId);
 
-            if (enrollment == null)
-                throw new KeyNotFoundException($"No enrollment found for Trainee {traineeId} in Class {classId}.");
+            var progress = await GetProgressByClassAndTraineeAsync(classId, traineeId);
 
-            var dto = new CreateProgressDto { EnrollmentId = enrollment.Id };
-            return await CreateProgressAsync(dto);
+            if (progress == null)
+                throw new InvalidOperationException("Failed to create or find learning progress after scaffolding.");
+
+            return progress;
         }
 
-        /// <summary>
-        /// Creates LearningProgress for all enrolled trainees in a class who don't have one.
-        /// </summary>
         public async Task<IEnumerable<ProgressDto>> CreateProgressesForClassAsync(int classId)
         {
-            // 1. Get all enrollments for the class (that are not 'Cancelled' or 'Rejected')
-            var enrollments = await _uow.EnrollmentRepository
-                .GetAllAsQueryable()
-                .Where(e => e.ClassId == classId &&
-                            e.Status != (int)EnrollmentStatusEnum.Cancelled &&
-                            e.Status != (int)EnrollmentStatusEnum.Rejected)
-                .ToListAsync();
+            await _handler.EnsureProgressScaffoldingForClassAsync(classId);
 
-            if (!enrollments.Any())
-                return new List<ProgressDto>(); // Return empty list
-
-            // 2. Find existing progresses for these enrollments
-            var enrollmentIds = enrollments.Select(e => e.Id).ToList();
-            var existingProgressEnrollmentIds = await _uow.LearningProgressRepository
-                .GetAllAsQueryable()
-                .Where(lp => enrollmentIds.Contains(lp.EnrollmentId))
-                .Select(lp => lp.EnrollmentId)
-                .ToListAsync();
-
-            // 3. Filter to find enrollments that need progress created
-            var enrollmentsToCreate = enrollments
-                .Where(e => !existingProgressEnrollmentIds.Contains(e.Id))
-                .ToList();
-
-            var createdProgresses = new List<LearningProgress>();
-
-            foreach (var enrollment in enrollmentsToCreate)
-            {
-                var newProgress = new LearningProgress
-                {
-                    EnrollmentId = enrollment.Id,
-                    Status = (int)LearningProgressStatusEnum.NotStarted,
-                    ProgressPercentage = 0,
-                    StartDate = DateTime.UtcNow,
-                    LastUpdated = DateTime.UtcNow,
-                    SectionRecords = new List<SectionRecord>()
-                    // TODO: (Same as above) Auto-populate SectionRecords
-                };
-                await _uow.LearningProgressRepository.CreateAsync(newProgress); // Add to UoW
-                createdProgresses.Add(newProgress);
-            }
-
-            await _uow.SaveChangesAsync(); // Save all new progresses
-
-            // 4. Fetch the full DTOs to return
-            var createdIds = createdProgresses.Select(lp => lp.Id).ToList();
-            var results = await GetProgressQuery()
-                .Where(lp => createdIds.Contains(lp.Id))
-                .ToListAsync();
-
-            return results.Select(MapToDto);
+            return await GetAllProgressesByClassIdAsync(classId);
         }
-
         #endregion
 
         #region Update Methods
@@ -185,7 +104,6 @@ namespace Lssctc.ProgramManagement.ClassManage.Progresses.Services
             if (progress == null)
                 throw new KeyNotFoundException($"LearningProgress with ID {progressId} not found.");
 
-            // Update fields
             progress.TheoryScore = dto.TheoryScore ?? progress.TheoryScore;
             progress.PracticalScore = dto.PracticalScore ?? progress.PracticalScore;
             progress.FinalScore = dto.FinalScore ?? progress.FinalScore;
@@ -196,7 +114,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Progresses.Services
             await _uow.LearningProgressRepository.UpdateAsync(progress);
             await _uow.SaveChangesAsync();
 
-            return MapToDto(progress); // Note: This mapping is basic as GetByIdAsync doesn't include relations
+            return MapToDto(progress); 
         }
 
         public async Task<ProgressDto> UpdateProgressPercentageAsync(int progressId)
