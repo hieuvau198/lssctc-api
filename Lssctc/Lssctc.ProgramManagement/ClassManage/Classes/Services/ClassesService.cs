@@ -174,7 +174,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
                 existing.Status != (int)ClassStatusEnum.Open)
                 throw new InvalidOperationException("Only 'Draft' or 'Open' classes can be started.");
 
-            if (existing.StartDate < DateTime.UtcNow || existing.EndDate <= existing.StartDate.AddDays(2))
+            if (existing.EndDate <= existing.StartDate.AddDays(2))
                 throw new InvalidOperationException("Invalid start or end date.");
 
             if (existing.ClassInstructors == null || !existing.ClassInstructors.Any())
@@ -203,23 +203,23 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
 
             existing.Status = (int)ClassStatusEnum.Inprogress;
             await _uow.ClassRepository.UpdateAsync(existing);
+            await _uow.SaveChangesAsync();
 
             await _handler.EnsureProgressScaffoldingForClassAsync(id);
 
-            // Find all 'NotStarted' progresses for this class and set them to 'InProgress'
-            var progressesToStart = await _uow.LearningProgressRepository
-                .GetAllAsQueryable()
-                .Where(lp => lp.Enrollment.ClassId == id && lp.Status == (int)LearningProgressStatusEnum.NotStarted)
-                .ToListAsync();
+            //// Find all 'NotStarted' progresses for this class and set them to 'InProgress'
+            //var progressesToStart = await _uow.LearningProgressRepository
+            //    .GetAllAsQueryable()
+            //    .Where(lp => lp.Enrollment.ClassId == id && lp.Status == (int)LearningProgressStatusEnum.NotStarted)
+            //    .ToListAsync();
 
-            foreach (var progress in progressesToStart)
-            {
-                progress.Status = (int)LearningProgressStatusEnum.InProgress;
-                progress.LastUpdated = DateTime.UtcNow;
-                await _uow.LearningProgressRepository.UpdateAsync(progress);
-            }
+            //foreach (var progress in progressesToStart)
+            //{
+            //    progress.Status = (int)LearningProgressStatusEnum.InProgress;
+            //    progress.LastUpdated = DateTime.UtcNow;
+            //    await _uow.LearningProgressRepository.UpdateAsync(progress);
+            //}
 
-            await _uow.SaveChangesAsync();
         }
 
         public async Task CompleteClassAsync(int id)
