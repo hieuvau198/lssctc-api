@@ -177,8 +177,26 @@ namespace Lssctc.ProgramManagement.Classes.Services
             if (existing.ClassInstructors == null || !existing.ClassInstructors.Any())
                 throw new InvalidOperationException("Cannot start class without instructors.");
 
-            if (existing.Enrollments == null || !existing.Enrollments.Any())
-                throw new InvalidOperationException("Cannot start class without enrolled students.");
+            // Check for at least one *enrolled* student, not just *any* enrollment
+            if (existing.Enrollments == null || !existing.Enrollments.Any(e => e.Status == (int)EnrollmentStatusEnum.Enrolled))
+                throw new InvalidOperationException("Cannot start class without at least one enrolled student.");
+
+            // Update enrollment statuses
+            foreach (var enrollment in existing.Enrollments)
+            {
+                if (enrollment.Status == (int)EnrollmentStatusEnum.Enrolled)
+                {
+                    // Move enrolled students to Inprogress
+                    enrollment.Status = (int)EnrollmentStatusEnum.Inprogress;
+                    await _uow.EnrollmentRepository.UpdateAsync(enrollment); // No await, just mark for update
+                }
+                else if (enrollment.Status == (int)EnrollmentStatusEnum.Pending)
+                {
+                    // Auto-reject pending applications as the class is starting
+                    enrollment.Status = (int)EnrollmentStatusEnum.Rejected;
+                    await _uow.EnrollmentRepository.UpdateAsync(enrollment);
+                }
+            }
 
             existing.Status = (int)ClassStatusEnum.Inprogress;
 
