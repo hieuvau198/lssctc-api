@@ -1,11 +1,11 @@
-﻿using Lssctc.ProgramManagement.Enrollments.Dtos;
-using Lssctc.ProgramManagement.Enrollments.Services;
+﻿using Lssctc.ProgramManagement.ClassManage.Enrollments.Dtos;
+using Lssctc.ProgramManagement.ClassManage.Enrollments.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
-namespace Lssctc.ProgramManagement.Enrollments.Controllers
+namespace Lssctc.ProgramManagement.ClassManage.Enrollments.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]

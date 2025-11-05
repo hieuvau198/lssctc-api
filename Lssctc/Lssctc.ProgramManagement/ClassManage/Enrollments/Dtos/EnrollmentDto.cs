@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace Lssctc.ProgramManagement.Enrollments.Dtos
+namespace Lssctc.ProgramManagement.ClassManage.Enrollments.Dtos
 {
     public class EnrollmentDto
     {
