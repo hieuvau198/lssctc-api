@@ -978,6 +978,9 @@ public partial class LssctcDbContext : DbContext
             entity.Property(e => e.Description)
                 .HasMaxLength(1000)
                 .HasColumnName("description");
+            entity.Property(e => e.ImageUrl)
+                .HasMaxLength(255)
+                .HasColumnName("image_url");
             entity.Property(e => e.IsMultipleAnswers)
                 .HasDefaultValue(true)
                 .HasColumnName("is_multiple_answers");
