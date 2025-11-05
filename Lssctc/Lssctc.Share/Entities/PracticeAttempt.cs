@@ -23,6 +23,8 @@ public partial class PracticeAttempt
 
     public bool? IsDeleted { get; set; }
 
+    public bool IsCurrent { get; set; }
+
     public virtual ActivityRecord ActivityRecord { get; set; } = null!;
 
     public virtual ICollection<PracticeAttemptTask> PracticeAttemptTasks { get; set; } = new List<PracticeAttemptTask>();

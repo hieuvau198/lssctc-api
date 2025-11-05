@@ -25,6 +25,8 @@ public partial class QuizAttempt
 
     public bool? IsPass { get; set; }
 
+    public bool IsCurrent { get; set; }
+
     public virtual ActivityRecord ActivityRecord { get; set; } = null!;
 
     public virtual ICollection<QuizAttemptQuestion> QuizAttemptQuestions { get; set; } = new List<QuizAttemptQuestion>();
