@@ -672,6 +672,7 @@ public partial class LssctcDbContext : DbContext
             entity.ToTable("learning_progresses");
 
             entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.CourseId).HasColumnName("course_id");
             entity.Property(e => e.Description)
                 .HasMaxLength(1000)
                 .HasColumnName("description");

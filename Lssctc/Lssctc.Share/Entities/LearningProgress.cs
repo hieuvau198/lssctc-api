@@ -27,6 +27,8 @@ public partial class LearningProgress
 
     public string? Description { get; set; }
 
+    public int CourseId { get; set; }
+
     public virtual Enrollment Enrollment { get; set; } = null!;
 
     public virtual ICollection<SectionRecord> SectionRecords { get; set; } = new List<SectionRecord>();
