@@ -111,18 +111,17 @@ namespace Lssctc.ProgramManagement.Quizzes.Controllers
         }
 
         /// <summary>
-        /// Update a specific question
+        /// Delete a specific question
         /// </summary>
         /// <param name="questionId">The question ID</param>
-        /// <param name="dto">The updated question data</param>
         /// <returns>Success or error response</returns>
-        [HttpPut("questions/{questionId:int}")]
+        [HttpDelete("questions/{questionId:int}")]
         [Authorize(Roles = "Admin, Instructor")]
-        public async Task<IActionResult> UpdateQuestionById([FromRoute] int questionId, [FromBody] UpdateQuizQuestionDto dto)
+        public async Task<IActionResult> DeleteQuestionById([FromRoute] int questionId)
         {
             try
             {
-                var success = await _quizQuestionService.UpdateQuestionById(questionId, dto);
+                var success = await _quizQuestionService.DeleteQuestionById(questionId);
                 if (!success)
                     return NotFound(new { error = $"Question with ID {questionId} not found." });
 
@@ -139,21 +138,26 @@ namespace Lssctc.ProgramManagement.Quizzes.Controllers
         }
 
         /// <summary>
-        /// Delete a specific question
+        /// Bulk update all questions in a quiz with automatic score distribution to options
         /// </summary>
-        /// <param name="questionId">The question ID</param>
+        /// <param name="quizId">The quiz ID</param>
+        /// <param name="dto">The list of questions to update</param>
         /// <returns>Success or error response</returns>
-        [HttpDelete("questions/{questionId:int}")]
+        [HttpPut("quiz/{quizId:int}/questions")]
         [Authorize(Roles = "Admin, Instructor")]
-        public async Task<IActionResult> DeleteQuestionById([FromRoute] int questionId)
+        public async Task<IActionResult> UpdateQuestionsByQuizId([FromRoute] int quizId, [FromBody] BulkUpdateQuizQuestionsDto dto)
         {
             try
             {
-                var success = await _quizQuestionService.DeleteQuestionById(questionId);
+                var success = await _quizQuestionService.UpdateQuestionsByQuizId(quizId, dto);
                 if (!success)
-                    return NotFound(new { error = $"Question with ID {questionId} not found." });
+                    return NotFound(new { error = $"Quiz with ID {quizId} not found." });
 
                 return NoContent();
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { error = ex.Message });
             }
             catch (ValidationException ex)
             {

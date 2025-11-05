@@ -156,5 +156,7 @@ namespace Lssctc.ProgramManagement.Quizzes.DTOs
         public decimal? QuestionScore { get; set; }
         public string? Description { get; set; }
         public bool IsMultipleAnswers { get; set; }
+        public string? ImageUrl { get; set; }
+
     }
 }

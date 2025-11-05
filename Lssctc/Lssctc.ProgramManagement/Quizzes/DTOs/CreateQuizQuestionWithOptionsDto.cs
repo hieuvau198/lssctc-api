@@ -8,6 +8,7 @@ namespace Lssctc.ProgramManagement.Quizzes.DTOs
         public string Name { get; set; } = null!;
         public string? Description { get; set; }
         public bool IsMultipleAnswers { get; set; }
+        public string? ImageUrl { get; set; }
 
         // Options
         public List<CreateQuizQuestionOptionDto> Options { get; set; } = new();
@@ -44,14 +45,38 @@ namespace Lssctc.ProgramManagement.Quizzes.DTOs
 
         [StringLength(2000, ErrorMessage = "Description must be at most 2000 characters.")]
         public string? Description { get; set; }
+        
         public bool IsMultipleAnswers { get; set; }
+        
+        [StringLength(500, ErrorMessage = "ImageUrl must be at most 500 characters.")]
+        public string? ImageUrl { get; set; }
     }
 
-    public class UpdateQuizQuestionDto
+   
+
+    // New DTO for bulk updating all questions in a quiz
+    public class BulkUpdateQuizQuestionsDto
     {
+        [Required(ErrorMessage = "Questions list is required.")]
+        public List<UpdateQuizQuestionItemDto> Questions { get; set; } = new();
+    }
+
+    public class UpdateQuizQuestionItemDto
+    {
+        [Required(ErrorMessage = "Question ID is required.")]
+        public int Id { get; set; }
+
         public string? Name { get; set; }
+
+        [Range(0.01, 999.99, ErrorMessage = "QuestionScore must be between 0.01 and 999.99.")]
         public decimal? QuestionScore { get; set; }
+
+        [StringLength(2000, ErrorMessage = "Description must be at most 2000 characters.")]
         public string? Description { get; set; }
+
         public bool? IsMultipleAnswers { get; set; }
+
+        [StringLength(500, ErrorMessage = "ImageUrl must be at most 500 characters.")]
+        public string? ImageUrl { get; set; }
     }
 }
