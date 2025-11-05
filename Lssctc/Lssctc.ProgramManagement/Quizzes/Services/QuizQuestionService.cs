@@ -221,6 +221,11 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
             var entity = await _uow.QuizQuestionRepository.GetByIdAsync(questionId);
             if (entity == null) return false;
 
+            // Prevent deletion if the quiz (parent) is added to any activity
+            var usedInActivity = await _uow.ActivityQuizRepository.ExistsAsync(aq => aq.QuizId == entity.QuizId);
+            if (usedInActivity)
+                throw new ValidationException("Cannot delete question because its quiz is used in an activity.");
+
             // Get the quiz to update its total score later
             var quiz = await _uow.QuizRepository.GetByIdAsync(entity.QuizId);
             if (quiz == null) return false;
@@ -237,6 +242,7 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
             {
                 await _uow.QuizQuestionOptionRepository.DeleteAsync(option);
             }
+
             // Delete the question
             await _uow.QuizQuestionRepository.DeleteAsync(entity);
 
