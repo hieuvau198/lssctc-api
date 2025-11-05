@@ -29,6 +29,6 @@ namespace Lssctc.ProgramManagement.ClassManage.Enrollments.Services
         Task RemoveTraineeFromClassAsync(int enrollmentId);
         #endregion
 
-        // After enrollment service, class service should have logic that when class is started, all enrollment will change status to Inprogress
+        // After enrollment service, class service have logic that when class is started, all enrollment will change status to Inprogress
     }
 }

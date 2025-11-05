@@ -54,6 +54,8 @@ public partial class LssctcDbContext : DbContext
 
     public virtual DbSet<Instructor> Instructors { get; set; }
 
+    public virtual DbSet<InstructorFeedback> InstructorFeedbacks { get; set; }
+
     public virtual DbSet<InstructorProfile> InstructorProfiles { get; set; }
 
     public virtual DbSet<LearningMaterial> LearningMaterials { get; set; }
@@ -591,6 +593,29 @@ public partial class LssctcDbContext : DbContext
                 .HasForeignKey<Instructor>(d => d.Id)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK__instructors__id__3BB5CE82");
+        });
+
+        modelBuilder.Entity<InstructorFeedback>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__instruct__3213E83FCDE3F976");
+
+            entity.ToTable("instructor_feedbacks");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.ActivityRecordId).HasColumnName("activity_record_id");
+            entity.Property(e => e.CreatedDate)
+                .HasPrecision(0)
+                .HasDefaultValueSql("(sysdatetime())")
+                .HasColumnName("created_date");
+            entity.Property(e => e.FeedbackText)
+                .HasMaxLength(1000)
+                .HasColumnName("feedback_text");
+            entity.Property(e => e.InstructorId).HasColumnName("instructor_id");
+
+            entity.HasOne(d => d.ActivityRecord).WithMany(p => p.InstructorFeedbacks)
+                .HasForeignKey(d => d.ActivityRecordId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__instructo__activ__7795AE5F");
         });
 
         modelBuilder.Entity<InstructorProfile>(entity =>

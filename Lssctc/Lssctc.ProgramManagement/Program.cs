@@ -1,6 +1,7 @@
 using Lssctc.ProgramManagement.Accounts.Authens.Services;
 using Lssctc.ProgramManagement.Accounts.Managemetns.Services;
 using Lssctc.ProgramManagement.Activities.Services;
+using Lssctc.ProgramManagement.ClassManage.ActivityRecords.Services;
 using Lssctc.ProgramManagement.ClassManage.Classes.Services;
 using Lssctc.ProgramManagement.ClassManage.Enrollments.Services;
 using Lssctc.ProgramManagement.ClassManage.Progresses.Services;
@@ -145,6 +146,7 @@ builder.Services.AddScoped<IClassInstructorsService, ClassInstructorsService>();
 builder.Services.AddScoped<IEnrollmentsService, EnrollmentsService>();
 builder.Services.AddScoped<IProgressesService, ProgressesService>();
 builder.Services.AddScoped<ISectionRecordsService, SectionRecordsService>();
+builder.Services.AddScoped<IActivityRecordsService, ActivityRecordsService>();
 
 builder.Services.AddScoped<IUsersService, UsersService>();
 builder.Services.AddScoped<IAuthensService, AuthensService>();
