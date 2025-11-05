@@ -7,6 +7,9 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
     {
         // Issue todos:
         // remove cancellation token
+        // BR for quiz management: only admin and instructor can create, update, delete quiz
+        // trainee can only view quiz with no iscorrect info in options
+        // can only delete quiz if not assigned to any activity yet
         #region Gets
         Task<QuizDto?> GetQuizById(int id);
         Task<PagedResult<QuizOnlyDto>> GetQuizzes(int pageIndex, int pageSize, CancellationToken ct = default);
