@@ -1,7 +1,7 @@
-﻿using Lssctc.ProgramManagement.Classes.Dtos;
+﻿using Lssctc.ProgramManagement.ClassManage.Classes.Dtos;
 using Lssctc.Share.Common;
 
-namespace Lssctc.ProgramManagement.Classes.Services
+namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
 {
     public interface IClassesService
     {

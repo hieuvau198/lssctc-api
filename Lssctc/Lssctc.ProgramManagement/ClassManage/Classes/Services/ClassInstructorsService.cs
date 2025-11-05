@@ -1,10 +1,10 @@
-﻿using Lssctc.ProgramManagement.Classes.Dtos;
+﻿using Lssctc.ProgramManagement.ClassManage.Classes.Dtos;
 using Lssctc.Share.Entities;
 using Lssctc.Share.Enums;
 using Lssctc.Share.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
-namespace Lssctc.ProgramManagement.Classes.Services
+namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
 {
     public class ClassInstructorsService : IClassInstructorsService
     {

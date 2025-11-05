@@ -1,4 +1,4 @@
-﻿using Lssctc.ProgramManagement.Classes.Dtos;
+﻿using Lssctc.ProgramManagement.ClassManage.Classes.Dtos;
 using Lssctc.ProgramManagement.ClassManage.Helpers;
 using Lssctc.Share.Common;
 using Lssctc.Share.Entities;
@@ -6,7 +6,7 @@ using Lssctc.Share.Enums;
 using Lssctc.Share.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
-namespace Lssctc.ProgramManagement.Classes.Services
+namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
 {
     public class ClassesService : IClassesService
     {
