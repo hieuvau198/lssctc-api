@@ -131,6 +131,10 @@ builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepositor
 #endregion
 
 #region Application Services
+
+builder.Services.AddScoped<IGoogleOAuthService, GoogleOAuthService>();
+builder.Services.AddHttpClient();
+
 builder.Services.AddScoped<IProgramsService, ProgramsService>();
 builder.Services.AddScoped<IProgramCoursesService, ProgramCoursesService>();
 builder.Services.AddScoped<ICoursesService, CoursesService>();

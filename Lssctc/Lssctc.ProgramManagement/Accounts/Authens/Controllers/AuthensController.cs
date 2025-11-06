@@ -68,5 +68,15 @@ namespace Lssctc.ProgramManagement.Accounts.Authens.Controllers
                 return BadRequest(new { message = ex.Message });
             }
         }
+
+        [HttpPost("login-google", Name = "LoginGoogleCommand")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> LoginGoogle([FromBody] LoginGoogleRequestDto request)
+        {
+            var result = await _authensService.LoginWithGoogle(request.AccessToken);
+
+            return Ok("");
+        }
     }
 }
