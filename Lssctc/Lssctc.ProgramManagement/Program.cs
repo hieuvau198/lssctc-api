@@ -15,6 +15,7 @@ using Lssctc.ProgramManagement.Practices.Services;
 using Lssctc.ProgramManagement.Programs.Services;
 using Lssctc.ProgramManagement.Quizzes.Services;
 using Lssctc.ProgramManagement.Sections.Services;
+using Lssctc.ProgramManagement.SimulationComponents.Services;
 using Lssctc.Share.Contexts;
 using Lssctc.Share.Implements;
 using Lssctc.Share.Interfaces;
@@ -163,6 +164,7 @@ builder.Services.AddScoped<IAuthensService, AuthensService>();
 builder.Services.AddScoped<IQuizQuestionService, QuizQuestionService>();
 builder.Services.AddScoped<IQuizQuestionOptionsService, QuizQuestionOptionsService>();
 builder.Services.AddScoped<IBrandModel, Lssctc.ProgramManagement.BrandModel.Services.BrandModel>();
+builder.Services.AddScoped<ISimulationComponentService, SimulationComponentService>();
 #endregion
 
 #region CORS

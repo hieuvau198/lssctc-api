@@ -5,10 +5,11 @@ namespace Lssctc.ProgramManagement.BrandModel.Services
 {
     public interface IBrandModel
     {
-        Task<PagedResult<SimulationComponentDto>> GetSimulationComponentsByBrandModelIdAsync(
-            int brandModelId,
-            int page,
-            int pageSize,
-            CancellationToken cancellationToken = default);
+        // BrandModel methods
+        Task<BrandModelDto?> GetBrandModelById(int id, CancellationToken cancellationToken = default);
+        Task<PagedResult<BrandModelDto>> GetAllBrandModels(int page, int pageSize, CancellationToken cancellationToken = default);
+        Task<int> CreateBrandModel(CreateBrandModelDto dto, CancellationToken cancellationToken = default);
+        Task<bool> UpdateBrandModel(int id, UpdateBrandModelDto dto, CancellationToken cancellationToken = default);
+        Task<bool> DeleteBrandModel(int id, CancellationToken cancellationToken = default);
     }
 }
