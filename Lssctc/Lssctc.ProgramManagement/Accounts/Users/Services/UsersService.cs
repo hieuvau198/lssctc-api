@@ -1,16 +1,17 @@
 ﻿using Lssctc.ProgramManagement.Accounts.Helpers;
-using Lssctc.ProgramManagement.Accounts.Managemetns.Dtos;
+using Lssctc.ProgramManagement.Accounts.Users.Dtos;
+using Lssctc.Share.Common;
 using Lssctc.Share.Entities;
 using Lssctc.Share.Enums;
 using Lssctc.Share.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
-namespace Lssctc.ProgramManagement.Accounts.Managemetns.Services
+namespace Lssctc.ProgramManagement.Accounts.Users.Services
 {
     public class UsersService : IUsersService
     {
         private readonly IUnitOfWork _uow;
-        private static readonly Random _random = new Random(); // For trainee code generation
+        private static readonly Random _random = new Random();
 
         public UsersService(IUnitOfWork uow)
         {
@@ -18,13 +19,15 @@ namespace Lssctc.ProgramManagement.Accounts.Managemetns.Services
         }
         #region Users
 
-        public async Task<IEnumerable<UserDto>> GetAllUsersAsync()
+        public async Task<PagedResult<UserDto>> GetUsersAsync(int pageNumber, int pageSize)
         {
-            return await _uow.UserRepository
+            if (pageNumber < 1) pageNumber = 1;
+            if (pageSize < 1) pageSize = 10;
+            var query = _uow.UserRepository
                 .GetAllAsQueryable()
                 .Where(u => !u.IsDeleted)
-                .Select(u => MapToDto(u))
-                .ToListAsync();
+                .Select(u => MapToDto(u));
+            return await query.ToPagedResultAsync(pageNumber, pageSize);
         }
 
         public async Task<UserDto?> GetUserByIdAsync(int id)
@@ -36,24 +39,41 @@ namespace Lssctc.ProgramManagement.Accounts.Managemetns.Services
             return MapToDto(user);
         }
 
-        public async Task<IEnumerable<UserDto>> GetAllTraineesAsync()
+        public async Task<PagedResult<UserDto>> GetAllTraineesAsync(int pageNumber, int pageSize)
         {
-            return await GetUsersByRole(UserRoleEnum.Trainee);
+            if (pageNumber < 1) pageNumber = 1;
+            if (pageSize < 1) pageSize = 10;
+            var query = _uow.UserRepository
+                .GetAllAsQueryable()
+                .Where(u => !u.IsDeleted && u.Role == (int)UserRoleEnum.Trainee)
+                .Select(u => MapToDto(u));
+            return await query.ToPagedResultAsync(pageNumber, pageSize);
         }
 
-        public async Task<IEnumerable<UserDto>> GetAllInstructorsAsync()
+        public async Task<PagedResult<UserDto>> GetAllInstructorsAsync(int pageNumber, int pageSize)
         {
-            return await GetUsersByRole(UserRoleEnum.Instructor);
+            if (pageNumber < 1) pageNumber = 1;
+            if (pageSize < 1) pageSize = 10;
+            var query = _uow.UserRepository
+                .GetAllAsQueryable()
+                .Where(u => !u.IsDeleted && u.Role == (int)UserRoleEnum.Instructor)
+                .Select(u => MapToDto(u));
+            return await query.ToPagedResultAsync(pageNumber, pageSize);
         }
 
-        public async Task<IEnumerable<UserDto>> GetAllSimulationManagersAsync()
+        public async Task<PagedResult<UserDto>> GetAllSimulationManagersAsync(int pageNumber, int pageSize)
         {
-            return await GetUsersByRole(UserRoleEnum.SimulationManager);
+            if (pageNumber < 1) pageNumber = 1;
+            if (pageSize < 1) pageSize = 10;
+            var query = _uow.UserRepository
+                .GetAllAsQueryable()
+                .Where(u => !u.IsDeleted && u.Role == (int)UserRoleEnum.SimulationManager)
+                .Select(u => MapToDto(u));
+            return await query.ToPagedResultAsync(pageNumber, pageSize);
         }
 
         public async Task<UserDto> CreateTraineeAccountAsync(CreateUserDto dto)
         {
-            // 1. Check for unique Username and Email
             bool exists = await _uow.UserRepository
                 .GetAllAsQueryable()
                 .AnyAsync(u =>
@@ -63,17 +83,12 @@ namespace Lssctc.ProgramManagement.Accounts.Managemetns.Services
             if (exists)
                 throw new Exception("Username or Email already exists.");
 
-            // 2. Hash the password
             string hashedPassword = PasswordHashHandler.HashPassword(dto.Password);
 
-            // 3. Generate a unique trainee code
             string traineeCode = await GenerateUniqueTraineeCode();
-
-            // 4. Create the linked entities (Profile -> Trainee -> User)
 
             var traineeProfile = new TraineeProfile
             {
-                // Set any default non-nullable values here if needed
             };
 
             var trainee = new Trainee
@@ -106,7 +121,6 @@ namespace Lssctc.ProgramManagement.Accounts.Managemetns.Services
 
         public async Task<UserDto> CreateInstructorAccountAsync(CreateUserDto dto)
         {
-            // 1. Check for unique Username and Email
             bool exists = await _uow.UserRepository
                 .GetAllAsQueryable()
                 .AnyAsync(u =>
@@ -116,16 +130,10 @@ namespace Lssctc.ProgramManagement.Accounts.Managemetns.Services
             if (exists)
                 throw new Exception("Username or Email already exists.");
 
-            // 2. Hash the password
             string hashedPassword = PasswordHashHandler.HashPassword(dto.Password);
-
-            // 3. Generate a unique instructor code
             string instructorCode = await GenerateUniqueInstructorCode();
-
-            // 4. Create the linked entities (Profile -> Instructor -> User)
             var instructorProfile = new InstructorProfile
             {
-                // Set any default non-nullable values here if needed
             };
 
             var instructor = new Instructor
@@ -133,7 +141,7 @@ namespace Lssctc.ProgramManagement.Accounts.Managemetns.Services
                 InstructorCode = instructorCode,
                 IsActive = true,
                 IsDeleted = false,
-                InstructorProfile = instructorProfile // Link to the profile
+                InstructorProfile = instructorProfile
             };
 
             var user = new User
@@ -144,16 +152,48 @@ namespace Lssctc.ProgramManagement.Accounts.Managemetns.Services
                 Fullname = dto.Fullname,
                 PhoneNumber = dto.PhoneNumber,
                 AvatarUrl = dto.AvatarUrl,
-                Role = (int)UserRoleEnum.Instructor, // Force role to Instructor
+                Role = (int)UserRoleEnum.Instructor,
                 IsActive = true,
                 IsDeleted = false,
-                Instructor = instructor // Link to the instructor
+                Instructor = instructor
             };
-
-            // 5. Create the user (EF Core will cascade-create the Instructor and InstructorProfile)
             await _uow.UserRepository.CreateAsync(user);
             await _uow.SaveChangesAsync();
+            return MapToDto(user);
+        }
 
+        public async Task<UserDto> CreateSimulationManagerAccountAsync(CreateUserDto dto)
+        {
+            bool exists = await _uow.UserRepository
+                .GetAllAsQueryable()
+                .AnyAsync(u =>
+                (u.Username == dto.Username
+                || u.Email.ToLower() == dto.Email.ToLower())
+                && !u.IsDeleted);
+            if (exists)
+                throw new Exception("Username or Email already exists.");
+
+            string hashedPassword = PasswordHashHandler.HashPassword(dto.Password);
+
+            var simulationManager = new SimulationManager
+            {
+            };
+
+            var user = new User
+            {
+                Username = dto.Username,
+                Password = hashedPassword,
+                Email = dto.Email,
+                Fullname = dto.Fullname,
+                PhoneNumber = dto.PhoneNumber,
+                AvatarUrl = dto.AvatarUrl,
+                Role = (int)UserRoleEnum.SimulationManager,
+                IsActive = true,
+                IsDeleted = false,
+                SimulationManager = simulationManager
+            };
+            await _uow.UserRepository.CreateAsync(user);
+            await _uow.SaveChangesAsync();
             return MapToDto(user);
         }
 
@@ -222,7 +262,6 @@ namespace Lssctc.ProgramManagement.Accounts.Managemetns.Services
             string? roleName = u.Role.HasValue && Enum.IsDefined(typeof(UserRoleEnum), u.Role.Value)
                 ? ((UserRoleEnum)u.Role.Value).ToString()
                 : "Unknown";
-
             return new UserDto
             {
                 Id = u.Id,
@@ -250,7 +289,6 @@ namespace Lssctc.ProgramManagement.Accounts.Managemetns.Services
             const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
             string traineeCode;
             bool isUnique;
-
             do
             {
                 var randomPart = new string(Enumerable.Repeat(chars, 6)
@@ -263,7 +301,6 @@ namespace Lssctc.ProgramManagement.Accounts.Managemetns.Services
                     .AnyAsync(t => t.TraineeCode == traineeCode);
 
             } while (!isUnique);
-
             return traineeCode;
         }
 
@@ -277,15 +314,11 @@ namespace Lssctc.ProgramManagement.Accounts.Managemetns.Services
             {
                 var randomPart = new string(Enumerable.Repeat(chars, 6)
                     .Select(s => s[_random.Next(s.Length)]).ToArray());
-
                 instructorCode = "INS" + randomPart;
-
                 isUnique = !await _uow.InstructorRepository
                     .GetAllAsQueryable()
                     .AnyAsync(i => i.InstructorCode == instructorCode);
-
             } while (!isUnique);
-
             return instructorCode;
         }
 

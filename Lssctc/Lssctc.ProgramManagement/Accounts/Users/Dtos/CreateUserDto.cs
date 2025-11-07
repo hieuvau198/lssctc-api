@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace Lssctc.ProgramManagement.Accounts.Managemetns.Dtos
+namespace Lssctc.ProgramManagement.Accounts.Users.Dtos
 {
     public class CreateUserDto
     {

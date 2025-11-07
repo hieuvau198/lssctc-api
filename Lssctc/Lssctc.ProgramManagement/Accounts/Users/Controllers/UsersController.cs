@@ -1,5 +1,6 @@
-﻿using Lssctc.ProgramManagement.Accounts.Managemetns.Dtos;
-using Lssctc.ProgramManagement.Accounts.Managemetns.Services;
+﻿using Lssctc.ProgramManagement.Accounts.Users.Dtos;
+using Lssctc.ProgramManagement.Accounts.Users.Services;
+using Lssctc.Share.Common;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -7,7 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace Lssctc.ProgramManagement.Accounts.Managemetns.Controllers
+namespace Lssctc.ProgramManagement.Accounts.Users.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
@@ -19,15 +20,15 @@ namespace Lssctc.ProgramManagement.Accounts.Managemetns.Controllers
             _usersService = usersService;
         }
 
-        #region Users
+        #region Get Users
 
         [HttpGet]
         [Authorize(Roles = "Admin")]
-        public async Task<ActionResult<IEnumerable<UserDto>>> GetAllUsers()
+        public async Task<ActionResult<PagedResult<UserDto>>> GetAllUsers([FromQuery] int pageNumber, [FromQuery] int pageSize)
         {
             try
             {
-                var users = await _usersService.GetAllUsersAsync();
+                var users = await _usersService.GetUsersAsync(pageNumber, pageSize);
                 return Ok(users);
             }
             catch (Exception ex)
@@ -57,11 +58,11 @@ namespace Lssctc.ProgramManagement.Accounts.Managemetns.Controllers
 
         [HttpGet("trainees")]
         [Authorize(Roles = "Admin,Instructor,SimulationManager")]
-        public async Task<ActionResult<IEnumerable<UserDto>>> GetAllTrainees()
+        public async Task<ActionResult<PagedResult<UserDto>>> GetAllTrainees([FromQuery] int pageNumber, [FromQuery] int pageSize)
         {
             try
             {
-                var users = await _usersService.GetAllTraineesAsync();
+                var users = await _usersService.GetAllTraineesAsync(pageNumber, pageSize);
                 return Ok(users);
             }
             catch (Exception ex)
@@ -72,11 +73,11 @@ namespace Lssctc.ProgramManagement.Accounts.Managemetns.Controllers
 
         [HttpGet("instructors")]
         [Authorize(Roles = "Admin")]
-        public async Task<ActionResult<IEnumerable<UserDto>>> GetAllInstructors()
+        public async Task<ActionResult<PagedResult<UserDto>>> GetAllInstructors([FromQuery] int pageNumber, [FromQuery] int pageSize)
         {
             try
             {
-                var users = await _usersService.GetAllInstructorsAsync();
+                var users = await _usersService.GetAllInstructorsAsync(pageNumber, pageSize);
                 return Ok(users);
             }
             catch (Exception ex)
@@ -87,11 +88,11 @@ namespace Lssctc.ProgramManagement.Accounts.Managemetns.Controllers
 
         [HttpGet("simulation-managers")]
         [Authorize(Roles = "Admin")]
-        public async Task<ActionResult<IEnumerable<UserDto>>> GetAllSimulationManagers()
+        public async Task<ActionResult<PagedResult<UserDto>>> GetAllSimulationManagers([FromQuery] int pageNumber, [FromQuery] int pageSize)
         {
             try
             {
-                var users = await _usersService.GetAllSimulationManagersAsync();
+                var users = await _usersService.GetAllSimulationManagersAsync(pageNumber, pageSize);
                 return Ok(users);
             }
             catch (Exception ex)
@@ -99,6 +100,10 @@ namespace Lssctc.ProgramManagement.Accounts.Managemetns.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
             }
         }
+
+        #endregion
+
+        #region Manage Users
 
         [HttpPost("trainees")]
         [Authorize(Roles = "Admin")]
@@ -131,6 +136,25 @@ namespace Lssctc.ProgramManagement.Accounts.Managemetns.Controllers
             catch (Exception ex)
             {
                 if (ex.Message == "Username already exists.")
+                {
+                    return BadRequest(ex.Message);
+                }
+                return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+            }
+        }
+
+        [HttpPost("simulation-managers")]
+        [Authorize(Roles = "Admin")]
+        public async Task<ActionResult<UserDto>> CreateSimulationManager([FromBody] CreateUserDto dto)
+        {
+            try
+            {
+                var newUser = await _usersService.CreateSimulationManagerAccountAsync(dto);
+                return CreatedAtAction(nameof(GetUserById), new { id = newUser.Id }, newUser);
+            }
+            catch (Exception ex)
+            {
+                if (ex.Message == "Username or Email already exists.")
                 {
                     return BadRequest(ex.Message);
                 }

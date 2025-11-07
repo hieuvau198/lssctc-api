@@ -1,5 +1,5 @@
 using Lssctc.ProgramManagement.Accounts.Authens.Services;
-using Lssctc.ProgramManagement.Accounts.Managemetns.Services;
+using Lssctc.ProgramManagement.Accounts.Users.Services;
 using Lssctc.ProgramManagement.Activities.Services;
 using Lssctc.ProgramManagement.BrandModel.Services;
 using Lssctc.ProgramManagement.ClassManage.ActivityRecords.Services;
