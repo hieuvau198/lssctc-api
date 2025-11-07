@@ -370,6 +370,7 @@ CREATE TABLE [dbo].[enrollments] (
     [status] INT DEFAULT 1,
     [is_active] BIT DEFAULT 1,
     [is_deleted] BIT DEFAULT 0,
+    [note] NVARCHAR(500) NULL,                    
     FOREIGN KEY ([class_id]) REFERENCES [dbo].[classes]([id]),
     FOREIGN KEY ([trainee_id]) REFERENCES [dbo].[trainees]([id])
 );
@@ -410,11 +411,12 @@ CREATE TABLE [dbo].[trainee_certificates] (
 CREATE TABLE [dbo].[learning_progresses] (
     [id] INT IDENTITY(1,1) PRIMARY KEY,
     [enrollment_id] INT NOT NULL,
+    [course_id] INT NOT NULL,                     
     [status] INT DEFAULT 1,
     [progress_percentage] DECIMAL(5, 2) DEFAULT 0,
-	[theory_score] DECIMAL(5, 2) DEFAULT 0,
-	[practical_score] DECIMAL(5, 2) DEFAULT 0,
-	[final_score] DECIMAL(5, 2) DEFAULT 0,
+    [theory_score] DECIMAL(5, 2) DEFAULT 0,
+    [practical_score] DECIMAL(5, 2) DEFAULT 0,
+    [final_score] DECIMAL(5, 2) DEFAULT 0,
     [start_date] DATETIME2(0) NOT NULL DEFAULT SYSDATETIME(),
     [last_updated] DATETIME2(0),
     [name] NVARCHAR(100),
@@ -437,7 +439,8 @@ CREATE TABLE [dbo].[section_records] (
 CREATE TABLE [dbo].[activity_records] (
     [id] INT IDENTITY(1,1) PRIMARY KEY,
     [section_record_id] INT NOT NULL,
-	[activity_id] INT DEFAULT -1,
+    [activity_id] INT DEFAULT -1,
+    [activity_type] INT NULL,                    
     [status] INT DEFAULT 1,
     [score] DECIMAL(5,2),
     [is_completed] BIT DEFAULT 0,
@@ -460,6 +463,7 @@ CREATE TABLE [dbo].[practice_attempts] (
     [description] NVARCHAR(1000),
     [is_pass] BIT DEFAULT 0,
     [is_deleted] BIT DEFAULT 0,
+    [is_current] BIT DEFAULT 0,
     FOREIGN KEY ([activity_record_id]) REFERENCES [dbo].[activity_records]([id])
 );
 

@@ -23,7 +23,7 @@
 	<PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
 	<PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.0.0" />
 	<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0" />
-
+	<PackageReference Include="Google.Cloud.Dialogflow.V2" Version="4.22.0" />
 </ItemGroup>
 
 <ItemGroup>

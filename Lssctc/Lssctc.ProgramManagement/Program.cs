@@ -1,6 +1,7 @@
 using Lssctc.ProgramManagement.Accounts.Authens.Services;
 using Lssctc.ProgramManagement.Accounts.Managemetns.Services;
 using Lssctc.ProgramManagement.Activities.Services;
+using Lssctc.ProgramManagement.BrandModel.Services;
 using Lssctc.ProgramManagement.ClassManage.ActivityRecords.Services;
 using Lssctc.ProgramManagement.ClassManage.Classes.Services;
 using Lssctc.ProgramManagement.ClassManage.Enrollments.Services;
@@ -14,6 +15,7 @@ using Lssctc.ProgramManagement.Practices.Services;
 using Lssctc.ProgramManagement.Programs.Services;
 using Lssctc.ProgramManagement.Quizzes.Services;
 using Lssctc.ProgramManagement.Sections.Services;
+using Lssctc.ProgramManagement.SimulationComponents.Services;
 using Lssctc.Share.Contexts;
 using Lssctc.Share.Implements;
 using Lssctc.Share.Interfaces;
@@ -131,6 +133,10 @@ builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepositor
 #endregion
 
 #region Application Services
+
+builder.Services.AddScoped<IGoogleOAuthService, GoogleOAuthService>();
+builder.Services.AddHttpClient();
+
 builder.Services.AddScoped<IProgramsService, ProgramsService>();
 builder.Services.AddScoped<IProgramCoursesService, ProgramCoursesService>();
 builder.Services.AddScoped<ICoursesService, CoursesService>();
@@ -156,7 +162,9 @@ builder.Services.AddScoped<IPracticeAttemptsService, PracticeAttemptsService>();
 builder.Services.AddScoped<IUsersService, UsersService>();
 builder.Services.AddScoped<IAuthensService, AuthensService>();
 builder.Services.AddScoped<IQuizQuestionService, QuizQuestionService>();
-
+builder.Services.AddScoped<IQuizQuestionOptionsService, QuizQuestionOptionsService>();
+builder.Services.AddScoped<IBrandModel, Lssctc.ProgramManagement.BrandModel.Services.BrandModel>();
+builder.Services.AddScoped<ISimulationComponentService, SimulationComponentService>();
 #endregion
 
 #region CORS

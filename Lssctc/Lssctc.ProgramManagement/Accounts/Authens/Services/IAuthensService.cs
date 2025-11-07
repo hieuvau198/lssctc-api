@@ -6,6 +6,7 @@ namespace Lssctc.ProgramManagement.Accounts.Authens.Services
     {
         Task<LoginResponseModel> LoginWithUsername(LoginUsernameDto request);
         Task<LoginResponseModel> LoginWithEmail(LoginEmailDto request);
+        Task<LoginResponseModel> LoginWithGoogle(string accessToken);
         Task<bool> Logout(string accessToken);
     }    
 }

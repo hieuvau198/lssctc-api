@@ -1,0 +1,19 @@
+﻿using Lssctc.ProgramManagement.Quizzes.DTOs;
+
+namespace Lssctc.ProgramManagement.Quizzes.Services
+{
+    public interface IQuizQuestionOptionsService
+    {
+        Task<int> CreateOption(int questionId, CreateQuizQuestionOptionDto dto);
+
+        Task<QuizQuestionOptionDto?> GetOptionById(int optionId);
+
+        Task<IReadOnlyList<QuizDetailQuestionOptionDto>> GetOptionsByQuestionId(
+       int questionId, CancellationToken ct = default);
+
+        Task UpdateOption(int optionId, UpdateQuizQuestionOptionDto dto);
+
+        // Delete option and adjust related question and quiz scores
+        Task DeleteOption(int optionId);
+    }
+}

@@ -8,7 +8,7 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
         Task<int> CreateQuestionByQuizId(int quizId, CreateQuizQuestionDto dto);
         Task<PagedResult<QuizQuestionNoOptionsDto>> GetQuestionsByQuizIdPaged(int quizId, int page, int pageSize);
         Task<QuizQuestionNoOptionsDto?> GetQuestionById(int questionId);
-        Task<bool> UpdateQuestionById(int questionId, UpdateQuizQuestionDto dto);
         Task<bool> DeleteQuestionById(int questionId);
+        Task<bool> UpdateQuestionsByQuizId(int quizId, BulkUpdateQuizQuestionsDto dto);
     }
 }
