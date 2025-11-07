@@ -23,30 +23,20 @@ namespace Lssctc.ProgramManagement.Programs.Services
 
             return programs.Select(MapToDto);
         }
-
+        
         public async Task<PagedResult<ProgramDto>> GetProgramsAsync(int pageNumber, int pageSize)
         {
             if (pageNumber < 1) pageNumber = 1;
             if (pageSize < 1) pageSize = 10;
 
-            // We build the DTO mapping directly inside the .Select()
-            // EF can translate this into: "SELECT p.Id, p.Name, p.Description, ..."
             var query = _uow.ProgramRepository
                 .GetAllAsQueryable()
                 .Where(p => p.IsDeleted != true)
-                .Select(p => new ProgramDto
-                {
-                    Id = p.Id,
-                    Name = p.Name,
-                    Description = p.Description,
-                    IsActive = p.IsActive,
-                    DurationHours = p.DurationHours,
-                    TotalCourses = p.TotalCourses,
-                    ImageUrl = p.ImageUrl
-                });
+                .Select(p => MapToDto(p));
 
-            // This now works perfectly, because the query is 100% translatable to SQL
             var pagedResult = await query.ToPagedResultAsync(pageNumber, pageSize);
+
+
 
             return pagedResult;
         }
@@ -157,7 +147,7 @@ namespace Lssctc.ProgramManagement.Programs.Services
 
         #region Private Mapping Methods
 
-        private ProgramDto MapToDto(TrainingProgram program)
+        private static ProgramDto MapToDto(TrainingProgram program)
         {
             return new ProgramDto
             {
