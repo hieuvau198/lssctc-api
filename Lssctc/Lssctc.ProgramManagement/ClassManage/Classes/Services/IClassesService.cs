@@ -34,11 +34,12 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
         Task CancelClassAsync(int id);
         #endregion
 
-        #region Program Course Classes
-        // Todo: get classes by program id and course id
-        // Todo: get classes by course id
+        #region Classes By other Filters
+        Task<IEnumerable<ClassDto>> GetClassesByProgramAndCourseAsync(int programId, int courseId);
+        Task<IEnumerable<ClassDto>> GetClassesByCourseAsync(int courseId);
+        Task<IEnumerable<ClassDto>> GetClassesByInstructorAsync(int instructorId);
         #endregion
 
-        
+
     }
 }

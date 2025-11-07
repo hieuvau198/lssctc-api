@@ -195,5 +195,58 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
         }
 
         #endregion
+
+        #region Classes By other Filters
+
+        [HttpGet("program/{programId}/course/{courseId}")]
+        public async Task<IActionResult> GetByProgramAndCourse(int programId, int courseId)
+        {
+            try
+            {
+                var result = await _service.GetClassesByProgramAndCourseAsync(programId, courseId);
+                if (result == null || !result.Any())
+                    return NotFound("No classes found for this program and course.");
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpGet("course/{courseId}")]
+        public async Task<IActionResult> GetByCourse(int courseId)
+        {
+            try
+            {
+                var result = await _service.GetClassesByCourseAsync(courseId);
+                if (result == null || !result.Any())
+                    return NotFound("No classes found for this course.");
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpGet("instructor/{instructorId}")]
+        [Authorize(Roles = "Admin, Instructor")]
+        public async Task<IActionResult> GetByInstructor(int instructorId)
+        {
+            try
+            {
+                var result = await _service.GetClassesByInstructorAsync(instructorId);
+                if (result == null || !result.Any())
+                    return NotFound("No classes found for this instructor.");
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        #endregion
     }
 }

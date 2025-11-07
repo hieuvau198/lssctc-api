@@ -262,6 +262,49 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
         }
         #endregion
 
+        #region Program Course Classes
+
+        public async Task<IEnumerable<ClassDto>> GetClassesByProgramAndCourseAsync(int programId, int courseId)
+        {
+            var classes = await _uow.ClassRepository
+                .GetAllAsQueryable()
+                .Include(c => c.ProgramCourse)
+                .Include(c => c.ClassCode)
+                .Where(c => c.ProgramCourse.ProgramId == programId && c.ProgramCourse.CourseId == courseId)
+                .ToListAsync();
+
+            return classes.Select(MapToDto);
+        }
+
+        public async Task<IEnumerable<ClassDto>> GetClassesByCourseAsync(int courseId)
+        {
+            var classes = await _uow.ClassRepository
+                .GetAllAsQueryable()
+                .Include(c => c.ProgramCourse)
+                .Include(c => c.ClassCode)
+                .Where(c => c.ProgramCourse.CourseId == courseId)
+                .ToListAsync();
+
+            return classes.Select(MapToDto);
+        }
+
+        public async Task<IEnumerable<ClassDto>> GetClassesByInstructorAsync(int instructorId)
+        {
+            var classes = await _uow.ClassInstructorRepository
+                .GetAllAsQueryable()
+                .Where(ci => ci.InstructorId == instructorId)
+                .Include(ci => ci.Class)
+                    .ThenInclude(c => c.ProgramCourse)
+                .Include(ci => ci.Class)
+                    .ThenInclude(c => c.ClassCode)
+                .Select(ci => ci.Class)
+                .ToListAsync();
+
+            return classes.Select(MapToDto);
+        }
+
+        #endregion
+
         #region Mapping
 
         private static ClassDto MapToDto(Class c)
