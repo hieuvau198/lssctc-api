@@ -23,17 +23,29 @@ namespace Lssctc.ProgramManagement.Programs.Services
 
             return programs.Select(MapToDto);
         }
-        
+
         public async Task<PagedResult<ProgramDto>> GetProgramsAsync(int pageNumber, int pageSize)
         {
             if (pageNumber < 1) pageNumber = 1;
             if (pageSize < 1) pageSize = 10;
 
+            // We build the DTO mapping directly inside the .Select()
+            // EF can translate this into: "SELECT p.Id, p.Name, p.Description, ..."
             var query = _uow.ProgramRepository
                 .GetAllAsQueryable()
                 .Where(p => p.IsDeleted != true)
-                .Select(p => MapToDto(p));
+                .Select(p => new ProgramDto
+                {
+                    Id = p.Id,
+                    Name = p.Name,
+                    Description = p.Description,
+                    IsActive = p.IsActive,
+                    DurationHours = p.DurationHours,
+                    TotalCourses = p.TotalCourses,
+                    ImageUrl = p.ImageUrl
+                });
 
+            // This now works perfectly, because the query is 100% translatable to SQL
             var pagedResult = await query.ToPagedResultAsync(pageNumber, pageSize);
 
             return pagedResult;
@@ -121,7 +133,7 @@ namespace Lssctc.ProgramManagement.Programs.Services
 
             // check if any associated classes exist
             var hasAssociatedClasses = program.ProgramCourses
-                .Any(pc => pc.Classes != null);
+                .Any(pc => pc.Classes.Any());
             if (hasAssociatedClasses)
             {
                 throw new Exception("Cannot delete program with associated classes.");
