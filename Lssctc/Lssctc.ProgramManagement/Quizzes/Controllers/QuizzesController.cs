@@ -100,5 +100,14 @@ namespace Lssctc.ProgramManagement.Quizzes.Controllers
             var questionId = await _service.CreateQuestionWithOptionsByQuizId(quizId, dto);
             return CreatedAtAction(nameof(GetQuizDetail), new { id = quizId }, null);
         }
+
+        [HttpPost("with-questions")]
+        [Authorize(Roles = "Admin, Instructor")]
+        public async Task<IActionResult> CreateQuizWithQuestions([FromBody] CreateQuizWithQuestionsDto dto)
+        {
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+            var quizId = await _service.CreateQuizWithQuestions(dto);
+            return CreatedAtAction(nameof(GetQuizDetail), new { id = quizId }, null);
+        }
     }
 }

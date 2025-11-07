@@ -19,7 +19,12 @@ namespace Lssctc.ProgramManagement.Courses.Services
         #endregion
 
         #region Course Categories and Levels
-        // To dos
+        Task<IEnumerable<CourseCategoryDto>> GetAllCourseCategoriesAsync();
+        Task<CourseCategoryDto> CreateCourseCategoryAsync(CreateCourseCategoryDto dto);
+        Task<CourseCategoryDto> UpdateCourseCategoryAsync(int id, UpdateCourseCategoryDto dto);
+        Task<IEnumerable<CourseLevelDto>> GetAllCourseLevelsAsync();
+        Task<CourseLevelDto> CreateCourseLevelAsync(CreateCourseLevelDto dto);
+        Task<CourseLevelDto> UpdateCourseLevelAsync(int id, UpdateCourseLevelDto dto);
         #endregion
 
     }

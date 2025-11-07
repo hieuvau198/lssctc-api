@@ -134,6 +134,116 @@ namespace Lssctc.ProgramManagement.Courses.Services
 
         #endregion
 
+        #region Course Categories and Levels
+
+        public async Task<IEnumerable<CourseCategoryDto>> GetAllCourseCategoriesAsync()
+        {
+            var categories = await _uow.CourseCategoryRepository
+                .GetAllAsQueryable()
+                .ToListAsync();
+            return categories.Select(MapToDto);
+        }
+
+        public async Task<CourseCategoryDto> CreateCourseCategoryAsync(CreateCourseCategoryDto dto)
+        {
+            var existing = await _uow.CourseCategoryRepository
+                .GetAllAsQueryable()
+                .FirstOrDefaultAsync(c => c.Name.ToLower() == dto.Name.ToLower());
+
+            if (existing != null)
+                throw new InvalidOperationException($"Category name '{dto.Name}' already exists.");
+
+            var category = new CourseCategory
+            {
+                Name = dto.Name,
+                Description = dto.Description
+            };
+
+            await _uow.CourseCategoryRepository.CreateAsync(category);
+            await _uow.SaveChangesAsync();
+            return MapToDto(category);
+        }
+
+        public async Task<CourseCategoryDto> UpdateCourseCategoryAsync(int id, UpdateCourseCategoryDto dto)
+        {
+            var category = await _uow.CourseCategoryRepository.GetByIdAsync(id);
+            if (category == null)
+                throw new KeyNotFoundException($"Category with ID {id} not found.");
+
+            if (dto.Name != null && dto.Name.ToLower() != category.Name.ToLower())
+            {
+                var existing = await _uow.CourseCategoryRepository
+                    .GetAllAsQueryable()
+                    .FirstOrDefaultAsync(c => c.Name.ToLower() == dto.Name.ToLower() && c.Id != id);
+
+                if (existing != null)
+                    throw new InvalidOperationException($"Category name '{dto.Name}' already exists.");
+
+                category.Name = dto.Name;
+            }
+
+            category.Description = dto.Description ?? category.Description;
+
+            await _uow.CourseCategoryRepository.UpdateAsync(category);
+            await _uow.SaveChangesAsync();
+            return MapToDto(category);
+        }
+
+        public async Task<IEnumerable<CourseLevelDto>> GetAllCourseLevelsAsync()
+        {
+            var levels = await _uow.CourseLevelRepository
+                .GetAllAsQueryable()
+                .ToListAsync();
+            return levels.Select(MapToDto);
+        }
+
+        public async Task<CourseLevelDto> CreateCourseLevelAsync(CreateCourseLevelDto dto)
+        {
+            var existing = await _uow.CourseLevelRepository
+                .GetAllAsQueryable()
+                .FirstOrDefaultAsync(l => l.Name.ToLower() == dto.Name.ToLower());
+
+            if (existing != null)
+                throw new InvalidOperationException($"Level name '{dto.Name}' already exists.");
+
+            var level = new CourseLevel
+            {
+                Name = dto.Name,
+                Description = dto.Description
+            };
+
+            await _uow.CourseLevelRepository.CreateAsync(level);
+            await _uow.SaveChangesAsync();
+            return MapToDto(level);
+        }
+
+        public async Task<CourseLevelDto> UpdateCourseLevelAsync(int id, UpdateCourseLevelDto dto)
+        {
+            var level = await _uow.CourseLevelRepository.GetByIdAsync(id);
+            if (level == null)
+                throw new KeyNotFoundException($"Level with ID {id} not found.");
+
+            if (dto.Name != null && dto.Name.ToLower() != level.Name.ToLower())
+            {
+                var existing = await _uow.CourseLevelRepository
+                    .GetAllAsQueryable()
+                    .FirstOrDefaultAsync(l => l.Name.ToLower() == dto.Name.ToLower() && l.Id != id);
+
+                if (existing != null)
+                    throw new InvalidOperationException($"Level name '{dto.Name}' already exists.");
+
+                level.Name = dto.Name;
+            }
+
+            level.Description = dto.Description ?? level.Description;
+
+            await _uow.CourseLevelRepository.UpdateAsync(level);
+            await _uow.SaveChangesAsync();
+            return MapToDto(level);
+        }
+
+        #endregion
+
         #region Mapping
         private static CourseDto MapToDto(Course c)
         {
@@ -148,6 +258,25 @@ namespace Lssctc.ProgramManagement.Courses.Services
                 DurationHours = c.DurationHours,
                 ImageUrl = c.ImageUrl,
                 IsActive = c.IsActive ?? false
+            };
+        }
+        private static CourseCategoryDto MapToDto(CourseCategory c)
+        {
+            return new CourseCategoryDto
+            {
+                Id = c.Id,
+                Name = c.Name,
+                Description = c.Description
+            };
+        }
+
+        private static CourseLevelDto MapToDto(CourseLevel l)
+        {
+            return new CourseLevelDto
+            {
+                Id = l.Id,
+                Name = l.Name,
+                Description = l.Description
             };
         }
         #endregion
