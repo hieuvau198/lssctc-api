@@ -36,6 +36,8 @@ namespace Lssctc.ProgramManagement.Programs.Services
 
             var pagedResult = await query.ToPagedResultAsync(pageNumber, pageSize);
 
+
+
             return pagedResult;
         }
 
@@ -121,7 +123,7 @@ namespace Lssctc.ProgramManagement.Programs.Services
 
             // check if any associated classes exist
             var hasAssociatedClasses = program.ProgramCourses
-                .Any(pc => pc.Classes != null);
+                .Any(pc => pc.Classes.Any());
             if (hasAssociatedClasses)
             {
                 throw new Exception("Cannot delete program with associated classes.");
@@ -145,7 +147,7 @@ namespace Lssctc.ProgramManagement.Programs.Services
 
         #region Private Mapping Methods
 
-        private ProgramDto MapToDto(TrainingProgram program)
+        private static ProgramDto MapToDto(TrainingProgram program)
         {
             return new ProgramDto
             {
