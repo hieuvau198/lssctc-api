@@ -9,7 +9,6 @@ namespace Lssctc.ProgramManagement.SimulationComponents.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize]
     public class SimulationComponentsController : ControllerBase
     {
         private readonly ISimulationComponentService _simulationComponentService;
@@ -19,13 +18,6 @@ namespace Lssctc.ProgramManagement.SimulationComponents.Controllers
             _simulationComponentService = simulationComponentService;
         }
 
-        /// <summary>
-        /// Get all SimulationComponents with pagination
-        /// </summary>
-        /// <param name="page">Page number (default: 1)</param>
-        /// <param name="pageSize">Page size (default: 10)</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>Paginated list of SimulationComponents</returns>
         [HttpGet]
         public async Task<ActionResult<PagedResult<SimulationComponentDto>>> GetAllSimulationComponents(
             [FromQuery] int page = 1,
@@ -43,12 +35,6 @@ namespace Lssctc.ProgramManagement.SimulationComponents.Controllers
             }
         }
 
-        /// <summary>
-        /// Get SimulationComponent by ID
-        /// </summary>
-        /// <param name="id">SimulationComponent ID</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>SimulationComponent details</returns>
         [HttpGet("{id}")]
         public async Task<ActionResult<SimulationComponentDto>> GetSimulationComponentById(
             int id,
@@ -68,14 +54,6 @@ namespace Lssctc.ProgramManagement.SimulationComponents.Controllers
             }
         }
 
-        /// <summary>
-        /// Get all SimulationComponents by BrandModel ID with pagination
-        /// </summary>
-        /// <param name="brandModelId">The BrandModel ID</param>
-        /// <param name="page">Page number (default: 1)</param>
-        /// <param name="pageSize">Page size (default: 10)</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>Paginated list of SimulationComponents</returns>
         [HttpGet("by-brand-model/{brandModelId}")]
         public async Task<ActionResult<PagedResult<SimulationComponentDto>>> GetSimulationComponentsByBrandModelId(
             int brandModelId,
@@ -99,12 +77,6 @@ namespace Lssctc.ProgramManagement.SimulationComponents.Controllers
             }
         }
 
-        /// <summary>
-        /// Create a new SimulationComponent
-        /// </summary>
-        /// <param name="dto">SimulationComponent creation data</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>Created SimulationComponent ID</returns>
         [HttpPost]
         [Authorize(Roles = "Admin,SimulationManager")]
         public async Task<ActionResult<int>> CreateSimulationComponent(
@@ -126,13 +98,6 @@ namespace Lssctc.ProgramManagement.SimulationComponents.Controllers
             }
         }
 
-        /// <summary>
-        /// Update an existing SimulationComponent
-        /// </summary>
-        /// <param name="id">SimulationComponent ID</param>
-        /// <param name="dto">SimulationComponent update data</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>Success status</returns>
         [HttpPut("{id}")]
         [Authorize(Roles = "Admin,SimulationManager")]
         public async Task<IActionResult> UpdateSimulationComponent(
@@ -158,12 +123,6 @@ namespace Lssctc.ProgramManagement.SimulationComponents.Controllers
             }
         }
 
-        /// <summary>
-        /// Delete a SimulationComponent (soft delete)
-        /// </summary>
-        /// <param name="id">SimulationComponent ID</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>Success status</returns>
         [HttpDelete("{id}")]
         [Authorize(Roles = "Admin,SimulationManager")]
         public async Task<IActionResult> DeleteSimulationComponent(
