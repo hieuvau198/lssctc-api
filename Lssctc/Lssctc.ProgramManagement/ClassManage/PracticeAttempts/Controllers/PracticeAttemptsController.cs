@@ -1,4 +1,5 @@
 ﻿using Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services;
+using Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Dtos;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -173,6 +174,33 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Controllers
                     return NotFound(new { message = "Practice attempt not found." });
                 return Ok(result);
             }
+            catch (Exception ex) 
+            { 
+                Console.WriteLine($"Error: {ex.Message}");
+                Console.WriteLine($"StackTrace: {ex.StackTrace}");
+                return StatusCode(500, new { message = "An unexpected error occurred.", details = ex.Message }); 
+            }
+        }
+
+        /// <summary>
+        /// Create a new practice attempt with tasks
+        /// </summary>
+        /// <param name="createDto">Practice attempt data with trainee ID, class ID, practice ID, score, and tasks</param>
+        /// <returns>Created practice attempt with ID</returns>
+        [HttpPost]
+        [Authorize(Roles = "Trainee, Admin")]
+        public async Task<IActionResult> CreatePracticeAttempt([FromBody] CreatePracticeAttemptDto createDto)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                    return BadRequest(ModelState);
+
+                var result = await _practiceAttemptsService.CreatePracticeAttempt(createDto);
+                return CreatedAtAction(nameof(GetPracticeAttemptById), new { id = result.Id }, result);
+            }
+            catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+            catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
             catch (Exception ex) 
             { 
                 Console.WriteLine($"Error: {ex.Message}");

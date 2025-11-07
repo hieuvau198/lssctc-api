@@ -22,5 +22,8 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
 
         // Get practice attempts with paging by trainee id and practice id
         Task<PagedResult<PracticeAttemptDto>> GetPracticeAttemptsByPracticePaged(int traineeId, int practiceId, int pageNumber, int pageSize);
+
+        // Create a new practice attempt with tasks
+        Task<PracticeAttemptDto> CreatePracticeAttempt(CreatePracticeAttemptDto createDto);
     }
 }
