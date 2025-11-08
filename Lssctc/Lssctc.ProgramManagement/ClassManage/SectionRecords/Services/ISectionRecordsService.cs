@@ -11,5 +11,6 @@ namespace Lssctc.ProgramManagement.ClassManage.SectionRecords.Services
         Task<PagedResult<SectionRecordDto>> GetSectionRecordsPagedAsync(int classId, int traineeId, int pageNumber, int pageSize);
         Task<IEnumerable<SectionRecordDto>> GetSectionRecordsBySectionAsync(int classId, int sectionId);
         Task<PagedResult<SectionRecordDto>> GetSectionRecordsBySectionPagedAsync(int classId, int sectionId, int pageNumber, int pageSize);
+        Task<IEnumerable<TraineeSectionDto>> GetTraineeSectionRecordsAsync(int classId, int traineeId);
     }
 }

@@ -45,6 +45,21 @@ namespace Lssctc.ProgramManagement.ClassManage.SectionRecords.Controllers
             catch (Exception) { return StatusCode(500, new { message = "An unexpected error occurred." }); }
         }
 
+        [HttpGet("my-records/class/{classId}/detailed")]
+        [Authorize(Roles = "Trainee")]
+        public async Task<IActionResult> GetMyDetailedSectionRecords(int classId)
+        {
+            try
+            {
+                var traineeId = GetTraineeIdFromClaims();
+                var result = await _sectionRecordsService.GetTraineeSectionRecordsAsync(classId, traineeId);
+                return Ok(result);
+            }
+            catch (UnauthorizedAccessException ex) { return Unauthorized(new { message = ex.Message }); }
+            catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+            catch (Exception) { return StatusCode(500, new { message = "An unexpected error occurred." }); }
+        }
+
         [HttpGet("class/{classId}/section/{sectionId}")]
         [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> GetSectionRecordsBySection(int classId, int sectionId)
