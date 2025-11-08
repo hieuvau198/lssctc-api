@@ -1,4 +1,5 @@
 using Lssctc.ProgramManagement.Accounts.Authens.Services;
+using Lssctc.ProgramManagement.Accounts.Profiles.Services;
 using Lssctc.ProgramManagement.Accounts.Users.Services;
 using Lssctc.ProgramManagement.Activities.Services;
 using Lssctc.ProgramManagement.BrandModel.Services;
@@ -160,11 +161,13 @@ builder.Services.AddScoped<IQuizAttemptsService, QuizAttemptsService>();
 builder.Services.AddScoped<IPracticeAttemptsService, PracticeAttemptsService>();
 
 builder.Services.AddScoped<IUsersService, UsersService>();
+builder.Services.AddScoped<IProfilesService, ProfilesService>();
 builder.Services.AddScoped<IAuthensService, AuthensService>();
 builder.Services.AddScoped<IQuizQuestionService, QuizQuestionService>();
 builder.Services.AddScoped<IQuizQuestionOptionsService, QuizQuestionOptionsService>();
 builder.Services.AddScoped<IBrandModel, Lssctc.ProgramManagement.BrandModel.Services.BrandModel>();
 builder.Services.AddScoped<ISimulationComponentService, SimulationComponentService>();
+builder.Services.AddScoped<IProfilesService, ProfilesService>();
 #endregion
 
 #region CORS
