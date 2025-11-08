@@ -21,9 +21,12 @@ namespace Lssctc.ProgramManagement.ClassManage.Helpers
         public async Task<string> EnsureProgressScaffoldingForTraineeAsync(int classId, int traineeId)
         {
             // 1. Get the class and the full course template
-            var (targetClass, courseTemplate) = await GetClassAndCourseTemplateAsync(classId);
-            if (targetClass == null)
+            var (targetClass, courseTemplate, courseId) = await GetClassAndCourseTemplateAsync(classId);
+            if (targetClass == null || targetClass.Id == 0)
                 return "Error: Class not found.";
+
+            if (courseId == 0)
+                return "Error: Course not found for class.";
 
             // 2. Check Class Status
             if (targetClass.Status != (int)ClassStatusEnum.Open && targetClass.Status != (int)ClassStatusEnum.Inprogress)
@@ -50,7 +53,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Helpers
                 return "Trainee already has learning progress.";
 
             // 6. Create the full scaffolding
-            var newProgress = CreateProgressScaffolding(enrollment, courseTemplate);
+            var newProgress = CreateProgressScaffolding(enrollment, courseTemplate, courseId);
 
             // 7. Save the new progress tree
             await _uow.LearningProgressRepository.CreateAsync(newProgress);
@@ -68,10 +71,16 @@ namespace Lssctc.ProgramManagement.ClassManage.Helpers
             var results = new List<string>();
 
             // 1. Get the class and the full course template
-            var (targetClass, courseTemplate) = await GetClassAndCourseTemplateAsync(classId);
-            if (targetClass == null)
+            var (targetClass, courseTemplate, courseId) = await GetClassAndCourseTemplateAsync(classId);
+            if (targetClass == null || targetClass.Id == 0)
             {
                 results.Add("Error: Class not found.");
+                return results;
+            }
+
+            if (courseId == 0)
+            {
+                results.Add("Error: Course not found for class.");
                 return results;
             }
 
@@ -120,7 +129,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Helpers
             int createdCount = 0;
             foreach (var enrollment in enrollmentsToCreate)
             {
-                var newProgress = CreateProgressScaffolding(enrollment, courseTemplate);
+                var newProgress = CreateProgressScaffolding(enrollment, courseTemplate, courseId);
                 await _uow.LearningProgressRepository.CreateAsync(newProgress);
                 results.Add($"Trainee {enrollment.TraineeId}: Progress queued for creation.");
                 createdCount++;
@@ -140,7 +149,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Helpers
         /// <summary>
         /// Fetches the class and the full, ordered list of sections and activities (the "template").
         /// </summary>
-        private async Task<(Class, List<Section>)> GetClassAndCourseTemplateAsync(int classId)
+        private async Task<(Class, List<Section>, int CourseId)> GetClassAndCourseTemplateAsync(int classId)
         {
             var targetClass = await _uow.ClassRepository
                 .GetAllAsQueryable()
@@ -153,7 +162,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Helpers
                 .FirstOrDefaultAsync(c => c.Id == classId);
 
             if (targetClass == null || targetClass.ProgramCourse?.Course == null)
-                return (new Class(), new List<Section>());
+                return (new Class(), new List<Section>(), 0); // Return 0 for CourseId
 
             // Get the ordered list of sections
             var courseTemplate = targetClass.ProgramCourse.Course.CourseSections
@@ -161,18 +170,19 @@ namespace Lssctc.ProgramManagement.ClassManage.Helpers
                 .Select(cs => cs.Section)
                 .ToList();
 
-            return (targetClass, courseTemplate);
+            return (targetClass, courseTemplate, targetClass.ProgramCourse.Course.Id);
         }
 
         /// <summary>
         /// Creates the full hierarchy of progress objects in memory (but does not save).
         /// </summary>
-        private LearningProgress CreateProgressScaffolding(Enrollment enrollment, List<Section> courseTemplate)
+        private LearningProgress CreateProgressScaffolding(Enrollment enrollment, List<Section> courseTemplate, int courseId)
         {
             // 1. Create the root LearningProgress
             var newProgress = new LearningProgress
             {
                 EnrollmentId = enrollment.Id,
+                CourseId = courseId, // <-- THIS IS THE FIX
                 Status = (int)LearningProgressStatusEnum.NotStarted,
                 ProgressPercentage = 0,
                 StartDate = DateTime.UtcNow,
