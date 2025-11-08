@@ -38,6 +38,9 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
         Task<IEnumerable<ClassDto>> GetClassesByProgramAndCourseAsync(int programId, int courseId);
         Task<IEnumerable<ClassDto>> GetClassesByCourseAsync(int courseId);
         Task<IEnumerable<ClassDto>> GetClassesByInstructorAsync(int instructorId);
+        Task<IEnumerable<ClassDto>> GetAllClassesByTraineeAsync(int traineeId);
+        Task<PagedResult<ClassDto>> GetPagedClassesByTraineeAsync(int traineeId, int pageNumber, int pageSize);
+        Task<ClassDto?> GetClassByIdAndTraineeAsync(int classId, int traineeId);
         #endregion
 
 

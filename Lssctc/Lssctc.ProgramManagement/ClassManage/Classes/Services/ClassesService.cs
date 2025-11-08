@@ -262,7 +262,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
         }
         #endregion
 
-        #region Program Course Classes
+        #region Classes By other Filters
 
         public async Task<IEnumerable<ClassDto>> GetClassesByProgramAndCourseAsync(int programId, int courseId)
         {
@@ -301,6 +301,85 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
                 .ToListAsync();
 
             return classes.Select(MapToDto);
+        }
+
+
+        #endregion
+
+        #region Classes By Trainee
+
+        public async Task<IEnumerable<ClassDto>> GetAllClassesByTraineeAsync(int traineeId)
+        {
+            var classes = await _uow.EnrollmentRepository
+                .GetAllAsQueryable()
+                .Where(e => e.TraineeId == traineeId &&
+                            (e.Status == (int)EnrollmentStatusEnum.Enrolled ||
+                             e.Status == (int)EnrollmentStatusEnum.Inprogress ||
+                             e.Status == (int)EnrollmentStatusEnum.Completed))
+                .Include(e => e.Class)
+                    .ThenInclude(c => c.ProgramCourse)
+                .Include(e => e.Class)
+                    .ThenInclude(c => c.ClassCode)
+                .Select(e => e.Class)
+                .Distinct()
+                .ToListAsync();
+
+            return classes.Select(MapToDto);
+        }
+
+        public async Task<PagedResult<ClassDto>> GetPagedClassesByTraineeAsync(int traineeId, int pageNumber, int pageSize)
+        {
+            if (pageNumber < 1) pageNumber = 1;
+            if (pageSize < 1) pageSize = 10;
+
+            // 1. Define the IQueryable. 
+            //    We MUST Include related data (Class.ProgramCourse, Class.ClassCode) *before*
+            //    we Select the Class.
+            var query = _uow.EnrollmentRepository
+                .GetAllAsQueryable()
+                .Where(e => e.TraineeId == traineeId &&
+                            (e.Status == (int)EnrollmentStatusEnum.Enrolled ||
+                             e.Status == (int)EnrollmentStatusEnum.Inprogress ||
+                             e.Status == (int)EnrollmentStatusEnum.Completed))
+                // Include the Class and its children *first*
+                .Include(e => e.Class)
+                    .ThenInclude(c => c.ProgramCourse)
+                .Include(e => e.Class)
+                    .ThenInclude(c => c.ClassCode)
+                // Now Select the fully-loaded Class entity
+                .Select(e => e.Class)
+                .Distinct();
+
+            var pagedEntities = await query.ToPagedResultAsync(pageNumber, pageSize);
+
+            var dtoItems = pagedEntities.Items.Select(MapToDto).ToList();
+
+            return new PagedResult<ClassDto>
+            {
+                Items = dtoItems,
+                TotalCount = pagedEntities.TotalCount,
+                Page = pagedEntities.Page,
+                PageSize = pagedEntities.PageSize
+            };
+        }
+
+        public async Task<ClassDto?> GetClassByIdAndTraineeAsync(int classId, int traineeId)
+        {
+            var enrollment = await _uow.EnrollmentRepository
+                .GetAllAsQueryable()
+                .Where(e => e.ClassId == classId &&
+                            e.TraineeId == traineeId &&
+                            (e.Status == (int)EnrollmentStatusEnum.Enrolled ||
+                             e.Status == (int)EnrollmentStatusEnum.Inprogress ||
+                             e.Status == (int)EnrollmentStatusEnum.Completed))
+                .Include(e => e.Class)
+                    .ThenInclude(c => c.ProgramCourse)
+                .Include(e => e.Class)
+                    .ThenInclude(c => c.ClassCode)
+                .FirstOrDefaultAsync();
+
+            // If an enrollment is found, map the associated class to its DTO
+            return enrollment == null ? null : MapToDto(enrollment.Class);
         }
 
         #endregion

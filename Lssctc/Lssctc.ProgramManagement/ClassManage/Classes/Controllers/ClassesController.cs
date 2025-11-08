@@ -248,5 +248,69 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
         }
 
         #endregion
+
+        #region Classes By Trainee
+
+        [HttpGet("trainee/{traineeId}")]
+        [Authorize(Roles = "Admin, Instructor, Trainee")] // Add "Trainee" role as needed
+        public async Task<IActionResult> GetByTrainee(int traineeId)
+        {
+            // TODO: Add logic here to ensure a user with the "Trainee" role 
+            // can only access their own data, e.g., by checking User.Claims.
+
+            try
+            {
+                var result = await _service.GetAllClassesByTraineeAsync(traineeId);
+                if (result == null || !result.Any())
+                    return NotFound("No classes found for this trainee.");
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpGet("trainee/{traineeId}/paged")]
+        [Authorize(Roles = "Admin, Instructor, Trainee")] // Add "Trainee" role as needed
+        public async Task<IActionResult> GetPagedByTrainee(int traineeId, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
+        {
+            // TODO: Add logic here to ensure a user with the "Trainee" role 
+            // can only access their own data, e.g., by checking User.Claims.
+
+            try
+            {
+                var result = await _service.GetPagedClassesByTraineeAsync(traineeId, pageNumber, pageSize);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpGet("trainee/{traineeId}/class/{classId}")]
+        [Authorize(Roles = "Admin, Instructor, Trainee")] // Add "TTrainee" role as needed
+        public async Task<IActionResult> GetClassForTrainee(int traineeId, int classId)
+        {
+            // TODO: Add logic here to ensure a user with the "Trainee" role 
+            // can only access their own data, e.g., by checking User.Claims.
+
+            try
+            {
+                var result = await _service.GetClassByIdAndTraineeAsync(classId, traineeId);
+                if (result == null)
+                    return NotFound("Class not found for this trainee.");
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        #endregion
     }
 }
