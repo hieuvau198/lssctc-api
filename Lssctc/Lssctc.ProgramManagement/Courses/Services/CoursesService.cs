@@ -20,6 +20,9 @@ namespace Lssctc.ProgramManagement.Courses.Services
             var courses = await _uow.CourseRepository
                 .GetAllAsQueryable()
                 .Where(c => c.IsDeleted != true)
+                // ADDED: Include navigation properties
+                .Include(c => c.Category)
+                .Include(c => c.Level)
                 .ToListAsync();
 
             return courses.Select(MapToDto);
@@ -30,10 +33,24 @@ namespace Lssctc.ProgramManagement.Courses.Services
             if (pageNumber < 1) pageNumber = 1;
             if (pageSize < 1) pageSize = 10;
 
+            // CHANGED: We now project directly to CourseDto in the query.
+            // This is more efficient for paging as it doesn't use MapToDto
+            // and lets the database do the work.
             var query = _uow.CourseRepository
                 .GetAllAsQueryable()
                 .Where(c => c.IsDeleted != true)
-                .Select(c => MapToDto(c));
+                .Select(c => new CourseDto
+                {
+                    Id = c.Id,
+                    Name = c.Name,
+                    Description = c.Description,
+                    Category = c.Category != null ? c.Category.Name : null, // Map name
+                    Level = c.Level != null ? c.Level.Name : null,         // Map name
+                    Price = c.Price,
+                    DurationHours = c.DurationHours,
+                    ImageUrl = c.ImageUrl,
+                    IsActive = c.IsActive ?? false
+                });
 
             var pagedResult = await query.ToPagedResultAsync(pageNumber, pageSize);
             return pagedResult;
@@ -44,6 +61,9 @@ namespace Lssctc.ProgramManagement.Courses.Services
             var course = await _uow.CourseRepository
                 .GetAllAsQueryable()
                 .Where(c => c.Id == id && c.IsDeleted != true)
+                // ADDED: Include navigation properties
+                .Include(c => c.Category)
+                .Include(c => c.Level)
                 .FirstOrDefaultAsync();
 
             return course == null ? null : MapToDto(course);
@@ -67,11 +87,19 @@ namespace Lssctc.ProgramManagement.Courses.Services
             await _uow.CourseRepository.CreateAsync(course);
             await _uow.SaveChangesAsync();
 
-            return MapToDto(course);
+            // ADDED: Reload the new course with its navigation properties
+            // to ensure Category.Name and Level.Name are available for MapToDto
+            var newCourse = await _uow.CourseRepository.GetAllAsQueryable()
+                .Include(c => c.Category)
+                .Include(c => c.Level)
+                .FirstOrDefaultAsync(c => c.Id == course.Id);
+
+            return MapToDto(newCourse!); // Map the reloaded entity
         }
 
         public async Task<CourseDto> UpdateCourseAsync(int id, UpdateCourseDto updateDto)
         {
+            // Fetch the course to update (no includes needed yet)
             var course = await _uow.CourseRepository.GetByIdAsync(id);
             if (course == null || course.IsDeleted == true)
             {
@@ -90,7 +118,13 @@ namespace Lssctc.ProgramManagement.Courses.Services
             await _uow.CourseRepository.UpdateAsync(course);
             await _uow.SaveChangesAsync();
 
-            return MapToDto(course);
+            // ADDED: Reload the entity *with* navigation properties to return the correct DTO
+            var updatedCourse = await _uow.CourseRepository.GetAllAsQueryable()
+                .Include(c => c.Category)
+                .Include(c => c.Level)
+                .FirstOrDefaultAsync(c => c.Id == id);
+
+            return MapToDto(updatedCourse!); // Map the reloaded entity
         }
 
         public async Task DeleteCourseAsync(int id)
@@ -124,8 +158,13 @@ namespace Lssctc.ProgramManagement.Courses.Services
             var programCourses = await _uow.ProgramCourseRepository
                 .GetAllAsQueryable()
                 .Where(pc => pc.ProgramId == programId)
+                // ADDED: ThenInclude to get the Course's Category and Level
                 .Include(pc => pc.Course)
+                    .ThenInclude(c => c!.Category)
+                .Include(pc => pc.Course)
+                    .ThenInclude(c => c!.Level)
                 .ToListAsync();
+
             var courses = programCourses
                 .Where(pc => pc.Course != null && pc.Course.IsDeleted != true)
                 .Select(pc => MapToDto(pc.Course!));
@@ -135,6 +174,8 @@ namespace Lssctc.ProgramManagement.Courses.Services
         #endregion
 
         #region Course Categories and Levels
+
+        // ... (No changes needed in this region) ...
 
         public async Task<IEnumerable<CourseCategoryDto>> GetAllCourseCategoriesAsync()
         {
@@ -245,6 +286,8 @@ namespace Lssctc.ProgramManagement.Courses.Services
         #endregion
 
         #region Mapping
+
+        // --- CHANGED ---
         private static CourseDto MapToDto(Course c)
         {
             return new CourseDto
@@ -252,14 +295,17 @@ namespace Lssctc.ProgramManagement.Courses.Services
                 Id = c.Id,
                 Name = c.Name,
                 Description = c.Description,
-                CategoryId = c.CategoryId,
-                LevelId = c.LevelId,
+                // Use the navigation property's Name, with a null check
+                Category = c.Category?.Name,
+                Level = c.Level?.Name,
                 Price = c.Price,
                 DurationHours = c.DurationHours,
                 ImageUrl = c.ImageUrl,
                 IsActive = c.IsActive ?? false
             };
         }
+        // --- END CHANGE ---
+
         private static CourseCategoryDto MapToDto(CourseCategory c)
         {
             return new CourseCategoryDto
