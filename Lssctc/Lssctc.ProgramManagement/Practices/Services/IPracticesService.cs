@@ -23,5 +23,9 @@ namespace Lssctc.ProgramManagement.Practices.Services
         Task AddPracticeToActivityAsync(int activityId, int practiceId);
         Task RemovePracticeFromActivityAsync(int activityId, int practiceId);
         #endregion
+
+        #region Trainee Practices
+        Task<IEnumerable<TraineePracticeDto>> GetPracticesForTraineeAsync(int traineeId, int classId);
+        #endregion
     }
 }
