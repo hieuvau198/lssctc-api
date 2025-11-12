@@ -64,6 +64,27 @@ namespace Lssctc.ProgramManagement.Quizzes.Controllers
             return Ok(dto);
         }
 
+        [HttpGet("for-trainee/activity/{activityId}")]
+        [Authorize(Roles = "Trainee")]
+        [ProducesResponseType(typeof(QuizTraineeDetailDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> GetQuizForTraineeByActivityId(int activityId)
+        {
+            try
+            {
+                var dto = await _service.GetQuizDetailForTraineeByActivityIdAsync(activityId);
+                if (dto == null)
+                {
+                    return NotFound(new { message = "No quiz found for this activity." });
+                }
+                return Ok(dto);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
+            }
+        }
+
         [HttpPost]
         [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> CreateQuiz([FromBody] CreateQuizDto dto)

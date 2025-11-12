@@ -354,6 +354,24 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
             return q;
         }
 
+        public async Task<QuizTraineeDetailDto?> GetQuizDetailForTraineeByActivityIdAsync(int activityId, CancellationToken ct = default)
+        {
+            // Find the ActivityQuiz link to get the QuizId
+            var activityQuiz = await _uow.ActivityQuizRepository
+                .GetAllAsQueryable()
+                .AsNoTracking()
+                .FirstOrDefaultAsync(aq => aq.ActivityId == activityId, ct);
+
+            if (activityQuiz == null)
+            {
+                // This activity is not a quiz or has no quiz linked
+                return null;
+            }
+
+            // Now call the existing method with the found QuizId
+            return await GetQuizDetailForTrainee(activityQuiz.QuizId, ct);
+        }
+
         public async Task<QuizTraineeDetailDto?> GetQuizTraineeDetailBySectionQuizIdAsync(int sectionQuizId, CancellationToken ct = default)
         {
             // Find ActivityQuiz -> SectionQuiz mapping
