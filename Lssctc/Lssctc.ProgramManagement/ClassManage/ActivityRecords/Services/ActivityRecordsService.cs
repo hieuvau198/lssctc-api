@@ -17,24 +17,40 @@ namespace Lssctc.ProgramManagement.ClassManage.ActivityRecords.Services
 
         public async Task<IEnumerable<ActivityRecordDto>> GetActivityRecordsAsync(int classId, int sectionId, int traineeId)
         {
+            // MODIFIED: Join with Activity to get ActivityTitle
             var records = await GetActivityRecordQuery()
                 .Where(ar => ar.SectionRecord.LearningProgress.Enrollment.ClassId == classId &&
                              ar.SectionRecord.SectionId == sectionId &&
                              ar.SectionRecord.LearningProgress.Enrollment.TraineeId == traineeId)
+                .Join(
+                    _uow.ActivityRepository.GetAllAsQueryable(),
+                    ar => ar.ActivityId,
+                    a => a.Id,
+                    (ar, a) => new { ActivityRecord = ar, ActivityTitle = a.ActivityTitle }
+                )
                 .ToListAsync();
 
-            return records.Select(MapToDto);
+            // MODIFIED: Call new MapToDto overload
+            return records.Select(r => MapToDto(r.ActivityRecord, r.ActivityTitle));
         }
 
         public async Task<IEnumerable<ActivityRecordDto>> GetActivityRecordsByActivityAsync(int classId, int sectionId, int activityId)
         {
+            // MODIFIED: Join with Activity to get ActivityTitle
             var records = await GetActivityRecordQuery()
                 .Where(ar => ar.SectionRecord.LearningProgress.Enrollment.ClassId == classId &&
                              ar.SectionRecord.SectionId == sectionId &&
                              ar.ActivityId == activityId)
+                .Join(
+                    _uow.ActivityRepository.GetAllAsQueryable(),
+                    ar => ar.ActivityId,
+                    a => a.Id,
+                    (ar, a) => new { ActivityRecord = ar, ActivityTitle = a.ActivityTitle }
+                )
                 .ToListAsync();
 
-            return records.Select(MapToDto);
+            // MODIFIED: Call new MapToDto overload
+            return records.Select(r => MapToDto(r.ActivityRecord, r.ActivityTitle));
         }
 
         public async Task<ActivityRecordDto> SubmitActivityAsync(int traineeId, SubmitActivityRecordDto dto)
@@ -65,8 +81,17 @@ namespace Lssctc.ProgramManagement.ClassManage.ActivityRecords.Services
             await _uow.ActivityRecordRepository.UpdateAsync(activityRecord);
             await _uow.SaveChangesAsync();
 
+            // MODIFIED: Fetch the name to pass to MapToDto
             var updatedRecord = await GetActivityRecordQuery().FirstAsync(ar => ar.Id == activityRecord.Id);
-            return MapToDto(updatedRecord);
+            string activityName = "N/A";
+            if (updatedRecord.ActivityId.HasValue)
+            {
+                var activity = await _uow.ActivityRepository.GetByIdAsync(updatedRecord.ActivityId.Value);
+                if (activity != null)
+                    activityName = activity.ActivityTitle;
+            }
+
+            return MapToDto(updatedRecord, activityName);
         }
 
         public async Task<FeedbackDto> AddFeedbackAsync(int activityRecordId, int instructorId, InstructorFeedbackDto dto)
@@ -127,7 +152,7 @@ namespace Lssctc.ProgramManagement.ClassManage.ActivityRecords.Services
                                 .ThenInclude(t => t.IdNavigation);
         }
 
-        private static ActivityRecordDto MapToDto(ActivityRecord ar)
+        private static ActivityRecordDto MapToDto(ActivityRecord ar, string activityName)
         {
             string status = ar.Status.HasValue
                 ? Enum.GetName(typeof(ActivityStatusEnum), ar.Status.Value) ?? "NotStarted"
@@ -142,6 +167,7 @@ namespace Lssctc.ProgramManagement.ClassManage.ActivityRecords.Services
                 Id = ar.Id,
                 SectionRecordId = ar.SectionRecordId,
                 ActivityId = ar.ActivityId,
+                ActivityName = activityName, // <-- ADDED
                 Status = status,
                 Score = ar.Score,
                 IsCompleted = ar.IsCompleted,
@@ -154,7 +180,6 @@ namespace Lssctc.ProgramManagement.ClassManage.ActivityRecords.Services
                 ClassId = ar.SectionRecord.LearningProgress.Enrollment.ClassId
             };
         }
-
         private static FeedbackDto MapToFeedbackDto(InstructorFeedback f)
         {
             return new FeedbackDto

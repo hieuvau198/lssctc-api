@@ -7,6 +7,7 @@ namespace Lssctc.ProgramManagement.ClassManage.ActivityRecords.Dtos
         public int Id { get; set; }
         public int SectionRecordId { get; set; }
         public int? ActivityId { get; set; }
+        public string ActivityName { get; set; } = string.Empty;
         public string Status { get; set; } = string.Empty;
         public decimal? Score { get; set; }
         public bool? IsCompleted { get; set; }
