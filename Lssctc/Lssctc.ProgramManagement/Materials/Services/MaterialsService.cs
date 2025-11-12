@@ -207,7 +207,8 @@ namespace Lssctc.ProgramManagement.Materials.Services
                 Description = am.Description,
                 LearningMaterialType = am.LearningMaterial.LearningMaterialType.HasValue
                     ? Enum.GetName(typeof(LearningMaterialTypeEnum), am.LearningMaterial.LearningMaterialType.Value)
-                    : null
+                    : null,
+                MaterialUrl = am.LearningMaterial.MaterialUrl // <-- ADDED
             };
         }
 
