@@ -54,6 +54,13 @@ namespace Lssctc.ProgramManagement.ClassManage.QuizAttempts.Controllers
 
         [HttpPost("my-attempts/submit")]
         [Authorize(Roles = "Trainee")]
+        // --- ADDED/MODIFIED THESE LINES ---
+        [ProducesResponseType(typeof(QuizAttemptDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        // --- END OF ADDITIONS ---
         public async Task<IActionResult> SubmitQuizAttempt([FromBody] SubmitQuizDto dto)
         {
             try
