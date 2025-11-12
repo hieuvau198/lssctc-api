@@ -28,7 +28,7 @@ namespace Lssctc.ProgramManagement.Quizzes.Controllers
         }
 
         [HttpGet("detail")]
-        [Authorize(Roles = "4")]
+        [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> GetDetailQuizzes([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10)
         {
             var result = await _service.GetDetailQuizzes(pageIndex, pageSize);

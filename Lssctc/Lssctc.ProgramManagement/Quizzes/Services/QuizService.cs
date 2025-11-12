@@ -562,12 +562,25 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
                 await _uow.SaveChangesAsync();
 
                 // Create options for this question
+
+                // --- START OF FIX ---
+
                 // Get max displayOrder from database to ensure uniqueness
-                var maxDisplay = await _uow.QuizQuestionOptionRepository.GetAllAsQueryable()
-                    .Select(x => x.DisplayOrder ?? 0)
-                    .MaxAsync();
-                
+                int maxDisplay = 0; // Default to 0
+
+                // Check if there are any options in the table at all
+                if (await _uow.QuizQuestionOptionRepository.GetAllAsQueryable().AnyAsync())
+                {
+                    // If there are options, get the max display order
+                    maxDisplay = await _uow.QuizQuestionOptionRepository.GetAllAsQueryable()
+                        .Select(x => x.DisplayOrder ?? 0)
+                        .MaxAsync();
+                }
+
                 int nextDisplayOrder = maxDisplay + 1;
+
+                // --- END OF FIX ---
+
 
                 foreach (var opt in questionDto.Options)
                 {
