@@ -204,6 +204,8 @@ namespace Lssctc.ProgramManagement.Practices.Controllers
         }
         #endregion
 
+        #region Helpers
+
         private int GetTraineeIdFromClaims()
         {
             var traineeIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -213,6 +215,8 @@ namespace Lssctc.ProgramManagement.Practices.Controllers
             }
             throw new UnauthorizedAccessException("Trainee ID claim is missing or invalid.");
         }
+
+        #endregion
 
         #region Task
 
