@@ -2,6 +2,7 @@
 using Lssctc.ProgramManagement.Quizzes.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel.DataAnnotations;
 
 namespace Lssctc.ProgramManagement.Quizzes.Controllers
 {
@@ -56,7 +57,7 @@ namespace Lssctc.ProgramManagement.Quizzes.Controllers
         }
 
         [HttpGet("{id}/for-trainee")]
-        [Authorize(Roles = "Trainee")]
+        [Authorize(Roles = "Trainee, Admin")]
         public async Task<IActionResult> GetQuizForTrainee(int id)
         {
             var dto = await _service.GetQuizDetailForTrainee(id);
@@ -65,7 +66,7 @@ namespace Lssctc.ProgramManagement.Quizzes.Controllers
         }
 
         [HttpGet("for-trainee/activity/{activityId}")]
-        [Authorize(Roles = "Trainee")]
+        [Authorize(Roles = "Trainee, Admin")]
         [ProducesResponseType(typeof(QuizTraineeDetailDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetQuizForTraineeByActivityId(int activityId)
@@ -129,6 +130,49 @@ namespace Lssctc.ProgramManagement.Quizzes.Controllers
             if (!ModelState.IsValid) return BadRequest(ModelState);
             var quizId = await _service.CreateQuizWithQuestions(dto);
             return CreatedAtAction(nameof(GetQuizDetail), new { id = quizId }, null);
+        }
+
+        [HttpPost("add-to-activity")]
+        [Authorize(Roles = "Admin, Instructor")]
+        public async Task<IActionResult> AddQuizToActivity([FromBody] CreateActivityQuizDto dto)
+        {
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+            try
+            {
+                var activityQuizId = await _service.AddQuizToActivity(dto);
+                return Ok(new { activityQuizId, message = "Quiz successfully added to activity." });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (ValidationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
+            }
+        }
+
+        [HttpGet("activity/{activityId}/quizzes")]
+        [Authorize(Roles = "Admin, Instructor")]
+        public async Task<IActionResult> GetQuizzesByActivityId(int activityId)
+        {
+            try
+            {
+                var quizzes = await _service.GetQuizzesByActivityId(activityId);
+                return Ok(quizzes);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
+            }
         }
     }
 }
