@@ -174,11 +174,11 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
             return await query.Select(pa => MapToDto(pa)).ToPagedResultAsync(pageNumber, pageSize);
         }
 
-        public async Task<PracticeAttemptDto> CreatePracticeAttempt(CreatePracticeAttemptDto createDto)
+        public async Task<PracticeAttemptDto> CreatePracticeAttempt(int traineeId, CreatePracticeAttemptDto createDto)
         {
             // 0. Validate input IDs
-            if (createDto.TraineeId <= 0)
-                throw new ArgumentException("TraineeId must be greater than 0.", nameof(createDto.TraineeId));
+            if (traineeId <= 0) // <-- UPDATED
+                throw new ArgumentException("TraineeId must be greater than 0.", nameof(traineeId)); // <-- UPDATED
 
             if (createDto.ClassId <= 0)
                 throw new ArgumentException("ClassId must be greater than 0.", nameof(createDto.ClassId));
@@ -187,9 +187,9 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
                 throw new ArgumentException("PracticeId must be greater than 0.", nameof(createDto.PracticeId));
 
             // Validate that trainee exists
-            var traineeExists = await _uow.TraineeRepository.ExistsAsync(t => t.Id == createDto.TraineeId && (t.IsDeleted == null || t.IsDeleted == false));
+            var traineeExists = await _uow.TraineeRepository.ExistsAsync(t => t.Id == traineeId && (t.IsDeleted == null || t.IsDeleted == false)); // <-- UPDATED
             if (!traineeExists)
-                throw new KeyNotFoundException($"Trainee with ID {createDto.TraineeId} not found.");
+                throw new KeyNotFoundException($"Trainee with ID {traineeId} not found."); // <-- UPDATED
 
             // Validate that class exists
             var classEntity = await _uow.ClassRepository.GetByIdAsync(createDto.ClassId);
@@ -202,12 +202,12 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
                 throw new KeyNotFoundException($"Practice with ID {createDto.PracticeId} not found.");
 
             // Validate enrollment exists
-            var enrollmentExists = await _uow.EnrollmentRepository.ExistsAsync(e => 
-                e.TraineeId == createDto.TraineeId && 
-                e.ClassId == createDto.ClassId && 
+            var enrollmentExists = await _uow.EnrollmentRepository.ExistsAsync(e =>
+                e.TraineeId == traineeId && // <-- UPDATED
+                e.ClassId == createDto.ClassId &&
                 (e.IsDeleted == null || e.IsDeleted == false));
             if (!enrollmentExists)
-                throw new KeyNotFoundException($"Trainee {createDto.TraineeId} is not enrolled in Class {createDto.ClassId}.");
+                throw new KeyNotFoundException($"Trainee {traineeId} is not enrolled in Class {createDto.ClassId}."); // <-- UPDATED
 
             // Validate TaskIds if provided and calculate score based on pass status
             bool allTasksPass = false;
@@ -248,7 +248,7 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
                     .ThenInclude(sr => sr.LearningProgress)
                         .ThenInclude(lp => lp.Enrollment)
                 .FirstOrDefaultAsync(ar => 
-                    ar.SectionRecord.LearningProgress.Enrollment.TraineeId == createDto.TraineeId &&
+                    ar.SectionRecord.LearningProgress.Enrollment.TraineeId == traineeId &&
                     ar.SectionRecord.LearningProgress.Enrollment.ClassId == createDto.ClassId &&
                     ar.ActivityId != null &&
                     ar.ActivityId == (
@@ -261,7 +261,7 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
             if (activityRecord == null)
             {
                 throw new KeyNotFoundException(
-                    $"Activity record not found for TraineeId={createDto.TraineeId}, ClassId={createDto.ClassId}, PracticeId={createDto.PracticeId}. " +
+                    $"Activity record not found for TraineeId={traineeId}, ClassId={createDto.ClassId}, PracticeId={createDto.PracticeId}. " +
                     "Please ensure the practice is assigned to an activity in this class.");
             }
 

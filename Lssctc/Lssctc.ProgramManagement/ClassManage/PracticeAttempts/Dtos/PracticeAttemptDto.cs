@@ -28,10 +28,6 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Dtos
 
     public class CreatePracticeAttemptDto
     {
-        [Required(ErrorMessage = "TraineeId is required.")]
-        [Range(1, int.MaxValue, ErrorMessage = "TraineeId must be greater than 0.")]
-        public int TraineeId { get; set; }
-
         [Required(ErrorMessage = "ClassId is required.")]
         [Range(1, int.MaxValue, ErrorMessage = "ClassId must be greater than 0.")]
         public int ClassId { get; set; }

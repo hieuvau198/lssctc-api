@@ -9,7 +9,6 @@ namespace Lssctc.ProgramManagement.Sections.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize]
     public class SectionsController : ControllerBase
     {
         private readonly ISectionsService _sectionsService;
@@ -22,7 +21,6 @@ namespace Lssctc.ProgramManagement.Sections.Controllers
         #region Sections
 
         [HttpGet]
-        [Authorize(Roles = "Admin, Instructor")]
         public async Task<ActionResult<IEnumerable<SectionDto>>> GetAllSections()
         {
             var sections = await _sectionsService.GetAllSectionsAsync();
@@ -30,7 +28,6 @@ namespace Lssctc.ProgramManagement.Sections.Controllers
         }
 
         [HttpGet("paged")]
-        [Authorize(Roles = "Admin, Instructor")]
         public async Task<ActionResult<PagedResult<SectionDto>>> GetSections([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
             var pagedSections = await _sectionsService.GetSectionsAsync(pageNumber, pageSize);
@@ -38,7 +35,6 @@ namespace Lssctc.ProgramManagement.Sections.Controllers
         }
 
         [HttpGet("{id}")]
-        [Authorize(Roles = "Admin, Instructor")]
         public async Task<ActionResult<SectionDto>> GetSectionById(int id)
         {
             var section = await _sectionsService.GetSectionByIdAsync(id);
@@ -108,7 +104,6 @@ namespace Lssctc.ProgramManagement.Sections.Controllers
         #region Course-Section
 
         [HttpGet("course/{courseId}")]
-        [Authorize(Roles = "Admin, Instructor")]
         public async Task<ActionResult<IEnumerable<SectionDto>>> GetSectionsByCourseId(int courseId)
         {
             var sections = await _sectionsService.GetSectionsByCourseIdAsync(courseId);

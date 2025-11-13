@@ -16,6 +16,7 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
         Task<PagedResult<QuizDetailDto>> GetDetailQuizzes(int pageIndex, int pageSize, CancellationToken ct = default);
         Task<QuizDetailDto?> GetQuizDetail(int quizId, CancellationToken ct = default);
         Task<QuizTraineeDetailDto?> GetQuizDetailForTrainee(int quizId, CancellationToken ct = default);
+        Task<QuizTraineeDetailDto?> GetQuizDetailForTraineeByActivityIdAsync(int activityId, CancellationToken ct = default);
         Task<QuizTraineeDetailDto?> GetQuizTraineeDetailBySectionQuizIdAsync(int sectionQuizId, CancellationToken ct = default);
         #endregion
 

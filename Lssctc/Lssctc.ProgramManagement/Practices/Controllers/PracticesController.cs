@@ -1,7 +1,9 @@
 ﻿using Lssctc.ProgramManagement.Practices.Dtos;
 using Lssctc.ProgramManagement.Practices.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace Lssctc.ProgramManagement.Practices.Controllers
 {
@@ -170,6 +172,50 @@ namespace Lssctc.ProgramManagement.Practices.Controllers
                 return StatusCode(500, ex.Message);
             }
         }
+        #endregion
+
+
+        #region Trainee Practices
+        [HttpGet("trainee/class/{classId}")]
+        [Authorize(Roles = "Trainee")] // Trainee can only see their own
+        [ProducesResponseType(typeof(IEnumerable<TraineePracticeDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> GetPracticesForTrainee(int classId)
+        {
+            try
+            {
+                var traineeId = GetTraineeIdFromClaims();
+                var result = await _service.GetPracticesForTraineeAsync(traineeId, classId);
+                return Ok(result);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { message = ex.Message });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
+        }
+        #endregion
+
+        #region Helpers
+
+        private int GetTraineeIdFromClaims()
+        {
+            var traineeIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (int.TryParse(traineeIdClaim, out int traineeId))
+            {
+                return traineeId;
+            }
+            throw new UnauthorizedAccessException("Trainee ID claim is missing or invalid.");
+        }
+
         #endregion
 
         #region Task

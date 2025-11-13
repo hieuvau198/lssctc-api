@@ -1,13 +1,14 @@
 ﻿using Lssctc.ProgramManagement.ClassManage.Classes.Dtos;
 using Lssctc.ProgramManagement.ClassManage.Classes.Services;
+using Lssctc.Share.Common;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize]
     public class ClassesController : ControllerBase
     {
         private readonly IClassesService _service;
@@ -49,7 +50,6 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
         }
 
         [HttpGet("{id}")]
-        [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> GetById(int id)
         {
             try
@@ -65,6 +65,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Create([FromBody] CreateClassDto dto)
         {
             try
@@ -79,6 +80,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
         }
 
         [HttpPut("{id}")]
+        [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> Update(int id, [FromBody] UpdateClassDto dto)
         {
             try
@@ -93,6 +95,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
         }
 
         [HttpPut("{id}/open")]
+        [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> Open(int id)
         {
             try
@@ -107,6 +110,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
         }
 
         [HttpPut("{id}/start")]
+        [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> Start(int id)
         {
             try
@@ -121,6 +125,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
         }
 
         [HttpPut("{id}/complete")]
+        [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> CompleteClass(int id)
         {
             try
@@ -135,6 +140,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
         }
 
         [HttpPut("{id}/cancel")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> CancelClass(int id)
         {
             try
@@ -167,6 +173,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
         }
 
         [HttpPost("{id}/instructor")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> AssignInstructor(int id, [FromBody] AssignInstructorDto dto)
         {
             try
@@ -181,6 +188,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
         }
 
         [HttpDelete("{id}/instructor")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> RemoveInstructor(int id)
         {
             try
@@ -252,12 +260,9 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
         #region Classes By Trainee
 
         [HttpGet("trainee/{traineeId}")]
-        [Authorize(Roles = "Admin, Instructor, Trainee")] // Add "Trainee" role as needed
+        [Authorize(Roles = "Admin, Instructor, Trainee")]
         public async Task<IActionResult> GetByTrainee(int traineeId)
         {
-            // TODO: Add logic here to ensure a user with the "Trainee" role 
-            // can only access their own data, e.g., by checking User.Claims.
-
             try
             {
                 var result = await _service.GetAllClassesByTraineeAsync(traineeId);
@@ -273,12 +278,9 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
         }
 
         [HttpGet("trainee/{traineeId}/paged")]
-        [Authorize(Roles = "Admin, Instructor, Trainee")] // Add "Trainee" role as needed
+        [Authorize(Roles = "Admin, Instructor, Trainee")]
         public async Task<IActionResult> GetPagedByTrainee(int traineeId, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
-            // TODO: Add logic here to ensure a user with the "Trainee" role 
-            // can only access their own data, e.g., by checking User.Claims.
-
             try
             {
                 var result = await _service.GetPagedClassesByTraineeAsync(traineeId, pageNumber, pageSize);
@@ -291,12 +293,9 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
         }
 
         [HttpGet("trainee/{traineeId}/class/{classId}")]
-        [Authorize(Roles = "Admin, Instructor, Trainee")] // Add "TTrainee" role as needed
+        [Authorize(Roles = "Admin, Instructor, Trainee")]
         public async Task<IActionResult> GetClassForTrainee(int traineeId, int classId)
         {
-            // TODO: Add logic here to ensure a user with the "Trainee" role 
-            // can only access their own data, e.g., by checking User.Claims.
-
             try
             {
                 var result = await _service.GetClassByIdAndTraineeAsync(classId, traineeId);
@@ -311,6 +310,88 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
             }
         }
 
+
+        [HttpGet("my-classes")]
+        [Authorize(Roles = "Trainee")]
+        [ProducesResponseType(typeof(IEnumerable<ClassDto>), StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetMyClasses()
+        {
+            try
+            {
+                var traineeId = GetUserIdFromClaims();
+                var result = await _service.GetAllClassesByTraineeAsync(traineeId);
+                if (result == null || !result.Any())
+                    return NotFound("No classes found for you.");
+
+                return Ok(result);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpGet("my-classes/paged")]
+        [Authorize(Roles = "Trainee")]
+        [ProducesResponseType(typeof(PagedResult<ClassDto>), StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetMyPagedClasses([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
+        {
+            try
+            {
+                var traineeId = GetUserIdFromClaims();
+                var result = await _service.GetPagedClassesByTraineeAsync(traineeId, pageNumber, pageSize);
+                return Ok(result);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpGet("my-classes/{classId}")]
+        [Authorize(Roles = "Trainee")]
+        [ProducesResponseType(typeof(ClassDto), StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetMyClassById(int classId)
+        {
+            try
+            {
+                var traineeId = GetUserIdFromClaims();
+                var result = await _service.GetClassByIdAndTraineeAsync(classId, traineeId);
+                if (result == null)
+                    return NotFound("Class not found or you are not enrolled.");
+
+                return Ok(result);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        #endregion
+
+        #region Helpers
+        private int GetUserIdFromClaims()
+        {
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (int.TryParse(userIdClaim, out int userId))
+            {
+                return userId;
+            }
+            throw new UnauthorizedAccessException("User ID claim is missing or invalid.");
+        }
         #endregion
     }
 }

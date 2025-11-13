@@ -189,6 +189,11 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Controllers
         /// <returns>Created practice attempt with ID</returns>
         [HttpPost]
         [Authorize(Roles = "Trainee, Admin")]
+        [ProducesResponseType(typeof(PracticeAttemptDto), StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> CreatePracticeAttempt([FromBody] CreatePracticeAttemptDto createDto)
         {
             try
@@ -196,19 +201,34 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Controllers
                 if (!ModelState.IsValid)
                     return BadRequest(ModelState);
 
-                var result = await _practiceAttemptsService.CreatePracticeAttempt(createDto);
+                // --- ADDED/MODIFIED LINES ---
+                var traineeId = GetTraineeIdFromClaims(); // Get ID from token
+                var result = await _practiceAttemptsService.CreatePracticeAttempt(traineeId, createDto); // Pass ID to service
+                                                                                                         // --- END OF CHANGES ---
+
                 return CreatedAtAction(nameof(GetPracticeAttemptById), new { id = result.Id }, result);
             }
             catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
             catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
-            catch (Exception ex) 
-            { 
+            catch (Exception ex)
+            {
                 Console.WriteLine($"Error: {ex.Message}");
                 Console.WriteLine($"StackTrace: {ex.StackTrace}");
-                return StatusCode(500, new { message = "An unexpected error occurred.", details = ex.Message }); 
+                return StatusCode(500, new { message = "An unexpected error occurred.", details = ex.Message });
             }
         }
 
         #endregion
+
+        // --- ADDED HELPER METHOD (if not already present from previous request) ---
+        private int GetTraineeIdFromClaims()
+        {
+            var traineeIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (int.TryParse(traineeIdClaim, out int traineeId))
+            {
+                return traineeId;
+            }
+            throw new UnauthorizedAccessException("Trainee ID claim is missing or invalid.");
+        }
     }
 }

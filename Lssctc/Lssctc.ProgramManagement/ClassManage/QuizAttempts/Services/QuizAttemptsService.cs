@@ -173,7 +173,7 @@ namespace Lssctc.ProgramManagement.ClassManage.QuizAttempts.Services
 
                 var newAttemptQuestion = new QuizAttemptQuestion
                 {
-                    QuizAttempt = newAttempt,
+                    // QuizAttempt = newAttempt, // <--- REMOVE THIS LINE
                     QuestionId = questionTemplate.Id,
                     QuestionScore = questionTemplate.QuestionScore,
                     IsMultipleAnswers = questionTemplate.IsMultipleAnswers,
@@ -200,7 +200,7 @@ namespace Lssctc.ProgramManagement.ClassManage.QuizAttempts.Services
 
                     newAttemptQuestion.QuizAttemptAnswers.Add(new QuizAttemptAnswer
                     {
-                        QuizAttemptQuestion = newAttemptQuestion,
+                        // QuizAttemptQuestion = newAttemptQuestion, // <--- REMOVE THIS LINE
                         QuizOptionId = selectedOptionId,
                         IsCorrect = isThisAnswerCorrect,
                         Name = optionTemplate.Name,

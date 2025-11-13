@@ -55,13 +55,64 @@ namespace Lssctc.ProgramManagement.ClassManage.SectionRecords.Services
             return await query.ToPagedResultAsync(pageNumber, pageSize);
         }
 
+        public async Task<IEnumerable<TraineeSectionDto>> GetTraineeSectionRecordsAsync(int classId, int traineeId)
+        {
+            // 1. Find the trainee's learning progress for this class
+            var learningProgress = await _uow.LearningProgressRepository
+                .GetAllAsQueryable()
+                .Include(lp => lp.Enrollment)
+                .Include(lp => lp.SectionRecords) // Load the trainee's actual records
+                .FirstOrDefaultAsync(lp => lp.Enrollment.ClassId == classId && lp.Enrollment.TraineeId == traineeId);
+
+            if (learningProgress == null)
+            {
+                throw new KeyNotFoundException("Learning progress not found for this trainee in this class.");
+            }
+
+            // 2. Get the course's section template (the master list of sections and their order)
+            var courseTemplate = await _uow.CourseSectionRepository
+                .GetAllAsQueryable()
+                .Include(cs => cs.Section) // Include the details from the Section entity
+                .Where(cs => cs.CourseId == learningProgress.CourseId)
+                .OrderBy(cs => cs.SectionOrder)
+                .ToListAsync();
+
+            // 3. Create a dictionary of the trainee's records for efficient lookup
+            var sectionRecordMap = learningProgress.SectionRecords
+                .ToDictionary(sr => sr.SectionId ?? -1, sr => sr); // Keyed by SectionId
+
+            // 4. Join the template with the trainee's records
+            var resultList = new List<TraineeSectionDto>();
+            foreach (var templateSection in courseTemplate)
+            {
+                if (templateSection.Section == null || templateSection.Section.IsDeleted == true) continue;
+
+                sectionRecordMap.TryGetValue(templateSection.SectionId, out var traineeRecord);
+
+                var dto = new TraineeSectionDto
+                {
+                    SectionId = templateSection.SectionId,
+                    SectionTitle = templateSection.Section.SectionTitle,
+                    SectionDescription = templateSection.Section.SectionDescription,
+                    SectionOrder = templateSection.SectionOrder,
+                    EstimatedDurationMinutes = templateSection.Section.EstimatedDurationMinutes,
+
+                    SectionRecordId = traineeRecord?.Id ?? 0,
+                    IsCompleted = traineeRecord?.IsCompleted ?? false,
+                    Progress = traineeRecord?.Progress ?? 0m
+                };
+                resultList.Add(dto);
+            }
+
+            return resultList;
+        }
+
 
         private IQueryable<SectionRecord> GetSectionRecordQuery()
         {
             return _uow.SectionRecordRepository
                 .GetAllAsQueryable()
                 .AsNoTracking()
-                // .Include(sr => sr.ActivityRecords) // Removed
                 .Include(sr => sr.LearningProgress)
                     .ThenInclude(lp => lp.Enrollment)
                         .ThenInclude(e => e.Trainee)
@@ -83,28 +134,8 @@ namespace Lssctc.ProgramManagement.ClassManage.SectionRecords.Services
                 TraineeId = sr.LearningProgress.Enrollment.TraineeId,
                 TraineeName = sr.LearningProgress.Enrollment.Trainee.IdNavigation.Fullname ?? "N/A",
                 ClassId = sr.LearningProgress.Enrollment.ClassId
-                // ActivityRecords = sr.ActivityRecords.Select(MapToActivityDto).ToList() // Removed
             };
         }
 
-        /* // Removed
-        private static ActivityRecordDto MapToActivityDto(ActivityRecord ar)
-        {
-            string status = ar.Status.HasValue
-                ? Enum.GetName(typeof(ActivityStatusEnum), ar.Status.Value) ?? "NotStarted"
-                : "NotStarted";
-
-            return new ActivityRecordDto
-            {
-                Id = ar.Id,
-                ActivityId = ar.ActivityId,
-                Status = status,
-                Score = ar.Score,
-                IsCompleted = ar.IsCompleted,
-                CompletedDate = ar.CompletedDate,
-                ActivityType = ar.ActivityType
-            };
-        }
-        */
     }
 }

@@ -35,25 +35,35 @@ namespace Lssctc.ProgramManagement.ClassManage.Helpers
         /// </summary>
         public async Task<ActivityRecord> UpdateActivityRecordProgressAsync(int traineeId, int activityRecordId)
         {
-            var activityRecord = await _uow.ActivityRecordRepository
-                .GetAllAsQueryable()
-                .Include(ar => ar.SectionRecord.LearningProgress.Enrollment)
-                .Include(ar => ar.QuizAttempts)
-                .Include(ar => ar.PracticeAttempts)
-                .FirstOrDefaultAsync(ar => ar.Id == activityRecordId);
+            // 1. Load the ActivityRecord *without* its child attempts.
+            // We use .Find() or GetByIdAsync which *does* track by default, but only the single entity.
+            // Since we get it from the UoW, it uses the shared context.
+            var activityRecord = await _uow.ActivityRecordRepository.GetByIdAsync(activityRecordId);
 
             if (activityRecord == null)
                 throw new KeyNotFoundException("Activity record not found.");
 
-            if (activityRecord.SectionRecord.LearningProgress.Enrollment.TraineeId != traineeId)
+            // We still need to verify traineeId, so we load the parent chain AsNoTracking just for verification
+            var verificationRecord = await _uow.ActivityRecordRepository
+                .GetAllAsQueryable() // AsNoTracking()
+                .Include(ar => ar.SectionRecord.LearningProgress.Enrollment)
+                .Select(ar => new { ar.Id, ar.SectionRecord.LearningProgress.Enrollment.TraineeId })
+                .FirstOrDefaultAsync(ar => ar.Id == activityRecordId);
+
+            if (verificationRecord == null || verificationRecord.TraineeId != traineeId)
                 throw new UnauthorizedAccessException("You are not authorized to update this activity record.");
 
             bool isCompleted = false;
             decimal? score = null;
 
+            // 2. Load the attempts in *separate, non-tracking* queries.
             if (activityRecord.ActivityType == (int)ActivityType.Quiz)
             {
-                var currentAttempt = activityRecord.QuizAttempts.FirstOrDefault(a => a.IsCurrent);
+                var currentAttempt = await _uow.QuizAttemptRepository
+                    .GetAllAsQueryable() // AsNoTracking()
+                    .Where(a => a.ActivityRecordId == activityRecordId && a.IsCurrent)
+                    .FirstOrDefaultAsync();
+
                 if (currentAttempt != null)
                 {
                     isCompleted = currentAttempt.IsPass ?? false;
@@ -62,7 +72,11 @@ namespace Lssctc.ProgramManagement.ClassManage.Helpers
             }
             else if (activityRecord.ActivityType == (int)ActivityType.Practice)
             {
-                var currentAttempt = activityRecord.PracticeAttempts.FirstOrDefault(a => a.IsCurrent);
+                var currentAttempt = await _uow.PracticeAttemptRepository
+                    .GetAllAsQueryable() // AsNoTracking()
+                    .Where(a => a.ActivityRecordId == activityRecordId && a.IsCurrent)
+                    .FirstOrDefaultAsync();
+
                 if (currentAttempt != null)
                 {
                     isCompleted = currentAttempt.IsPass ?? false;
@@ -83,15 +97,28 @@ namespace Lssctc.ProgramManagement.ClassManage.Helpers
                 activityRecord.Status = (int)ActivityStatusEnum.Completed;
                 activityRecord.CompletedDate = DateTime.UtcNow;
             }
-            else if (activityRecord.QuizAttempts.Any() || activityRecord.PracticeAttempts.Any())
+            // We need to check if *any* attempts exist, which requires another query
+            else if (activityRecord.ActivityType == (int)ActivityType.Quiz || activityRecord.ActivityType == (int)ActivityType.Practice)
             {
-                activityRecord.Status = (int)ActivityStatusEnum.InProgress;
+                bool hasAnyAttempts = await _uow.QuizAttemptRepository.ExistsAsync(qa => qa.ActivityRecordId == activityRecordId) ||
+                                      await _uow.PracticeAttemptRepository.ExistsAsync(pa => pa.ActivityRecordId == activityRecordId);
+
+                if (hasAnyAttempts)
+                {
+                    activityRecord.Status = (int)ActivityStatusEnum.InProgress;
+                }
+                else
+                {
+                    activityRecord.Status = (int)ActivityStatusEnum.NotStarted;
+                }
             }
             else
             {
                 activityRecord.Status = (int)ActivityStatusEnum.NotStarted;
             }
 
+            // 3. Use the *tracked* entity from GetByIdAsync and call Update.
+            // This will only mark this single entity as modified.
             await _uow.ActivityRecordRepository.UpdateAsync(activityRecord);
             await _uow.SaveChangesAsync();
             return activityRecord;
@@ -103,22 +130,26 @@ namespace Lssctc.ProgramManagement.ClassManage.Helpers
         /// </summary>
         public async Task<SectionRecord> UpdateSectionRecordProgressAsync(int traineeId, int sectionRecordId)
         {
-            var sectionRecord = await _uow.SectionRecordRepository
-                .GetAllAsQueryable()
-                .Include(sr => sr.LearningProgress.Enrollment)
-                .Include(sr => sr.ActivityRecords)
-                .FirstOrDefaultAsync(sr => sr.Id == sectionRecordId);
+            // 1. Load the SectionRecord *without* its child ActivityRecords.
+            var sectionRecord = await _uow.SectionRecordRepository.GetByIdAsync(sectionRecordId);
 
             if (sectionRecord == null)
                 throw new KeyNotFoundException("Section record not found.");
 
-            if (sectionRecord.LearningProgress.Enrollment.TraineeId != traineeId)
+            // Verify ownership
+            var verificationRecord = await _uow.SectionRecordRepository
+                .GetAllAsQueryable() // AsNoTracking
+                .Include(sr => sr.LearningProgress.Enrollment)
+                .Select(sr => new { sr.Id, sr.LearningProgress.Enrollment.TraineeId })
+                .FirstOrDefaultAsync(sr => sr.Id == sectionRecordId);
+
+            if (verificationRecord == null || verificationRecord.TraineeId != traineeId)
                 throw new UnauthorizedAccessException("You are not authorized to update this section record.");
 
             if (sectionRecord.SectionId == null)
                 throw new InvalidOperationException("Section record is missing its SectionId link.");
 
-            // Get the "template" total
+            // 2. Get the "template" total
             int totalActivities = await _uow.SectionActivityRepository
                 .GetAllAsQueryable()
                 .CountAsync(sa => sa.SectionId == sectionRecord.SectionId);
@@ -133,13 +164,16 @@ namespace Lssctc.ProgramManagement.ClassManage.Helpers
                 return sectionRecord;
             }
 
-            // Get the "completed" total
-            int completedActivities = sectionRecord.ActivityRecords.Count(ar => ar.IsCompleted == true);
+            // 3. Get the "completed" total from a *separate, non-tracking* query
+            int completedActivities = await _uow.ActivityRecordRepository
+                .GetAllAsQueryable() // AsNoTracking()
+                .CountAsync(ar => ar.SectionRecordId == sectionRecordId && ar.IsCompleted == true);
 
             decimal progress = Math.Round(((decimal)completedActivities / totalActivities) * 100, 2);
             sectionRecord.Progress = progress;
             sectionRecord.IsCompleted = (completedActivities == totalActivities);
 
+            // 4. Update the *tracked* entity
             await _uow.SectionRecordRepository.UpdateAsync(sectionRecord);
             await _uow.SaveChangesAsync();
             return sectionRecord;
@@ -151,22 +185,26 @@ namespace Lssctc.ProgramManagement.ClassManage.Helpers
         /// </summary>
         public async Task<LearningProgress> UpdateLearningProgressProgressAsync(int traineeId, int learningProgressId)
         {
-            var learningProgress = await _uow.LearningProgressRepository
-                .GetAllAsQueryable()
-                .Include(lp => lp.Enrollment)
-                .Include(lp => lp.SectionRecords)
-                .FirstOrDefaultAsync(lp => lp.Id == learningProgressId);
+            // 1. Load the LearningProgress *without* its child SectionRecords.
+            var learningProgress = await _uow.LearningProgressRepository.GetByIdAsync(learningProgressId);
 
             if (learningProgress == null)
                 throw new KeyNotFoundException("Learning progress not found.");
 
-            if (learningProgress.Enrollment.TraineeId != traineeId)
+            // Verify ownership
+            var verificationRecord = await _uow.LearningProgressRepository
+                .GetAllAsQueryable() // AsNoTracking
+                .Include(lp => lp.Enrollment)
+                .Select(lp => new { lp.Id, lp.Enrollment.TraineeId })
+                .FirstOrDefaultAsync(lp => lp.Id == learningProgressId);
+
+            if (verificationRecord == null || verificationRecord.TraineeId != traineeId)
                 throw new UnauthorizedAccessException("You are not authorized to update this learning progress.");
 
-            if (learningProgress.CourseId == 0) // Assuming CourseId is non-nullable
+            if (learningProgress.CourseId == 0)
                 throw new InvalidOperationException("Learning progress is missing its CourseId link.");
 
-            // Get the "template" total
+            // 2. Get the "template" total
             int totalSections = await _uow.CourseSectionRepository
                 .GetAllAsQueryable()
                 .CountAsync(cs => cs.CourseId == learningProgress.CourseId);
@@ -181,8 +219,15 @@ namespace Lssctc.ProgramManagement.ClassManage.Helpers
                 return learningProgress;
             }
 
-            // Get the "completed" total
-            int completedSections = learningProgress.SectionRecords.Count(sr => sr.IsCompleted == true);
+            // 3. Get the "completed" total from a *separate, non-tracking* query
+            int completedSections = await _uow.SectionRecordRepository
+                .GetAllAsQueryable() // AsNoTracking()
+                .CountAsync(sr => sr.LearningProgressId == learningProgressId && sr.IsCompleted == true);
+
+            // 4. Get "any progress" from a separate query
+            bool anyProgress = completedSections > 0 || await _uow.SectionRecordRepository
+                .GetAllAsQueryable() // AsNoTracking()
+                .AnyAsync(sr => sr.LearningProgressId == learningProgressId && sr.Progress > 0);
 
             decimal percentage = Math.Round(((decimal)completedSections / totalSections) * 100, 2);
             learningProgress.ProgressPercentage = percentage;
@@ -191,8 +236,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Helpers
             {
                 learningProgress.Status = (int)LearningProgressStatusEnum.Completed;
             }
-            // Check if *any* progress has been made or if it was already in progress
-            else if (completedSections > 0 || learningProgress.SectionRecords.Any(sr => sr.Progress > 0) || learningProgress.Status == (int)LearningProgressStatusEnum.InProgress)
+            else if (anyProgress || learningProgress.Status == (int)LearningProgressStatusEnum.InProgress)
             {
                 learningProgress.Status = (int)LearningProgressStatusEnum.InProgress;
             }
@@ -203,6 +247,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Helpers
 
             learningProgress.LastUpdated = DateTime.UtcNow;
 
+            // 5. Update the *tracked* entity
             await _uow.LearningProgressRepository.UpdateAsync(learningProgress);
             await _uow.SaveChangesAsync();
             return learningProgress;

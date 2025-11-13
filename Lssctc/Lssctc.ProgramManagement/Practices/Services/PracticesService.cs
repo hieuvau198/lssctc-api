@@ -1,6 +1,7 @@
 ﻿using Lssctc.ProgramManagement.Practices.Dtos;
 using Lssctc.Share.Common;
 using Lssctc.Share.Entities;
+using Lssctc.Share.Enums;
 using Lssctc.Share.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
@@ -191,6 +192,83 @@ namespace Lssctc.ProgramManagement.Practices.Services
             await _uow.SaveChangesAsync();
         }
 
+        #endregion
+
+        #region Trainee Practices
+        public async Task<IEnumerable<TraineePracticeDto>> GetPracticesForTraineeAsync(int traineeId, int classId)
+        {
+            // 1. Get the trainee's learning progress ID for the specific class.
+            var learningProgress = await _uow.LearningProgressRepository
+                .GetAllAsQueryable()
+                .AsNoTracking()
+                .Include(lp => lp.Enrollment)
+                .Where(lp => lp.Enrollment.TraineeId == traineeId && lp.Enrollment.ClassId == classId)
+                .Select(lp => new { lp.Id }) // Just need the ID
+                .FirstOrDefaultAsync();
+
+            if (learningProgress == null)
+            {
+                // Return empty list instead of throwing error if no progress is found (e.g., class not started)
+                return new List<TraineePracticeDto>();
+            }
+
+            // 2. Get all 'Practice' ActivityRecords for this trainee's progress.
+            var practiceActivityRecords = await _uow.ActivityRecordRepository
+                .GetAllAsQueryable()
+                .AsNoTracking()
+                .Where(ar => ar.SectionRecord.LearningProgressId == learningProgress.Id &&
+                             ar.ActivityType == (int)ActivityType.Practice)
+                .Select(ar => new
+                {
+                    ar.Id, // This is ActivityRecordId
+                    ar.ActivityId,
+                    ar.IsCompleted
+                })
+                .ToListAsync();
+
+            if (!practiceActivityRecords.Any())
+            {
+                return new List<TraineePracticeDto>(); // No practices assigned.
+            }
+
+            // 3. Get the mapping from ActivityId -> Practice
+            var activityIds = practiceActivityRecords.Select(ar => ar.ActivityId).Distinct();
+            var activityPracticeMap = await _uow.ActivityPracticeRepository
+                .GetAllAsQueryable()
+                .AsNoTracking()
+                .Include(ap => ap.Practice) // Get the Practice details
+                .Where(ap => activityIds.Contains(ap.ActivityId) &&
+                             ap.Practice.IsDeleted != true)
+                .ToDictionaryAsync(ap => ap.ActivityId, ap => ap.Practice); // Map ActivityId -> Practice
+
+            // 4. Combine the lists
+            var results = new List<TraineePracticeDto>();
+            foreach (var ar in practiceActivityRecords)
+            {
+                if (ar.ActivityId.HasValue && activityPracticeMap.TryGetValue(ar.ActivityId.Value, out var practice))
+                {
+                    results.Add(new TraineePracticeDto
+                    {
+                        // Trainee Status
+                        ActivityRecordId = ar.Id,
+                        ActivityId = ar.ActivityId.Value,
+                        IsCompleted = ar.IsCompleted ?? false,
+
+                        // Practice Details
+                        Id = practice.Id,
+                        PracticeName = practice.PracticeName,
+                        PracticeDescription = practice.PracticeDescription,
+                        EstimatedDurationMinutes = practice.EstimatedDurationMinutes,
+                        DifficultyLevel = practice.DifficultyLevel,
+                        MaxAttempts = practice.MaxAttempts,
+                        CreatedDate = practice.CreatedDate,
+                        IsActive = practice.IsActive
+                    });
+                }
+            }
+
+            return results;
+        }
         #endregion
 
         #region Mapping Helpers

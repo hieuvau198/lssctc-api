@@ -28,7 +28,7 @@ namespace Lssctc.ProgramManagement.Quizzes.Controllers
         }
 
         [HttpGet("detail")]
-        [Authorize(Roles = "4")]
+        [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> GetDetailQuizzes([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10)
         {
             var result = await _service.GetDetailQuizzes(pageIndex, pageSize);
@@ -62,6 +62,27 @@ namespace Lssctc.ProgramManagement.Quizzes.Controllers
             var dto = await _service.GetQuizDetailForTrainee(id);
             if (dto == null) return NotFound();
             return Ok(dto);
+        }
+
+        [HttpGet("for-trainee/activity/{activityId}")]
+        [Authorize(Roles = "Trainee")]
+        [ProducesResponseType(typeof(QuizTraineeDetailDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> GetQuizForTraineeByActivityId(int activityId)
+        {
+            try
+            {
+                var dto = await _service.GetQuizDetailForTraineeByActivityIdAsync(activityId);
+                if (dto == null)
+                {
+                    return NotFound(new { message = "No quiz found for this activity." });
+                }
+                return Ok(dto);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
+            }
         }
 
         [HttpPost]

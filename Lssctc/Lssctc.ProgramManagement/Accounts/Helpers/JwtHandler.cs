@@ -23,7 +23,7 @@ namespace Lssctc.ProgramManagement.Accounts.Helpers
             // Default to 60 minutes if config is missing or invalid
             if (tokenValidityMins <= 0)
             {
-                tokenValidityMins = 60;
+                tokenValidityMins = 180;
             }
 
             var tokenExpriryTimeStamp = DateTime.UtcNow.AddMinutes(tokenValidityMins);
