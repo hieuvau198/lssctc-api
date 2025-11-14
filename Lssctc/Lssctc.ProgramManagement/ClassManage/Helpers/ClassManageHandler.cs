@@ -201,7 +201,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Helpers
                     {
                         SectionRecord = newSectionRecord,
                         ActivityId = activity.Id,
-                        Status = (int)ActivityStatusEnum.NotStarted,
+                        Status = (int)ActivityRecordStatusEnum.NotStarted,
                         Score = null,
                         IsCompleted = false,
                         CompletedDate = null,
