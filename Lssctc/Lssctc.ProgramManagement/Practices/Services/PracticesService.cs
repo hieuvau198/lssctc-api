@@ -340,14 +340,14 @@ namespace Lssctc.ProgramManagement.Practices.Services
             return results;
         }
 
-        public async Task<TraineePracticeDto?> GetPracticeForTraineeByActivityIdAsync(int traineeId, int activityId)
+        public async Task<TraineePracticeDto?> GetPracticeForTraineeByActivityIdAsync(int traineeId, int activityRecordId)
         {
             // 1. Get the ActivityRecord and verify ownership and type
             var activityRecord = await _uow.ActivityRecordRepository
                 .GetAllAsQueryable()
                 .AsNoTracking()
                 .Include(ar => ar.SectionRecord.LearningProgress.Enrollment)
-                .Where(ar => ar.Id == activityId &&
+                .Where(ar => ar.Id == activityRecordId &&
                              ar.SectionRecord.LearningProgress.Enrollment.TraineeId == traineeId &&
                              ar.ActivityType == (int)ActivityType.Practice)
                 .Select(ar => new
