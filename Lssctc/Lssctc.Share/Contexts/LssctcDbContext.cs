@@ -106,7 +106,6 @@ public partial class LssctcDbContext : DbContext
 
     public virtual DbSet<User> Users { get; set; }
 
-    
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Activity>(entity =>
@@ -1106,6 +1105,9 @@ public partial class LssctcDbContext : DbContext
             entity.ToTable("section_records");
 
             entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.DurationMinutes)
+                .HasDefaultValue(20)
+                .HasColumnName("duration_minutes");
             entity.Property(e => e.IsCompleted)
                 .HasDefaultValue(true)
                 .HasColumnName("is_completed");

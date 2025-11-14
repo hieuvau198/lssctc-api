@@ -131,6 +131,7 @@ namespace Lssctc.ProgramManagement.ClassManage.SectionRecords.Services
                 IsCompleted = sr.IsCompleted,
                 IsTraineeAttended = sr.IsTraineeAttended,
                 Progress = sr.Progress,
+                DurationMinutes = sr.DurationMinutes,
                 TraineeId = sr.LearningProgress.Enrollment.TraineeId,
                 TraineeName = sr.LearningProgress.Enrollment.Trainee.IdNavigation.Fullname ?? "N/A",
                 ClassId = sr.LearningProgress.Enrollment.ClassId
