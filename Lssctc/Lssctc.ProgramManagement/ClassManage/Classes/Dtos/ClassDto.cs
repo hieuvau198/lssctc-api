@@ -12,5 +12,6 @@
         public string Status { get; set; } = "Cancelled";
         public DateTime StartDate { get; set; }
         public DateTime? EndDate { get; set; }
+        public int? DurationHours { get; set; }
     }
 }
