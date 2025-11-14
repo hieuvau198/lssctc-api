@@ -21,6 +21,8 @@ public partial class SectionRecord
 
     public decimal? Progress { get; set; }
 
+    public int? DurationMinutes { get; set; }
+
     public virtual ICollection<ActivityRecord> ActivityRecords { get; set; } = new List<ActivityRecord>();
 
     public virtual LearningProgress LearningProgress { get; set; } = null!;

@@ -14,10 +14,6 @@ namespace Lssctc.ProgramManagement.ClassManage.Helpers
             _uow = uow;
         }
 
-        /// <summary>
-        /// Ensures a single trainee has their full learning progress scaffolded.
-        /// </summary>
-        /// <returns>A status message.</returns>
         public async Task<string> EnsureProgressScaffoldingForTraineeAsync(int classId, int traineeId)
         {
             // 1. Get the class and the full course template
@@ -62,10 +58,6 @@ namespace Lssctc.ProgramManagement.ClassManage.Helpers
             return $"Successfully created learning progress for trainee {traineeId}.";
         }
 
-        /// <summary>
-        /// Ensures all valid trainees in a class have their full learning progress scaffolded.
-        /// </summary>
-        /// <returns>A list of status messages.</returns>
         public async Task<List<string>> EnsureProgressScaffoldingForClassAsync(int classId)
         {
             var results = new List<string>();
@@ -145,10 +137,6 @@ namespace Lssctc.ProgramManagement.ClassManage.Helpers
             return results;
         }
 
-
-        /// <summary>
-        /// Fetches the class and the full, ordered list of sections and activities (the "template").
-        /// </summary>
         private async Task<(Class, List<Section>, int CourseId)> GetClassAndCourseTemplateAsync(int classId)
         {
             var targetClass = await _uow.ClassRepository
@@ -173,16 +161,13 @@ namespace Lssctc.ProgramManagement.ClassManage.Helpers
             return (targetClass, courseTemplate, targetClass.ProgramCourse.Course.Id);
         }
 
-        /// <summary>
-        /// Creates the full hierarchy of progress objects in memory (but does not save).
-        /// </summary>
         private LearningProgress CreateProgressScaffolding(Enrollment enrollment, List<Section> courseTemplate, int courseId)
         {
             // 1. Create the root LearningProgress
             var newProgress = new LearningProgress
             {
                 EnrollmentId = enrollment.Id,
-                CourseId = courseId, // <-- THIS IS THE FIX
+                CourseId = courseId, 
                 Status = (int)LearningProgressStatusEnum.NotStarted,
                 ProgressPercentage = 0,
                 StartDate = DateTime.UtcNow,
@@ -198,6 +183,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Helpers
                     LearningProgress = newProgress,
                     SectionId = section.Id,
                     SectionName = section.SectionTitle,
+                    DurationMinutes = section.EstimatedDurationMinutes,
                     IsCompleted = false,
                     IsTraineeAttended = false,
                     Progress = 0,

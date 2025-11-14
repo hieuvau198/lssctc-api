@@ -338,6 +338,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Progresses.Services
                 SectionName = sr.SectionName,
                 IsCompleted = sr.IsCompleted,
                 Progress = sr.Progress,
+                DurationMinutes = sr.DurationMinutes,
                 ActivityRecords = sr.ActivityRecords.Select(MapToActivityDto).ToList()
             };
         }
