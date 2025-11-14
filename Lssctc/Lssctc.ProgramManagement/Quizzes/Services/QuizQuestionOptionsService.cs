@@ -33,17 +33,8 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
                 }
             }
 
-            //  Tự động gán DisplayOrder nếu không truyền
-            var displayOrder = dto.DisplayOrder ?? await GetNextDisplayOrder();
-
-            //  Kiểm tra trùng DisplayOrder trên toàn bảng
-            var isDuplicate = await _uow.QuizQuestionOptionRepository
-                .ExistsAsync(x => x.DisplayOrder == displayOrder);
-
-            if (isDuplicate)
-            {
-                throw new ValidationException($"DisplayOrder {displayOrder} already exists globally in the system.");
-            }
+            //  Tự động gán DisplayOrder (always auto-generate to avoid conflicts)
+            var displayOrder = await GetNextDisplayOrder();
 
             // Validate Description - không được trùng với option khác trong cùng question
             if (!string.IsNullOrEmpty(dto.Description))
@@ -95,7 +86,8 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
                 Description = dto.Description,
                 IsCorrect = dto.IsCorrect,
                 DisplayOrder = displayOrder,
-                OptionScore = dto.OptionScore
+                OptionScore = dto.OptionScore,
+                Explanation = dto.Explanation
             };
 
             //  Lưu
