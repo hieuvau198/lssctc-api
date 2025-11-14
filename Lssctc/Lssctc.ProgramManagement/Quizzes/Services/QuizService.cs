@@ -447,44 +447,41 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
                 Name = normalizedName,
                 Description = dto.Description,
                 IsMultipleAnswers = dto.IsMultipleAnswers,
+                ImageUrl = dto.ImageUrl,
                 QuestionScore = questionScore
             };
 
             await _uow.QuizQuestionRepository.CreateAsync(question);
             await _uow.SaveChangesAsync();
 
-            // Create options
-            // compute next global displayOrder if needed
-            var maxDisplay = await _uow.QuizQuestionOptionRepository.GetAllAsQueryable().Select(x => x.DisplayOrder).MaxAsync();
-            var nextDisplayBase = (maxDisplay ?? 0) + 1;
-            int idx = 0;
+            // Create options - auto-generate DisplayOrder
+            // Get max displayOrder from database
+            int maxDisplay = 0;
+            if (await _uow.QuizQuestionOptionRepository.GetAllAsQueryable().AnyAsync())
+            {
+                maxDisplay = await _uow.QuizQuestionOptionRepository.GetAllAsQueryable()
+                    .Select(x => x.DisplayOrder ?? 0)
+                    .MaxAsync();
+            }
+
+            int nextDisplayOrder = maxDisplay + 1;
+
             foreach (var opt in dto.Options)
             {
-                var displayOrder = opt.DisplayOrder ?? (nextDisplayBase + idx);
-                // ensure displayOrder not duplicate
-                var dup = await _uow.QuizQuestionOptionRepository.ExistsAsync(x => x.DisplayOrder == displayOrder);
-                if (dup)
-                {
-                    displayOrder = (await _uow.QuizQuestionOptionRepository.GetAllAsQueryable().Select(x => x.DisplayOrder).MaxAsync()) ?? 0;
-                    displayOrder++;
-                }
-
                 var optionEntity = new QuizQuestionOption
                 {
                     QuizQuestionId = question.Id,
                     Name = opt.Name,
                     Description = opt.Description,
                     IsCorrect = opt.IsCorrect,
-                    DisplayOrder = displayOrder,
-                    OptionScore = opt.OptionScore
+                    DisplayOrder = nextDisplayOrder++,
+                    OptionScore = opt.OptionScore,
+                    Explanation = opt.Explanation
                 };
 
                 await _uow.QuizQuestionOptionRepository.CreateAsync(optionEntity);
-                idx++;
             }
 
-            // Update quiz.TotalScore if needed (keep as 10)
-            // If after adding questions the used sum equals quiz.TotalScore, good. We don't enforce equality here to allow incremental additions.
             await _uow.SaveChangesAsync();
 
             return question.Id;
@@ -495,135 +492,201 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
         {
             if (dto == null) throw new ValidationException("Body is required.");
 
-            // Debug log
-            System.Diagnostics.Debug.WriteLine($"[CreateQuizWithQuestions] Questions count: {dto.Questions?.Count ?? 0}");
-
-            // Validate questions list
-            if (dto.Questions == null || dto.Questions.Count == 0)
-                throw new ValidationException("At least one question is required.");
-
-            if (dto.Questions.Count > 100)
-                throw new ValidationException("A quiz cannot contain more than 100 questions.");
-
-            // Validate all questions BEFORE creating quiz
-            var totalScore = 0m;
-            foreach (var questionDto in dto.Questions)
+            try
             {
-                // Validate options count
-                if (questionDto.Options == null || questionDto.Options.Count == 0)
-                    throw new ValidationException($"Question '{questionDto.Name}' must have at least one option.");
+                // Debug log
+                System.Diagnostics.Debug.WriteLine($"[CreateQuizWithQuestions] Questions count: {dto.Questions?.Count ?? 0}");
 
-                if (questionDto.Options.Count < 2)
-                    throw new ValidationException($"Question '{questionDto.Name}' must have at least 2 options.");
+                // Validate questions list
+                if (dto.Questions == null || dto.Questions.Count == 0)
+                    throw new ValidationException("At least one question is required.");
 
-                if (questionDto.Options.Count > 20)
-                    throw new ValidationException($"Question '{questionDto.Name}' cannot have more than 20 answer options.");
+                if (dto.Questions.Count > 100)
+                    throw new ValidationException("A quiz cannot contain more than 100 questions.");
 
-                // At least one correct option
-                var correctCount = questionDto.Options.Count(o => o.IsCorrect);
-                if (correctCount == 0)
-                    throw new ValidationException($"Question '{questionDto.Name}' must have at least one correct option.");
-
-                // Single choice question: chỉ được có 1 option đúng
-                if (!questionDto.IsMultipleAnswers && correctCount > 1)
-                    throw new ValidationException($"Single choice question '{questionDto.Name}' cannot have more than one correct option.");
-
-                // Calculate question score from options
-                var optionsWithScore = questionDto.Options.Where(o => o.OptionScore.HasValue).ToList();
-                decimal? questionScore = null;
-
-                if (optionsWithScore.Count > 0)
+                // Validate all questions BEFORE creating quiz
+                var totalScore = 0m;
+                int questionIndex = 0;
+                
+                foreach (var questionDto in dto.Questions)
                 {
-                    questionScore = Math.Round(optionsWithScore.Sum(o => o.OptionScore!.Value), 2, MidpointRounding.AwayFromZero);
+                    questionIndex++;
+                    
+                    // Validate question name
+                    if (string.IsNullOrWhiteSpace(questionDto.Name))
+                        throw new ValidationException($"Question #{questionIndex}: name cannot be empty.");
+
+                    // ✅ KEY FIX: Normalize FIRST, then validate length (database column is 100 chars!)
+                    var normalizedName = string.Join(' ', questionDto.Name.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries));
+                    
+                    if (normalizedName.Length > 100)
+                    {
+                        throw new ValidationException(
+                            $"Question #{questionIndex}: name exceeds 100 characters " +
+                            $"(actual: {normalizedName.Length} chars after removing extra spaces). " +
+                            $"Please shorten the question text.");
+                    }
+
+                    // Validate options count
+                    if (questionDto.Options == null || questionDto.Options.Count == 0)
+                        throw new ValidationException($"Question #{questionIndex} ('{TruncateText(normalizedName, 50)}'): must have at least one option.");
+
+                    if (questionDto.Options.Count < 2)
+                        throw new ValidationException($"Question #{questionIndex} ('{TruncateText(normalizedName, 50)}'): must have at least 2 options.");
+
+                    if (questionDto.Options.Count > 20)
+                        throw new ValidationException($"Question #{questionIndex} ('{TruncateText(normalizedName, 50)}'): cannot have more than 20 answer options.");
+
+                    // At least one correct option
+                    var correctCount = questionDto.Options.Count(o => o.IsCorrect);
+                    if (correctCount == 0)
+                        throw new ValidationException($"Question #{questionIndex} ('{TruncateText(normalizedName, 50)}'): must have at least one correct option.");
+
+                    // Single choice question: chỉ được có 1 option đúng
+                    if (!questionDto.IsMultipleAnswers && correctCount > 1)
+                        throw new ValidationException($"Question #{questionIndex} ('{TruncateText(normalizedName, 50)}'): single choice question cannot have more than one correct option.");
+
+                    // Validate each option
+                    int optionIndex = 0;
+                    foreach (var opt in questionDto.Options)
+                    {
+                        optionIndex++;
+                        if (string.IsNullOrWhiteSpace(opt.Name))
+                            throw new ValidationException($"Question #{questionIndex}, Option #{optionIndex}: name cannot be empty.");
+                    }
+
+                    // Validate ImageUrl if provided
+                    if (!string.IsNullOrWhiteSpace(questionDto.ImageUrl))
+                    {
+                        if (questionDto.ImageUrl.Length > 500)
+                            throw new ValidationException($"Question #{questionIndex}: ImageUrl exceeds 500 characters.");
+                    }
+
+                    // Calculate question score from options
+                    var optionsWithScore = questionDto.Options.Where(o => o.OptionScore.HasValue).ToList();
+                    decimal? questionScore = null;
+
+                    if (optionsWithScore.Count > 0)
+                    {
+                        questionScore = Math.Round(optionsWithScore.Sum(o => o.OptionScore!.Value), 2, MidpointRounding.AwayFromZero);
+                    }
+
+                    if (!questionScore.HasValue)
+                        throw new ValidationException($"Question #{questionIndex} ('{TruncateText(normalizedName, 50)}'): must have option scores.");
+
+                    if (questionScore <= 0m || questionScore >= 10m)
+                        throw new ValidationException($"Question #{questionIndex} ('{TruncateText(normalizedName, 50)}'): score ({questionScore}) must be between 0 and 10.");
+
+                    // Check total doesn't exceed 10
+                    totalScore += questionScore.Value;
+                    if (totalScore > 10m + 0.0001m)
+                        throw new ValidationException($"Total questions scores ({totalScore:F2}) would exceed quiz total score (10). Error at question #{questionIndex}.");
                 }
 
-                if (!questionScore.HasValue)
-                    throw new ValidationException($"Question '{questionDto.Name}' must have option scores.");
-
-                if (questionScore <= 0m || questionScore >= 10m)
-                    throw new ValidationException($"Question '{questionDto.Name}' score must be between 0 and 10.");
-
-                // Check total doesn't exceed 10
-                totalScore += questionScore.Value;
-                if (totalScore > 10m + 0.0001m)
-                    throw new ValidationException($"Total questions scores ({totalScore}) would exceed quiz total score (10).");
-            }
-
-            // Step 1: Create Quiz (only after all validations pass)
-            var quiz = await CreateQuiz(new CreateQuizDto
-            {
-                Name = dto.Name,
-                PassScoreCriteria = dto.PassScoreCriteria,
-                TimelimitMinute = dto.TimelimitMinute,
-                Description = dto.Description
-            });
-
-            // Step 2: Create Questions with Options
-            foreach (var questionDto in dto.Questions)
-            {
-                // Calculate question score
-                var optionsWithScore = questionDto.Options.Where(o => o.OptionScore.HasValue).ToList();
-                var questionScore = Math.Round(optionsWithScore.Sum(o => o.OptionScore!.Value), 2, MidpointRounding.AwayFromZero);
-
-                // Create question
-                var question = new QuizQuestion
+                // Step 1: Create Quiz (only after all validations pass)
+                var quiz = await CreateQuiz(new CreateQuizDto
                 {
-                    QuizId = quiz,
-                    Name = string.Join(' ', (questionDto.Name ?? string.Empty).Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries)),
-                    Description = questionDto.Description,
-                    IsMultipleAnswers = questionDto.IsMultipleAnswers,
-                    ImageUrl = questionDto.ImageUrl,
-                    QuestionScore = questionScore
-                };
+                    Name = dto.Name,
+                    PassScoreCriteria = dto.PassScoreCriteria,
+                    TimelimitMinute = dto.TimelimitMinute,
+                    Description = dto.Description
+                });
 
-                await _uow.QuizQuestionRepository.CreateAsync(question);
-                await _uow.SaveChangesAsync();
-
-                // Create options for this question
-
-                // --- START OF FIX ---
-
-                // Get max displayOrder from database to ensure uniqueness
-                int maxDisplay = 0; // Default to 0
-
-                // Check if there are any options in the table at all
+                // Step 2: Create Questions with Options
+                // Get initial max displayOrder from database
+                int globalDisplayOrder = 0;
                 if (await _uow.QuizQuestionOptionRepository.GetAllAsQueryable().AnyAsync())
                 {
-                    // If there are options, get the max display order
-                    maxDisplay = await _uow.QuizQuestionOptionRepository.GetAllAsQueryable()
+                    globalDisplayOrder = await _uow.QuizQuestionOptionRepository.GetAllAsQueryable()
                         .Select(x => x.DisplayOrder ?? 0)
                         .MaxAsync();
                 }
+                globalDisplayOrder++; // Start from next available number
 
-                int nextDisplayOrder = maxDisplay + 1;
-
-                // --- END OF FIX ---
-
-
-                foreach (var opt in questionDto.Options)
+                questionIndex = 0;
+                foreach (var questionDto in dto.Questions)
                 {
-                    // Always generate new displayOrder to avoid conflicts
-                    var displayOrder = nextDisplayOrder;
-                    nextDisplayOrder++;
-
-                    var optionEntity = new QuizQuestionOption
+                    questionIndex++;
+                    try
                     {
-                        QuizQuestionId = question.Id,
-                        Name = opt.Name,
-                        Description = opt.Description,
-                        IsCorrect = opt.IsCorrect,
-                        DisplayOrder = displayOrder,
-                        OptionScore = opt.OptionScore,
-                        Explanation = opt.Explanation
-                    };
+                        // Calculate question score
+                        var optionsWithScore = questionDto.Options.Where(o => o.OptionScore.HasValue).ToList();
+                        var questionScore = Math.Round(optionsWithScore.Sum(o => o.OptionScore!.Value), 2, MidpointRounding.AwayFromZero);
 
-                    await _uow.QuizQuestionOptionRepository.CreateAsync(optionEntity);
+                        // Normalize question name (already validated above)
+                        var normalizedName = string.Join(' ', questionDto.Name.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries));
+
+                        // Create question
+                        var question = new QuizQuestion
+                        {
+                            QuizId = quiz,
+                            Name = normalizedName,
+                            Description = questionDto.Description,
+                            IsMultipleAnswers = questionDto.IsMultipleAnswers,
+                            ImageUrl = questionDto.ImageUrl,
+                            QuestionScore = questionScore
+                        };
+
+                        await _uow.QuizQuestionRepository.CreateAsync(question);
+                        await _uow.SaveChangesAsync();
+
+                        // Create options for this question - auto-generate DisplayOrder
+                        foreach (var opt in questionDto.Options)
+                        {
+                            try
+                            {
+                                var optionEntity = new QuizQuestionOption
+                                {
+                                    QuizQuestionId = question.Id,
+                                    Name = opt.Name.Trim(),
+                                    Description = opt.Description?.Trim(),
+                                    IsCorrect = opt.IsCorrect,
+                                    DisplayOrder = globalDisplayOrder++, // Auto-increment
+                                    OptionScore = opt.OptionScore,
+                                    Explanation = opt.Explanation?.Trim()
+                                };
+
+                                await _uow.QuizQuestionOptionRepository.CreateAsync(optionEntity);
+                            }
+                            catch (Exception ex)
+                            {
+                                throw new ValidationException($"Question #{questionIndex}, failed to create option '{opt.Name}': {ex.Message}", ex);
+                            }
+                        }
+
+                        await _uow.SaveChangesAsync();
+                    }
+                    catch (Exception ex) when (ex is not ValidationException)
+                    {
+                        throw new ValidationException($"Question #{questionIndex} ('{TruncateText(questionDto.Name, 50)}'): {ex.Message}", ex);
+                    }
                 }
 
-                await _uow.SaveChangesAsync();
+                return quiz;
             }
+            catch (DbUpdateException dbEx)
+            {
+                // Extract detailed SQL error information
+                var innerMessage = dbEx.InnerException?.Message ?? dbEx.Message;
+                throw new ValidationException($"Database error while creating quiz: {innerMessage}. Please check that all field mappings are correct.", dbEx);
+            }
+            catch (ValidationException)
+            {
+                // Re-throw validation exceptions as-is
+                throw;
+            }
+            catch (Exception ex)
+            {
+                // Catch any other unexpected errors
+                throw new ValidationException($"Unexpected error while creating quiz: {ex.Message}", ex);
+            }
+        }
 
-            return quiz;
+        // Helper method to truncate text for error messages
+        private string TruncateText(string text, int maxLength)
+        {
+            if (string.IsNullOrEmpty(text)) return string.Empty;
+            return text.Length <= maxLength ? text : text.Substring(0, maxLength) + "...";
         }
 
         public async Task<int> AddQuizToActivity(CreateActivityQuizDto dto)

@@ -6,7 +6,7 @@ namespace Lssctc.ProgramManagement.Quizzes.DTOs
     {
         // Question
         [Required(ErrorMessage = "Question name is required.")]
-        [StringLength(500, ErrorMessage = "Question name must be at most 500 characters.")]
+        [StringLength(100, MinimumLength = 1, ErrorMessage = "Question name must be between 1 and 100 characters.")]
         public string Name { get; set; } = null!;
 
         [StringLength(2000, ErrorMessage = "Description must be at most 2000 characters.")]
@@ -15,17 +15,20 @@ namespace Lssctc.ProgramManagement.Quizzes.DTOs
         public bool IsMultipleAnswers { get; set; }
 
         [StringLength(500, ErrorMessage = "ImageUrl must be at most 500 characters.")]
+        [Url(ErrorMessage = "ImageUrl must be a valid URL.")]
         public string? ImageUrl { get; set; }
 
         // Options
         [Required(ErrorMessage = "Options are required.")]
+        [MinLength(2, ErrorMessage = "At least 2 options are required.")]
+        [MaxLength(20, ErrorMessage = "Maximum 20 options allowed.")]
         public List<CreateQuizQuestionOptionDto> Options { get; set; } = new();
     }
 
     public class CreateQuizQuestionOptionDto
     {
         [Required(ErrorMessage = "Option name is required.")]
-        [StringLength(100, ErrorMessage = "Option name must be at most 100 characters.")]
+        [StringLength(100, MinimumLength = 1, ErrorMessage = "Option name must be between 1 and 100 characters.")]
         public string Name { get; set; } = null!;
 
         [StringLength(1000, ErrorMessage = "Description must be at most 1000 characters.")]
@@ -36,7 +39,7 @@ namespace Lssctc.ProgramManagement.Quizzes.DTOs
         [StringLength(2000, ErrorMessage = "Explanation must be at most 2000 characters.")]
         public string? Explanation { get; set; }
 
-        public int? DisplayOrder { get; set; }
+        // DisplayOrder removed - will be auto-generated in service to avoid conflicts
 
         [Range(0, 999.99, ErrorMessage = "Option score must be between 0 and 999.99.")]
         public decimal? OptionScore { get; set; }
@@ -46,7 +49,7 @@ namespace Lssctc.ProgramManagement.Quizzes.DTOs
     public class CreateQuizQuestionDto
     {
         [Required(ErrorMessage = "Question name is required.")]
-        [StringLength(100, ErrorMessage = "Question name must be at most 100 characters.")]
+        [StringLength(100, MinimumLength = 1, ErrorMessage = "Question name must be between 1 and 100 characters.")]
         public string Name { get; set; } = null!;
 
         [Required(ErrorMessage = "Question score is required.")]
@@ -59,6 +62,7 @@ namespace Lssctc.ProgramManagement.Quizzes.DTOs
         public bool IsMultipleAnswers { get; set; }
         
         [StringLength(500, ErrorMessage = "ImageUrl must be at most 500 characters.")]
+        [Url(ErrorMessage = "ImageUrl must be a valid URL.")]
         public string? ImageUrl { get; set; }
     }
 
@@ -66,7 +70,7 @@ namespace Lssctc.ProgramManagement.Quizzes.DTOs
     public class CreateQuizWithQuestionsDto
     {
         [Required(ErrorMessage = "Quiz name is required.")]
-        [StringLength(100, ErrorMessage = "Quiz name must be at most 100 characters.")]
+        [StringLength(100, MinimumLength = 1, ErrorMessage = "Quiz name must be between 1 and 100 characters.")]
         public string Name { get; set; } = null!;
 
         [Range(0.01, 10, ErrorMessage = "Pass score criteria must be greater than 0 and less than or equal to 10.")]
@@ -79,6 +83,8 @@ namespace Lssctc.ProgramManagement.Quizzes.DTOs
         public string? Description { get; set; }
 
         [Required(ErrorMessage = "Questions are required.")]
+        [MinLength(1, ErrorMessage = "At least 1 question is required.")]
+        [MaxLength(100, ErrorMessage = "Maximum 100 questions allowed.")]
         public List<CreateQuizQuestionWithOptionsDto> Questions { get; set; } = new();
     }
 
@@ -119,6 +125,7 @@ namespace Lssctc.ProgramManagement.Quizzes.DTOs
 
         public bool? IsCorrect { get; set; }
 
+        // DisplayOrder kept for update operations
         public int? DisplayOrder { get; set; }
 
         [StringLength(2000, ErrorMessage = "Explanation must be at most 2000 characters.")]
