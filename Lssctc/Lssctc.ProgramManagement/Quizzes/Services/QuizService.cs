@@ -625,5 +625,70 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
 
             return quiz;
         }
+
+        public async Task<int> AddQuizToActivity(CreateActivityQuizDto dto)
+        {
+            if (dto == null) throw new ValidationException("Body is required.");
+
+            // Validate quiz exists
+            var quiz = await _uow.QuizRepository.GetByIdAsync(dto.QuizId);
+            if (quiz == null)
+                throw new KeyNotFoundException($"Quiz with ID {dto.QuizId} not found.");
+
+            // Validate activity exists and is not deleted
+            var activity = await _uow.ActivityRepository.GetByIdAsync(dto.ActivityId);
+            if (activity == null || activity.IsDeleted == true)
+                throw new KeyNotFoundException($"Activity with ID {dto.ActivityId} not found.");
+
+            // Validate activity type is Quiz (type = 2)
+            if (activity.ActivityType != 2)
+                throw new ValidationException("Activity type must be Quiz to add a quiz.");
+
+            // Check if quiz is already assigned to this activity
+            var alreadyExists = await _uow.ActivityQuizRepository
+                .ExistsAsync(aq => aq.QuizId == dto.QuizId && aq.ActivityId == dto.ActivityId);
+
+            if (alreadyExists)
+                throw new ValidationException("This quiz is already assigned to this activity.");
+
+            // Create ActivityQuiz using Quiz's name and description
+            var activityQuiz = new ActivityQuiz
+            {
+                QuizId = dto.QuizId,
+                ActivityId = dto.ActivityId,
+                Name = quiz.Name ?? "Quiz",
+                Description = quiz.Description
+            };
+
+            await _uow.ActivityQuizRepository.CreateAsync(activityQuiz);
+            await _uow.SaveChangesAsync();
+
+            return activityQuiz.Id;
+        }
+
+        public async Task<List<QuizOnlyDto>> GetQuizzesByActivityId(int activityId)
+        {
+            // Validate activity exists
+            var activity = await _uow.ActivityRepository.GetByIdAsync(activityId);
+            if (activity == null || activity.IsDeleted == true)
+                throw new KeyNotFoundException($"Activity with ID {activityId} not found.");
+
+            // Get all quizzes assigned to this activity
+            var quizzes = await _uow.ActivityQuizRepository
+                .GetAllAsQueryable()
+                .Where(aq => aq.ActivityId == activityId)
+                .Select(aq => new QuizOnlyDto
+                {
+                    Id = aq.Quiz.Id,
+                    Name = aq.Quiz.Name,
+                    PassScoreCriteria = aq.Quiz.PassScoreCriteria,
+                    TimelimitMinute = aq.Quiz.TimelimitMinute,
+                    TotalScore = aq.Quiz.TotalScore,
+                    Description = aq.Quiz.Description
+                })
+                .ToListAsync();
+
+            return quizzes;
+        }
     }
 }

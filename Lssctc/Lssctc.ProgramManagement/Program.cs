@@ -162,6 +162,7 @@ builder.Services.AddScoped<IPracticeAttemptsService, PracticeAttemptsService>();
 
 builder.Services.AddScoped<IUsersService, UsersService>();
 builder.Services.AddScoped<IProfilesService, ProfilesService>();
+builder.Services.AddScoped<IInstructorProfilesService, InstructorProfilesService>();
 builder.Services.AddScoped<IAuthensService, AuthensService>();
 builder.Services.AddScoped<IQuizQuestionService, QuizQuestionService>();
 builder.Services.AddScoped<IQuizQuestionOptionsService, QuizQuestionOptionsService>();

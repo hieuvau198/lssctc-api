@@ -26,6 +26,8 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
         Task<bool> DeleteQuizById(int id);
         Task<int> CreateQuestionWithOptionsByQuizId(int quizId, CreateQuizQuestionWithOptionsDto dto);
         Task<int> CreateQuizWithQuestions(CreateQuizWithQuestionsDto dto);
+        Task<int> AddQuizToActivity(CreateActivityQuizDto dto);
+        Task<List<QuizOnlyDto>> GetQuizzesByActivityId(int activityId);
         #endregion
     }
 }
