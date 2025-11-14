@@ -13,5 +13,6 @@
         public int ActivityRecordId { get; set; }
         public int? ActivityId { get; set; }
         public bool IsCompleted { get; set; }
+        public List<TraineeTaskDto> Tasks { get; set; } = new List<TraineeTaskDto>();
     }
 }

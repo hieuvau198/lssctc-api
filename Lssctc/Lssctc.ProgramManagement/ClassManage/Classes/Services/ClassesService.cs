@@ -25,6 +25,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
             var classes = await _uow.ClassRepository
                 .GetAllAsQueryable()
                 .Include(c => c.ProgramCourse)
+                    .ThenInclude(pc => pc.Course)
                 .Include(c => c.ClassCode)
                 .ToListAsync();
 
@@ -39,6 +40,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
             var query = _uow.ClassRepository
                 .GetAllAsQueryable()
                 .Include(c => c.ProgramCourse)
+                    .ThenInclude(pc => pc.Course)
                 .Include(c => c.ClassCode)
                 .Select(c => MapToDto(c));
 
@@ -50,6 +52,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
             var c = await _uow.ClassRepository
                 .GetAllAsQueryable()
                 .Include(c => c.ProgramCourse)
+                    .ThenInclude(pc => pc.Course)
                 .Include(c => c.ClassCode)
                 .FirstOrDefaultAsync(c => c.Id == id);
 
@@ -110,13 +113,13 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
             return MapToDto(newClass);
         }
 
-
         public async Task<ClassDto> UpdateClassAsync(int id, UpdateClassDto dto)
         {
             var existing = await _uow.ClassRepository
                 .GetAllAsQueryable()
                 .Where(c => c.Id == id)
                 .Include(c => c.ProgramCourse)
+                    .ThenInclude(pc => pc.Course)
                 .Include(c => c.ClassCode)
                 .FirstOrDefaultAsync()
                 ;
@@ -318,6 +321,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
                              e.Status == (int)EnrollmentStatusEnum.Completed))
                 .Include(e => e.Class)
                     .ThenInclude(c => c.ProgramCourse)
+                        .ThenInclude(pc => pc.Course)
                 .Include(e => e.Class)
                     .ThenInclude(c => c.ClassCode)
                 .Select(e => e.Class)
@@ -332,21 +336,17 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
             if (pageNumber < 1) pageNumber = 1;
             if (pageSize < 1) pageSize = 10;
 
-            // 1. Define the IQueryable. 
-            //    We MUST Include related data (Class.ProgramCourse, Class.ClassCode) *before*
-            //    we Select the Class.
             var query = _uow.EnrollmentRepository
                 .GetAllAsQueryable()
                 .Where(e => e.TraineeId == traineeId &&
                             (e.Status == (int)EnrollmentStatusEnum.Enrolled ||
                              e.Status == (int)EnrollmentStatusEnum.Inprogress ||
                              e.Status == (int)EnrollmentStatusEnum.Completed))
-                // Include the Class and its children *first*
                 .Include(e => e.Class)
                     .ThenInclude(c => c.ProgramCourse)
+                        .ThenInclude(pc => pc.Course)
                 .Include(e => e.Class)
                     .ThenInclude(c => c.ClassCode)
-                // Now Select the fully-loaded Class entity
                 .Select(e => e.Class)
                 .Distinct();
 
@@ -374,11 +374,10 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
                              e.Status == (int)EnrollmentStatusEnum.Completed))
                 .Include(e => e.Class)
                     .ThenInclude(c => c.ProgramCourse)
+                        .ThenInclude(pc => pc.Course)
                 .Include(e => e.Class)
                     .ThenInclude(c => c.ClassCode)
                 .FirstOrDefaultAsync();
-
-            // If an enrollment is found, map the associated class to its DTO
             return enrollment == null ? null : MapToDto(enrollment.Class);
         }
 
@@ -403,7 +402,8 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
                 Description = c.Description,
                 StartDate = c.StartDate,
                 EndDate = c.EndDate,
-                Status = classStatus
+                Status = classStatus,
+                DurationHours = c.ProgramCourse.Course?.DurationHours
             };
         }
 

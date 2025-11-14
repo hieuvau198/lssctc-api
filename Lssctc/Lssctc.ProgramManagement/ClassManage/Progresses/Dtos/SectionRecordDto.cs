@@ -8,6 +8,7 @@
         public string? SectionName { get; set; }
         public bool IsCompleted { get; set; }
         public decimal? Progress { get; set; }
+        public int? DurationMinutes { get; set; } = 20;
         public ICollection<ActivityRecordDto> ActivityRecords { get; set; } = new List<ActivityRecordDto>();
     }
 }

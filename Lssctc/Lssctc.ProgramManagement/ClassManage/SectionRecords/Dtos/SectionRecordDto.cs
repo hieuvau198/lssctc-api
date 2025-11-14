@@ -10,7 +10,7 @@
         public bool IsCompleted { get; set; }
         public bool IsTraineeAttended { get; set; }
         public decimal? Progress { get; set; }
-
+        public int? DurationMinutes { get; set; } = 20;
         public int TraineeId { get; set; }
         public string TraineeName { get; set; } = string.Empty;
         public int ClassId { get; set; }

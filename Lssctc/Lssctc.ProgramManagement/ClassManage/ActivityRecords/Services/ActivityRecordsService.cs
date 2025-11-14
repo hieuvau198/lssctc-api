@@ -66,7 +66,7 @@ namespace Lssctc.ProgramManagement.ClassManage.ActivityRecords.Services
             if (activityRecord.SectionRecord.LearningProgress.Enrollment.TraineeId != traineeId)
                 throw new UnauthorizedAccessException("You are not authorized to submit this activity.");
 
-            if (activityRecord.Status == (int)ActivityStatusEnum.Completed)
+            if (activityRecord.Status == (int)ActivityRecordStatusEnum.Completed)
                 throw new InvalidOperationException("This activity has already been completed.");
 
             if (activityRecord.ActivityType != (int)ActivityType.Material)
@@ -74,7 +74,7 @@ namespace Lssctc.ProgramManagement.ClassManage.ActivityRecords.Services
                 throw new InvalidOperationException("This endpoint is only for submitting 'Material' activities. Quiz and Practice must be submitted via their respective services.");
             }
 
-            activityRecord.Status = (int)ActivityStatusEnum.Completed;
+            activityRecord.Status = (int)ActivityRecordStatusEnum.Completed;
             activityRecord.IsCompleted = true;
             activityRecord.CompletedDate = DateTime.UtcNow;
 
@@ -155,7 +155,7 @@ namespace Lssctc.ProgramManagement.ClassManage.ActivityRecords.Services
         private static ActivityRecordDto MapToDto(ActivityRecord ar, string activityName)
         {
             string status = ar.Status.HasValue
-                ? Enum.GetName(typeof(ActivityStatusEnum), ar.Status.Value) ?? "NotStarted"
+                ? Enum.GetName(typeof(ActivityRecordStatusEnum), ar.Status.Value) ?? "NotStarted"
                 : "NotStarted";
 
             string type = ar.ActivityType.HasValue

@@ -94,7 +94,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Helpers
 
             if (isCompleted)
             {
-                activityRecord.Status = (int)ActivityStatusEnum.Completed;
+                activityRecord.Status = (int)ActivityRecordStatusEnum.Completed;
                 activityRecord.CompletedDate = DateTime.UtcNow;
             }
             // We need to check if *any* attempts exist, which requires another query
@@ -105,16 +105,16 @@ namespace Lssctc.ProgramManagement.ClassManage.Helpers
 
                 if (hasAnyAttempts)
                 {
-                    activityRecord.Status = (int)ActivityStatusEnum.InProgress;
+                    activityRecord.Status = (int)ActivityRecordStatusEnum.InProgress;
                 }
                 else
                 {
-                    activityRecord.Status = (int)ActivityStatusEnum.NotStarted;
+                    activityRecord.Status = (int)ActivityRecordStatusEnum.NotStarted;
                 }
             }
             else
             {
-                activityRecord.Status = (int)ActivityStatusEnum.NotStarted;
+                activityRecord.Status = (int)ActivityRecordStatusEnum.NotStarted;
             }
 
             // 3. Use the *tracked* entity from GetByIdAsync and call Update.

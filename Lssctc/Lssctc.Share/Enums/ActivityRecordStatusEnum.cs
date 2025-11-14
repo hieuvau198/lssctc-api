@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Lssctc.Share.Enums
 {
-    public enum ActivityStatusEnum
+    public enum ActivityRecordStatusEnum
     {
         NotStarted = 1,
         InProgress = 2,

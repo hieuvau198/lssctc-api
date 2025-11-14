@@ -338,6 +338,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Progresses.Services
                 SectionName = sr.SectionName,
                 IsCompleted = sr.IsCompleted,
                 Progress = sr.Progress,
+                DurationMinutes = sr.DurationMinutes,
                 ActivityRecords = sr.ActivityRecords.Select(MapToActivityDto).ToList()
             };
         }
@@ -345,7 +346,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Progresses.Services
         private static ActivityRecordDto MapToActivityDto(ActivityRecord ar)
         {
             string status = ar.Status.HasValue
-                ? Enum.GetName(typeof(ActivityStatusEnum), ar.Status.Value) ?? "NotStarted"
+                ? Enum.GetName(typeof(ActivityRecordStatusEnum), ar.Status.Value) ?? "NotStarted"
                 : "NotStarted";
 
             return new ActivityRecordDto
