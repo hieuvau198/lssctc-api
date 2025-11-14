@@ -26,6 +26,7 @@ namespace Lssctc.ProgramManagement.Practices.Services
 
         #region Trainee Practices
         Task<IEnumerable<TraineePracticeDto>> GetPracticesForTraineeAsync(int traineeId, int classId);
+        Task<TraineePracticeDto?> GetPracticeForTraineeByActivityIdAsync(int traineeId, int activityId);
         #endregion
     }
 }

@@ -339,6 +339,135 @@ namespace Lssctc.ProgramManagement.Practices.Services
 
             return results;
         }
+
+        public async Task<TraineePracticeDto?> GetPracticeForTraineeByActivityIdAsync(int traineeId, int activityId)
+        {
+            // 1. Get the ActivityRecord and verify ownership and type
+            var activityRecord = await _uow.ActivityRecordRepository
+                .GetAllAsQueryable()
+                .AsNoTracking()
+                .Include(ar => ar.SectionRecord.LearningProgress.Enrollment)
+                .Where(ar => ar.Id == activityId &&
+                             ar.SectionRecord.LearningProgress.Enrollment.TraineeId == traineeId &&
+                             ar.ActivityType == (int)ActivityType.Practice)
+                .Select(ar => new
+                {
+                    ar.Id, // ActivityRecordId
+                    ar.ActivityId, // The template Activity ID
+                    ar.IsCompleted
+                })
+                .FirstOrDefaultAsync();
+
+            if (activityRecord == null)
+            {
+                // This will trigger a 404 in the controller
+                throw new KeyNotFoundException("Practice activity record not found for this trainee.");
+            }
+
+            // 2. Get the associated Practice and its task templates
+            if (!activityRecord.ActivityId.HasValue)
+            {
+                throw new KeyNotFoundException("Activity record is not linked to a practice template.");
+            }
+
+            var practice = await _uow.ActivityPracticeRepository
+                .GetAllAsQueryable()
+                .AsNoTracking()
+                .Include(ap => ap.Practice)
+                    .ThenInclude(p => p.PracticeTasks)
+                        .ThenInclude(pt => pt.Task)
+                .Where(ap => ap.ActivityId == activityRecord.ActivityId.Value && ap.Practice.IsDeleted != true)
+                .Select(ap => ap.Practice)
+                .FirstOrDefaultAsync();
+
+            if (practice == null)
+            {
+                throw new KeyNotFoundException("Practice template not found for this activity.");
+            }
+
+            // 3. Get the *current* practice attempt for this activity record
+            var currentAttempt = await _uow.PracticeAttemptRepository
+                .GetAllAsQueryable()
+                .AsNoTracking()
+                .Include(pa => pa.PracticeAttemptTasks)
+                .Where(pa => pa.ActivityRecordId == activityRecord.Id && pa.IsCurrent)
+                .FirstOrDefaultAsync();
+
+            // 4. Build the DTO
+            var traineePracticeDto = new TraineePracticeDto
+            {
+                // Trainee Status
+                ActivityRecordId = activityRecord.Id,
+                ActivityId = activityRecord.ActivityId.Value,
+                IsCompleted = activityRecord.IsCompleted ?? false,
+
+                // Practice Details
+                Id = practice.Id,
+                PracticeName = practice.PracticeName,
+                PracticeDescription = practice.PracticeDescription,
+                EstimatedDurationMinutes = practice.EstimatedDurationMinutes,
+                DifficultyLevel = practice.DifficultyLevel,
+                MaxAttempts = practice.MaxAttempts,
+                CreatedDate = practice.CreatedDate,
+                IsActive = practice.IsActive,
+                Tasks = new List<TraineeTaskDto>() // Initialize task list
+            };
+
+            // 5. Populate the Tasks list
+            var taskTemplates = practice.PracticeTasks
+                .Where(pt => pt.Task != null && pt.Task.IsDeleted != true)
+                .Select(pt => pt.Task);
+
+            if (currentAttempt != null)
+            {
+                // --- CASE 1: Trainee has an attempt ---
+                var attemptTasksMap = currentAttempt.PracticeAttemptTasks
+                    .Where(pat => pat.TaskId.HasValue)
+                    .ToDictionary(pat => pat.TaskId!.Value);
+
+                foreach (var template in taskTemplates)
+                {
+                    attemptTasksMap.TryGetValue(template.Id, out var attemptTask);
+
+                    traineePracticeDto.Tasks.Add(new TraineeTaskDto
+                    {
+                        TaskId = template.Id,
+                        TaskName = template.TaskName,
+                        TaskDescription = template.TaskDescription,
+                        ExpectedResult = template.ExpectedResult,
+
+                        // Data from the attempt (if it exists)
+                        PracticeAttemptTaskId = attemptTask?.Id ?? 0,
+                        IsPass = attemptTask?.IsPass ?? false,
+                        Score = attemptTask?.Score,
+                        Description = attemptTask?.Description
+                    });
+                }
+            }
+            else
+            {
+                // --- CASE 2: No attempt yet, build from template ---
+                foreach (var template in taskTemplates)
+                {
+                    traineePracticeDto.Tasks.Add(new TraineeTaskDto
+                    {
+                        TaskId = template.Id,
+                        TaskName = template.TaskName,
+                        TaskDescription = template.TaskDescription,
+                        ExpectedResult = template.ExpectedResult,
+
+                        // Default values
+                        PracticeAttemptTaskId = 0,
+                        IsPass = false,
+                        Score = null,
+                        Description = null
+                    });
+                }
+            }
+
+            return traineePracticeDto;
+        }
+
         #endregion
 
         #region Mapping Helpers

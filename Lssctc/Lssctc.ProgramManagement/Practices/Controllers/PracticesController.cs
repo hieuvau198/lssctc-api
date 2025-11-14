@@ -202,6 +202,38 @@ namespace Lssctc.ProgramManagement.Practices.Controllers
                 return StatusCode(500, ex.Message);
             }
         }
+
+        [HttpGet("trainee/activity-record/{activityRecordId}")]
+        [Authorize(Roles = "Trainee")]
+        [ProducesResponseType(typeof(TraineePracticeDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> GetPracticeForTraineeByActivityId(int activityRecordId)
+        {
+            try
+            {
+                var traineeId = GetTraineeIdFromClaims();
+                var result = await _service.GetPracticeForTraineeByActivityIdAsync(traineeId, activityRecordId);
+
+                // The service will throw KeyNotFoundException if not found
+                return Ok(result);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { message = ex.Message });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                // Log the exception in a real application
+                return StatusCode(500, ex.Message);
+            }
+        }
+
         #endregion
 
         #region Helpers
