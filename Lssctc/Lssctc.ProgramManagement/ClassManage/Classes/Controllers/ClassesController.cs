@@ -1,5 +1,7 @@
 ﻿using Lssctc.ProgramManagement.ClassManage.Classes.Dtos;
 using Lssctc.ProgramManagement.ClassManage.Classes.Services;
+using Lssctc.ProgramManagement.ClassManage.Enrollments.Dtos;
+using Lssctc.ProgramManagement.ClassManage.Enrollments.Services;
 using Lssctc.Share.Common;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -13,10 +15,16 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
     {
         private readonly IClassesService _service;
         private readonly IClassInstructorsService _instructorsService;
-        public ClassesController(IClassesService service, IClassInstructorsService instructorsService)
+        private readonly IEnrollmentsService _enrollmentsService; // <-- ADDED
+
+        public ClassesController(
+            IClassesService service,
+            IClassInstructorsService instructorsService,
+            IEnrollmentsService enrollmentsService) // <-- MODIFIED
         {
             _service = service;
             _instructorsService = instructorsService;
+            _enrollmentsService = enrollmentsService; // <-- ADDED
         }
 
         #region Class
@@ -223,6 +231,43 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
             catch (Exception ex)
             {
                 return BadRequest(ex.Message);
+            }
+        }
+
+        #endregion
+
+        #region Class Trainees
+
+        /// <summary>
+        /// Get all trainees enrolled in a specific class (paginated).
+        /// </summary>
+        /// <param name="id">The Class ID</param>
+        /// <param name="pageNumber">Page number (default: 1)</param>
+        /// <param name="pageSize">Page size (default: 10)</param>
+        /// <returns>A paginated list of enrollments, which include trainee details.</returns>
+        [HttpGet("{id}/trainees")]
+        [Authorize(Roles = "Admin, Instructor")]
+        [ProducesResponseType(typeof(PagedResult<EnrollmentDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> GetTraineesByClass(int id, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
+        {
+            try
+            {
+                // We reuse the existing service method from EnrollmentsService
+                var result = await _enrollmentsService.GetEnrollmentsForClassAsync(id, pageNumber, pageSize);
+
+                // A class with 0 trainees is a valid state, so we return OK with the (empty) result.
+                return Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                // In a real app, you would log this exception
+                return StatusCode(500, $"An internal server error occurred: {ex.Message}");
             }
         }
 

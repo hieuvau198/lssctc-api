@@ -9,7 +9,14 @@ namespace Lssctc.ProgramManagement.ClassManage.Enrollments.Dtos
         public string ClassName { get; set; } = string.Empty;
         public string ClassCode { get; set; } = string.Empty;
         public int TraineeId { get; set; }
-        public string TraineeName { get; set; } = string.Empty; 
+        public string TraineeName { get; set; } = string.Empty;
+
+        // --- ADDED FIELDS ---
+        public string? Email { get; set; }
+        public string? PhoneNumber { get; set; }
+        public string? AvatarUrl { get; set; }
+        // --- END ADDED FIELDS ---
+
         public DateTime? EnrollDate { get; set; }
         public string Status { get; set; } = string.Empty;
     }

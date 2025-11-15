@@ -9,7 +9,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Enrollments.Services
 {
     public class EnrollmentsService : IEnrollmentsService
     {
-        
+
         private readonly IUnitOfWork _uow;
 
         public EnrollmentsService(IUnitOfWork uow)
@@ -297,7 +297,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Enrollments.Services
             return _uow.EnrollmentRepository
                 .GetAllAsQueryable()
                 .Include(e => e.Trainee)
-                    .ThenInclude(t => t.IdNavigation)
+                    .ThenInclude(t => t.IdNavigation) // Trainee -> User (for Fullname, Email, etc.)
                 .Include(e => e.Class)
                     .ThenInclude(c => c.ClassCode);
         }
@@ -315,7 +315,14 @@ namespace Lssctc.ProgramManagement.ClassManage.Enrollments.Services
                 ClassName = e.Class?.Name ?? "N/A",
                 ClassCode = e.Class?.ClassCode?.Name ?? "N/A",
                 TraineeId = e.TraineeId,
-                TraineeName = e.Trainee?.IdNavigation.Fullname ?? "N/A", 
+                TraineeName = e.Trainee?.IdNavigation.Fullname ?? "N/A",
+
+                // --- MODIFIED MAPPING ---
+                Email = e.Trainee?.IdNavigation.Email,
+                PhoneNumber = e.Trainee?.IdNavigation.PhoneNumber,
+                AvatarUrl = e.Trainee?.IdNavigation.AvatarUrl,
+                // --- END MODIFIED MAPPING ---
+
                 EnrollDate = e.EnrollDate,
                 Status = enrollmentStatus
             };

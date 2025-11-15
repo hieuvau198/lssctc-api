@@ -108,7 +108,10 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
             return new ClassInstructorDto
             {
                 Id = i.Id,
-                Name = i.IdNavigation.Fullname,
+                Fullname = i.IdNavigation.Fullname, // <-- MODIFIED
+                Email = i.IdNavigation.Email, // <-- ADDED
+                PhoneNumber = i.IdNavigation.PhoneNumber, // <-- ADDED
+                AvatarUrl = i.IdNavigation.AvatarUrl, // <-- ADDED
                 InstructorCode = i.InstructorCode,
                 HireDate = i.HireDate
             };

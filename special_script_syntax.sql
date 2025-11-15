@@ -41,5 +41,6 @@ ALTER TABLE [dbo].[course_sections]
 ADD [section_order] INT NOT NULL DEFAULT 0;
 
 
-ALTER TABLE [dbo].[sections]
-DROP COLUMN [section_order];
+ALTER TABLE [dbo].[section_records]
+ADD [duration_minutes] INT NULL 
+    CONSTRAINT DF_section_records_duration_minutes DEFAULT 20;
