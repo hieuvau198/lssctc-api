@@ -22,6 +22,8 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
         #region Class
 
         [HttpGet]
+        [ProducesResponseType(typeof(IEnumerable<ClassDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> GetAll()
         {
             try
@@ -36,6 +38,8 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
         }
 
         [HttpGet("paged")]
+        [ProducesResponseType(typeof(PagedResult<ClassDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> GetPaged([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
             try
@@ -50,6 +54,8 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
         }
 
         [HttpGet("{id}")]
+        [ProducesResponseType(typeof(ClassDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetById(int id)
         {
             try
@@ -66,6 +72,8 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
 
         [HttpPost]
         [Authorize(Roles = "Admin")]
+        [ProducesResponseType(typeof(ClassDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Create([FromBody] CreateClassDto dto)
         {
             try
@@ -81,6 +89,8 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
 
         [HttpPut("{id}")]
         [Authorize(Roles = "Admin, Instructor")]
+        [ProducesResponseType(typeof(ClassDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Update(int id, [FromBody] UpdateClassDto dto)
         {
             try
@@ -96,6 +106,8 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
 
         [HttpPut("{id}/open")]
         [Authorize(Roles = "Admin, Instructor")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Open(int id)
         {
             try
@@ -111,6 +123,8 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
 
         [HttpPut("{id}/start")]
         [Authorize(Roles = "Admin, Instructor")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Start(int id)
         {
             try
@@ -126,6 +140,8 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
 
         [HttpPut("{id}/complete")]
         [Authorize(Roles = "Admin, Instructor")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> CompleteClass(int id)
         {
             try
@@ -141,6 +157,8 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
 
         [HttpPut("{id}/cancel")]
         [Authorize(Roles = "Admin")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> CancelClass(int id)
         {
             try
@@ -158,6 +176,8 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
         #region Class Instructor
 
         [HttpGet("{id}/instructor")]
+        [ProducesResponseType(typeof(ClassInstructorDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetInstructor(int id)
         {
             try
@@ -174,6 +194,8 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
 
         [HttpPost("{id}/instructor")]
         [Authorize(Roles = "Admin")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> AssignInstructor(int id, [FromBody] AssignInstructorDto dto)
         {
             try
@@ -189,6 +211,8 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
 
         [HttpDelete("{id}/instructor")]
         [Authorize(Roles = "Admin")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> RemoveInstructor(int id)
         {
             try
@@ -207,6 +231,8 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
         #region Classes By other Filters
 
         [HttpGet("program/{programId}/course/{courseId}")]
+        [ProducesResponseType(typeof(IEnumerable<ClassDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetByProgramAndCourse(int programId, int courseId)
         {
             try
@@ -223,6 +249,8 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
         }
 
         [HttpGet("course/{courseId}")]
+        [ProducesResponseType(typeof(IEnumerable<ClassDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetByCourse(int courseId)
         {
             try
@@ -240,6 +268,8 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
 
         [HttpGet("instructor/{instructorId}")]
         [Authorize(Roles = "Admin, Instructor")]
+        [ProducesResponseType(typeof(IEnumerable<ClassDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetByInstructor(int instructorId)
         {
             try
@@ -261,6 +291,8 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
 
         [HttpGet("trainee/{traineeId}")]
         [Authorize(Roles = "Admin, Instructor, Trainee")]
+        [ProducesResponseType(typeof(IEnumerable<ClassDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetByTrainee(int traineeId)
         {
             try
@@ -279,6 +311,8 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
 
         [HttpGet("trainee/{traineeId}/paged")]
         [Authorize(Roles = "Admin, Instructor, Trainee")]
+        [ProducesResponseType(typeof(PagedResult<ClassDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> GetPagedByTrainee(int traineeId, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
             try
@@ -294,6 +328,8 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
 
         [HttpGet("trainee/{traineeId}/class/{classId}")]
         [Authorize(Roles = "Admin, Instructor, Trainee")]
+        [ProducesResponseType(typeof(ClassDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetClassForTrainee(int traineeId, int classId)
         {
             try
@@ -314,6 +350,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
         [HttpGet("my-classes")]
         [Authorize(Roles = "Trainee")]
         [ProducesResponseType(typeof(IEnumerable<ClassDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetMyClasses()
         {
             try
@@ -338,6 +375,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
         [HttpGet("my-classes/paged")]
         [Authorize(Roles = "Trainee")]
         [ProducesResponseType(typeof(PagedResult<ClassDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> GetMyPagedClasses([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
             try
@@ -359,6 +397,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
         [HttpGet("my-classes/{classId}")]
         [Authorize(Roles = "Trainee")]
         [ProducesResponseType(typeof(ClassDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetMyClassById(int classId)
         {
             try

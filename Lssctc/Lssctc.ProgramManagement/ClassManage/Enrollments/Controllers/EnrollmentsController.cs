@@ -1,5 +1,6 @@
 ﻿using Lssctc.ProgramManagement.ClassManage.Enrollments.Dtos;
 using Lssctc.ProgramManagement.ClassManage.Enrollments.Services;
+using Lssctc.Share.Common;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -23,6 +24,8 @@ namespace Lssctc.ProgramManagement.ClassManage.Enrollments.Controllers
 
         [HttpPost("my-enrollments")]
         [Authorize(Roles = "Trainee")]
+        [ProducesResponseType(typeof(EnrollmentDto), StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> EnrollInClass([FromBody] CreateEnrollmentDto dto)
         {
             try
@@ -42,6 +45,8 @@ namespace Lssctc.ProgramManagement.ClassManage.Enrollments.Controllers
 
         [HttpDelete("my-enrollments/class/{classId}")]
         [Authorize(Roles = "Trainee")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> WithdrawFromClass(int classId)
         {
             try
@@ -58,6 +63,8 @@ namespace Lssctc.ProgramManagement.ClassManage.Enrollments.Controllers
 
         [HttpGet("my-enrollments")]
         [Authorize(Roles = "Trainee")]
+        [ProducesResponseType(typeof(IEnumerable<EnrollmentDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetMyEnrollments()
         {
             try
@@ -72,6 +79,8 @@ namespace Lssctc.ProgramManagement.ClassManage.Enrollments.Controllers
 
         [HttpGet("my-enrollments/paged")]
         [Authorize(Roles = "Trainee")]
+        [ProducesResponseType(typeof(PagedResult<EnrollmentDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetMyEnrollmentsPaged([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
             try
@@ -86,6 +95,8 @@ namespace Lssctc.ProgramManagement.ClassManage.Enrollments.Controllers
 
         [HttpGet("my-enrollments/{enrollmentId}", Name = "GetMyEnrollmentById")]
         [Authorize(Roles = "Trainee")]
+        [ProducesResponseType(typeof(EnrollmentDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetMyEnrollmentById(int enrollmentId)
         {
             try
@@ -101,6 +112,8 @@ namespace Lssctc.ProgramManagement.ClassManage.Enrollments.Controllers
 
         [HttpGet("my-enrollments/class/{classId}")]
         [Authorize(Roles = "Trainee")]
+        [ProducesResponseType(typeof(EnrollmentDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetMyEnrollmentByClassId(int classId)
         {
             try
@@ -120,6 +133,8 @@ namespace Lssctc.ProgramManagement.ClassManage.Enrollments.Controllers
 
         [HttpGet("class/{classId}")]
         [Authorize(Roles = "Admin, Instructor")]
+        [ProducesResponseType(typeof(PagedResult<EnrollmentDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetEnrollmentsForClass(int classId, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
             try
@@ -132,6 +147,8 @@ namespace Lssctc.ProgramManagement.ClassManage.Enrollments.Controllers
 
         [HttpPut("{enrollmentId}/approve")]
         [Authorize(Roles = "Admin, Instructor")]
+        [ProducesResponseType(typeof(EnrollmentDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> ApproveEnrollment(int enrollmentId)
         {
             try
@@ -146,6 +163,8 @@ namespace Lssctc.ProgramManagement.ClassManage.Enrollments.Controllers
 
         [HttpPut("{enrollmentId}/reject")]
         [Authorize(Roles = "Admin, Instructor")]
+        [ProducesResponseType(typeof(EnrollmentDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> RejectEnrollment(int enrollmentId)
         {
             try
@@ -160,6 +179,8 @@ namespace Lssctc.ProgramManagement.ClassManage.Enrollments.Controllers
 
         [HttpPost]
         [Authorize(Roles = "Admin, Instructor")]
+        [ProducesResponseType(typeof(EnrollmentDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> AddTraineeToClass([FromBody] InstructorAddTraineeDto dto)
         {
             try
@@ -175,6 +196,8 @@ namespace Lssctc.ProgramManagement.ClassManage.Enrollments.Controllers
 
         [HttpDelete("{enrollmentId}")]
         [Authorize(Roles = "Admin, Instructor")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> RemoveTraineeFromClass(int enrollmentId)
         {
             try
