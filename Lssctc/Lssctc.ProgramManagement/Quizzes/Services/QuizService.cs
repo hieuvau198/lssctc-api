@@ -413,6 +413,10 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
             if (!dto.Options.Any(o => o.IsCorrect))
                 throw new ValidationException("At least one option must be marked as correct.");
 
+            // Validate ImageUrl if provided
+            if (!string.IsNullOrWhiteSpace(dto.ImageUrl) && dto.ImageUrl.Length > 500)
+                throw new ValidationException("ImageUrl must be at most 500 characters.");
+
             // Validate QuestionScore: must be >0 and <10 (BR-38)
             // For this DTO there is no QuestionScore field; derive question score from sum of option scores if provided, or default to 0 - not allowed
             decimal? questionScore = null;
@@ -516,7 +520,7 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
                     if (string.IsNullOrWhiteSpace(questionDto.Name))
                         throw new ValidationException($"Question #{questionIndex}: name cannot be empty.");
 
-                    // ✅ KEY FIX: Normalize FIRST, then validate length (database column is 100 chars!)
+                    // KEY FIX: Normalize FIRST, then validate length (database column is 100 chars!)
                     var normalizedName = string.Join(' ', questionDto.Name.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries));
                     
                     if (normalizedName.Length > 100)
@@ -555,11 +559,11 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
                             throw new ValidationException($"Question #{questionIndex}, Option #{optionIndex}: name cannot be empty.");
                     }
 
-                    // Validate ImageUrl if provided
-                    if (!string.IsNullOrWhiteSpace(questionDto.ImageUrl))
+                    // ImageUrl validation - only check length if provided and not empty
+                    // ImageUrl can be null or empty (optional field)
+                    if (!string.IsNullOrWhiteSpace(questionDto.ImageUrl) && questionDto.ImageUrl.Length > 500)
                     {
-                        if (questionDto.ImageUrl.Length > 500)
-                            throw new ValidationException($"Question #{questionIndex}: ImageUrl exceeds 500 characters.");
+                        throw new ValidationException($"Question #{questionIndex}: ImageUrl exceeds 500 characters.");
                     }
 
                     // Calculate question score from options

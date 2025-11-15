@@ -15,7 +15,6 @@ namespace Lssctc.ProgramManagement.Quizzes.DTOs
         public bool IsMultipleAnswers { get; set; }
 
         [StringLength(500, ErrorMessage = "ImageUrl must be at most 500 characters.")]
-        [Url(ErrorMessage = "ImageUrl must be a valid URL.")]
         public string? ImageUrl { get; set; }
 
         // Options
@@ -62,7 +61,6 @@ namespace Lssctc.ProgramManagement.Quizzes.DTOs
         public bool IsMultipleAnswers { get; set; }
         
         [StringLength(500, ErrorMessage = "ImageUrl must be at most 500 characters.")]
-        [Url(ErrorMessage = "ImageUrl must be a valid URL.")]
         public string? ImageUrl { get; set; }
     }
 
