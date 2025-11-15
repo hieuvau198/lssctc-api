@@ -1,5 +1,6 @@
 using Lssctc.ProgramManagement.Accounts.Profiles.Dtos;
 using Lssctc.Share.Interfaces;
+using Microsoft.EntityFrameworkCore;
 
 namespace Lssctc.ProgramManagement.Accounts.Profiles.Services
 {
@@ -25,6 +26,44 @@ namespace Lssctc.ProgramManagement.Accounts.Profiles.Services
                 Biography = instructorProfile.Biography,
                 ProfessionalProfileUrl = instructorProfile.ProfessionalProfileUrl,
                 Specialization = instructorProfile.Specialization
+            };
+        }
+
+        public async Task<InstructorProfileWithUserDto?> GetInstructorProfileByUserId(int userId)
+        {
+            // Get user with instructor and profile information using Include
+            var user = await _uow.UserRepository.GetAllAsQueryable()
+                .Include(u => u.Instructor)
+                    .ThenInclude(i => i!.InstructorProfile)
+                .FirstOrDefaultAsync(u => u.Id == userId);
+
+            if (user == null || user.Instructor == null)
+                return null;
+
+            var instructor = user.Instructor;
+            var profile = instructor.InstructorProfile;
+
+            return new InstructorProfileWithUserDto
+            {
+                // User Information
+                UserId = user.Id,
+                Username = user.Username,
+                Email = user.Email,
+                Fullname = user.Fullname,
+                PhoneNumber = user.PhoneNumber,
+                AvatarUrl = user.AvatarUrl,
+                Role = user.Role,
+
+                // Instructor Information
+                InstructorCode = instructor.InstructorCode,
+                HireDate = instructor.HireDate,
+                IsInstructorActive = instructor.IsActive,
+
+                // Profile Information (may be null if profile doesn't exist yet)
+                ExperienceYears = profile?.ExperienceYears,
+                Biography = profile?.Biography,
+                ProfessionalProfileUrl = profile?.ProfessionalProfileUrl,
+                Specialization = profile?.Specialization
             };
         }
 

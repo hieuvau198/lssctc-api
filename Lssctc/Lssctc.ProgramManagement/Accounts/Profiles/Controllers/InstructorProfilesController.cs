@@ -1,4 +1,4 @@
-using Lssctc.ProgramManagement.Accounts.Profiles.Dtos;
+﻿using Lssctc.ProgramManagement.Accounts.Profiles.Dtos;
 using Lssctc.ProgramManagement.Accounts.Profiles.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -19,6 +19,7 @@ namespace Lssctc.ProgramManagement.Accounts.Profiles.Controllers
         }
 
         [HttpGet("instructor/{instructorId:int}")]
+        [Authorize(Roles = "Admin, Instructor")]
         public async Task<ActionResult<InstructorProfileDto>> GetInstructorProfile(int instructorId)
         {
             try
@@ -37,7 +38,37 @@ namespace Lssctc.ProgramManagement.Accounts.Profiles.Controllers
             }
         }
 
+        /// <summary>
+        /// Lấy thông tin hồ sơ giảng viên bao gồm thông tin người dùng và hồ sơ nghề nghiệp theo ID người dùng
+        /// </summary>
+        /// <param name="userId">ID của người dùng</param>
+        /// <returns>Thông tin hồ sơ giảng viên với thông tin người dùng</returns>
+        /// <remarks>
+        /// Returns a 404 Not Found response if the user or instructor profile is not found.
+        /// Returns a 500 Internal Server Error response in case of an unexpected error.
+        /// </remarks>
+        [HttpGet("instructor/by-user/{userId:int}")]
+        [Authorize(Roles = "Admin, Instructor")]
+        public async Task<ActionResult<InstructorProfileWithUserDto>> GetInstructorProfileByUserId(int userId)
+        {
+            try
+            {
+                var profile = await _instructorProfilesService.GetInstructorProfileByUserId(userId);
+                if (profile == null)
+                {
+                    return NotFound("User or instructor profile not found.");
+                }
+
+                return Ok(profile);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+            }
+        }
+
         [HttpPut("instructor/{instructorId:int}")]
+        [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> UpdateInstructorProfile(int instructorId, [FromBody] UpdateInstructorProfileDto dto)
         {
             try
