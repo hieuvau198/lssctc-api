@@ -18,6 +18,11 @@ namespace Lssctc.ProgramManagement.Accounts.Profiles.Controllers
             _instructorProfilesService = instructorProfilesService;
         }
 
+        /// <summary>
+        /// Lấy thông tin InstructorProfile theo instructorId (chỉ profile, không bao gồm user info)
+        /// </summary>
+        /// <param name="instructorId">ID của instructor</param>
+        /// <returns>Thông tin InstructorProfile</returns>
         [HttpGet("instructor/{instructorId:int}")]
         [Authorize(Roles = "Admin, Instructor")]
         public async Task<ActionResult<InstructorProfileDto>> GetInstructorProfile(int instructorId)
@@ -39,34 +44,15 @@ namespace Lssctc.ProgramManagement.Accounts.Profiles.Controllers
         }
 
         /// <summary>
-        /// Lấy thông tin hồ sơ giảng viên bao gồm thông tin người dùng và hồ sơ nghề nghiệp theo ID người dùng
+        /// Cập nhật InstructorProfile theo instructorId (chỉ profile, không update user info)
         /// </summary>
-        /// <param name="userId">ID của người dùng</param>
-        /// <returns>Thông tin hồ sơ giảng viên với thông tin người dùng</returns>
+        /// <param name="instructorId">ID của instructor</param>
+        /// <param name="dto">Thông tin profile cần cập nhật</param>
+        /// <returns>NoContent nếu thành công</returns>
         /// <remarks>
-        /// Returns a 404 Not Found response if the user or instructor profile is not found.
-        /// Returns a 500 Internal Server Error response in case of an unexpected error.
+        /// Chỉ cập nhật InstructorProfile fields:
+        /// - ExperienceYears, Biography, ProfessionalProfileUrl, Specialization
         /// </remarks>
-        [HttpGet("instructor/by-user/{userId:int}")]
-        [Authorize(Roles = "Admin, Instructor")]
-        public async Task<ActionResult<InstructorProfileWithUserDto>> GetInstructorProfileByUserId(int userId)
-        {
-            try
-            {
-                var profile = await _instructorProfilesService.GetInstructorProfileByUserId(userId);
-                if (profile == null)
-                {
-                    return NotFound("User or instructor profile not found.");
-                }
-
-                return Ok(profile);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
-            }
-        }
-
         [HttpPut("instructor/{instructorId:int}")]
         [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> UpdateInstructorProfile(int instructorId, [FromBody] UpdateInstructorProfileDto dto)
@@ -87,6 +73,62 @@ namespace Lssctc.ProgramManagement.Accounts.Profiles.Controllers
                     ex.Message == "At least one field must be provided for update.")
                 {
                     return BadRequest(ex.Message);
+                }
+                return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Lấy thông tin hồ sơ giảng viên theo ID người dùng - Truyền userId trực tiếp
+        /// </summary>
+        /// <param name="userId">ID của người dùng</param>
+        /// <returns>Thông tin hồ sơ giảng viên với thông tin người dùng</returns>
+        [HttpGet("instructor/by-user/{userId:int}")]
+        [Authorize(Roles = "Admin, Instructor")]
+        public async Task<ActionResult<InstructorProfileWithUserDto>> GetInstructorProfileByUserId(int userId)
+        {
+            try
+            {
+                var profile = await _instructorProfilesService.GetInstructorProfileByUserId(userId);
+                if (profile == null)
+                {
+                    return NotFound("User or instructor profile not found.");
+                }
+
+                return Ok(profile);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Cập nhật thông tin hồ sơ giảng viên theo ID người dùng - Truyền userId trực tiếp
+        /// </summary>
+        /// <param name="userId">ID của người dùng</param>
+        /// <param name="dto">Thông tin cần cập nhật</param>
+        /// <returns>Thông tin hồ sơ giảng viên đã được cập nhật</returns>
+        /// <remarks>
+        /// Có thể cập nhật:
+        /// - User: Username, Email, Fullname, PhoneNumber, AvatarUrl
+        /// - Instructor: InstructorCode, HireDate, IsInstructorActive
+        /// - Profile: ExperienceYears, Biography, ProfessionalProfileUrl, Specialization
+        /// </remarks>
+        [HttpPut("instructor/by-user/{userId:int}")]
+        [Authorize(Roles = "Admin, Instructor")]
+        public async Task<ActionResult<InstructorProfileWithUserDto>> UpdateUserAndInstructorProfile(int userId, [FromBody] UpdateUserAndInstructorProfileDto dto)
+        {
+            try
+            {
+                var profile = await _instructorProfilesService.UpdateUserAndInstructorProfile(userId, dto);
+                return Ok(profile);
+            }
+            catch (Exception ex)
+            {
+                if (ex.Message == "User not found." || ex.Message == "Instructor not found for this user.")
+                {
+                    return NotFound(ex.Message);
                 }
                 return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
             }

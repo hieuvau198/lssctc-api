@@ -7,5 +7,6 @@ namespace Lssctc.ProgramManagement.Accounts.Profiles.Services
         Task<InstructorProfileDto?> GetInstructorProfile(int instructorId);
         Task<InstructorProfileWithUserDto?> GetInstructorProfileByUserId(int userId);
         Task<bool> UpdateInstructorProfile(int instructorId, UpdateInstructorProfileDto dto);
+        Task<InstructorProfileWithUserDto> UpdateUserAndInstructorProfile(int userId, UpdateUserAndInstructorProfileDto dto);
     }
 }
