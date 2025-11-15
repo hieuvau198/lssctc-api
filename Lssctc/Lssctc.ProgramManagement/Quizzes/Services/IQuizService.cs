@@ -28,6 +28,9 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
         Task<int> CreateQuizWithQuestions(CreateQuizWithQuestionsDto dto);
         Task<int> AddQuizToActivity(CreateActivityQuizDto dto);
         Task<List<QuizOnlyDto>> GetQuizzesByActivityId(int activityId);
+
+        Task<bool> RemoveQuizFromActivityAsync(int activityId, int quizId);
+        Task<bool> UpdateQuizInActivityAsync(int activityId, UpdateActivityQuizDto dto);
         #endregion
     }
 }

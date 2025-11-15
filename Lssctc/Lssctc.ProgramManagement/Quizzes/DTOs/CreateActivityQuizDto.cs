@@ -12,4 +12,10 @@ namespace Lssctc.ProgramManagement.Quizzes.DTOs
         [Range(1, int.MaxValue, ErrorMessage = "Activity ID must be greater than 0.")]
         public int ActivityId { get; set; }
     }
+    public class UpdateActivityQuizDto
+    {
+        [Required(ErrorMessage = "New Quiz ID is required.")]
+        [Range(1, int.MaxValue, ErrorMessage = "New Quiz ID must be greater than 0.")]
+        public int NewQuizId { get; set; }
+    }
 }

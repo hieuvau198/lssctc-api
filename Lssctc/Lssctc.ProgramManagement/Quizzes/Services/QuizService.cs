@@ -1,6 +1,7 @@
 ﻿using Lssctc.ProgramManagement.Quizzes.DTOs;
 using Lssctc.Share.Common;
 using Lssctc.Share.Entities;
+using Lssctc.Share.Enums;
 using Lssctc.Share.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
@@ -756,6 +757,95 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
                 .ToListAsync();
 
             return quizzes;
+        }
+
+        public async Task<bool> RemoveQuizFromActivityAsync(int activityId, int quizId)
+        {
+            // 1. Check the business rule: Is this activity already in use?
+            await CheckActivityUsageAsync(activityId);
+
+            // 2. Find the link
+            var link = await _uow.ActivityQuizRepository
+                .GetAllAsQueryable()
+                .FirstOrDefaultAsync(aq => aq.ActivityId == activityId && aq.QuizId == quizId);
+
+            if (link == null)
+            {
+                throw new KeyNotFoundException($"Quiz {quizId} is not assigned to Activity {activityId}.");
+            }
+
+            // 3. Delete the link
+            await _uow.ActivityQuizRepository.DeleteAsync(link);
+            await _uow.SaveChangesAsync();
+
+            return true;
+        }
+
+        public async Task<bool> UpdateQuizInActivityAsync(int activityId, UpdateActivityQuizDto dto)
+        {
+            // 1. Validate Activity exists and is a Quiz activity
+            var activity = await _uow.ActivityRepository.GetByIdAsync(activityId);
+            if (activity == null || activity.IsDeleted == true)
+                throw new KeyNotFoundException($"Activity with ID {activityId} not found.");
+
+            if (activity.ActivityType != (int)ActivityType.Quiz)
+                throw new InvalidOperationException("This activity is not a Quiz activity. Its type cannot be changed here.");
+
+            // 2. Check the business rule: Is this activity already in use?
+            await CheckActivityUsageAsync(activityId);
+
+            // 3. Validate the new Quiz exists
+            var newQuiz = await _uow.QuizRepository.GetByIdAsync(dto.NewQuizId);
+            if (newQuiz == null)
+            {
+                throw new KeyNotFoundException($"The new Quiz with ID {dto.NewQuizId} was not found.");
+            }
+
+            // 4. Find the existing link. An activity can only have one quiz,
+            // so we find by ActivityId.
+            var existingLink = await _uow.ActivityQuizRepository
+                .GetAllAsQueryable()
+                .FirstOrDefaultAsync(aq => aq.ActivityId == activityId);
+
+            if (existingLink == null)
+            {
+                throw new KeyNotFoundException($"No quiz is currently assigned to Activity {activityId}. Use the POST method to add one.");
+            }
+
+            // 5. Check if it's actually a change
+            if (existingLink.QuizId == dto.NewQuizId)
+            {
+                return true; // No change needed
+            }
+
+            // 6. Update the link to point to the new quiz
+            existingLink.QuizId = dto.NewQuizId;
+            existingLink.Name = newQuiz.Name ?? "Quiz";
+            existingLink.Description = newQuiz.Description;
+
+            await _uow.ActivityQuizRepository.UpdateAsync(existingLink);
+            await _uow.SaveChangesAsync();
+
+            return true;
+        }
+
+        private async Task CheckActivityUsageAsync(int activityId)
+        {
+            // Find all SectionIDs this Activity is linked to
+            var linkedSectionIds = _uow.SectionActivityRepository
+                .GetAllAsQueryable()
+                .Where(sa => sa.ActivityId == activityId)
+                .Select(sa => sa.SectionId);
+
+            // Check if any SectionRecord exists that points to one of those SectionIDs
+            var isActivityInUse = await _uow.SectionRecordRepository
+                .GetAllAsQueryable()
+                .AnyAsync(sr => linkedSectionIds.Contains(sr.SectionId ?? -1));
+
+            if (isActivityInUse)
+            {
+                throw new InvalidOperationException("This activity is already in use by trainees (has section records) and its quiz cannot be changed or removed.");
+            }
         }
     }
 }
