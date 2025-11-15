@@ -498,9 +498,6 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
 
             try
             {
-                // Debug log
-                System.Diagnostics.Debug.WriteLine($"[CreateQuizWithQuestions] Questions count: {dto.Questions?.Count ?? 0}");
-
                 // Validate questions list
                 if (dto.Questions == null || dto.Questions.Count == 0)
                     throw new ValidationException("At least one question is required.");
@@ -518,37 +515,37 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
                     
                     // Validate question name
                     if (string.IsNullOrWhiteSpace(questionDto.Name))
-                        throw new ValidationException($"Question #{questionIndex}: name cannot be empty.");
+                        throw new ValidationException($"Question #{questionIndex}: Name cannot be empty.");
 
-                    // KEY FIX: Normalize FIRST, then validate length (database column is 100 chars!)
+                    // Normalize FIRST, then validate length
                     var normalizedName = string.Join(' ', questionDto.Name.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries));
                     
                     if (normalizedName.Length > 100)
                     {
                         throw new ValidationException(
-                            $"Question #{questionIndex}: name exceeds 100 characters " +
+                            $"Question #{questionIndex}: Name exceeds 100 characters " +
                             $"(actual: {normalizedName.Length} chars after removing extra spaces). " +
                             $"Please shorten the question text.");
                     }
 
                     // Validate options count
                     if (questionDto.Options == null || questionDto.Options.Count == 0)
-                        throw new ValidationException($"Question #{questionIndex} ('{TruncateText(normalizedName, 50)}'): must have at least one option.");
+                        throw new ValidationException($"Question #{questionIndex} ('{TruncateText(normalizedName, 50)}'): Must have at least one option.");
 
                     if (questionDto.Options.Count < 2)
-                        throw new ValidationException($"Question #{questionIndex} ('{TruncateText(normalizedName, 50)}'): must have at least 2 options.");
+                        throw new ValidationException($"Question #{questionIndex} ('{TruncateText(normalizedName, 50)}'): Must have at least 2 options.");
 
                     if (questionDto.Options.Count > 20)
-                        throw new ValidationException($"Question #{questionIndex} ('{TruncateText(normalizedName, 50)}'): cannot have more than 20 answer options.");
+                        throw new ValidationException($"Question #{questionIndex} ('{TruncateText(normalizedName, 50)}'): Cannot have more than 20 answer options.");
 
                     // At least one correct option
                     var correctCount = questionDto.Options.Count(o => o.IsCorrect);
                     if (correctCount == 0)
-                        throw new ValidationException($"Question #{questionIndex} ('{TruncateText(normalizedName, 50)}'): must have at least one correct option.");
+                        throw new ValidationException($"Question #{questionIndex} ('{TruncateText(normalizedName, 50)}'): Must have at least one correct option.");
 
                     // Single choice question: chỉ được có 1 option đúng
                     if (!questionDto.IsMultipleAnswers && correctCount > 1)
-                        throw new ValidationException($"Question #{questionIndex} ('{TruncateText(normalizedName, 50)}'): single choice question cannot have more than one correct option.");
+                        throw new ValidationException($"Question #{questionIndex} ('{TruncateText(normalizedName, 50)}'): Single choice question cannot have more than one correct option.");
 
                     // Validate each option
                     int optionIndex = 0;
@@ -556,7 +553,7 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
                     {
                         optionIndex++;
                         if (string.IsNullOrWhiteSpace(opt.Name))
-                            throw new ValidationException($"Question #{questionIndex}, Option #{optionIndex}: name cannot be empty.");
+                            throw new ValidationException($"Question #{questionIndex}, Option #{optionIndex}: Name cannot be empty.");
                     }
 
                     // ImageUrl validation - only check length if provided and not empty
@@ -566,23 +563,20 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
                         throw new ValidationException($"Question #{questionIndex}: ImageUrl exceeds 500 characters.");
                     }
 
-                    // Calculate question score from options
-                    var optionsWithScore = questionDto.Options.Where(o => o.OptionScore.HasValue).ToList();
-                    decimal? questionScore = null;
-
-                    if (optionsWithScore.Count > 0)
+                    // Validate question score - MUST be provided
+                    if (!questionDto.QuestionScore.HasValue)
                     {
-                        questionScore = Math.Round(optionsWithScore.Sum(o => o.OptionScore!.Value), 2, MidpointRounding.AwayFromZero);
+                        throw new ValidationException($"Question #{questionIndex} ('{TruncateText(normalizedName, 50)}'): QuestionScore is required.");
                     }
 
-                    if (!questionScore.HasValue)
-                        throw new ValidationException($"Question #{questionIndex} ('{TruncateText(normalizedName, 50)}'): must have option scores.");
-
+                    decimal questionScore = Math.Round(questionDto.QuestionScore.Value, 2, MidpointRounding.AwayFromZero);
+                    
+                    // QuestionScore must be > 0 and < 10
                     if (questionScore <= 0m || questionScore >= 10m)
-                        throw new ValidationException($"Question #{questionIndex} ('{TruncateText(normalizedName, 50)}'): score ({questionScore}) must be between 0 and 10.");
+                        throw new ValidationException($"Question #{questionIndex} ('{TruncateText(normalizedName, 50)}'): QuestionScore must be greater than 0 and less than 10 (received: {questionScore}).");
 
                     // Check total doesn't exceed 10
-                    totalScore += questionScore.Value;
+                    totalScore += questionScore;
                     if (totalScore > 10m + 0.0001m)
                         throw new ValidationException($"Total questions scores ({totalScore:F2}) would exceed quiz total score (10). Error at question #{questionIndex}.");
                 }
@@ -613,9 +607,8 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
                     questionIndex++;
                     try
                     {
-                        // Calculate question score
-                        var optionsWithScore = questionDto.Options.Where(o => o.OptionScore.HasValue).ToList();
-                        var questionScore = Math.Round(optionsWithScore.Sum(o => o.OptionScore!.Value), 2, MidpointRounding.AwayFromZero);
+                        // Get question score (already validated above)
+                        var questionScore = Math.Round(questionDto.QuestionScore!.Value, 2, MidpointRounding.AwayFromZero);
 
                         // Normalize question name (already validated above)
                         var normalizedName = string.Join(' ', questionDto.Name.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries));
@@ -634,19 +627,37 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
                         await _uow.QuizQuestionRepository.CreateAsync(question);
                         await _uow.SaveChangesAsync();
 
+                        // Calculate option score based on question type
+                        var correctOptions = questionDto.Options.Where(o => o.IsCorrect).ToList();
+                        decimal optionScore = 0m;
+
+                        if (questionDto.IsMultipleAnswers)
+                        {
+                            // Multiple choice: divide score evenly among correct options
+                            optionScore = Math.Round(questionScore / correctOptions.Count, 2, MidpointRounding.AwayFromZero);
+                        }
+                        else
+                        {
+                            // Single choice: correct option gets full score
+                            optionScore = questionScore;
+                        }
+
                         // Create options for this question - auto-generate DisplayOrder
                         foreach (var opt in questionDto.Options)
                         {
                             try
                             {
+                                // Calculate option score using helper method
+                                var finalOptionScore = CalculateOptionScore(questionScore, questionDto.IsMultipleAnswers, opt.IsCorrect, correctOptions.Count);
+
                                 var optionEntity = new QuizQuestionOption
                                 {
                                     QuizQuestionId = question.Id,
                                     Name = opt.Name.Trim(),
                                     Description = opt.Description?.Trim(),
                                     IsCorrect = opt.IsCorrect,
-                                    DisplayOrder = globalDisplayOrder++, // Auto-increment
-                                    OptionScore = opt.OptionScore,
+                                    DisplayOrder = globalDisplayOrder++,
+                                    OptionScore = finalOptionScore,
                                     Explanation = opt.Explanation?.Trim()
                                 };
 
@@ -670,27 +681,17 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
             }
             catch (DbUpdateException dbEx)
             {
-                // Extract detailed SQL error information
                 var innerMessage = dbEx.InnerException?.Message ?? dbEx.Message;
                 throw new ValidationException($"Database error while creating quiz: {innerMessage}. Please check that all field mappings are correct.", dbEx);
             }
             catch (ValidationException)
             {
-                // Re-throw validation exceptions as-is
                 throw;
             }
             catch (Exception ex)
             {
-                // Catch any other unexpected errors
                 throw new ValidationException($"Unexpected error while creating quiz: {ex.Message}", ex);
             }
-        }
-
-        // Helper method to truncate text for error messages
-        private string TruncateText(string text, int maxLength)
-        {
-            if (string.IsNullOrEmpty(text)) return string.Empty;
-            return text.Length <= maxLength ? text : text.Substring(0, maxLength) + "...";
         }
 
         public async Task<int> AddQuizToActivity(CreateActivityQuizDto dto)
@@ -756,6 +757,36 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
                 .ToListAsync();
 
             return quizzes;
+        }
+
+        // Helper method to truncate text for error messages
+        private string TruncateText(string text, int maxLength)
+        {
+            if (string.IsNullOrEmpty(text)) return string.Empty;
+            return text.Length <= maxLength ? text : text.Substring(0, maxLength) + "...";
+        }
+
+        /// <summary>
+        /// Calculate option score based on question type.
+        /// For single choice: option score = question score (correct option gets full score)
+        /// For multiple choice: option score = question score / number of correct options (divided equally)
+        /// Incorrect options always get 0 score.
+        /// </summary>
+        private decimal CalculateOptionScore(decimal questionScore, bool isMultipleAnswers, bool isCorrectOption, int correctOptionsCount)
+        {
+            if (!isCorrectOption)
+                return 0m;
+
+            if (isMultipleAnswers)
+            {
+                // Multiple choice: divide score evenly among correct options
+                return Math.Round(questionScore / correctOptionsCount, 2, MidpointRounding.AwayFromZero);
+            }
+            else
+            {
+                // Single choice: correct option gets full score
+                return questionScore;
+            }
         }
     }
 }
