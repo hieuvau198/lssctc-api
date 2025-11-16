@@ -293,5 +293,61 @@ namespace Lssctc.ProgramManagement.Quizzes.Controllers
                 return StatusCode(500, new { status = 500, message = ex.Message, type = ex.GetType().Name });
             }
         }
+
+        [HttpDelete("activity/{activityId}/quiz/{quizId}")]
+        [Authorize(Roles = "Admin, Instructor")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> RemoveQuizFromActivity(int activityId, int quizId)
+        {
+            try
+            {
+                await _service.RemoveQuizFromActivityAsync(activityId, quizId);
+                return NoContent();
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                // This catches the "activity in use" error
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
+            }
+        }
+
+        [HttpPut("activity/{activityId}")]
+        [Authorize(Roles = "Admin, Instructor")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> UpdateQuizInActivity(int activityId, [FromBody] UpdateActivityQuizDto dto)
+        {
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+
+            try
+            {
+                await _service.UpdateQuizInActivityAsync(activityId, dto);
+                return Ok(new { message = "Quiz assignment updated successfully." });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                // This catches "activity in use" or "not a quiz activity" errors
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
+            }
+        }
     }
 }
