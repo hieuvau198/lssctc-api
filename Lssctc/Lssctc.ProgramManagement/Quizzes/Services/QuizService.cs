@@ -161,7 +161,7 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
             var query = _uow.QuizRepository.GetAllAsQueryable();
             var total = await query.CountAsync(ct);
             var items = await query
-                .OrderBy(q => q.Id)
+                .OrderByDescending(q => q.CreatedAt)
                 .Skip((pageIndex - 1) * pageSize)
                 .Take(pageSize)
                 .Select(q => new QuizOnlyDto
@@ -193,7 +193,7 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
             var total = await query.CountAsync(ct);
 
             var entities = await query
-                .OrderBy(q => q.Id)
+                .OrderByDescending(q => q.CreatedAt)
                 .Skip((pageIndex - 1) * pageSize)
                 .Take(pageSize)
                 .Include(q => q.QuizQuestions)
