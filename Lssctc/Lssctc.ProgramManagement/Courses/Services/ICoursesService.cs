@@ -18,6 +18,10 @@ namespace Lssctc.ProgramManagement.Courses.Services
         Task<IEnumerable<CourseDto>> GetCoursesByProgramIdAsync(int programId);
         #endregion
 
+        #region Class Courses
+        Task<CourseDto?> GetCourseByClassIdAsync(int classId);
+        #endregion
+
         #region Course Categories and Levels
         Task<IEnumerable<CourseCategoryDto>> GetAllCourseCategoriesAsync();
         Task<CourseCategoryDto> CreateCourseCategoryAsync(CreateCourseCategoryDto dto);

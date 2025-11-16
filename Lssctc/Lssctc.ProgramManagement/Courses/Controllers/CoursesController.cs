@@ -144,6 +144,36 @@ namespace Lssctc.ProgramManagement.Courses.Controllers
 
         #endregion
 
+        #region Class Courses
+
+        /// <summary>
+        /// Gets the course associated with a specific class ID.
+        /// </summary>
+        /// <param name="classId">The ID of the class.</param>
+        /// <returns>The course details.</returns>
+        [HttpGet("class/{classId}")]
+        [ProducesResponseType(typeof(CourseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> GetCourseByClassId(int classId)
+        {
+            try
+            {
+                var course = await _coursesService.GetCourseByClassIdAsync(classId);
+                if (course == null)
+                {
+                    return NotFound(new { message = $"No course found for class ID {classId}." });
+                }
+                return Ok(course);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An internal server error occurred: {ex.Message}");
+            }
+        }
+
+        #endregion
+
         #region Course Categories and Levels
 
         [HttpGet("categories")]

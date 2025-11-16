@@ -173,6 +173,37 @@ namespace Lssctc.ProgramManagement.Courses.Services
 
         #endregion
 
+        #region Class Courses
+        public async Task<CourseDto?> GetCourseByClassIdAsync(int classId)
+        {
+            var targetClass = await _uow.ClassRepository
+                .GetAllAsQueryable()
+                .Where(c => c.Id == classId)
+                .Include(c => c.ProgramCourse)
+                    .ThenInclude(pc => pc.Course)
+                        .ThenInclude(co => co.Category) // Include Category
+                .Include(c => c.ProgramCourse)
+                    .ThenInclude(pc => pc.Course)
+                        .ThenInclude(co => co.Level) // Include Level
+                .AsNoTracking() // Read-only operation
+                .FirstOrDefaultAsync();
+
+            if (targetClass == null || targetClass.ProgramCourse == null || targetClass.ProgramCourse.Course == null)
+            {
+                return null;
+            }
+
+            var course = targetClass.ProgramCourse.Course;
+
+            if (course.IsDeleted == true)
+            {
+                return null;
+            }
+
+            return MapToDto(course); // Use existing mapper
+        }
+        #endregion
+
         #region Course Categories and Levels
 
         // ... (No changes needed in this region) ...
