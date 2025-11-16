@@ -175,6 +175,34 @@ namespace Lssctc.ProgramManagement.Quizzes.Controllers
             }
         }
 
+        [HttpPut("{id}/with-questions")]
+        [Authorize(Roles = "Admin, Instructor")]
+        public async Task<IActionResult> UpdateQuizWithQuestions(int id, [FromBody] UpdateQuizWithQuestionsDto dto)
+        {
+            try
+            {
+                if (!ModelState.IsValid) 
+                    return BadRequest(new { status = 400, message = "Invalid model state", type = "ValidationException", errors = ModelState });
+                
+                var ok = await _service.UpdateQuizWithQuestionsAsync(id, dto);
+                if (!ok) 
+                    return NotFound(new { status = 404, message = $"Quiz with ID {id} not found", type = "NotFound" });
+                return Ok(new { status = 200, message = "Update quiz with questions successfully" });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { status = 404, message = ex.Message, type = "NotFound" });
+            }
+            catch (ValidationException ex)
+            {
+                return BadRequest(new { status = 400, message = ex.Message, type = "ValidationException" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = 500, message = ex.Message, type = ex.GetType().Name });
+            }
+        }
+
         [HttpDelete("{id}")]
         [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> DeleteQuiz(int id)
