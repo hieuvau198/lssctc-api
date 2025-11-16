@@ -19,7 +19,7 @@ namespace Lssctc.ProgramManagement.Quizzes.DTOs
 
         // Question Score - REQUIRED for CreateQuizWithQuestionsDto
         [Required(ErrorMessage = "Question score is required.")]
-        [Range(0.01, 9.99, ErrorMessage = "Question score must be between 0.01 and 9.99.")]
+        [Range(0.01, 10, ErrorMessage = "Question score must be between 0.01 and 10.")]
         public decimal? QuestionScore { get; set; }
 
         // Options
@@ -83,7 +83,7 @@ namespace Lssctc.ProgramManagement.Quizzes.DTOs
         public string Name { get; set; } = null!;
 
         [Required(ErrorMessage = "Question score is required.")]
-        [Range(0.01, 9.99, ErrorMessage = "Question score must be between 0.01 and 9.99.")]
+        [Range(0.01, 10, ErrorMessage = "Question score must be between 0.01 and 10.")]
         public decimal? QuestionScore { get; set; }
 
         [StringLength(2000, ErrorMessage = "Description must be at most 2000 characters.")]
@@ -187,7 +187,7 @@ namespace Lssctc.ProgramManagement.Quizzes.DTOs
         [StringLength(100, ErrorMessage = "Question name must be at most 100 characters.")]
         public string? Name { get; set; }
 
-        [Range(0.01, 9.99, ErrorMessage = "Question score must be between 0.01 and 9.99.")]
+        [Range(0.01, 10, ErrorMessage = "Question score must be between 0.01 and 10.")]
         public decimal? QuestionScore { get; set; }
 
         [StringLength(2000, ErrorMessage = "Description must be at most 2000 characters.")]

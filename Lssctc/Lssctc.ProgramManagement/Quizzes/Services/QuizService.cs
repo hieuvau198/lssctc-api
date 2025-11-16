@@ -578,8 +578,15 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
 
                     // Check total doesn't exceed 10
                     totalScore += questionScore;
-                    if (totalScore > 10m + 0.0001m)
-                        throw new ValidationException($"Total questions scores ({totalScore:F2}) would exceed quiz total score (10). Error at question #{questionIndex}.");
+                }
+
+                // Validate total score equals exactly 10
+                if (Math.Abs(totalScore - 10m) > 0.0001m)
+                {
+                    if (totalScore < 10m)
+                        throw new ValidationException($"Total questions scores ({totalScore:F2}) must equal 10. Currently under by {(10m - totalScore):F2}.");
+                    else
+                        throw new ValidationException($"Total questions scores ({totalScore:F2}) must equal 10. Currently over by {(totalScore - 10m):F2}.");
                 }
 
                 // Step 1: Create Quiz (only after all validations pass)
