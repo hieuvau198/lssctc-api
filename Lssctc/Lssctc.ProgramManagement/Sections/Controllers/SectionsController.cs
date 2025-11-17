@@ -38,7 +38,7 @@ namespace Lssctc.ProgramManagement.Sections.Controllers
         public async Task<ActionResult<SectionDto>> GetSectionById(int id)
         {
             var section = await _sectionsService.GetSectionByIdAsync(id);
-            if (section == null) return NotFound();
+            if (section == null) return NotFound(new { Message = "Section not found." });
             return Ok(section);
         }
 
@@ -53,7 +53,7 @@ namespace Lssctc.ProgramManagement.Sections.Controllers
             }
             catch (Exception)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, new { message = "An unexpected error occurred." });
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "An unexpected error occurred." });
             }
         }
 
@@ -68,11 +68,15 @@ namespace Lssctc.ProgramManagement.Sections.Controllers
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(new { message = ex.Message });
+                return NotFound(new { Message = ex.Message });
+            }
+            catch (InvalidOperationException ex) // Added for lock check
+            {
+                return BadRequest(new { Message = ex.Message });
             }
             catch (Exception)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, new { message = "An unexpected error occurred." });
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "An unexpected error occurred." });
             }
         }
 
@@ -87,15 +91,15 @@ namespace Lssctc.ProgramManagement.Sections.Controllers
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(new { message = ex.Message });
+                return NotFound(new { Message = ex.Message });
             }
-            catch (InvalidOperationException ex) // Catches "Cannot delete section associated with courses."
+            catch (InvalidOperationException ex) // Catches "Cannot delete section..."
             {
-                return BadRequest(new { message = ex.Message }); // 400 Bad Request
+                return BadRequest(new { Message = ex.Message }); // 400 Bad Request
             }
             catch (Exception)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, new { message = "An unexpected error occurred." });
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "An unexpected error occurred." });
             }
         }
 
@@ -117,19 +121,19 @@ namespace Lssctc.ProgramManagement.Sections.Controllers
             try
             {
                 await _sectionsService.AddSectionToCourseAsync(courseId, sectionId);
-                return NoContent();
+                return Ok(new { Message = "Section successfully added to course." }); // Added success message
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(new { message = ex.Message }); // Course or Section not found
+                return NotFound(new { Message = ex.Message }); // Course or Section not found
             }
-            catch (InvalidOperationException ex) // Catches "already added to course"
+            catch (InvalidOperationException ex) // Catches "already added" or "course locked"
             {
-                return Conflict(new { message = ex.Message }); // 409 Conflict
+                return BadRequest(new { Message = ex.Message }); // 400 Bad Request
             }
             catch (Exception)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, new { message = "An unexpected error occurred." });
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "An unexpected error occurred." });
             }
         }
 
@@ -144,11 +148,15 @@ namespace Lssctc.ProgramManagement.Sections.Controllers
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(new { message = ex.Message });
+                return NotFound(new { Message = ex.Message });
+            }
+            catch (InvalidOperationException ex) // Added for lock check
+            {
+                return BadRequest(new { Message = ex.Message });
             }
             catch (Exception)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, new { message = "An unexpected error occurred." });
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "An unexpected error occurred." });
             }
         }
 
@@ -159,19 +167,23 @@ namespace Lssctc.ProgramManagement.Sections.Controllers
             try
             {
                 await _sectionsService.UpdateCourseSectionOrderAsync(courseId, sectionId, newOrder);
-                return NoContent();
+                return Ok(new { Message = "Section order updated successfully." }); // Added success message
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(new { message = ex.Message });
+                return NotFound(new { Message = ex.Message });
             }
             catch (ArgumentException ex) // Catches "Section order must be greater than 0."
             {
-                return BadRequest(new { message = ex.Message }); // 400 Bad Request
+                return BadRequest(new { Message = ex.Message }); // 400 Bad Request
+            }
+            catch (InvalidOperationException ex) // Added for lock check
+            {
+                return BadRequest(new { Message = ex.Message });
             }
             catch (Exception)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, new { message = "An unexpected error occurred." });
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "An unexpected error occurred." });
             }
         }
 

@@ -11,24 +11,26 @@ namespace Lssctc.ProgramManagement.Practices.Controllers
     [ApiController]
     public class PracticesController : ControllerBase
     {
-        private readonly IPracticesService _service;
+        private readonly IPracticesService _tasksService;
 
-        public PracticesController(IPracticesService service)
+        public PracticesController(IPracticesService tasksService)
         {
-            _service = service;
+            _tasksService = tasksService;
         }
-        #region Practices
+
+        #region Tasks CRUD
+
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
             try
             {
-                var result = await _service.GetAllPracticesAsync();
-                return Ok(result);
+                var tasks = await _tasksService.GetAllPracticesAsync();
+                return Ok(tasks);
             }
             catch (Exception ex)
             {
-                return StatusCode(500, ex.Message);
+                return BadRequest(new { Message = ex.Message });
             }
         }
 
@@ -37,12 +39,12 @@ namespace Lssctc.ProgramManagement.Practices.Controllers
         {
             try
             {
-                var result = await _service.GetPracticesAsync(pageNumber, pageSize);
+                var result = await _tasksService.GetPracticesAsync(pageNumber, pageSize);
                 return Ok(result);
             }
             catch (Exception ex)
             {
-                return StatusCode(500, ex.Message);
+                return BadRequest(new { Message = ex.Message });
             }
         }
 
@@ -51,13 +53,13 @@ namespace Lssctc.ProgramManagement.Practices.Controllers
         {
             try
             {
-                var result = await _service.GetPracticeByIdAsync(id);
-                if (result == null) return NotFound();
-                return Ok(result);
+                var task = await _tasksService.GetPracticeByIdAsync(id);
+                if (task == null) return NotFound(new { Message = "Practice not found." });
+                return Ok(task);
             }
             catch (Exception ex)
             {
-                return StatusCode(500, ex.Message);
+                return BadRequest(new { Message = ex.Message });
             }
         }
 
@@ -67,12 +69,12 @@ namespace Lssctc.ProgramManagement.Practices.Controllers
             try
             {
                 if (!ModelState.IsValid) return BadRequest(ModelState);
-                var result = await _service.CreatePracticeAsync(dto);
-                return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
+                var created = await _tasksService.CreatePracticeAsync(dto);
+                return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
             }
             catch (Exception ex)
             {
-                return StatusCode(500, ex.Message);
+                return BadRequest(new { Message = ex.Message });
             }
         }
 
@@ -82,16 +84,16 @@ namespace Lssctc.ProgramManagement.Practices.Controllers
             try
             {
                 if (!ModelState.IsValid) return BadRequest(ModelState);
-                var result = await _service.UpdatePracticeAsync(id, dto);
-                return Ok(result);
+                var updated = await _tasksService.UpdatePracticeAsync(id, dto);
+                return Ok(updated);
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(ex.Message);
+                return NotFound(new { Message = ex.Message });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, ex.Message);
+                return BadRequest(new { Message = ex.Message });
             }
         }
 
@@ -100,81 +102,88 @@ namespace Lssctc.ProgramManagement.Practices.Controllers
         {
             try
             {
-                await _service.DeletePracticeAsync(id);
+                await _tasksService.DeletePracticeAsync(id);
                 return NoContent();
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(ex.Message);
+                return NotFound(new { Message = ex.Message });
             }
             catch (InvalidOperationException ex)
             {
-                return BadRequest(ex.Message);
+                return BadRequest(new { Message = ex.Message });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, ex.Message);
+                return BadRequest(new { Message = ex.Message });
             }
         }
+
         #endregion
 
-        #region Activity Practices
-        [HttpGet("activity/{activityId}")]
-        public async Task<IActionResult> GetByActivity(int activityId)
+        #region Practice Tasks
+
+        [HttpGet("practice/{practiceId}")]
+        public async Task<IActionResult> GetTasksByPractice(int practiceId)
         {
             try
             {
-                var result = await _service.GetPracticesByActivityAsync(activityId);
-                return Ok(result);
+                var tasks = await _tasksService.GetPracticesByActivityAsync(practiceId);
+                return Ok(tasks);
             }
             catch (Exception ex)
             {
-                return StatusCode(500, ex.Message);
+                return BadRequest(new { Message = ex.Message });
             }
         }
 
-        [HttpPost("activity/{activityId}/add/{practiceId}")]
-        public async Task<IActionResult> AddToActivity(int activityId, int practiceId)
+        [HttpPost("practice/{practiceId}/add/{taskId}")]
+        public async Task<IActionResult> AddTaskToPractice(int practiceId, int taskId)
         {
             try
             {
-                await _service.AddPracticeToActivityAsync(activityId, practiceId);
-                return Ok();
+                await _tasksService.AddPracticeToActivityAsync(practiceId, taskId);
+                return Ok(new { Message = "Task added to practice successfully." });
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(ex.Message);
+                return NotFound(new { Message = ex.Message });
             }
             catch (InvalidOperationException ex)
             {
-                return BadRequest(ex.Message);
+                return BadRequest(new { Message = ex.Message });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, ex.Message);
+                return BadRequest(new { Message = ex.Message });
             }
         }
 
-        [HttpDelete("activity/{activityId}/remove/{practiceId}")]
-        public async Task<IActionResult> RemoveFromActivity(int activityId, int practiceId)
+        [HttpDelete("practice/{practiceId}/remove/{taskId}")]
+        public async Task<IActionResult> RemoveTaskFromPractice(int practiceId, int taskId)
         {
             try
             {
-                await _service.RemovePracticeFromActivityAsync(activityId, practiceId);
-                return NoContent();
+                await _tasksService.RemovePracticeFromActivityAsync(practiceId, taskId);
+                return Ok(new { Message = "Task removed from practice successfully." });
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(ex.Message);
+                return NotFound(new { Message = ex.Message });
+            }
+            catch (InvalidOperationException ex) // Added for lock check
+            {
+                return BadRequest(new { Message = ex.Message });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, ex.Message);
+                return BadRequest(new { Message = ex.Message });
             }
         }
+
         #endregion
 
-
+        // ... (Trainee Practices region remains unchanged as it already used new { message = ... }) ...
         #region Trainee Practices
         [HttpGet("trainee/class/{classId}")]
         [Authorize(Roles = "Trainee")] // Trainee can only see their own
@@ -186,7 +195,7 @@ namespace Lssctc.ProgramManagement.Practices.Controllers
             try
             {
                 var traineeId = GetTraineeIdFromClaims();
-                var result = await _service.GetPracticesForTraineeAsync(traineeId, classId);
+                var result = await _tasksService.GetPracticesForTraineeAsync(traineeId, classId);
                 return Ok(result);
             }
             catch (UnauthorizedAccessException ex)
@@ -199,7 +208,7 @@ namespace Lssctc.ProgramManagement.Practices.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, ex.Message);
+                return StatusCode(500, new { message = ex.Message });
             }
         }
 
@@ -214,7 +223,7 @@ namespace Lssctc.ProgramManagement.Practices.Controllers
             try
             {
                 var traineeId = GetTraineeIdFromClaims();
-                var result = await _service.GetPracticeForTraineeByActivityIdAsync(traineeId, activityRecordId);
+                var result = await _tasksService.GetPracticeForTraineeByActivityIdAsync(traineeId, activityRecordId);
 
                 // The service will throw KeyNotFoundException if not found
                 return Ok(result);
@@ -230,7 +239,7 @@ namespace Lssctc.ProgramManagement.Practices.Controllers
             catch (Exception ex)
             {
                 // Log the exception in a real application
-                return StatusCode(500, ex.Message);
+                return StatusCode(500, new { message = ex.Message });
             }
         }
 
@@ -247,10 +256,6 @@ namespace Lssctc.ProgramManagement.Practices.Controllers
             }
             throw new UnauthorizedAccessException("Trainee ID claim is missing or invalid.");
         }
-
-        #endregion
-
-        #region Task
 
         #endregion
     }

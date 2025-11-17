@@ -29,7 +29,7 @@ namespace Lssctc.ProgramManagement.Materials.Controllers
             }
             catch (Exception)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "An unexpected error occurred." });
             }
         }
 
@@ -43,7 +43,7 @@ namespace Lssctc.ProgramManagement.Materials.Controllers
             }
             catch (Exception)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "An unexpected error occurred." });
             }
         }
 
@@ -54,13 +54,13 @@ namespace Lssctc.ProgramManagement.Materials.Controllers
             {
                 var material = await _materialsService.GetMaterialByIdAsync(id);
                 if (material == null)
-                    return NotFound();
+                    return NotFound(new { Message = "Material not found." });
 
                 return Ok(material);
             }
             catch (Exception)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "An unexpected error occurred." });
             }
         }
 
@@ -68,7 +68,7 @@ namespace Lssctc.ProgramManagement.Materials.Controllers
         public async Task<ActionResult<MaterialDto>> CreateMaterial([FromBody] CreateMaterialDto createDto)
         {
             if (createDto == null)
-                return BadRequest();
+                return BadRequest(new { Message = "Invalid material data." });
 
             try
             {
@@ -77,7 +77,7 @@ namespace Lssctc.ProgramManagement.Materials.Controllers
             }
             catch (Exception)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "An unexpected error occurred." });
             }
         }
 
@@ -85,7 +85,7 @@ namespace Lssctc.ProgramManagement.Materials.Controllers
         public async Task<ActionResult<MaterialDto>> UpdateMaterial(int id, [FromBody] UpdateMaterialDto updateDto)
         {
             if (updateDto == null)
-                return BadRequest();
+                return BadRequest(new { Message = "Invalid material data." });
 
             try
             {
@@ -94,11 +94,11 @@ namespace Lssctc.ProgramManagement.Materials.Controllers
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(ex.Message);
+                return NotFound(new { Message = ex.Message });
             }
             catch (Exception)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "An unexpected error occurred." });
             }
         }
 
@@ -112,15 +112,15 @@ namespace Lssctc.ProgramManagement.Materials.Controllers
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(ex.Message);
+                return NotFound(new { Message = ex.Message });
             }
             catch (InvalidOperationException ex)
             {
-                return BadRequest(ex.Message);
+                return BadRequest(new { Message = ex.Message });
             }
             catch (Exception)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "An unexpected error occurred." });
             }
         }
 
@@ -134,19 +134,19 @@ namespace Lssctc.ProgramManagement.Materials.Controllers
             try
             {
                 await _materialsService.AddMaterialToActivityAsync(activityId, materialId);
-                return Ok("Material successfully added to activity.");
+                return Ok(new { Message = "Material successfully added to activity." });
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(ex.Message);
+                return NotFound(new { Message = ex.Message });
             }
             catch (InvalidOperationException ex)
             {
-                return BadRequest(ex.Message);
+                return BadRequest(new { Message = ex.Message });
             }
             catch (Exception)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "An unexpected error occurred." });
             }
         }
 
@@ -160,15 +160,15 @@ namespace Lssctc.ProgramManagement.Materials.Controllers
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(ex.Message);
+                return NotFound(new { Message = ex.Message });
             }
             catch (InvalidOperationException ex)
             {
-                return BadRequest(ex.Message);
+                return BadRequest(new { Message = ex.Message });
             }
             catch (Exception)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "An unexpected error occurred." });
             }
         }
 
@@ -182,11 +182,11 @@ namespace Lssctc.ProgramManagement.Materials.Controllers
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(ex.Message);
+                return NotFound(new { Message = ex.Message });
             }
             catch (Exception)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "An unexpected error occurred." });
             }
         }
 

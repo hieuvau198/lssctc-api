@@ -32,7 +32,7 @@ namespace Lssctc.ProgramManagement.Activities.Controllers
             }
             catch (Exception)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "An unexpected error occurred." });
             }
         }
 
@@ -47,7 +47,7 @@ namespace Lssctc.ProgramManagement.Activities.Controllers
             }
             catch (Exception)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "An unexpected error occurred." });
             }
         }
 
@@ -60,13 +60,13 @@ namespace Lssctc.ProgramManagement.Activities.Controllers
                 var activity = await _activitiesService.GetActivityByIdAsync(id);
                 if (activity == null)
                 {
-                    return NotFound();
+                    return NotFound(new { Message = "Activity not found." });
                 }
                 return Ok(activity);
             }
             catch (Exception)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "An unexpected error occurred." });
             }
         }
 
@@ -76,7 +76,7 @@ namespace Lssctc.ProgramManagement.Activities.Controllers
         {
             if (createDto == null)
             {
-                return BadRequest();
+                return BadRequest(new { Message = "Invalid activity data." });
             }
 
             try
@@ -86,7 +86,7 @@ namespace Lssctc.ProgramManagement.Activities.Controllers
             }
             catch (Exception)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "An unexpected error occurred." });
             }
         }
 
@@ -96,7 +96,7 @@ namespace Lssctc.ProgramManagement.Activities.Controllers
         {
             if (updateDto == null)
             {
-                return BadRequest();
+                return BadRequest(new { Message = "Invalid activity data." });
             }
 
             try
@@ -106,11 +106,15 @@ namespace Lssctc.ProgramManagement.Activities.Controllers
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(ex.Message);
+                return NotFound(new { Message = ex.Message });
+            }
+            catch (InvalidOperationException ex) // Added for lock check
+            {
+                return BadRequest(new { Message = ex.Message });
             }
             catch (Exception)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "An unexpected error occurred." });
             }
         }
 
@@ -125,15 +129,15 @@ namespace Lssctc.ProgramManagement.Activities.Controllers
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(ex.Message);
+                return NotFound(new { Message = ex.Message });
             }
             catch (InvalidOperationException ex)
             {
-                return BadRequest(ex.Message);
+                return BadRequest(new { Message = ex.Message });
             }
             catch (Exception)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "An unexpected error occurred." });
             }
         }
 
@@ -152,7 +156,7 @@ namespace Lssctc.ProgramManagement.Activities.Controllers
             }
             catch (Exception)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "An unexpected error occurred." });
             }
         }
 
@@ -167,15 +171,15 @@ namespace Lssctc.ProgramManagement.Activities.Controllers
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(ex.Message);
+                return NotFound(new { Message = ex.Message });
             }
             catch (InvalidOperationException ex)
             {
-                return BadRequest(ex.Message);
+                return BadRequest(new { Message = ex.Message });
             }
             catch (Exception)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "An unexpected error occurred." });
             }
         }
 
@@ -190,11 +194,15 @@ namespace Lssctc.ProgramManagement.Activities.Controllers
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(ex.Message);
+                return NotFound(new { Message = ex.Message });
+            }
+            catch (InvalidOperationException ex) // Added for lock check
+            {
+                return BadRequest(new { Message = ex.Message });
             }
             catch (Exception)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "An unexpected error occurred." });
             }
         }
 
@@ -209,15 +217,19 @@ namespace Lssctc.ProgramManagement.Activities.Controllers
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(ex.Message);
+                return NotFound(new { Message = ex.Message });
             }
             catch (ArgumentOutOfRangeException ex)
             {
-                return BadRequest(ex.Message);
+                return BadRequest(new { Message = ex.Message });
+            }
+            catch (InvalidOperationException ex) // Added for lock check
+            {
+                return BadRequest(new { Message = ex.Message });
             }
             catch (Exception)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "An unexpected error occurred." });
             }
         }
 
