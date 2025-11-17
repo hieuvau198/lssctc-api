@@ -1,6 +1,7 @@
 ﻿using Lssctc.ProgramManagement.Sections.Dtos;
 using Lssctc.Share.Common;
 using Lssctc.Share.Entities;
+using Lssctc.Share.Enums;
 using Lssctc.Share.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
@@ -74,6 +75,13 @@ namespace Lssctc.ProgramManagement.Sections.Services
                 throw new KeyNotFoundException($"Section with ID {id} not found.");
             }
 
+            // --- ADDED LOGIC (BR 2) ---
+            if (await IsSectionLockedAsync(id))
+            {
+                throw new InvalidOperationException("Cannot update section details. It is part of a course that is already in progress or completed.");
+            }
+            // --- END ADDED LOGIC ---
+
             section.SectionTitle = updateDto.SectionTitle!.Trim();
             section.SectionDescription = string.IsNullOrWhiteSpace(updateDto.SectionDescription) ? null : updateDto.SectionDescription.Trim();
             section.EstimatedDurationMinutes = updateDto.EstimatedDurationMinutes!.Value;
@@ -101,7 +109,15 @@ namespace Lssctc.ProgramManagement.Sections.Services
             // Check if section is associated with any courses
             if (section.CourseSections != null && section.CourseSections.Any())
             {
-                throw new InvalidOperationException("Cannot delete section associated with courses.");
+                // --- MODIFIED LOGIC (BR 2) ---
+                // Also check if any of those courses are locked
+                if (await IsSectionLockedAsync(id))
+                {
+                    throw new InvalidOperationException("Cannot delete section. It is part of a course that is already in progress or completed.");
+                }
+                // --- END MODIFIED LOGIC ---
+
+                throw new InvalidOperationException("Cannot delete section associated with courses. Please remove it from all courses first.");
             }
 
             section.IsDeleted = true;
@@ -130,6 +146,13 @@ namespace Lssctc.ProgramManagement.Sections.Services
 
         public async Task AddSectionToCourseAsync(int courseId, int sectionId)
         {
+            // --- ADDED LOGIC (BR 1) ---
+            if (await IsCourseLockedAsync(courseId))
+            {
+                throw new InvalidOperationException("Cannot add sections to this course. It is already in use by an active class.");
+            }
+            // --- END ADDED LOGIC ---
+
             // Verify course exists
             var course = await _uow.CourseRepository.GetByIdAsync(courseId);
             if (course == null || course.IsDeleted == true)
@@ -174,6 +197,13 @@ namespace Lssctc.ProgramManagement.Sections.Services
 
         public async Task RemoveSectionFromCourseAsync(int courseId, int sectionId)
         {
+            // --- ADDED LOGIC (BR 1) ---
+            if (await IsCourseLockedAsync(courseId))
+            {
+                throw new InvalidOperationException("Cannot remove sections from this course. It is already in use by an active class.");
+            }
+            // --- END ADDED LOGIC ---
+
             var courseSection = await _uow.CourseSectionRepository
                 .GetAllAsQueryable()
                 .Where(cs => cs.CourseId == courseId && cs.SectionId == sectionId)
@@ -193,6 +223,13 @@ namespace Lssctc.ProgramManagement.Sections.Services
 
         public async Task UpdateCourseSectionOrderAsync(int courseId, int sectionId, int newOrder)
         {
+            // --- ADDED LOGIC (BR 1) ---
+            if (await IsCourseLockedAsync(courseId))
+            {
+                throw new InvalidOperationException("Cannot re-order sections for this course. It is already in use by an active class.");
+            }
+            // --- END ADDED LOGIC ---
+
             if (newOrder < 1)
             {
                 throw new ArgumentException("Section order must be greater than 0.", nameof(newOrder));
@@ -253,6 +290,64 @@ namespace Lssctc.ProgramManagement.Sections.Services
             }
 
             await _uow.SaveChangesAsync();
+        }
+
+        #endregion
+
+        #region --- ADDED HELPER METHODS ---
+
+        /// <summary>
+        /// Checks if a course is "locked" (i.e., tied to a class that is InProgress, Completed, or Cancelled).
+        /// </summary>
+        private async Task<bool> IsCourseLockedAsync(int courseId)
+        {
+            var lockedStatuses = new[] {
+                (int)ClassStatusEnum.Inprogress,
+                (int)ClassStatusEnum.Completed,
+                (int)ClassStatusEnum.Cancelled
+            };
+
+            // A course is locked if it's part of a ProgramCourse
+            // that is used by any Class with a locked status.
+            bool isLocked = await _uow.ClassRepository
+                .GetAllAsQueryable()
+                .AnyAsync(c => c.ProgramCourse.CourseId == courseId &&
+                               c.Status.HasValue &&
+                               lockedStatuses.Contains(c.Status.Value));
+            return isLocked;
+        }
+
+        /// <summary>
+        /// Checks if a specific section is "locked" by being part of any locked course.
+        /// </summary>
+        private async Task<bool> IsSectionLockedAsync(int sectionId)
+        {
+            var lockedStatuses = new[] {
+                (int)ClassStatusEnum.Inprogress,
+                (int)ClassStatusEnum.Completed,
+                (int)ClassStatusEnum.Cancelled
+            };
+
+            // Find all CourseIDs this Section is linked to
+            var courseIds = await _uow.CourseSectionRepository
+                .GetAllAsQueryable()
+                .Where(cs => cs.SectionId == sectionId)
+                .Select(cs => cs.CourseId)
+                .Distinct()
+                .ToListAsync();
+
+            if (!courseIds.Any())
+            {
+                return false; // Section isn't used by any course, so it's not locked.
+            }
+
+            // Check if ANY of those courses are linked to an active class
+            bool isLocked = await _uow.ClassRepository
+                .GetAllAsQueryable()
+                .AnyAsync(c => courseIds.Contains(c.ProgramCourse.CourseId) &&
+                               c.Status.HasValue &&
+                               lockedStatuses.Contains(c.Status.Value));
+            return isLocked;
         }
 
         #endregion

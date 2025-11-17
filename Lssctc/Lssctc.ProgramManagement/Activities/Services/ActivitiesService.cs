@@ -1,7 +1,7 @@
 ﻿using Lssctc.ProgramManagement.Activities.Dtos;
 using Lssctc.Share.Common;
 using Lssctc.Share.Entities;
-using Lssctc.Share.Enums;
+using Lssctc.Share.Enums; // <-- ADDED
 using Lssctc.Share.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
@@ -77,6 +77,13 @@ namespace Lssctc.ProgramManagement.Activities.Services
                 throw new KeyNotFoundException($"Activity with ID {id} not found.");
             }
 
+            // --- ADDED LOGIC (BR 2) ---
+            if (await IsActivityLockedAsync(id))
+            {
+                throw new InvalidOperationException("Cannot update activity details. It is part of a course that is already in progress or completed.");
+            }
+            // --- END ADDED LOGIC ---
+
             activity.ActivityTitle = updateDto.ActivityTitle!.Trim();
             activity.ActivityDescription = string.IsNullOrWhiteSpace(updateDto.ActivityDescription)
                 ? null
@@ -105,9 +112,17 @@ namespace Lssctc.ProgramManagement.Activities.Services
                 throw new KeyNotFoundException($"Activity with ID {id} not found.");
             }
 
+            // --- ADDED LOGIC (BR 2) ---
+            // Check if this activity is part of any "locked" section
+            if (await IsActivityLockedAsync(id))
+            {
+                throw new InvalidOperationException("Cannot delete activity. It is part of a course that is already in progress or completed.");
+            }
+            // --- END ADDED LOGIC ---
+
             if (activity.SectionActivities != null && activity.SectionActivities.Any())
             {
-                throw new InvalidOperationException("Cannot delete activity associated with sections.");
+                throw new InvalidOperationException("Cannot delete activity associated with sections. Please remove it from all sections first.");
             }
 
             activity.IsDeleted = true;
@@ -132,6 +147,13 @@ namespace Lssctc.ProgramManagement.Activities.Services
 
         public async Task AddActivityToSectionAsync(int sectionId, int activityId)
         {
+            // --- ADDED LOGIC (BR 1) ---
+            if (await IsSectionLockedAsync(sectionId))
+            {
+                throw new InvalidOperationException("Cannot add activities to this section. It is part of a course that is already in progress or completed.");
+            }
+            // --- END ADDED LOGIC ---
+
             var section = await _uow.SectionRepository.GetByIdAsync(sectionId);
             if (section == null)
                 throw new KeyNotFoundException($"Section with ID {sectionId} not found.");
@@ -164,6 +186,13 @@ namespace Lssctc.ProgramManagement.Activities.Services
 
         public async Task RemoveActivityFromSectionAsync(int sectionId, int activityId)
         {
+            // --- ADDED LOGIC (BR 1) ---
+            if (await IsSectionLockedAsync(sectionId))
+            {
+                throw new InvalidOperationException("Cannot remove activities from this section. It is part of a course that is already in progress or completed.");
+            }
+            // --- END ADDED LOGIC ---
+
             var sectionActivity = await _uow.SectionActivityRepository
                 .GetAllAsQueryable()
                 .Where(sa => sa.SectionId == sectionId && sa.ActivityId == activityId)
@@ -178,6 +207,13 @@ namespace Lssctc.ProgramManagement.Activities.Services
 
         public async Task UpdateSectionActivityOrderAsync(int sectionId, int activityId, int newOrder)
         {
+            // --- ADDED LOGIC (BR 1) ---
+            if (await IsSectionLockedAsync(sectionId))
+            {
+                throw new InvalidOperationException("Cannot re-order activities in this section. It is part of a course that is already in progress or completed.");
+            }
+            // --- END ADDED LOGIC ---
+
             var current = await _uow.SectionActivityRepository
                 .GetAllAsQueryable()
                 .Where(sa => sa.SectionId == sectionId && sa.ActivityId == activityId)
@@ -227,7 +263,7 @@ namespace Lssctc.ProgramManagement.Activities.Services
             var sectionActivities = await _uow.SectionActivityRepository
                 .GetAllAsQueryable()
                 .Where(sa => sa.SectionId == sectionId && sa.ActivityOrder >= fromOrder)
-                .OrderByDescending(sa => sa.ActivityOrder) 
+                .OrderByDescending(sa => sa.ActivityOrder)
                 .ToListAsync();
 
             foreach (var sa in sectionActivities)
@@ -248,6 +284,91 @@ namespace Lssctc.ProgramManagement.Activities.Services
 
             return maxOrder + 1;
         }
+        #endregion
+
+        #region --- ADDED HELPER METHODS ---
+
+        /// <summary>
+        /// Checks if a course is "locked" (i.e., tied to a class that is InProgress, Completed, or Cancelled).
+        /// </summary>
+        private async Task<bool> IsCourseLockedAsync(int courseId)
+        {
+            var lockedStatuses = new[] {
+                (int)ClassStatusEnum.Inprogress,
+                (int)ClassStatusEnum.Completed,
+                (int)ClassStatusEnum.Cancelled
+            };
+
+            // A course is locked if it's part of a ProgramCourse
+            // that is used by any Class with a locked status.
+            bool isLocked = await _uow.ClassRepository
+                .GetAllAsQueryable()
+                .AnyAsync(c => c.ProgramCourse.CourseId == courseId &&
+                               c.Status.HasValue &&
+                               lockedStatuses.Contains(c.Status.Value));
+            return isLocked;
+        }
+
+        /// <summary>
+        /// Checks if a specific section is "locked" by being part of any locked course.
+        /// </summary>
+        private async Task<bool> IsSectionLockedAsync(int sectionId)
+        {
+            // Find all CourseIDs this Section is linked to
+            var courseIds = await _uow.CourseSectionRepository
+                .GetAllAsQueryable()
+                .Where(cs => cs.SectionId == sectionId)
+                .Select(cs => cs.CourseId)
+                .Distinct()
+                .ToListAsync();
+
+            if (!courseIds.Any())
+            {
+                return false; // Section isn't used by any course, so it's not locked.
+            }
+
+            // Check if ANY of those courses are locked
+            foreach (var courseId in courseIds)
+            {
+                if (await IsCourseLockedAsync(courseId))
+                {
+                    return true; // Found a lock
+                }
+            }
+
+            return false; // No locks found
+        }
+
+        /// <summary>
+        /// Checks if a specific activity is "locked" by being part of any locked section.
+        /// </summary>
+        private async Task<bool> IsActivityLockedAsync(int activityId)
+        {
+            // Find all SectionIDs this Activity is linked to
+            var sectionIds = await _uow.SectionActivityRepository
+                .GetAllAsQueryable()
+                .Where(sa => sa.ActivityId == activityId)
+                .Select(sa => sa.SectionId)
+                .Distinct()
+                .ToListAsync();
+
+            if (!sectionIds.Any())
+            {
+                return false; // Activity isn't used by any section, so it's not locked.
+            }
+
+            // Check if ANY of those sections are locked
+            foreach (var sectionId in sectionIds)
+            {
+                if (await IsSectionLockedAsync(sectionId))
+                {
+                    return true; // Found a lock
+                }
+            }
+
+            return false; // No locks found
+        }
+
         #endregion
 
         #region Mapping

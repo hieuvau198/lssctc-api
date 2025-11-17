@@ -94,7 +94,22 @@ namespace Lssctc.ProgramManagement.Materials.Services
                 throw new KeyNotFoundException($"Material with ID {id} not found.");
 
             if (material.ActivityMaterials.Any())
-                throw new InvalidOperationException("Cannot delete material linked to activities.");
+            {
+                // --- ADDED LOGIC ---
+                // Check if any linked activities are part of a locked course
+                var linkedActivityIds = material.ActivityMaterials.Select(am => am.ActivityId).ToList();
+                foreach (var activityId in linkedActivityIds)
+                {
+                    if (await IsActivityLockedAsync(activityId))
+                    {
+                        throw new InvalidOperationException("Cannot delete material. It is assigned to an activity that is part of a course already in use.");
+                    }
+                }
+                // --- END ADDED LOGIC ---
+
+                // If not locked, but still linked, throw original error
+                throw new InvalidOperationException("Cannot delete material linked to activities. Please remove it from all activities first.");
+            }
 
             await _uow.LearningMaterialRepository.DeleteAsync(material);
             await _uow.SaveChangesAsync();
@@ -117,6 +132,13 @@ namespace Lssctc.ProgramManagement.Materials.Services
 
         public async Task AddMaterialToActivityAsync(int activityId, int materialId)
         {
+            // --- ADDED LOGIC (BR 1) ---
+            if (await IsActivityLockedAsync(activityId))
+            {
+                throw new InvalidOperationException("Cannot add material. This activity is part of a course that is already in use.");
+            }
+            // --- END ADDED LOGIC ---
+
             // Validate both entities
             var activity = await _uow.ActivityRepository
                 .GetAllAsQueryable()
@@ -167,6 +189,13 @@ namespace Lssctc.ProgramManagement.Materials.Services
 
         public async Task RemoveMaterialFromActivityAsync(int activityId, int materialId)
         {
+            // --- ADDED LOGIC (BR 1) ---
+            if (await IsActivityLockedAsync(activityId))
+            {
+                throw new InvalidOperationException("Cannot remove material. This activity is part of a course that is already in use.");
+            }
+            // --- END ADDED LOGIC ---
+
             var link = await _uow.ActivityMaterialRepository
                 .GetAllAsQueryable()
                 .FirstOrDefaultAsync(am => am.ActivityId == activityId && am.LearningMaterialId == materialId);
@@ -176,6 +205,71 @@ namespace Lssctc.ProgramManagement.Materials.Services
 
             await _uow.ActivityMaterialRepository.DeleteAsync(link);
             await _uow.SaveChangesAsync();
+        }
+
+        #endregion
+
+        #region --- ADDED HELPER METHODS ---
+
+        /// <summary>
+        /// Checks if a course is "locked" (i.e., tied to a class that is InProgress, Completed, or Cancelled).
+        /// </summary>
+        private async Task<bool> IsCourseLockedAsync(int courseId)
+        {
+            var lockedStatuses = new[] {
+                (int)ClassStatusEnum.Inprogress,
+                (int)ClassStatusEnum.Completed,
+                (int)ClassStatusEnum.Cancelled
+            };
+
+            bool isLocked = await _uow.ClassRepository
+                .GetAllAsQueryable()
+                .AnyAsync(c => c.ProgramCourse.CourseId == courseId &&
+                               c.Status.HasValue &&
+                               lockedStatuses.Contains(c.Status.Value));
+            return isLocked;
+        }
+
+        /// <summary>
+        /// Checks if a specific section is "locked" by being part of any locked course.
+        /// </summary>
+        private async Task<bool> IsSectionLockedAsync(int sectionId)
+        {
+            var courseIds = await _uow.CourseSectionRepository
+                .GetAllAsQueryable()
+                .Where(cs => cs.SectionId == sectionId)
+                .Select(cs => cs.CourseId)
+                .Distinct()
+                .ToListAsync();
+
+            if (!courseIds.Any()) return false;
+
+            foreach (var courseId in courseIds)
+            {
+                if (await IsCourseLockedAsync(courseId)) return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Checks if a specific activity is "locked" by being part of any locked section.
+        /// </summary>
+        private async Task<bool> IsActivityLockedAsync(int activityId)
+        {
+            var sectionIds = await _uow.SectionActivityRepository
+                .GetAllAsQueryable()
+                .Where(sa => sa.ActivityId == activityId)
+                .Select(sa => sa.SectionId)
+                .Distinct()
+                .ToListAsync();
+
+            if (!sectionIds.Any()) return false;
+
+            foreach (var sectionId in sectionIds)
+            {
+                if (await IsSectionLockedAsync(sectionId)) return true;
+            }
+            return false;
         }
 
         #endregion

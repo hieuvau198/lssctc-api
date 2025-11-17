@@ -114,8 +114,6 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
             var entity = await _uow.QuizRepository.GetByIdAsync(id);
             if (entity == null) return false;
 
-          
-
             var usedInActivity = await _uow.ActivityQuizRepository.ExistsAsync(aq => aq.QuizId == id);
             if (usedInActivity)
                 throw new ValidationException("Cannot delete quiz that is used in an activity.");
@@ -492,21 +490,18 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
             return question.Id;
         }
 
-        // Tạo Quiz kèm Questions và Options cùng một lúc
         public async Task<int> CreateQuizWithQuestions(CreateQuizWithQuestionsDto dto)
         {
             if (dto == null) throw new ValidationException("Body is required.");
 
             try
             {
-                // Validate questions list
                 if (dto.Questions == null || dto.Questions.Count == 0)
                     throw new ValidationException("At least one question is required.");
 
                 if (dto.Questions.Count > 100)
                     throw new ValidationException("A quiz cannot contain more than 100 questions.");
 
-                // Validate all questions BEFORE creating quiz
                 var totalScore = 0m;
                 int questionIndex = 0;
                 
@@ -706,28 +701,23 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
         {
             if (dto == null) throw new ValidationException("Body is required.");
 
-            // Validate quiz exists
             var quiz = await _uow.QuizRepository.GetByIdAsync(dto.QuizId);
             if (quiz == null)
                 throw new KeyNotFoundException($"Quiz with ID {dto.QuizId} not found.");
 
-            // Validate activity exists and is not deleted
             var activity = await _uow.ActivityRepository.GetByIdAsync(dto.ActivityId);
             if (activity == null || activity.IsDeleted == true)
                 throw new KeyNotFoundException($"Activity with ID {dto.ActivityId} not found.");
 
-            // Validate activity type is Quiz (type = 2)
             if (activity.ActivityType != 2)
                 throw new ValidationException("Activity type must be Quiz to add a quiz.");
 
-            // Check if quiz is already assigned to this activity
             var alreadyExists = await _uow.ActivityQuizRepository
                 .ExistsAsync(aq => aq.QuizId == dto.QuizId && aq.ActivityId == dto.ActivityId);
 
             if (alreadyExists)
                 throw new ValidationException("This quiz is already assigned to this activity.");
 
-            // Create ActivityQuiz using Quiz's name and description
             var activityQuiz = new ActivityQuiz
             {
                 QuizId = dto.QuizId,
@@ -744,12 +734,10 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
 
         public async Task<List<QuizOnlyDto>> GetQuizzesByActivityId(int activityId)
         {
-            // Validate activity exists
             var activity = await _uow.ActivityRepository.GetByIdAsync(activityId);
             if (activity == null || activity.IsDeleted == true)
                 throw new KeyNotFoundException($"Activity with ID {activityId} not found.");
 
-            // Get all quizzes assigned to this activity
             var quizzes = await _uow.ActivityQuizRepository
                 .GetAllAsQueryable()
                 .Where(aq => aq.ActivityId == activityId)
@@ -767,20 +755,12 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
             return quizzes;
         }
 
-
-        // Helper method to truncate text for error messages
         private string TruncateText(string text, int maxLength)
         {
             if (string.IsNullOrEmpty(text)) return string.Empty;
             return text.Length <= maxLength ? text : text.Substring(0, maxLength) + "...";
         }
 
-        /// <summary>
-        /// Calculate option score based on question type.
-        /// For single choice: option score = question score (correct option gets full score)
-        /// For multiple choice: option score = question score / number of correct options (divided equally)
-        /// Incorrect options always get 0 score.
-        /// </summary>
         private decimal CalculateOptionScore(decimal questionScore, bool isMultipleAnswers, bool isCorrectOption, int correctOptionsCount)
         {
             if (!isCorrectOption)
@@ -788,12 +768,10 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
 
             if (isMultipleAnswers)
             {
-                // Multiple choice: divide score evenly among correct options
                 return Math.Round(questionScore / correctOptionsCount, 2, MidpointRounding.AwayFromZero);
             }
             else
             {
-                // Single choice: correct option gets full score
                 return questionScore;
             }
         }
@@ -804,22 +782,18 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
 
             try
             {
-                // Get the quiz
                 var quiz = await _uow.QuizRepository.GetByIdAsync(quizId);
                 if (quiz == null)
                     throw new KeyNotFoundException($"Quiz with ID {quizId} not found.");
 
-                // Check if quiz is already in use by trainees
                 await CheckQuizUsageAsync(quizId);
 
-                // Validate questions list
                 if (dto.Questions == null || dto.Questions.Count == 0)
                     throw new ValidationException("At least one question is required.");
 
                 if (dto.Questions.Count > 100)
                     throw new ValidationException("A quiz cannot contain more than 100 questions.");
 
-                // Validate all questions BEFORE updating
                 var totalScore = 0m;
                 int questionIndex = 0;
 
@@ -827,11 +801,9 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
                 {
                     questionIndex++;
 
-                    // Validate question name
                     if (string.IsNullOrWhiteSpace(questionDto.Name))
                         throw new ValidationException($"Question #{questionIndex}: Name cannot be empty.");
 
-                    // Normalize FIRST, then validate length
                     var normalizedName = string.Join(' ', questionDto.Name.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries));
 
                     if (normalizedName.Length > 500)
@@ -842,7 +814,6 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
                             $"Please shorten the question text.");
                     }
 
-                    // Validate options count
                     if (questionDto.Options == null || questionDto.Options.Count == 0)
                         throw new ValidationException($"Question #{questionIndex} ('{TruncateText(normalizedName, 50)}'): Must have at least one option.");
 
@@ -852,16 +823,13 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
                     if (questionDto.Options.Count > 20)
                         throw new ValidationException($"Question #{questionIndex} ('{TruncateText(normalizedName, 50)}'): Cannot have more than 20 answer options.");
 
-                    // At least one correct option
                     var correctCount = questionDto.Options.Count(o => o.IsCorrect);
                     if (correctCount == 0)
                         throw new ValidationException($"Question #{questionIndex} ('{TruncateText(normalizedName, 50)}'): Must have at least one correct option.");
 
-                    // Single choice question: chỉ được có 1 option đúng
                     if (!questionDto.IsMultipleAnswers && correctCount > 1)
                         throw new ValidationException($"Question #{questionIndex} ('{TruncateText(normalizedName, 50)}'): Single choice question cannot have more than one correct option.");
 
-                    // Validate each option
                     int optionIndex = 0;
                     foreach (var opt in questionDto.Options)
                     {
