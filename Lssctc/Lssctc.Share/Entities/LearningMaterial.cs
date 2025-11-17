@@ -16,4 +16,6 @@ public partial class LearningMaterial
     public string MaterialUrl { get; set; } = null!;
 
     public virtual ICollection<ActivityMaterial> ActivityMaterials { get; set; } = new List<ActivityMaterial>();
+
+    public virtual ICollection<MaterialAuthor> MaterialAuthors { get; set; } = new List<MaterialAuthor>();
 }

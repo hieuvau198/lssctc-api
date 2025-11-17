@@ -185,6 +185,15 @@ CREATE TABLE [dbo].[learning_materials] (
     [material_url] NVARCHAR(1000) NOT NULL
 );
 
+CREATE TABLE [dbo].[material_authors] (
+    [id] INT IDENTITY(1,1) PRIMARY KEY,
+    [instructor_id] INT NOT NULL,
+    [material_id] INT NOT NULL,
+
+    FOREIGN KEY ([instructor_id]) REFERENCES [dbo].[instructors]([id]),
+    FOREIGN KEY ([material_id]) REFERENCES [dbo].[learning_materials]([id])
+);
+
 CREATE TABLE [dbo].[section_activities] (
     [id] INT IDENTITY(1,1) PRIMARY KEY,
     [section_id] INT NOT NULL,
@@ -219,6 +228,15 @@ CREATE TABLE [dbo].[quizzes] (
     [total_score] DECIMAL(5,2),
     [description] NVARCHAR(1000)
 ); 
+
+CREATE TABLE [dbo].[quiz_authors] (
+    [id] INT IDENTITY(1,1) PRIMARY KEY,
+    [instructor_id] INT NOT NULL,
+    [quiz_id] INT NOT NULL,
+
+    FOREIGN KEY ([instructor_id]) REFERENCES [dbo].[instructors]([id]),
+    FOREIGN KEY ([quiz_id]) REFERENCES [dbo].[quizzes]([id])
+);
 
 CREATE TABLE [dbo].[quiz_questions] (
     [id] INT IDENTITY(1,1) PRIMARY KEY,

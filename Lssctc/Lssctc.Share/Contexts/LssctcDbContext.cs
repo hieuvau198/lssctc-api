@@ -62,6 +62,8 @@ public partial class LssctcDbContext : DbContext
 
     public virtual DbSet<LearningProgress> LearningProgresses { get; set; }
 
+    public virtual DbSet<MaterialAuthor> MaterialAuthors { get; set; }
+
     public virtual DbSet<Practice> Practices { get; set; }
 
     public virtual DbSet<PracticeAttempt> PracticeAttempts { get; set; }
@@ -79,6 +81,8 @@ public partial class LssctcDbContext : DbContext
     public virtual DbSet<QuizAttemptAnswer> QuizAttemptAnswers { get; set; }
 
     public virtual DbSet<QuizAttemptQuestion> QuizAttemptQuestions { get; set; }
+
+    public virtual DbSet<QuizAuthor> QuizAuthors { get; set; }
 
     public virtual DbSet<QuizQuestion> QuizQuestions { get; set; }
 
@@ -106,6 +110,7 @@ public partial class LssctcDbContext : DbContext
 
     public virtual DbSet<User> Users { get; set; }
 
+    
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Activity>(entity =>
@@ -712,6 +717,27 @@ public partial class LssctcDbContext : DbContext
                 .HasConstraintName("FK__learning___enrol__49CEE3AF");
         });
 
+        modelBuilder.Entity<MaterialAuthor>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__material__3213E83F1417AC77");
+
+            entity.ToTable("material_authors");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.InstructorId).HasColumnName("instructor_id");
+            entity.Property(e => e.MaterialId).HasColumnName("material_id");
+
+            entity.HasOne(d => d.Instructor).WithMany(p => p.MaterialAuthors)
+                .HasForeignKey(d => d.InstructorId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__material___instr__02133CD2");
+
+            entity.HasOne(d => d.Material).WithMany(p => p.MaterialAuthors)
+                .HasForeignKey(d => d.MaterialId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__material___mater__0307610B");
+        });
+
         modelBuilder.Entity<Practice>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("PK__practice__3213E83FDA38D349");
@@ -993,6 +1019,27 @@ public partial class LssctcDbContext : DbContext
                 .HasForeignKey(d => d.QuizAttemptId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK__quiz_atte__quiz___6E0C4425");
+        });
+
+        modelBuilder.Entity<QuizAuthor>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__quiz_aut__3213E83FACE10714");
+
+            entity.ToTable("quiz_authors");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.InstructorId).HasColumnName("instructor_id");
+            entity.Property(e => e.QuizId).HasColumnName("quiz_id");
+
+            entity.HasOne(d => d.Instructor).WithMany(p => p.QuizAuthors)
+                .HasForeignKey(d => d.InstructorId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__quiz_auth__instr__7E42ABEE");
+
+            entity.HasOne(d => d.Quiz).WithMany(p => p.QuizAuthors)
+                .HasForeignKey(d => d.QuizId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__quiz_auth__quiz___7F36D027");
         });
 
         modelBuilder.Entity<QuizQuestion>(entity =>

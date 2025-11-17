@@ -20,4 +20,8 @@ public partial class Instructor
     public virtual User IdNavigation { get; set; } = null!;
 
     public virtual InstructorProfile? InstructorProfile { get; set; }
+
+    public virtual ICollection<MaterialAuthor> MaterialAuthors { get; set; } = new List<MaterialAuthor>();
+
+    public virtual ICollection<QuizAuthor> QuizAuthors { get; set; } = new List<QuizAuthor>();
 }
