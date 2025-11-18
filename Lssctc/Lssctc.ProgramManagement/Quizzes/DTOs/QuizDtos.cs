@@ -17,18 +17,6 @@ namespace Lssctc.ProgramManagement.Quizzes.DTOs
         public List<QuizQuestionDto> Questions { get; set; } = new();
     }
 
-    public class QuizDetailDto
-    {
-        public int Id { get; set; }
-        public string? Name { get; set; }
-        public decimal? PassScoreCriteria { get; set; }
-        public int? TimelimitMinute { get; set; }
-        public decimal? TotalScore { get; set; }
-        public string? Description { get; set; }
-
-        public List<QuizDetailQuestionDto> Questions { get; set; } = new();
-    }
-
     public class QuizOnlyDto
     {
         public int Id { get; set; }
@@ -66,8 +54,6 @@ namespace Lssctc.ProgramManagement.Quizzes.DTOs
         public string? Description { get; set; }
     }
 
-    public class UpdateQuizDto : CreateQuizDto { }
-
     #endregion
 
     #region Question DTOs
@@ -82,18 +68,6 @@ namespace Lssctc.ProgramManagement.Quizzes.DTOs
         public bool IsMultipleAnswers { get; set; }
 
         public List<QuizQuestionOptionDto> Options { get; set; } = new();
-    }
-
-    public class QuizDetailQuestionDto
-    {
-        public int Id { get; set; }
-        public int QuizId { get; set; }
-        public string Name { get; set; } = null!;
-        public decimal? QuestionScore { get; set; }
-        public string? Description { get; set; }
-        public bool IsMultipleAnswers { get; set; }
-
-        public List<QuizDetailQuestionOptionDto> Options { get; set; } = new();
     }
 
     public class QuizTraineeQuestionDto

@@ -33,21 +33,6 @@ namespace Lssctc.ProgramManagement.Quizzes.Controllers
             }
         }
 
-        [HttpGet("detail")]
-        [Authorize(Roles = "Admin, Instructor")]
-        public async Task<IActionResult> GetDetailQuizzes([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10)
-        {
-            try
-            {
-                var result = await _service.GetDetailQuizzes(pageIndex, pageSize);
-                return Ok(new { status = 200, message = "Get detail quizzes", data = result });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { status = 500, message = ex.Message, type = ex.GetType().Name });
-            }
-        }
-
         [HttpGet("{id}")]
         [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> GetQuizById(int id)
@@ -58,23 +43,6 @@ namespace Lssctc.ProgramManagement.Quizzes.Controllers
                 if (dto == null) 
                     return NotFound(new { status = 404, message = $"Quiz with ID {id} not found", type = "NotFound" });
                 return Ok(new { status = 200, message = "Get quiz", data = dto });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { status = 500, message = ex.Message, type = ex.GetType().Name });
-            }
-        }
-
-        [HttpGet("{id}/full")]
-        [Authorize(Roles = "Admin, Instructor")]
-        public async Task<IActionResult> GetQuizDetail(int id)
-        {
-            try
-            {
-                var dto = await _service.GetQuizDetail(id);
-                if (dto == null) 
-                    return NotFound(new { status = 404, message = $"Quiz detail with ID {id} not found", type = "NotFound" });
-                return Ok(new { status = 200, message = "Get quiz detail", data = dto });
             }
             catch (Exception ex)
             {
@@ -111,55 +79,6 @@ namespace Lssctc.ProgramManagement.Quizzes.Controllers
                 if (dto == null) 
                     return NotFound(new { status = 404, message = "No quiz found for this activity", type = "NotFound" });
                 return Ok(new { status = 200, message = "Get quiz for trainee by activity", data = dto });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new { status = 404, message = ex.Message, type = "NotFound" });
-            }
-            catch (ValidationException ex)
-            {
-                return BadRequest(new { status = 400, message = ex.Message, type = "ValidationException" });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { status = 500, message = ex.Message, type = ex.GetType().Name });
-            }
-        }
-
-        [HttpPost]
-        [Authorize(Roles = "Admin, Instructor")]
-        public async Task<IActionResult> CreateQuiz([FromBody] CreateQuizDto dto)
-        {
-            try
-            {
-                if (!ModelState.IsValid) 
-                    return BadRequest(new { status = 400, message = "Invalid model state", type = "ValidationException", errors = ModelState });
-                var id = await _service.CreateQuiz(dto);
-                return Ok(new { status = 200, message = "Create quiz successfully", data = new { id } });
-            }
-            catch (ValidationException ex)
-            {
-                return BadRequest(new { status = 400, message = ex.Message, type = "ValidationException" });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { status = 500, message = ex.Message, type = ex.GetType().Name });
-            }
-        }
-
-        [HttpPut("{id}")]
-        [Authorize(Roles = "Admin, Instructor")]
-        public async Task<IActionResult> UpdateQuiz(int id, [FromBody] UpdateQuizDto dto)
-        {
-            try
-            {
-                if (!ModelState.IsValid) 
-                    return BadRequest(new { status = 400, message = "Invalid model state", type = "ValidationException", errors = ModelState });
-                
-                var ok = await _service.UpdateQuizById(id, dto);
-                if (!ok) 
-                    return NotFound(new { status = 404, message = $"Quiz with ID {id} not found", type = "NotFound" });
-                return Ok(new { status = 200, message = "Update quiz successfully" });
             }
             catch (KeyNotFoundException ex)
             {
@@ -213,31 +132,6 @@ namespace Lssctc.ProgramManagement.Quizzes.Controllers
                 if (!ok) 
                     return NotFound(new { status = 404, message = $"Quiz with ID {id} not found", type = "NotFound" });
                 return Ok(new { status = 200, message = "Delete quiz successfully" });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new { status = 404, message = ex.Message, type = "NotFound" });
-            }
-            catch (ValidationException ex)
-            {
-                return BadRequest(new { status = 400, message = ex.Message, type = "ValidationException" });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { status = 500, message = ex.Message, type = ex.GetType().Name });
-            }
-        }
-
-        [HttpPost("{quizId}/questions")]
-        [Authorize(Roles = "Admin, Instructor")]
-        public async Task<IActionResult> CreateQuestionWithOptions(int quizId, [FromBody] CreateQuizQuestionWithOptionsDto dto)
-        {
-            try
-            {
-                if (!ModelState.IsValid) 
-                    return BadRequest(new { status = 400, message = "Invalid model state", type = "ValidationException", errors = ModelState });
-                var questionId = await _service.CreateQuestionWithOptionsByQuizId(quizId, dto);
-                return Ok(new { status = 200, message = "Create question with options successfully", data = new { questionId } });
             }
             catch (KeyNotFoundException ex)
             {
