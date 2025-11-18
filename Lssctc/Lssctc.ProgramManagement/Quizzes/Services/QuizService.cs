@@ -625,6 +625,11 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
 
         public async Task<bool> UpdateQuizWithQuestionsAsync(int quizId, UpdateQuizWithQuestionsDto dto)
         {
+            return await UpdateQuizWithQuestionsAsync(quizId, dto, instructorId: null);
+        }
+
+        public async Task<bool> UpdateQuizWithQuestionsAsync(int quizId, UpdateQuizWithQuestionsDto dto, int? instructorId)
+        {
             if (dto == null) throw new ValidationException("Body is required.");
 
             try
@@ -632,6 +637,15 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
                 var quiz = await _uow.QuizRepository.GetByIdAsync(quizId);
                 if (quiz == null)
                     throw new KeyNotFoundException($"Quiz with ID {quizId} not found.");
+
+                // If instructorId is provided and > 0, check if instructor is the author
+                if (instructorId.HasValue && instructorId.Value > 0)
+                {
+                    // Check if this instructor is the author of this quiz
+                    var isAuthor = await _uow.QuizAuthorRepository.ExistsAsync(qa => qa.QuizId == quizId && qa.InstructorId == instructorId.Value);
+                    if (!isAuthor)
+                        throw new KeyNotFoundException($"Quiz with ID {quizId} not found.");
+                }
 
                 await CheckQuizUsageAsync(quizId);
 

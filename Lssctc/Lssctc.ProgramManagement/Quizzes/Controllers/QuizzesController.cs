@@ -118,7 +118,14 @@ namespace Lssctc.ProgramManagement.Quizzes.Controllers
                 if (!ModelState.IsValid) 
                     return BadRequest(new { status = 400, message = "Invalid model state", type = "ValidationException", errors = ModelState });
                 
-                var ok = await _service.UpdateQuizWithQuestionsAsync(id, dto);
+                // Extract instructor ID from JWT claims if user is Instructor (not Admin)
+                int? instructorId = null;
+                if (User.IsInRole("Instructor"))
+                {
+                    instructorId = GetInstructorIdFromClaims();
+                }
+
+                var ok = await _service.UpdateQuizWithQuestionsAsync(id, dto, instructorId);
                 if (!ok) 
                     return NotFound(new { status = 404, message = $"Quiz with ID {id} not found", type = "NotFound" });
                 return Ok(new { status = 200, message = "Update quiz with questions successfully" });
