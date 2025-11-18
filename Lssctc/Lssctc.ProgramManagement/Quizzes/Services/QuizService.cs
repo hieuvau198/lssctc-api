@@ -20,8 +20,22 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
 
         public async Task<bool> DeleteQuizById(int id)
         {
+            return await DeleteQuizById(id, instructorId: null);
+        }
+
+        public async Task<bool> DeleteQuizById(int id, int? instructorId)
+        {
             var entity = await _uow.QuizRepository.GetByIdAsync(id);
             if (entity == null) return false;
+
+            // If instructorId is provided and > 0, check if instructor is the author
+            if (instructorId.HasValue && instructorId.Value > 0)
+            {
+                // Check if this instructor is the author of this quiz
+                var isAuthor = await _uow.QuizAuthorRepository.ExistsAsync(qa => qa.QuizId == id && qa.InstructorId == instructorId.Value);
+                if (!isAuthor)
+                    return false; // Not the author, return false (simulating not found)
+            }
 
             var usedInActivity = await _uow.ActivityQuizRepository.ExistsAsync(aq => aq.QuizId == id);
             if (usedInActivity)
@@ -45,14 +59,22 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
                 {
                    await _uow.QuizQuestionOptionRepository.DeleteAsync(option);
                 }
-
-
             }
 
-            //delte all questions
+            //delete all questions
             foreach (var question in questions)
             {
                 await _uow.QuizQuestionRepository.DeleteAsync(question);
+            }
+
+            // Delete QuizAuthor records
+            var quizAuthors = await _uow.QuizAuthorRepository.GetAllAsQueryable()
+                .Where(qa => qa.QuizId == id)
+                .ToListAsync();
+
+            foreach (var quizAuthor in quizAuthors)
+            {
+                await _uow.QuizAuthorRepository.DeleteAsync(quizAuthor);
             }
 
             await _uow.QuizRepository.DeleteAsync(entity);

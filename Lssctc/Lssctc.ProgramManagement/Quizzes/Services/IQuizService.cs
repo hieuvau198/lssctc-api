@@ -22,6 +22,7 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
 
         #region Manage
         Task<bool> DeleteQuizById(int id);
+        Task<bool> DeleteQuizById(int id, int? instructorId);
         Task<int> CreateQuizWithQuestions(CreateQuizWithQuestionsDto dto);
         Task<int> CreateQuizWithQuestions(CreateQuizWithQuestionsDto dto, int instructorId);
         Task<bool> UpdateQuizWithQuestionsAsync(int quizId, UpdateQuizWithQuestionsDto dto);

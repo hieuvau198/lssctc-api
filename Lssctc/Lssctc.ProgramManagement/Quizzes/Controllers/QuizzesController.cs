@@ -150,7 +150,14 @@ namespace Lssctc.ProgramManagement.Quizzes.Controllers
         {
             try
             {
-                var ok = await _service.DeleteQuizById(id);
+                // Extract instructor ID from JWT claims if user is Instructor (not Admin)
+                int? instructorId = null;
+                if (User.IsInRole("Instructor"))
+                {
+                    instructorId = GetInstructorIdFromClaims();
+                }
+
+                var ok = await _service.DeleteQuizById(id, instructorId);
                 if (!ok) 
                     return NotFound(new { status = 404, message = $"Quiz with ID {id} not found", type = "NotFound" });
                 return Ok(new { status = 200, message = "Delete quiz successfully" });
