@@ -33,7 +33,7 @@ namespace Lssctc.ProgramManagement.Courses.Dtos
         [Range(1, int.MaxValue, ErrorMessage = "Level ID must be a positive number.")]
         public int? LevelId { get; set; }
 
-        [Range(0, 10000, ErrorMessage = "Price must be between 0 and 10,000.")]
+        [Range(0, 1000000000, ErrorMessage = "Price must be between 0 and 1,000,000,000. Default currency is VND")]
         public decimal? Price { get; set; }
 
         [Required(ErrorMessage = "Duration in hours is required.")]
