@@ -34,5 +34,7 @@ namespace Lssctc.ProgramManagement.Sections.Services
 
         // Update course section order
         Task UpdateCourseSectionOrderAsync(int courseId, int sectionId, int newOrder);
+
+        Task<IEnumerable<SectionDto>> ImportSectionsFromExcelAsync(int courseId, IFormFile file);
     }
 }

@@ -1,9 +1,11 @@
-﻿using Lssctc.ProgramManagement.Sections.Dtos;
+﻿using ExcelDataReader;
+using Lssctc.ProgramManagement.Sections.Dtos;
 using Lssctc.Share.Common;
 using Lssctc.Share.Entities;
 using Lssctc.Share.Enums;
 using Lssctc.Share.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using System.Data;
 
 namespace Lssctc.ProgramManagement.Sections.Services
 {
@@ -292,6 +294,112 @@ namespace Lssctc.ProgramManagement.Sections.Services
             await _uow.SaveChangesAsync();
         }
 
+        #endregion
+
+        #region Import Sections
+        public async Task<IEnumerable<SectionDto>> ImportSectionsFromExcelAsync(int courseId, IFormFile file)
+        {
+            // 1. Validation: Check if course is locked (BR 1)
+            if (await IsCourseLockedAsync(courseId))
+            {
+                throw new InvalidOperationException("Cannot import sections. The course is currently in use by an active class.");
+            }
+
+            // 2. Validation: Verify course exists
+            var course = await _uow.CourseRepository.GetByIdAsync(courseId);
+            if (course == null || course.IsDeleted == true)
+            {
+                throw new KeyNotFoundException($"Course with ID {courseId} not found.");
+            }
+
+            // 3. Configure Encoding for ExcelDataReader (Required for .NET Core)
+            System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
+
+            var newSections = new List<Section>();
+
+            // 4. Read Excel File
+            using (var stream = file.OpenReadStream())
+            using (var reader = ExcelReaderFactory.CreateReader(stream))
+            {
+                // Read content as a DataSet
+                var result = reader.AsDataSet(new ExcelDataSetConfiguration()
+                {
+                    ConfigureDataTable = (_) => new ExcelDataTableConfiguration()
+                    {
+                        UseHeaderRow = true // Assumes the first row is "Title", "Description", etc.
+                    }
+                });
+
+                var dataTable = result.Tables[0]; // Get the first sheet
+
+                if (dataTable.Rows.Count == 0)
+                    throw new ArgumentException("The uploaded Excel file is empty.");
+
+                foreach (DataRow row in dataTable.Rows)
+                {
+                    // Safely extract values (Adjust column indexes 0, 1, 2 based on your Excel template)
+                    string title = row[0]?.ToString()?.Trim() ?? "";
+                    string description = row[1]?.ToString()?.Trim() ?? "";
+
+                    // Parse Duration (Default to 0 or skip if invalid)
+                    if (!int.TryParse(row[2]?.ToString(), out int duration))
+                    {
+                        duration = 60; // Default value if parsing fails
+                    }
+
+                    if (string.IsNullOrEmpty(title)) continue; // Skip rows without titles
+
+                    var section = new Section
+                    {
+                        SectionTitle = title,
+                        SectionDescription = string.IsNullOrEmpty(description) ? null : description,
+                        EstimatedDurationMinutes = duration,
+                        IsDeleted = false
+                    };
+
+                    newSections.Add(section);
+
+                    // Add to repository context
+                    await _uow.SectionRepository.CreateAsync(section);
+                }
+            }
+
+            if (!newSections.Any())
+            {
+                throw new ArgumentException("No valid sections found in the file.");
+            }
+
+            // 5. Save Sections First (To generate IDs)
+            await _uow.SaveChangesAsync();
+
+            // 6. Link to Course (Create CourseSection entities)
+
+            // Get current max order to append to the end
+            var currentMaxOrder = await _uow.CourseSectionRepository
+                .GetAllAsQueryable()
+                .Where(cs => cs.CourseId == courseId)
+                .MaxAsync(cs => (int?)cs.SectionOrder) ?? 0;
+
+            int orderCounter = 1;
+            foreach (var section in newSections)
+            {
+                var courseSection = new CourseSection
+                {
+                    CourseId = courseId,
+                    SectionId = section.Id, // This Id is now available after the first SaveChanges
+                    SectionOrder = currentMaxOrder + orderCounter
+                };
+
+                await _uow.CourseSectionRepository.CreateAsync(courseSection);
+                orderCounter++;
+            }
+
+            // 7. Save Links
+            await _uow.SaveChangesAsync();
+
+            // 8. Return Result
+            return newSections.Select(MapToDto);
+        }
         #endregion
 
         #region --- ADDED HELPER METHODS ---

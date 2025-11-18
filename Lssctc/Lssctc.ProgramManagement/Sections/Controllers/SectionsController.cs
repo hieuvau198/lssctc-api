@@ -2,7 +2,7 @@
 using Lssctc.ProgramManagement.Sections.Services;
 using Lssctc.Share.Common;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http; // Required for StatusCodes
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Lssctc.ProgramManagement.Sections.Controllers
@@ -188,5 +188,44 @@ namespace Lssctc.ProgramManagement.Sections.Controllers
         }
 
         #endregion
+
+        #region Import Sections
+        [HttpPost("course/{courseId}/import")]
+        [Authorize(Roles = "Admin, Instructor")]
+        public async Task<ActionResult<IEnumerable<SectionDto>>> ImportSections(int courseId, IFormFile file)
+        {
+            // Basic file validation
+            if (file == null || file.Length == 0)
+                return BadRequest(new { Message = "No file uploaded." });
+
+            var extension = Path.GetExtension(file.FileName).ToLower();
+            if (extension != ".xlsx" && extension != ".xls")
+                return BadRequest(new { Message = "Invalid file format. Please upload an Excel file (.xlsx or .xls)." });
+
+            try
+            {
+                var createdSections = await _sectionsService.ImportSectionsFromExcelAsync(courseId, file);
+                return Ok(createdSections);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { Message = ex.Message });
+            }
+            catch (InvalidOperationException ex) // For locked courses
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+            catch (ArgumentException ex) // For empty/invalid files
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                // Log the error details in a real app
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "An error occurred while processing the file: " + ex.Message });
+            }
+        }
+        #endregion
+
     }
 }
