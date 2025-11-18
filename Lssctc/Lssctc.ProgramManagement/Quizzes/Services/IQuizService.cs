@@ -12,6 +12,7 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
         // can only delete quiz if not assigned to any activity yet
         #region Gets
         Task<QuizDto?> GetQuizById(int id);
+        Task<QuizDto?> GetQuizById(int id, int? instructorId);
         Task<PagedResult<QuizOnlyDto>> GetQuizzes(int pageIndex, int pageSize, CancellationToken ct = default);
         Task<PagedResult<QuizOnlyDto>> GetQuizzes(int pageIndex, int pageSize, int? instructorId, CancellationToken ct = default);
         Task<QuizTraineeDetailDto?> GetQuizDetailForTrainee(int quizId, CancellationToken ct = default);

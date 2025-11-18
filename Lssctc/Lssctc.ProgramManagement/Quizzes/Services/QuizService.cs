@@ -170,6 +170,59 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
             return q;
         }
 
+        public async Task<QuizDto?> GetQuizById(int id, int? instructorId)
+        {
+            // If instructorId is provided and > 0, check if instructor is the author
+            IQueryable<Quiz> query = _uow.QuizRepository.GetAllAsQueryable();
+            
+            if (instructorId.HasValue && instructorId.Value > 0)
+            {
+                // Only allow instructor to see quiz they created
+                query = query.Where(q => q.Id == id && q.QuizAuthors.Any(qa => qa.InstructorId == instructorId.Value));
+            }
+            else
+            {
+                // If no instructor specified, just get by ID (for Admin)
+                query = query.Where(q => q.Id == id);
+            }
+
+            var q = await query
+                .Select(x => new QuizDto
+                {
+                    Id = x.Id,
+                    Name = x.Name,
+                    PassScoreCriteria = x.PassScoreCriteria,
+                    TimelimitMinute = x.TimelimitMinute,
+                    TotalScore = x.TotalScore,
+                    Description = x.Description,
+                    CreatedAt = x.CreatedAt,
+                    UpdatedAt = x.UpdatedAt,
+                    Questions = x.QuizQuestions.Select(qq => new QuizQuestionDto
+                    {
+                        Id = qq.Id,
+                        QuizId = qq.QuizId,
+                        Name = qq.Name,
+                        QuestionScore = qq.QuestionScore,
+                        Description = qq.Description,
+                        IsMultipleAnswers = qq.IsMultipleAnswers,
+                        Options = qq.QuizQuestionOptions.Select(o => new QuizQuestionOptionDto
+                        {
+                            Id = o.Id,
+                            QuizQuestionId = o.QuizQuestionId,
+                            Name = o.Name,
+                            Description = o.Description,
+                            IsCorrect = o.IsCorrect,
+                            Explanation = o.Explanation,
+                            DisplayOrder = o.DisplayOrder,
+                            OptionScore = o.OptionScore
+                        }).ToList()
+                    }).ToList()
+                })
+                .FirstOrDefaultAsync();
+
+            return q;
+        }
+
         public async Task<QuizTraineeDetailDto?> GetQuizDetailForTrainee(int quizId, CancellationToken ct = default)
         {
             // return quiz detail for trainee (no IsCorrect on options)

@@ -47,7 +47,14 @@ namespace Lssctc.ProgramManagement.Quizzes.Controllers
         {
             try
             {
-                var dto = await _service.GetQuizById(id);
+                // Extract instructor ID from JWT claims if user is Instructor (not Admin)
+                int? instructorId = null;
+                if (User.IsInRole("Instructor"))
+                {
+                    instructorId = GetInstructorIdFromClaims();
+                }
+
+                var dto = await _service.GetQuizById(id, instructorId);
                 if (dto == null) 
                     return NotFound(new { status = 404, message = $"Quiz with ID {id} not found", type = "NotFound" });
                 return Ok(new { status = 200, message = "Get quiz", data = dto });
