@@ -36,6 +36,7 @@ namespace Lssctc.Share.Interfaces
         IGenericRepository<QuizAttempt> QuizAttemptRepository { get; }
         IGenericRepository<QuizAttemptAnswer> QuizAttemptAnswerRepository { get; }
         IGenericRepository<QuizAttemptQuestion> QuizAttemptQuestionRepository { get; }
+        IGenericRepository<QuizAuthor> QuizAuthorRepository { get; }
         IGenericRepository<QuizQuestion> QuizQuestionRepository { get; }
         IGenericRepository<QuizQuestionOption> QuizQuestionOptionRepository { get; }
         IGenericRepository<Section> SectionRepository { get; }

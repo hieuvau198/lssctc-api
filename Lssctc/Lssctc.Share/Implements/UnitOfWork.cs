@@ -40,6 +40,7 @@ namespace Lssctc.Share.Implements
         private IGenericRepository<QuizAttempt>? _quizAttemptRepository;
         private IGenericRepository<QuizAttemptAnswer>? _quizAttemptAnswerRepository;
         private IGenericRepository<QuizAttemptQuestion>? _quizAttemptQuestionRepository;
+        private IGenericRepository<QuizAuthor>? _quizAuthorRepository;
         private IGenericRepository<QuizQuestion>? _quizQuestionRepository;
         private IGenericRepository<QuizQuestionOption>? _quizQuestionOptionRepository;
         private IGenericRepository<Section>? _sectionRepository;
@@ -154,6 +155,9 @@ namespace Lssctc.Share.Implements
 
         public IGenericRepository<QuizAttemptQuestion> QuizAttemptQuestionRepository =>
             _quizAttemptQuestionRepository ??= new GenericRepository<QuizAttemptQuestion>(_context);
+
+        public IGenericRepository<QuizAuthor> QuizAuthorRepository =>
+            _quizAuthorRepository ??= new GenericRepository<QuizAuthor>(_context);
 
         public IGenericRepository<QuizQuestion> QuizQuestionRepository =>
             _quizQuestionRepository ??= new GenericRepository<QuizQuestion>(_context);

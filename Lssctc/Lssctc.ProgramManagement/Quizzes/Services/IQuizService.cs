@@ -13,6 +13,7 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
         #region Gets
         Task<QuizDto?> GetQuizById(int id);
         Task<PagedResult<QuizOnlyDto>> GetQuizzes(int pageIndex, int pageSize, CancellationToken ct = default);
+        Task<PagedResult<QuizOnlyDto>> GetQuizzes(int pageIndex, int pageSize, int? instructorId, CancellationToken ct = default);
         Task<QuizTraineeDetailDto?> GetQuizDetailForTrainee(int quizId, CancellationToken ct = default);
         Task<QuizTraineeDetailDto?> GetQuizDetailForTraineeByActivityIdAsync(int activityId, CancellationToken ct = default);
         Task<QuizTraineeDetailDto?> GetQuizTraineeDetailBySectionQuizIdAsync(int sectionQuizId, CancellationToken ct = default);
@@ -21,6 +22,7 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
         #region Manage
         Task<bool> DeleteQuizById(int id);
         Task<int> CreateQuizWithQuestions(CreateQuizWithQuestionsDto dto);
+        Task<int> CreateQuizWithQuestions(CreateQuizWithQuestionsDto dto, int instructorId);
         Task<bool> UpdateQuizWithQuestionsAsync(int quizId, UpdateQuizWithQuestionsDto dto);
         Task<int> AddQuizToActivity(CreateActivityQuizDto dto);
         Task<List<QuizOnlyDto>> GetQuizzesByActivityId(int activityId);

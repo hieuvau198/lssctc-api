@@ -3,6 +3,7 @@ using Lssctc.ProgramManagement.Quizzes.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
+using System.Security.Claims;
 
 namespace Lssctc.ProgramManagement.Quizzes.Controllers
 {
@@ -24,7 +25,14 @@ namespace Lssctc.ProgramManagement.Quizzes.Controllers
         {
             try
             {
-                var result = await _service.GetQuizzes(pageIndex, pageSize);
+                // Extract instructor ID from JWT claims if user is Instructor (not Admin)
+                int? instructorId = null;
+                if (User.IsInRole("Instructor"))
+                {
+                    instructorId = GetInstructorIdFromClaims();
+                }
+                
+                var result = await _service.GetQuizzes(pageIndex, pageSize, instructorId);
                 return Ok(new { status = 200, message = "Get quizzes", data = result });
             }
             catch (Exception ex)
@@ -155,7 +163,11 @@ namespace Lssctc.ProgramManagement.Quizzes.Controllers
             {
                 if (!ModelState.IsValid) 
                     return BadRequest(new { status = 400, message = "Invalid model state", type = "ValidationException", errors = ModelState });
-                var quizId = await _service.CreateQuizWithQuestions(dto);
+                
+                // Extract instructor ID from JWT claims
+                var instructorId = GetInstructorIdFromClaims();
+                
+                var quizId = await _service.CreateQuizWithQuestions(dto, instructorId);
                 return Ok(new { status = 200, message = "Create quiz successfully", data = new { quizId } });
             }
             catch (KeyNotFoundException ex)
@@ -270,6 +282,19 @@ namespace Lssctc.ProgramManagement.Quizzes.Controllers
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
             }
+        }
+
+        private int GetInstructorIdFromClaims()
+        {
+            // Try to get instructorId claim first, otherwise use NameIdentifier
+            var instructorIdClaim = User.FindFirstValue("instructorId") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (int.TryParse(instructorIdClaim, out int instructorId))
+            {
+                return instructorId;
+            }
+
+            throw new UnauthorizedAccessException("Instructor ID claim is missing or invalid.");
         }
     }
 }

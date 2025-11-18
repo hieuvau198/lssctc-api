@@ -91,6 +91,45 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
             };
         }
 
+        public async Task<PagedResult<QuizOnlyDto>> GetQuizzes(int pageIndex, int pageSize, int? instructorId, CancellationToken ct = default)
+        {
+            if (pageIndex < 1) pageIndex = 1;
+            if (pageSize < 1) pageSize = 10;
+
+            // If instructorId is provided and > 0, filter quizzes by instructor
+            IQueryable<Quiz> query = _uow.QuizRepository.GetAllAsQueryable();
+            
+            if (instructorId.HasValue && instructorId.Value > 0)
+            {
+                // Only get quizzes where this instructor is the author
+                query = query.Where(q => q.QuizAuthors.Any(qa => qa.InstructorId == instructorId.Value));
+            }
+
+            var total = await query.CountAsync(ct);
+            var items = await query
+                .OrderByDescending(q => q.CreatedAt)
+                .Skip((pageIndex - 1) * pageSize)
+                .Take(pageSize)
+                .Select(q => new QuizOnlyDto
+                {
+                    Id = q.Id,
+                    Name = q.Name,
+                    PassScoreCriteria = q.PassScoreCriteria,
+                    TimelimitMinute = q.TimelimitMinute,
+                    TotalScore = q.TotalScore,
+                    Description = q.Description
+                })
+                .ToListAsync(ct);
+
+            return new PagedResult<QuizOnlyDto>
+            {
+                Items = items,
+                Page = pageIndex,
+                PageSize = pageSize,
+                TotalCount = total
+            };
+        }
+
         public async Task<QuizDto?> GetQuizById(int id)
         {
             var q = await _uow.QuizRepository.GetAllAsQueryable()
@@ -197,6 +236,11 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
 
         public async Task<int> CreateQuizWithQuestions(CreateQuizWithQuestionsDto dto)
         {
+            return await CreateQuizWithQuestions(dto, instructorId: 0);
+        }
+
+        public async Task<int> CreateQuizWithQuestions(CreateQuizWithQuestionsDto dto, int instructorId)
+        {
             if (dto == null) throw new ValidationException("Body is required.");
 
             try
@@ -244,7 +288,7 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
                     if (correctCount == 0)
                         throw new ValidationException($"Question #{questionIndex} ('{TruncateText(normalizedName, 50)}'): Must have at least one correct option.");
 
-                    // Single choice question: ch? ???c có 1 option ?úng
+                    // Single choice question: ch? ???c có 1 option ??ng
                     if (!questionDto.IsMultipleAnswers && correctCount > 1)
                         throw new ValidationException($"Question #{questionIndex} ('{TruncateText(normalizedName, 50)}'): Single choice question cannot have more than one correct option.");
 
@@ -324,6 +368,24 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
                 await _uow.QuizRepository.CreateAsync(quiz);
                 await _uow.SaveChangesAsync();
                 var quizId = quiz.Id;
+
+                // Step 1b: Save QuizAuthor if instructorId is provided (> 0)
+                if (instructorId > 0)
+                {
+                    // Verify instructor exists
+                    var instructor = await _uow.InstructorRepository.GetByIdAsync(instructorId);
+                    if (instructor == null)
+                        throw new ValidationException($"Instructor with ID {instructorId} not found.");
+
+                    var quizAuthor = new QuizAuthor
+                    {
+                        InstructorId = instructorId,
+                        QuizId = quizId
+                    };
+
+                    await _uow.QuizAuthorRepository.CreateAsync(quizAuthor);
+                    await _uow.SaveChangesAsync();
+                }
 
                 // Step 2: Create Questions with Options
                 // Get initial max displayOrder from database
