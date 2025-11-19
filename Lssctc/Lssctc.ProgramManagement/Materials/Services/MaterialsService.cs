@@ -39,6 +39,24 @@ namespace Lssctc.ProgramManagement.Materials.Services
             return await query.ToPagedResultAsync(pageNumber, pageSize);
         }
 
+        public async Task<PagedResult<MaterialDto>> GetMaterialsAsync(int pageNumber, int pageSize, int? instructorId)
+        {
+            if (pageNumber < 1) pageNumber = 1;
+            if (pageSize < 1) pageSize = 10;
+
+            // If instructorId is provided and > 0, filter materials by instructor (author)
+            IQueryable<LearningMaterial> query = _uow.LearningMaterialRepository.GetAllAsQueryable();
+            
+            if (instructorId.HasValue && instructorId.Value > 0)
+            {
+                // Only get materials where this instructor is the author
+                query = query.Where(m => m.MaterialAuthors.Any(ma => ma.InstructorId == instructorId.Value));
+            }
+
+            var materialDtoQuery = query.Select(m => MapToDto(m));
+            return await materialDtoQuery.ToPagedResultAsync(pageNumber, pageSize);
+        }
+
         public async Task<MaterialDto?> GetMaterialByIdAsync(int id)
         {
             var material = await _uow.LearningMaterialRepository
@@ -47,7 +65,32 @@ namespace Lssctc.ProgramManagement.Materials.Services
             return material == null ? null : MapToDto(material);
         }
 
+        public async Task<MaterialDto?> GetMaterialByIdAsync(int id, int? instructorId)
+        {
+            // If instructorId is provided and > 0, check if instructor is the author
+            IQueryable<LearningMaterial> query = _uow.LearningMaterialRepository.GetAllAsQueryable();
+            
+            if (instructorId.HasValue && instructorId.Value > 0)
+            {
+                // Only allow instructor to see material they created
+                query = query.Where(m => m.Id == id && m.MaterialAuthors.Any(ma => ma.InstructorId == instructorId.Value));
+            }
+            else
+            {
+                // If no instructor specified, just get by ID (for Admin)
+                query = query.Where(m => m.Id == id);
+            }
+
+            var material = await query.FirstOrDefaultAsync();
+            return material == null ? null : MapToDto(material);
+        }
+
         public async Task<MaterialDto> CreateMaterialAsync(CreateMaterialDto createDto)
+        {
+            return await CreateMaterialAsync(createDto, instructorId: 0);
+        }
+
+        public async Task<MaterialDto> CreateMaterialAsync(CreateMaterialDto createDto, int instructorId)
         {
             if (string.IsNullOrWhiteSpace(createDto.Name))
                 throw new ArgumentException("Name is required.");
@@ -62,6 +105,24 @@ namespace Lssctc.ProgramManagement.Materials.Services
 
             await _uow.LearningMaterialRepository.CreateAsync(material);
             await _uow.SaveChangesAsync();
+
+            // Step 1b: Save MaterialAuthor if instructorId is provided (> 0)
+            if (instructorId > 0)
+            {
+                // Verify instructor exists
+                var instructor = await _uow.InstructorRepository.GetByIdAsync(instructorId);
+                if (instructor == null)
+                    throw new ArgumentException($"Instructor with ID {instructorId} not found.");
+
+                var materialAuthor = new MaterialAuthor
+                {
+                    InstructorId = instructorId,
+                    MaterialId = material.Id
+                };
+
+                await _uow.MaterialAuthorRepository.CreateAsync(materialAuthor);
+                await _uow.SaveChangesAsync();
+            }
 
             return MapToDto(material);
         }

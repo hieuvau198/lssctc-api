@@ -1,13 +1,16 @@
 ﻿using Lssctc.ProgramManagement.Materials.Dtos;
 using Lssctc.ProgramManagement.Materials.Services;
 using Lssctc.Share.Common;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace Lssctc.ProgramManagement.Materials.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class MaterialsController : ControllerBase
     {
         private readonly IMaterialsService _materialsService;
@@ -20,6 +23,7 @@ namespace Lssctc.ProgramManagement.Materials.Controllers
         #region Learning Materials
 
         [HttpGet]
+        [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> GetAllMaterials()
         {
             try
@@ -34,11 +38,19 @@ namespace Lssctc.ProgramManagement.Materials.Controllers
         }
 
         [HttpGet("paged")]
+        [Authorize(Roles = "Admin, Instructor")]
         public async Task<ActionResult<PagedResult<MaterialDto>>> GetMaterials([FromQuery] int pageNumber, [FromQuery] int pageSize)
         {
             try
             {
-                var pagedResult = await _materialsService.GetMaterialsAsync(pageNumber, pageSize);
+                // Extract instructor ID from JWT claims if user is Instructor (not Admin)
+                int? instructorId = null;
+                if (User.IsInRole("Instructor"))
+                {
+                    instructorId = GetInstructorIdFromClaims();
+                }
+
+                var pagedResult = await _materialsService.GetMaterialsAsync(pageNumber, pageSize, instructorId);
                 return Ok(pagedResult);
             }
             catch (Exception)
@@ -48,11 +60,19 @@ namespace Lssctc.ProgramManagement.Materials.Controllers
         }
 
         [HttpGet("{id}")]
+        [Authorize(Roles = "Admin, Instructor")]
         public async Task<ActionResult<MaterialDto>> GetMaterialById(int id)
         {
             try
             {
-                var material = await _materialsService.GetMaterialByIdAsync(id);
+                // Extract instructor ID from JWT claims if user is Instructor (not Admin)
+                int? instructorId = null;
+                if (User.IsInRole("Instructor"))
+                {
+                    instructorId = GetInstructorIdFromClaims();
+                }
+
+                var material = await _materialsService.GetMaterialByIdAsync(id, instructorId);
                 if (material == null)
                     return NotFound(new { Message = "Material not found." });
 
@@ -65,6 +85,7 @@ namespace Lssctc.ProgramManagement.Materials.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "Admin, Instructor")]
         public async Task<ActionResult<MaterialDto>> CreateMaterial([FromBody] CreateMaterialDto createDto)
         {
             if (createDto == null)
@@ -72,8 +93,15 @@ namespace Lssctc.ProgramManagement.Materials.Controllers
 
             try
             {
-                var newMaterial = await _materialsService.CreateMaterialAsync(createDto);
+                // Extract instructor ID from JWT claims
+                var instructorId = GetInstructorIdFromClaims();
+
+                var newMaterial = await _materialsService.CreateMaterialAsync(createDto, instructorId);
                 return CreatedAtAction(nameof(GetMaterialById), new { id = newMaterial.Id }, newMaterial);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { Message = ex.Message });
             }
             catch (Exception)
             {
@@ -82,6 +110,7 @@ namespace Lssctc.ProgramManagement.Materials.Controllers
         }
 
         [HttpPut("{id}")]
+        [Authorize(Roles = "Admin, Instructor")]
         public async Task<ActionResult<MaterialDto>> UpdateMaterial(int id, [FromBody] UpdateMaterialDto updateDto)
         {
             if (updateDto == null)
@@ -103,6 +132,7 @@ namespace Lssctc.ProgramManagement.Materials.Controllers
         }
 
         [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> DeleteMaterial(int id)
         {
             try
@@ -129,6 +159,7 @@ namespace Lssctc.ProgramManagement.Materials.Controllers
         #region Activity Materials
 
         [HttpPost("activities/{activityId}/materials/{materialId}")]
+        [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> AddMaterialToActivity(int activityId, int materialId)
         {
             try
@@ -151,6 +182,7 @@ namespace Lssctc.ProgramManagement.Materials.Controllers
         }
 
         [HttpDelete("activities/{activityId}/materials/{materialId}")]
+        [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> RemoveMaterialFromActivity(int activityId, int materialId)
         {
             try
@@ -173,6 +205,7 @@ namespace Lssctc.ProgramManagement.Materials.Controllers
         }
 
         [HttpGet("activities/{activityId}/materials")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetMaterialsByActivity(int activityId)
         {
             try
@@ -191,5 +224,18 @@ namespace Lssctc.ProgramManagement.Materials.Controllers
         }
 
         #endregion
+
+        private int GetInstructorIdFromClaims()
+        {
+            // Try to get instructorId claim first, otherwise use NameIdentifier
+            var instructorIdClaim = User.FindFirstValue("instructorId") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (int.TryParse(instructorIdClaim, out int instructorId))
+            {
+                return instructorId;
+            }
+
+            throw new UnauthorizedAccessException("Instructor ID claim is missing or invalid.");
+        }
     }
 }

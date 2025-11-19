@@ -8,8 +8,11 @@ namespace Lssctc.ProgramManagement.Materials.Services
         #region Learning Materials
         Task<IEnumerable<MaterialDto>> GetAllMaterialsAsync();
         Task<PagedResult<MaterialDto>> GetMaterialsAsync(int pageNumber, int pageSize);
+        Task<PagedResult<MaterialDto>> GetMaterialsAsync(int pageNumber, int pageSize, int? instructorId);
         Task<MaterialDto?> GetMaterialByIdAsync(int id);
+        Task<MaterialDto?> GetMaterialByIdAsync(int id, int? instructorId);
         Task<MaterialDto> CreateMaterialAsync(CreateMaterialDto createDto);
+        Task<MaterialDto> CreateMaterialAsync(CreateMaterialDto createDto, int instructorId);
         Task<MaterialDto> UpdateMaterialAsync(int id, UpdateMaterialDto updateDto);
         Task DeleteMaterialAsync(int id);
         #endregion
