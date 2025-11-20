@@ -118,7 +118,14 @@ namespace Lssctc.ProgramManagement.Materials.Controllers
 
             try
             {
-                var updated = await _materialsService.UpdateMaterialAsync(id, updateDto);
+                // Extract instructor ID from JWT claims if user is Instructor (not Admin)
+                int? instructorId = null;
+                if (User.IsInRole("Instructor"))
+                {
+                    instructorId = GetInstructorIdFromClaims();
+                }
+
+                var updated = await _materialsService.UpdateMaterialAsync(id, updateDto, instructorId);
                 return Ok(updated);
             }
             catch (KeyNotFoundException ex)
@@ -137,7 +144,14 @@ namespace Lssctc.ProgramManagement.Materials.Controllers
         {
             try
             {
-                await _materialsService.DeleteMaterialAsync(id);
+                // Extract instructor ID from JWT claims if user is Instructor (not Admin)
+                int? instructorId = null;
+                if (User.IsInRole("Instructor"))
+                {
+                    instructorId = GetInstructorIdFromClaims();
+                }
+
+                await _materialsService.DeleteMaterialAsync(id, instructorId);
                 return NoContent();
             }
             catch (KeyNotFoundException ex)

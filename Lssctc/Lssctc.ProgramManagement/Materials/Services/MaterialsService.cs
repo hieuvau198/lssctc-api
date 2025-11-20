@@ -144,6 +144,32 @@ namespace Lssctc.ProgramManagement.Materials.Services
             return MapToDto(material);
         }
 
+        public async Task<MaterialDto> UpdateMaterialAsync(int id, UpdateMaterialDto updateDto, int? instructorId)
+        {
+            // If instructorId is provided and > 0, check if instructor is the author
+            if (instructorId.HasValue && instructorId.Value > 0)
+            {
+                // Check if this instructor is the author of this material
+                var isAuthor = await _uow.MaterialAuthorRepository.ExistsAsync(ma => ma.MaterialId == id && ma.InstructorId == instructorId.Value);
+                if (!isAuthor)
+                    throw new KeyNotFoundException($"Material with ID {id} not found.");
+            }
+
+            var material = await _uow.LearningMaterialRepository.GetByIdAsync(id);
+            if (material == null)
+                throw new KeyNotFoundException($"Material with ID {id} not found.");
+
+            material.Name = updateDto.Name?.Trim() ?? material.Name;
+            material.Description = updateDto.Description?.Trim() ?? material.Description;
+            material.MaterialUrl = updateDto.MaterialUrl?.Trim() ?? material.MaterialUrl;
+            material.LearningMaterialType = ParseLearningMaterialType(updateDto.LearningMaterialType);
+
+            await _uow.LearningMaterialRepository.UpdateAsync(material);
+            await _uow.SaveChangesAsync();
+
+            return MapToDto(material);
+        }
+
         public async Task DeleteMaterialAsync(int id)
         {
             var material = await _uow.LearningMaterialRepository
@@ -167,6 +193,45 @@ namespace Lssctc.ProgramManagement.Materials.Services
                     }
                 }
                 // --- END ADDED LOGIC ---
+
+                // If not locked, but still linked, throw original error
+                throw new InvalidOperationException("Cannot delete material linked to activities. Please remove it from all activities first.");
+            }
+
+            await _uow.LearningMaterialRepository.DeleteAsync(material);
+            await _uow.SaveChangesAsync();
+        }
+
+        public async Task DeleteMaterialAsync(int id, int? instructorId)
+        {
+            // If instructorId is provided and > 0, check if instructor is the author
+            if (instructorId.HasValue && instructorId.Value > 0)
+            {
+                // Check if this instructor is the author of this material
+                var isAuthor = await _uow.MaterialAuthorRepository.ExistsAsync(ma => ma.MaterialId == id && ma.InstructorId == instructorId.Value);
+                if (!isAuthor)
+                    throw new KeyNotFoundException($"Material with ID {id} not found.");
+            }
+
+            var material = await _uow.LearningMaterialRepository
+                .GetAllAsQueryable()
+                .Include(m => m.ActivityMaterials)
+                .FirstOrDefaultAsync(m => m.Id == id);
+
+            if (material == null)
+                throw new KeyNotFoundException($"Material with ID {id} not found.");
+
+            if (material.ActivityMaterials.Any())
+            {
+                // Check if any linked activities are part of a locked course
+                var linkedActivityIds = material.ActivityMaterials.Select(am => am.ActivityId).ToList();
+                foreach (var activityId in linkedActivityIds)
+                {
+                    if (await IsActivityLockedAsync(activityId))
+                    {
+                        throw new InvalidOperationException("Cannot delete material. It is assigned to an activity that is part of a course already in use.");
+                    }
+                }
 
                 // If not locked, but still linked, throw original error
                 throw new InvalidOperationException("Cannot delete material linked to activities. Please remove it from all activities first.");
