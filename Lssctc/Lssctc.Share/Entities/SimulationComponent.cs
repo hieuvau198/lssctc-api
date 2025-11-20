@@ -21,5 +21,7 @@ public partial class SimulationComponent
 
     public bool? IsDeleted { get; set; }
 
+    public string? ComponentCode { get; set; }
+
     public virtual BrandModel BrandModel { get; set; } = null!;
 }

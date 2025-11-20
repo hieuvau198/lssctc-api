@@ -760,6 +760,11 @@ public partial class LssctcDbContext : DbContext
                 .HasDefaultValue(false)
                 .HasColumnName("is_deleted");
             entity.Property(e => e.MaxAttempts).HasColumnName("max_attempts");
+            entity.Property(e => e.PracticeCode)
+                .HasMaxLength(50)
+                .IsUnicode(false)
+                .HasDefaultValue("NO PRACTICE CODE ASSIGNED")
+                .HasColumnName("practice_code");
             entity.Property(e => e.PracticeDescription)
                 .HasMaxLength(1000)
                 .HasColumnName("practice_description");
@@ -1194,6 +1199,10 @@ public partial class LssctcDbContext : DbContext
             entity.Property(e => e.IsDeleted)
                 .HasDefaultValue(false)
                 .HasColumnName("is_deleted");
+            entity.Property(e => e.TaskCode)
+                .HasMaxLength(50)
+                .HasDefaultValue("NO PRACTICE CODE ASSIGNED")
+                .HasColumnName("task_code");
             entity.Property(e => e.TaskDescription)
                 .HasMaxLength(1000)
                 .HasColumnName("task_description");
@@ -1210,6 +1219,10 @@ public partial class LssctcDbContext : DbContext
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.BrandModelId).HasColumnName("brand_model_id");
+            entity.Property(e => e.ComponentCode)
+                .HasMaxLength(50)
+                .HasDefaultValue("COMPONENT_UNKNOWN")
+                .HasColumnName("component_code");
             entity.Property(e => e.CreatedDate)
                 .HasPrecision(0)
                 .HasDefaultValueSql("(sysdatetime())")
