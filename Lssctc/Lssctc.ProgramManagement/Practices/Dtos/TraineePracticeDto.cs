@@ -4,6 +4,7 @@
     {
         public int Id { get; set; }
         public string PracticeName { get; set; } = null!;
+        public string? PracticeCode { get; set; } // Added
         public string? PracticeDescription { get; set; }
         public int? EstimatedDurationMinutes { get; set; }
         public string? DifficultyLevel { get; set; }

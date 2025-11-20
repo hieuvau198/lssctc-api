@@ -26,6 +26,7 @@ namespace Lssctc.ProgramManagement.SimulationComponents.Services
                     BrandModelId = sc.BrandModelId,
                     BrandModelName = sc.BrandModel.Name,
                     Name = sc.Name,
+                    ComponentCode = sc.ComponentCode, // Added
                     Description = sc.Description,
                     ImageUrl = sc.ImageUrl,
                     IsActive = sc.IsActive,
@@ -38,8 +39,8 @@ namespace Lssctc.ProgramManagement.SimulationComponents.Services
         }
 
         public async Task<PagedResult<SimulationComponentDto>> GetAllSimulationComponents(
-            int page, 
-            int pageSize, 
+            int page,
+            int pageSize,
             CancellationToken cancellationToken = default)
         {
             if (page < 1) page = 1;
@@ -61,6 +62,7 @@ namespace Lssctc.ProgramManagement.SimulationComponents.Services
                     BrandModelId = sc.BrandModelId,
                     BrandModelName = sc.BrandModel.Name,
                     Name = sc.Name,
+                    ComponentCode = sc.ComponentCode, // Added
                     Description = sc.Description,
                     ImageUrl = sc.ImageUrl,
                     IsActive = sc.IsActive,
@@ -79,9 +81,9 @@ namespace Lssctc.ProgramManagement.SimulationComponents.Services
         }
 
         public async Task<PagedResult<SimulationComponentDto>> GetSimulationComponentsByBrandModelId(
-            int brandModelId, 
-            int page, 
-            int pageSize, 
+            int brandModelId,
+            int page,
+            int pageSize,
             CancellationToken cancellationToken = default)
         {
             if (page < 1) page = 1;
@@ -103,6 +105,7 @@ namespace Lssctc.ProgramManagement.SimulationComponents.Services
                     BrandModelId = sc.BrandModelId,
                     BrandModelName = sc.BrandModel.Name,
                     Name = sc.Name,
+                    ComponentCode = sc.ComponentCode, // Added
                     Description = sc.Description,
                     ImageUrl = sc.ImageUrl,
                     IsActive = sc.IsActive,
@@ -134,15 +137,15 @@ namespace Lssctc.ProgramManagement.SimulationComponents.Services
             var normalizedName = string.Join(' ', rawName.Split(' ', StringSplitOptions.RemoveEmptyEntries));
 
             // Check if BrandModel exists
-            var brandModelExists = await _uow.BrandModelRepository.ExistsAsync(b => 
+            var brandModelExists = await _uow.BrandModelRepository.ExistsAsync(b =>
                 b.Id == dto.BrandModelId && b.IsDeleted != true);
             if (!brandModelExists)
                 throw new ValidationException("Brand model not found.");
 
             // Check duplicate name within the same brand model
-            var nameExists = await _uow.SimulationComponentRepository.ExistsAsync(sc => 
-                sc.BrandModelId == dto.BrandModelId && 
-                sc.Name.ToLower() == normalizedName.ToLower() && 
+            var nameExists = await _uow.SimulationComponentRepository.ExistsAsync(sc =>
+                sc.BrandModelId == dto.BrandModelId &&
+                sc.Name.ToLower() == normalizedName.ToLower() &&
                 sc.IsDeleted != true);
             if (nameExists)
                 throw new ValidationException("A simulation component with the same name already exists for this brand model.");
@@ -151,6 +154,7 @@ namespace Lssctc.ProgramManagement.SimulationComponents.Services
             {
                 BrandModelId = dto.BrandModelId,
                 Name = normalizedName,
+                ComponentCode = dto.ComponentCode?.Trim(), // Added
                 Description = dto.Description,
                 ImageUrl = dto.ImageUrl,
                 IsActive = true,
@@ -182,15 +186,20 @@ namespace Lssctc.ProgramManagement.SimulationComponents.Services
                 var normalizedName = string.Join(' ', rawName.Split(' ', StringSplitOptions.RemoveEmptyEntries));
 
                 // Check duplicate name within the same brand model (excluding current entity)
-                var nameExists = await _uow.SimulationComponentRepository.ExistsAsync(sc => 
-                    sc.Id != id && 
-                    sc.BrandModelId == entity.BrandModelId && 
-                    sc.Name.ToLower() == normalizedName.ToLower() && 
+                var nameExists = await _uow.SimulationComponentRepository.ExistsAsync(sc =>
+                    sc.Id != id &&
+                    sc.BrandModelId == entity.BrandModelId &&
+                    sc.Name.ToLower() == normalizedName.ToLower() &&
                     sc.IsDeleted != true);
                 if (nameExists)
                     throw new ValidationException("A simulation component with the same name already exists for this brand model.");
 
                 entity.Name = normalizedName;
+            }
+
+            if (dto.ComponentCode != null) // Added
+            {
+                entity.ComponentCode = dto.ComponentCode.Trim();
             }
 
             if (dto.Description != null)

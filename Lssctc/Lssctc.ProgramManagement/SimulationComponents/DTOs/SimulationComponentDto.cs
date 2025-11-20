@@ -6,6 +6,7 @@ namespace Lssctc.ProgramManagement.SimulationComponents.DTOs
         public int BrandModelId { get; set; }
         public string BrandModelName { get; set; } = null!;
         public string Name { get; set; } = null!;
+        public string? ComponentCode { get; set; } // Added
         public string? Description { get; set; }
         public string? ImageUrl { get; set; }
         public bool? IsActive { get; set; }
@@ -17,6 +18,7 @@ namespace Lssctc.ProgramManagement.SimulationComponents.DTOs
     {
         public int BrandModelId { get; set; }
         public string Name { get; set; } = null!;
+        public string? ComponentCode { get; set; } // Added
         public string? Description { get; set; }
         public string? ImageUrl { get; set; }
     }
@@ -24,6 +26,7 @@ namespace Lssctc.ProgramManagement.SimulationComponents.DTOs
     public class UpdateSimulationComponentDto
     {
         public string? Name { get; set; }
+        public string? ComponentCode { get; set; } // Added
         public string? Description { get; set; }
         public string? ImageUrl { get; set; }
         public bool? IsActive { get; set; }
