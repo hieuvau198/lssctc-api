@@ -58,6 +58,9 @@ public class AuthensService : IAuthensService
             user.Username,
             user.Id,
             user.Role,
+            user.Fullname,  // <--- Pass Fullname
+            user.Email,     // <--- Pass Email
+            user.AvatarUrl, // <--- Pass AvatarUrl
             _configuration);
 
         return new LoginResponseModel
@@ -100,6 +103,9 @@ public class AuthensService : IAuthensService
             user.Username,
             user.Id,
             user.Role,
+            user.Fullname,  // <--- Pass Fullname
+            user.Email,     // <--- Pass Email
+            user.AvatarUrl, // <--- Pass AvatarUrl
             _configuration);
 
         return new LoginResponseModel
