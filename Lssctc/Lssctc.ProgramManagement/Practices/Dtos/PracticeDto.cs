@@ -12,6 +12,7 @@ namespace Lssctc.ProgramManagement.Practices.Dtos
         public int? MaxAttempts { get; set; }
         public DateTime CreatedDate { get; set; }
         public bool? IsActive { get; set; }
+        public string? PracticeCode { get; set; }
     }
     public class CreatePracticeDto
     {
@@ -27,6 +28,8 @@ namespace Lssctc.ProgramManagement.Practices.Dtos
         [Range(1, 10, ErrorMessage = "Max attempts must be between 1 and 10.")]
         public int? MaxAttempts { get; set; }
         public bool? IsActive { get; set; }
+        [StringLength(50, ErrorMessage = "Practice code cannot exceed 50 characters.")]
+        public string? PracticeCode { get; set; }
     }
     public class UpdatePracticeDto
     {
@@ -42,5 +45,7 @@ namespace Lssctc.ProgramManagement.Practices.Dtos
         [Range(1, 10, ErrorMessage = "Max attempts must be between 1 and 10.")]
         public int? MaxAttempts { get; set; }
         public bool? IsActive { get; set; }
+        [StringLength(50, ErrorMessage = "Practice code cannot exceed 50 characters.")]
+        public string? PracticeCode { get; set; }
     }
 }
