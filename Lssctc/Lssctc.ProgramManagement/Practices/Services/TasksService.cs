@@ -57,6 +57,7 @@ namespace Lssctc.ProgramManagement.Practices.Services
             var task = new SimTask
             {
                 TaskName = dto.TaskName.Trim(),
+                TaskCode = dto.TaskCode?.Trim(), // Added
                 TaskDescription = dto.TaskDescription?.Trim(),
                 ExpectedResult = dto.ExpectedResult?.Trim(),
                 IsDeleted = false
@@ -75,6 +76,7 @@ namespace Lssctc.ProgramManagement.Practices.Services
                 throw new KeyNotFoundException($"Task with ID {id} not found.");
 
             task.TaskName = dto.TaskName?.Trim() ?? task.TaskName;
+            task.TaskCode = dto.TaskCode?.Trim() ?? task.TaskCode; // Added
             task.TaskDescription = dto.TaskDescription?.Trim() ?? task.TaskDescription;
             task.ExpectedResult = dto.ExpectedResult?.Trim() ?? task.ExpectedResult;
 
@@ -178,6 +180,7 @@ namespace Lssctc.ProgramManagement.Practices.Services
             {
                 Id = t.Id,
                 TaskName = t.TaskName,
+                TaskCode = t.TaskCode, // Added
                 TaskDescription = t.TaskDescription,
                 ExpectedResult = t.ExpectedResult
             };

@@ -71,6 +71,7 @@ namespace Lssctc.ProgramManagement.Practices.Services
             var practice = new Practice
             {
                 PracticeName = createDto.PracticeName.Trim(),
+                PracticeCode = createDto.PracticeCode?.Trim(), // Added
                 PracticeDescription = createDto.PracticeDescription?.Trim(),
                 EstimatedDurationMinutes = createDto.EstimatedDurationMinutes,
                 DifficultyLevel = createDto.DifficultyLevel,
@@ -113,6 +114,7 @@ namespace Lssctc.ProgramManagement.Practices.Services
             }
 
             practice.PracticeName = updateDto.PracticeName?.Trim() ?? practice.PracticeName;
+            practice.PracticeCode = updateDto.PracticeCode?.Trim() ?? practice.PracticeCode; // Added
             practice.PracticeDescription = updateDto.PracticeDescription?.Trim() ?? practice.PracticeDescription;
             practice.EstimatedDurationMinutes = updateDto.EstimatedDurationMinutes ?? practice.EstimatedDurationMinutes;
             practice.DifficultyLevel = updateDto.DifficultyLevel ?? practice.DifficultyLevel;
@@ -245,7 +247,6 @@ namespace Lssctc.ProgramManagement.Practices.Services
 
             if (learningProgress == null)
             {
-                // Return empty list instead of throwing error if no progress is found (e.g., class not started)
                 return new List<TraineePracticeDto>();
             }
 
@@ -305,13 +306,14 @@ namespace Lssctc.ProgramManagement.Practices.Services
                         // Practice Details
                         Id = practice.Id,
                         PracticeName = practice.PracticeName,
+                        PracticeCode = practice.PracticeCode, // Added
                         PracticeDescription = practice.PracticeDescription,
                         EstimatedDurationMinutes = practice.EstimatedDurationMinutes,
                         DifficultyLevel = practice.DifficultyLevel,
                         MaxAttempts = practice.MaxAttempts,
                         CreatedDate = practice.CreatedDate,
                         IsActive = practice.IsActive,
-                        Tasks = new List<TraineeTaskDto>() // Initialize task list
+                        Tasks = new List<TraineeTaskDto>()
                     };
 
                     // Try to find the current attempt
@@ -325,7 +327,6 @@ namespace Lssctc.ProgramManagement.Practices.Services
                     if (currentAttempt != null)
                     {
                         // --- CASE 1: Trainee has an attempt ---
-                        // Create a lookup for the attempt tasks
                         var attemptTasksMap = currentAttempt.PracticeAttemptTasks
                             .Where(pat => pat.TaskId.HasValue)
                             .ToDictionary(pat => pat.TaskId!.Value);
@@ -338,6 +339,7 @@ namespace Lssctc.ProgramManagement.Practices.Services
                             {
                                 TaskId = template.Id,
                                 TaskName = template.TaskName,
+                                TaskCode = template.TaskCode, // Added
                                 TaskDescription = template.TaskDescription,
                                 ExpectedResult = template.ExpectedResult,
 
@@ -358,10 +360,9 @@ namespace Lssctc.ProgramManagement.Practices.Services
                             {
                                 TaskId = template.Id,
                                 TaskName = template.TaskName,
+                                TaskCode = template.TaskCode, // Added
                                 TaskDescription = template.TaskDescription,
                                 ExpectedResult = template.ExpectedResult,
-
-                                // Default values
                                 PracticeAttemptTaskId = 0,
                                 IsPass = false,
                                 Score = null,
@@ -389,15 +390,14 @@ namespace Lssctc.ProgramManagement.Practices.Services
                              ar.ActivityType == (int)ActivityType.Practice)
                 .Select(ar => new
                 {
-                    ar.Id, // ActivityRecordId
-                    ar.ActivityId, // The template Activity ID
+                    ar.Id,
+                    ar.ActivityId,
                     ar.IsCompleted
                 })
                 .FirstOrDefaultAsync();
 
             if (activityRecord == null)
             {
-                // This will trigger a 404 in the controller
                 throw new KeyNotFoundException("Practice activity record not found for this trainee.");
             }
 
@@ -433,21 +433,19 @@ namespace Lssctc.ProgramManagement.Practices.Services
             // 4. Build the DTO
             var traineePracticeDto = new TraineePracticeDto
             {
-                // Trainee Status
                 ActivityRecordId = activityRecord.Id,
                 ActivityId = activityRecord.ActivityId.Value,
                 IsCompleted = activityRecord.IsCompleted ?? false,
-
-                // Practice Details
                 Id = practice.Id,
                 PracticeName = practice.PracticeName,
+                PracticeCode = practice.PracticeCode, // Added
                 PracticeDescription = practice.PracticeDescription,
                 EstimatedDurationMinutes = practice.EstimatedDurationMinutes,
                 DifficultyLevel = practice.DifficultyLevel,
                 MaxAttempts = practice.MaxAttempts,
                 CreatedDate = practice.CreatedDate,
                 IsActive = practice.IsActive,
-                Tasks = new List<TraineeTaskDto>() // Initialize task list
+                Tasks = new List<TraineeTaskDto>()
             };
 
             // 5. Populate the Tasks list
@@ -457,7 +455,6 @@ namespace Lssctc.ProgramManagement.Practices.Services
 
             if (currentAttempt != null)
             {
-                // --- CASE 1: Trainee has an attempt ---
                 var attemptTasksMap = currentAttempt.PracticeAttemptTasks
                     .Where(pat => pat.TaskId.HasValue)
                     .ToDictionary(pat => pat.TaskId!.Value);
@@ -470,10 +467,9 @@ namespace Lssctc.ProgramManagement.Practices.Services
                     {
                         TaskId = template.Id,
                         TaskName = template.TaskName,
+                        TaskCode = template.TaskCode, // Added
                         TaskDescription = template.TaskDescription,
                         ExpectedResult = template.ExpectedResult,
-
-                        // Data from the attempt (if it exists)
                         PracticeAttemptTaskId = attemptTask?.Id ?? 0,
                         IsPass = attemptTask?.IsPass ?? false,
                         Score = attemptTask?.Score,
@@ -483,17 +479,15 @@ namespace Lssctc.ProgramManagement.Practices.Services
             }
             else
             {
-                // --- CASE 2: No attempt yet, build from template ---
                 foreach (var template in taskTemplates)
                 {
                     traineePracticeDto.Tasks.Add(new TraineeTaskDto
                     {
                         TaskId = template.Id,
                         TaskName = template.TaskName,
+                        TaskCode = template.TaskCode, // Added
                         TaskDescription = template.TaskDescription,
                         ExpectedResult = template.ExpectedResult,
-
-                        // Default values
                         PracticeAttemptTaskId = 0,
                         IsPass = false,
                         Score = null,
@@ -515,6 +509,7 @@ namespace Lssctc.ProgramManagement.Practices.Services
             {
                 Id = p.Id,
                 PracticeName = p.PracticeName,
+                PracticeCode = p.PracticeCode, // Added
                 PracticeDescription = p.PracticeDescription,
                 EstimatedDurationMinutes = p.EstimatedDurationMinutes,
                 DifficultyLevel = p.DifficultyLevel,
