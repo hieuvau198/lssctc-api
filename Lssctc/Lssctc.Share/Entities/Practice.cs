@@ -23,6 +23,8 @@ public partial class Practice
 
     public bool? IsDeleted { get; set; }
 
+    public string? PracticeCode { get; set; }
+
     public virtual ICollection<ActivityPractice> ActivityPractices { get; set; } = new List<ActivityPractice>();
 
     public virtual ICollection<PracticeTask> PracticeTasks { get; set; } = new List<PracticeTask>();
