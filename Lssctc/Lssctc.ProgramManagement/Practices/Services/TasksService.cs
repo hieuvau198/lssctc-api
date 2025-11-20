@@ -54,10 +54,23 @@ namespace Lssctc.ProgramManagement.Practices.Services
             if (string.IsNullOrWhiteSpace(dto.TaskName))
                 throw new ArgumentException("Task name is required.");
 
+            // Validate TaskCode uniqueness if provided
+            if (!string.IsNullOrWhiteSpace(dto.TaskCode))
+            {
+                var normalizedCode = dto.TaskCode.Trim();
+                bool codeExists = await _uow.SimTaskRepository
+                    .ExistsAsync(t => t.TaskCode != null && 
+                                     t.TaskCode.ToLower() == normalizedCode.ToLower() &&
+                                     (t.IsDeleted == null || t.IsDeleted == false));
+                
+                if (codeExists)
+                    throw new ArgumentException($"Task code '{normalizedCode}' already exists.");
+            }
+
             var task = new SimTask
             {
                 TaskName = dto.TaskName.Trim(),
-                TaskCode = dto.TaskCode?.Trim(), // Added
+                TaskCode = dto.TaskCode?.Trim(),
                 TaskDescription = dto.TaskDescription?.Trim(),
                 ExpectedResult = dto.ExpectedResult?.Trim(),
                 IsDeleted = false
@@ -75,10 +88,32 @@ namespace Lssctc.ProgramManagement.Practices.Services
             if (task == null || task.IsDeleted == true)
                 throw new KeyNotFoundException($"Task with ID {id} not found.");
 
+            // Validate TaskCode uniqueness if provided and different from current
+            if (!string.IsNullOrWhiteSpace(dto.TaskCode))
+            {
+                var normalizedCode = dto.TaskCode.Trim();
+                
+                // Only check if the code is different from the current one
+                if (task.TaskCode?.ToLower() != normalizedCode.ToLower())
+                {
+                    bool codeExists = await _uow.SimTaskRepository
+                        .ExistsAsync(t => t.Id != id && 
+                                         t.TaskCode != null && 
+                                         t.TaskCode.ToLower() == normalizedCode.ToLower() &&
+                                         (t.IsDeleted == null || t.IsDeleted == false));
+                    
+                    if (codeExists)
+                        throw new ArgumentException($"Task code '{normalizedCode}' already exists.");
+                }
+            }
+
             task.TaskName = dto.TaskName?.Trim() ?? task.TaskName;
-            task.TaskCode = dto.TaskCode?.Trim() ?? task.TaskCode; // Added
             task.TaskDescription = dto.TaskDescription?.Trim() ?? task.TaskDescription;
             task.ExpectedResult = dto.ExpectedResult?.Trim() ?? task.ExpectedResult;
+            
+            // Update TaskCode if provided
+            if (!string.IsNullOrWhiteSpace(dto.TaskCode))
+                task.TaskCode = dto.TaskCode.Trim();
 
             await _uow.SimTaskRepository.UpdateAsync(task);
             await _uow.SaveChangesAsync();
@@ -180,7 +215,7 @@ namespace Lssctc.ProgramManagement.Practices.Services
             {
                 Id = t.Id,
                 TaskName = t.TaskName,
-                TaskCode = t.TaskCode, // Added
+                TaskCode = t.TaskCode,
                 TaskDescription = t.TaskDescription,
                 ExpectedResult = t.ExpectedResult
             };

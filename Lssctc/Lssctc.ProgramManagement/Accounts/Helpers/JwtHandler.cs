@@ -8,7 +8,6 @@ namespace Lssctc.ProgramManagement.Accounts.Helpers
 {
     public static class JwtHandler
     {
-        // We return a simple tuple with the token string and its validity in seconds
         public static (string Token, int ExpiresInSeconds) GenerateJwtToken(
             string username,
             int userId,
@@ -20,7 +19,6 @@ namespace Lssctc.ProgramManagement.Accounts.Helpers
             var key = configuration["JwtConfig:Key"] ?? "JWT Key Not Found";
             var tokenValidityMins = configuration.GetValue<int>("JwtConfig:TokenValidityInMinutes");
 
-            // Default to 60 minutes if config is missing or invalid
             if (tokenValidityMins <= 0)
             {
                 tokenValidityMins = 180;
@@ -29,14 +27,11 @@ namespace Lssctc.ProgramManagement.Accounts.Helpers
             var tokenExpriryTimeStamp = DateTime.UtcNow.AddMinutes(tokenValidityMins);
             var jti = Guid.NewGuid().ToString();
 
-            // --- THIS IS THE CRITICAL ROLE FIX ---
-            // Get the string name (e.g., "Trainee") from the integer value (e.g., 4)
             string roleName = "Unknown";
             if (userRole.HasValue && Enum.IsDefined(typeof(UserRoleEnum), userRole.Value))
             {
                 roleName = ((UserRoleEnum)userRole.Value).ToString();
             }
-            // --- END FIX ---
 
             var tokenDescriptor = new SecurityTokenDescriptor
             {

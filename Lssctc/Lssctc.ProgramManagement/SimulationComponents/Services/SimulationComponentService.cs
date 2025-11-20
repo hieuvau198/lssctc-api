@@ -150,11 +150,24 @@ namespace Lssctc.ProgramManagement.SimulationComponents.Services
             if (nameExists)
                 throw new ValidationException("A simulation component with the same name already exists for this brand model.");
 
+            // Validate ComponentCode uniqueness if provided
+            if (!string.IsNullOrWhiteSpace(dto.ComponentCode))
+            {
+                var normalizedCode = dto.ComponentCode.Trim();
+                bool codeExists = await _uow.SimulationComponentRepository
+                    .ExistsAsync(sc => sc.ComponentCode != null && 
+                                      sc.ComponentCode.ToLower() == normalizedCode.ToLower() &&
+                                      (sc.IsDeleted == null || sc.IsDeleted == false));
+                
+                if (codeExists)
+                    throw new ValidationException($"Component code '{normalizedCode}' already exists.");
+            }
+
             var entity = new Share.Entities.SimulationComponent
             {
                 BrandModelId = dto.BrandModelId,
                 Name = normalizedName,
-                ComponentCode = dto.ComponentCode?.Trim(), // Added
+                ComponentCode = dto.ComponentCode?.Trim(),
                 Description = dto.Description,
                 ImageUrl = dto.ImageUrl,
                 IsActive = true,
@@ -197,9 +210,25 @@ namespace Lssctc.ProgramManagement.SimulationComponents.Services
                 entity.Name = normalizedName;
             }
 
-            if (dto.ComponentCode != null) // Added
+            // Validate ComponentCode uniqueness if provided and different from current
+            if (!string.IsNullOrWhiteSpace(dto.ComponentCode))
             {
-                entity.ComponentCode = dto.ComponentCode.Trim();
+                var normalizedCode = dto.ComponentCode.Trim();
+                
+                // Only check if the code is different from the current one
+                if (entity.ComponentCode?.ToLower() != normalizedCode.ToLower())
+                {
+                    bool codeExists = await _uow.SimulationComponentRepository
+                        .ExistsAsync(sc => sc.Id != id && 
+                                          sc.ComponentCode != null && 
+                                          sc.ComponentCode.ToLower() == normalizedCode.ToLower() &&
+                                          (sc.IsDeleted == null || sc.IsDeleted == false));
+                    
+                    if (codeExists)
+                        throw new ValidationException($"Component code '{normalizedCode}' already exists.");
+                }
+                
+                entity.ComponentCode = normalizedCode;
             }
 
             if (dto.Description != null)

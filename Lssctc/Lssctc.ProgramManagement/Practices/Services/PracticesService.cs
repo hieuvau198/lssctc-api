@@ -55,14 +55,27 @@ namespace Lssctc.ProgramManagement.Practices.Services
             if (string.IsNullOrWhiteSpace(createDto.PracticeName))
                 throw new ArgumentException("Practice name is required.");
 
+            // Validate PracticeCode uniqueness if provided
+            if (!string.IsNullOrWhiteSpace(createDto.PracticeCode))
+            {
+                var normalizedCode = createDto.PracticeCode.Trim();
+                bool codeExists = await _uow.PracticeRepository
+                    .ExistsAsync(p => p.PracticeCode != null && 
+                                     p.PracticeCode.ToLower() == normalizedCode.ToLower() &&
+                                     (p.IsDeleted == null || p.IsDeleted == false));
+                
+                if (codeExists)
+                    throw new ArgumentException($"Practice code '{normalizedCode}' already exists.");
+            }
+
             var practice = new Practice
             {
                 PracticeName = createDto.PracticeName.Trim(),
-                PracticeCode = createDto.PracticeCode?.Trim(), // Added
                 PracticeDescription = createDto.PracticeDescription?.Trim(),
                 EstimatedDurationMinutes = createDto.EstimatedDurationMinutes,
                 DifficultyLevel = createDto.DifficultyLevel,
                 MaxAttempts = createDto.MaxAttempts,
+                PracticeCode = createDto.PracticeCode?.Trim(),
                 CreatedDate = DateTime.UtcNow,
                 IsActive = createDto.IsActive ?? true,
                 IsDeleted = false
@@ -80,13 +93,35 @@ namespace Lssctc.ProgramManagement.Practices.Services
             if (practice == null || practice.IsDeleted == true)
                 throw new KeyNotFoundException($"Practice with ID {id} not found.");
 
+            // Validate PracticeCode uniqueness if provided and different from current
+            if (!string.IsNullOrWhiteSpace(updateDto.PracticeCode))
+            {
+                var normalizedCode = updateDto.PracticeCode.Trim();
+                
+                // Only check if the code is different from the current one
+                if (practice.PracticeCode?.ToLower() != normalizedCode.ToLower())
+                {
+                    bool codeExists = await _uow.PracticeRepository
+                        .ExistsAsync(p => p.Id != id && 
+                                         p.PracticeCode != null && 
+                                         p.PracticeCode.ToLower() == normalizedCode.ToLower() &&
+                                         (p.IsDeleted == null || p.IsDeleted == false));
+                    
+                    if (codeExists)
+                        throw new ArgumentException($"Practice code '{normalizedCode}' already exists.");
+                }
+            }
+
             practice.PracticeName = updateDto.PracticeName?.Trim() ?? practice.PracticeName;
-            practice.PracticeCode = updateDto.PracticeCode?.Trim() ?? practice.PracticeCode; // Added
             practice.PracticeDescription = updateDto.PracticeDescription?.Trim() ?? practice.PracticeDescription;
             practice.EstimatedDurationMinutes = updateDto.EstimatedDurationMinutes ?? practice.EstimatedDurationMinutes;
             practice.DifficultyLevel = updateDto.DifficultyLevel ?? practice.DifficultyLevel;
             practice.MaxAttempts = updateDto.MaxAttempts ?? practice.MaxAttempts;
             practice.IsActive = updateDto.IsActive ?? practice.IsActive;
+            
+            // Update PracticeCode if provided
+            if (!string.IsNullOrWhiteSpace(updateDto.PracticeCode))
+                practice.PracticeCode = updateDto.PracticeCode.Trim();
 
             await _uow.PracticeRepository.UpdateAsync(practice);
             await _uow.SaveChangesAsync();
@@ -472,13 +507,13 @@ namespace Lssctc.ProgramManagement.Practices.Services
             {
                 Id = p.Id,
                 PracticeName = p.PracticeName,
-                PracticeCode = p.PracticeCode, // Added
                 PracticeDescription = p.PracticeDescription,
                 EstimatedDurationMinutes = p.EstimatedDurationMinutes,
                 DifficultyLevel = p.DifficultyLevel,
                 MaxAttempts = p.MaxAttempts,
                 CreatedDate = p.CreatedDate,
-                IsActive = p.IsActive
+                IsActive = p.IsActive,
+                PracticeCode = p.PracticeCode
             };
         }
 
