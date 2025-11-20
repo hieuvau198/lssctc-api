@@ -71,7 +71,6 @@ namespace Lssctc.ProgramManagement.Practices.Services
             var practice = new Practice
             {
                 PracticeName = createDto.PracticeName.Trim(),
-                PracticeCode = createDto.PracticeCode?.Trim(), // Added
                 PracticeDescription = createDto.PracticeDescription?.Trim(),
                 EstimatedDurationMinutes = createDto.EstimatedDurationMinutes,
                 DifficultyLevel = createDto.DifficultyLevel,
@@ -114,7 +113,6 @@ namespace Lssctc.ProgramManagement.Practices.Services
             }
 
             practice.PracticeName = updateDto.PracticeName?.Trim() ?? practice.PracticeName;
-            practice.PracticeCode = updateDto.PracticeCode?.Trim() ?? practice.PracticeCode; // Added
             practice.PracticeDescription = updateDto.PracticeDescription?.Trim() ?? practice.PracticeDescription;
             practice.EstimatedDurationMinutes = updateDto.EstimatedDurationMinutes ?? practice.EstimatedDurationMinutes;
             practice.DifficultyLevel = updateDto.DifficultyLevel ?? practice.DifficultyLevel;
@@ -509,7 +507,6 @@ namespace Lssctc.ProgramManagement.Practices.Services
             {
                 Id = p.Id,
                 PracticeName = p.PracticeName,
-                PracticeCode = p.PracticeCode, // Added
                 PracticeDescription = p.PracticeDescription,
                 EstimatedDurationMinutes = p.EstimatedDurationMinutes,
                 DifficultyLevel = p.DifficultyLevel,
