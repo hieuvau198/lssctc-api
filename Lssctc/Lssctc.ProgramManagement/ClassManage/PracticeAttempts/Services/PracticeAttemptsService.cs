@@ -19,7 +19,8 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
             _progressHelper = new ProgressHelper(uow);
         }
 
-        #region Gets
+        // --- GET METHODS ---
+
         public async Task<IEnumerable<PracticeAttemptDto>> GetPracticeAttempts(int traineeId, int activityRecordId)
         {
             var activityRecord = await _uow.ActivityRecordRepository
@@ -42,7 +43,7 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
                 .OrderByDescending(pa => pa.AttemptDate)
                 .ToListAsync();
 
-            return await MapToDtosWithCodesAsync(attempts);
+            return await MapToDtosWithFullTaskContextAsync(attempts);
         }
 
         public async Task<PracticeAttemptDto?> GetLatestPracticeAttempt(int traineeId, int activityRecordId)
@@ -68,7 +69,7 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
 
             if (attempt == null) return null;
 
-            var dtos = await MapToDtosWithCodesAsync(new[] { attempt });
+            var dtos = await MapToDtosWithFullTaskContextAsync(new[] { attempt });
             return dtos.FirstOrDefault();
         }
 
@@ -94,7 +95,7 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
                 .OrderByDescending(pa => pa.AttemptDate)
                 .ToListAsync();
 
-            return await MapToDtosWithCodesAsync(attempts);
+            return await MapToDtosWithFullTaskContextAsync(attempts);
         }
 
         public async Task<PracticeAttemptDto?> GetPracticeAttemptById(int practiceAttemptId)
@@ -113,7 +114,7 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
 
             if (attempt == null) return null;
 
-            var dtos = await MapToDtosWithCodesAsync(new[] { attempt });
+            var dtos = await MapToDtosWithFullTaskContextAsync(new[] { attempt });
             return dtos.FirstOrDefault();
         }
 
@@ -142,8 +143,7 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
                 .OrderByDescending(pa => pa.AttemptDate);
 
             var pagedEntities = await query.ToPagedResultAsync(pageNumber, pageSize);
-
-            var dtos = await MapToDtosWithCodesAsync(pagedEntities.Items);
+            var dtos = await MapToDtosWithFullTaskContextAsync(pagedEntities.Items);
 
             return new PagedResult<PracticeAttemptDto>
             {
@@ -187,7 +187,7 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
                 .OrderByDescending(pa => pa.AttemptDate);
 
             var pagedEntities = await query.ToPagedResultAsync(pageNumber, pageSize);
-            var dtos = await MapToDtosWithCodesAsync(pagedEntities.Items);
+            var dtos = await MapToDtosWithFullTaskContextAsync(pagedEntities.Items);
 
             return new PagedResult<PracticeAttemptDto>
             {
@@ -198,9 +198,8 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
             };
         }
 
-        #endregion
+        // --- CREATE METHODS ---
 
-        #region Submit Practice Attempt
         public async Task<PracticeAttemptDto> CreatePracticeAttempt(int traineeId, CreatePracticeAttemptDto createDto)
         {
             if (traineeId <= 0) throw new ArgumentException("TraineeId must be greater than 0.", nameof(traineeId));
@@ -248,10 +247,6 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
 
             createDto.Score = allTasksPass ? 10 : 0;
             createDto.IsPass = allTasksPass;
-            if(createDto.PracticeAttemptTasks == null)
-            {
-                createDto.PracticeAttemptTasks = new List<CreatePracticeAttemptTaskDto>();
-            }
 
             return await SavePracticeAttempt(traineeId, createDto.ClassId, createDto.PracticeId,
                 createDto.Score, createDto.Description, createDto.IsPass,
@@ -276,7 +271,7 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
                 .GetAllAsQueryable()
                 .AsNoTracking()
                 .Include(p => p.PracticeTasks)
-                    .ThenInclude(pt => pt.Task) // Valid: PracticeTask has SimTask Task
+                    .ThenInclude(pt => pt.Task)
                 .FirstOrDefaultAsync(p => p.PracticeCode == createDto.PracticeCode && (p.IsDeleted == null || p.IsDeleted == false));
 
             if (practiceTemplate == null)
@@ -412,6 +407,7 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
             await _progressHelper.UpdateSectionRecordProgressAsync(traineeId, activityRecord.SectionRecordId);
             await _progressHelper.UpdateLearningProgressProgressAsync(traineeId, activityRecord.SectionRecord.LearningProgressId);
 
+            // Re-fetch to ensure fully populated DTO with all template tasks
             var result = await GetPracticeAttemptById(practiceAttempt.Id);
             if (result == null)
                 throw new InvalidOperationException("Failed to retrieve the created practice attempt.");
@@ -419,64 +415,110 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
             return result;
         }
 
-        #endregion
+        // --- UPDATED HELPER METHOD ---
 
-        #region Helper Methods
-        private async Task<List<PracticeAttemptDto>> MapToDtosWithCodesAsync(IEnumerable<PracticeAttempt> attempts)
+        // Maps a list of PracticeAttempt entities to DTOs, ensuring ALL tasks from the Practice template are included.
+        private async Task<List<PracticeAttemptDto>> MapToDtosWithFullTaskContextAsync(IEnumerable<PracticeAttempt> attempts)
         {
             var attemptList = attempts.ToList();
             if (!attemptList.Any()) return new List<PracticeAttemptDto>();
 
-            // 1. Collect IDs
+            // 1. Collect all Practice IDs involved
             var practiceIds = attemptList.Where(a => a.PracticeId.HasValue)
-                                         .Select(a => a.PracticeId)
+                                         .Select(a => a.PracticeId.Value)
                                          .Distinct()
                                          .ToList();
 
-            var taskIds = attemptList.SelectMany(a => a.PracticeAttemptTasks)
-                                     .Where(t => t.TaskId.HasValue)
-                                     .Select(t => t.TaskId)
-                                     .Distinct()
-                                     .ToList();
-
-            // 2. Bulk Fetch Codes
-            var practiceMap = new Dictionary<int, string>();
+            // 2. Fetch the "Templates" (Practice definitions + all expected tasks)
+            var practiceTemplates = new Dictionary<int, Practice>();
             if (practiceIds.Any())
             {
-                practiceMap = await _uow.PracticeRepository.GetAllAsQueryable()
+                practiceTemplates = await _uow.PracticeRepository.GetAllAsQueryable()
                     .Where(p => practiceIds.Contains(p.Id))
-                    .Select(p => new { p.Id, p.PracticeCode })
-                    .ToDictionaryAsync(x => x.Id, x => x.PracticeCode ?? "");
+                    .Include(p => p.PracticeTasks)
+                        .ThenInclude(pt => pt.Task) // Fetch SimTask for Codes
+                    .AsNoTracking()
+                    .ToDictionaryAsync(p => p.Id, p => p);
             }
 
-            var taskMap = new Dictionary<int, string>();
-            if (taskIds.Any())
-            {
-                taskMap = await _uow.SimTaskRepository.GetAllAsQueryable()
-                    .Where(t => taskIds.Contains(t.Id))
-                    .Select(t => new { t.Id, t.TaskCode })
-                    .ToDictionaryAsync(x => x.Id, x => x.TaskCode ?? "");
-            }
-
-            // 3. Map
+            // 3. Map each attempt
             var dtos = new List<PracticeAttemptDto>();
             foreach (var pa in attemptList)
             {
-                var dto = MapToDtoBasic(pa);
-
-                // Set Practice Code
-                if (pa.PracticeId.HasValue && practiceMap.TryGetValue(pa.PracticeId.Value, out var pCode))
+                var dto = new PracticeAttemptDto
                 {
-                    dto.PracticeCode = pCode;
-                }
+                    Id = pa.Id,
+                    ActivityRecordId = pa.ActivityRecordId,
+                    PracticeId = pa.PracticeId,
+                    Score = pa.Score,
+                    AttemptDate = pa.AttemptDate,
+                    AttemptStatus = pa.AttemptStatus?.ToString() ?? "Unknown",
+                    Description = pa.Description,
+                    IsPass = pa.IsPass,
+                    IsCurrent = pa.IsCurrent,
+                    PracticeAttemptTasks = new List<PracticeAttemptTaskDto>()
+                };
 
-                // Set Task Codes
-                foreach (var tDto in dto.PracticeAttemptTasks)
+                // Populate PracticeCode if we have the template
+                if (pa.PracticeId.HasValue && practiceTemplates.TryGetValue(pa.PracticeId.Value, out var template))
                 {
-                    if (tDto.TaskId.HasValue && taskMap.TryGetValue(tDto.TaskId.Value, out var tCode))
+                    dto.PracticeCode = template.PracticeCode;
+
+                    // --- MERGE LOGIC: Template vs. Actual Attempts ---
+
+                    // Existing attempts by the user
+                    var existingTasksMap = pa.PracticeAttemptTasks
+                        .Where(t => t.TaskId.HasValue)
+                        .ToDictionary(t => t.TaskId.Value, t => t);
+
+                    // Iterate over ALL tasks defined in the practice template
+                    foreach (var templateTask in template.PracticeTasks)
                     {
-                        tDto.TaskCode = tCode;
+                        var taskId = templateTask.TaskId;
+                        var taskCode = templateTask.Task?.TaskCode;
+
+                        if (existingTasksMap.TryGetValue(taskId, out var recordedTask))
+                        {
+                            // Scenario A: User submitted/attempted this task
+                            dto.PracticeAttemptTasks.Add(new PracticeAttemptTaskDto
+                            {
+                                Id = recordedTask.Id,
+                                PracticeAttemptId = recordedTask.PracticeAttemptId,
+                                TaskId = taskId,
+                                TaskCode = taskCode,
+                                Score = recordedTask.Score,
+                                Description = recordedTask.Description,
+                                IsPass = recordedTask.IsPass
+                            });
+                        }
+                        else
+                        {
+                            // Scenario B: User did NOT submit this task -> Mark as Failed/Missing
+                            dto.PracticeAttemptTasks.Add(new PracticeAttemptTaskDto
+                            {
+                                Id = 0, // Indicates it doesn't exist in PracticeAttemptTask table
+                                PracticeAttemptId = pa.Id,
+                                TaskId = taskId,
+                                TaskCode = taskCode,
+                                Score = 0,
+                                Description = "Not Attempted",
+                                IsPass = false
+                            });
+                        }
                     }
+                }
+                else
+                {
+                    // Fallback: If for some reason the template is missing, just return what we have
+                    dto.PracticeAttemptTasks = pa.PracticeAttemptTasks.Select(pat => new PracticeAttemptTaskDto
+                    {
+                        Id = pat.Id,
+                        PracticeAttemptId = pat.PracticeAttemptId,
+                        TaskId = pat.TaskId,
+                        Score = pat.Score,
+                        Description = pat.Description,
+                        IsPass = pat.IsPass
+                    }).ToList();
                 }
 
                 dtos.Add(dto);
@@ -484,39 +526,5 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
 
             return dtos;
         }
-
-        private static PracticeAttemptDto MapToDtoBasic(PracticeAttempt pa)
-        {
-            return new PracticeAttemptDto
-            {
-                Id = pa.Id,
-                ActivityRecordId = pa.ActivityRecordId,
-                PracticeId = pa.PracticeId,
-                // PracticeCode is set later
-                Score = pa.Score,
-                AttemptDate = pa.AttemptDate,
-                AttemptStatus = pa.AttemptStatus?.ToString() ?? "Unknown",
-                Description = pa.Description,
-                IsPass = pa.IsPass,
-                IsCurrent = pa.IsCurrent,
-                PracticeAttemptTasks = pa.PracticeAttemptTasks.Select(MapToTaskDtoBasic).ToList()
-            };
-        }
-
-        private static PracticeAttemptTaskDto MapToTaskDtoBasic(PracticeAttemptTask pat)
-        {
-            return new PracticeAttemptTaskDto
-            {
-                Id = pat.Id,
-                PracticeAttemptId = pat.PracticeAttemptId,
-                TaskId = pat.TaskId,
-                // TaskCode is set later
-                Score = pat.Score,
-                Description = pat.Description,
-                IsPass = pat.IsPass
-            };
-        }
-
-        #endregion
     }
 }
