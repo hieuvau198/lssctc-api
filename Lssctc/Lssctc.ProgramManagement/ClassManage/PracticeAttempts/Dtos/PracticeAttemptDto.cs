@@ -7,6 +7,7 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Dtos
         public int Id { get; set; }
         public int ActivityRecordId { get; set; }
         public int? PracticeId { get; set; }
+        public string? PracticeCode { get; set; }
         public decimal? Score { get; set; }
         public DateTime AttemptDate { get; set; }
         public string? AttemptStatus { get; set; }
@@ -21,6 +22,7 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Dtos
         public int Id { get; set; }
         public int PracticeAttemptId { get; set; }
         public int? TaskId { get; set; }
+        public string? TaskCode { get; set; }
         public decimal? Score { get; set; }
         public string? Description { get; set; }
         public bool? IsPass { get; set; }

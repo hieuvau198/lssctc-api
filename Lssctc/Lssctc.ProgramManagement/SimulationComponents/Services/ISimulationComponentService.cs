@@ -6,6 +6,7 @@ namespace Lssctc.ProgramManagement.SimulationComponents.Services
     public interface ISimulationComponentService
     {
         Task<SimulationComponentDto?> GetSimulationComponentById(int id, CancellationToken cancellationToken = default);
+        Task<SimulationComponentDto?> GetSimulationComponentByCode(string code, CancellationToken cancellationToken = default);
         Task<PagedResult<SimulationComponentDto>> GetSimulationComponentsByBrandModelId(
             int brandModelId, 
             int page, 

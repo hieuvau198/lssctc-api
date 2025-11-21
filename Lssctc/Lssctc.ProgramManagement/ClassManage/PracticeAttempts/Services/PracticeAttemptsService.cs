@@ -5,6 +5,7 @@ using Lssctc.Share.Entities;
 using Lssctc.Share.Enums;
 using Lssctc.Share.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using System.Linq;
 
 namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
 {
@@ -18,7 +19,7 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
             _uow = uow;
             _progressHelper = new ProgressHelper(uow);
         }
-
+        #region Gets 
         public async Task<IEnumerable<PracticeAttemptDto>> GetPracticeAttempts(int traineeId, int activityRecordId)
         {
             var activityRecord = await _uow.ActivityRecordRepository
@@ -177,57 +178,35 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
 
             return await query.Select(pa => MapToDto(pa)).ToPagedResultAsync(pageNumber, pageSize);
         }
+        #endregion
 
+        #region Submit Practice Attempt
         public async Task<PracticeAttemptDto> CreatePracticeAttempt(int traineeId, CreatePracticeAttemptDto createDto)
         {
-            // 0. Validate input IDs
-            if (traineeId <= 0)
-                throw new ArgumentException("TraineeId must be greater than 0.", nameof(traineeId));
+            if (traineeId <= 0) throw new ArgumentException("TraineeId must be greater than 0.", nameof(traineeId));
+            if (createDto.ClassId <= 0) throw new ArgumentException("ClassId must be greater than 0.", nameof(createDto.ClassId));
+            if (createDto.PracticeId <= 0) throw new ArgumentException("PracticeId must be greater than 0.", nameof(createDto.PracticeId));
 
-            if (createDto.ClassId <= 0)
-                throw new ArgumentException("ClassId must be greater than 0.", nameof(createDto.ClassId));
-
-            if (createDto.PracticeId <= 0)
-                throw new ArgumentException("PracticeId must be greater than 0.", nameof(createDto.PracticeId));
-
-            // Validate that trainee exists
             var traineeExists = await _uow.TraineeRepository.ExistsAsync(t => t.Id == traineeId && (t.IsDeleted == null || t.IsDeleted == false));
-            if (!traineeExists)
-                throw new KeyNotFoundException($"Trainee with ID {traineeId} not found.");
+            if (!traineeExists) throw new KeyNotFoundException($"Trainee with ID {traineeId} not found.");
 
-            // Validate that class exists
             var classEntity = await _uow.ClassRepository.GetByIdAsync(createDto.ClassId);
-            if (classEntity == null)
-                throw new KeyNotFoundException($"Class with ID {createDto.ClassId} not found.");
+            if (classEntity == null) throw new KeyNotFoundException($"Class with ID {createDto.ClassId} not found.");
 
-            // -----------------------------------------------------------------
-            // MODIFICATION 1: Get Practice Template Tasks
-            // -----------------------------------------------------------------
             var practiceTemplate = await _uow.PracticeRepository
                 .GetAllAsQueryable()
                 .AsNoTracking()
                 .Include(p => p.PracticeTasks)
                 .FirstOrDefaultAsync(p => p.Id == createDto.PracticeId && (p.IsDeleted == null || p.IsDeleted == false));
 
-            if (practiceTemplate == null)
-                throw new KeyNotFoundException($"Practice with ID {createDto.PracticeId} not found.");
+            if (practiceTemplate == null) throw new KeyNotFoundException($"Practice with ID {createDto.PracticeId} not found.");
 
-            // Get the set of *required* Task IDs from the template
-            var templateTaskIds = practiceTemplate.PracticeTasks
-                .Select(pt => pt.TaskId)
-                .ToHashSet();
+            var templateTaskIds = practiceTemplate.PracticeTasks.Select(pt => pt.TaskId).ToHashSet();
 
-            // Validate enrollment exists
             var enrollmentExists = await _uow.EnrollmentRepository.ExistsAsync(e =>
-                e.TraineeId == traineeId &&
-                e.ClassId == createDto.ClassId &&
-                (e.IsDeleted == null || e.IsDeleted == false));
-            if (!enrollmentExists)
-                throw new KeyNotFoundException($"Trainee {traineeId} is not enrolled in Class {createDto.ClassId}.");
+                e.TraineeId == traineeId && e.ClassId == createDto.ClassId && (e.IsDeleted == null || e.IsDeleted == false));
+            if (!enrollmentExists) throw new KeyNotFoundException($"Trainee {traineeId} is not enrolled in Class {createDto.ClassId}.");
 
-            // -----------------------------------------------------------------
-            // MODIFICATION 2: Validate submitted tasks and re-calculate pass/fail
-            // -----------------------------------------------------------------
             bool allTasksPass = false;
             var submittedPassedTaskIds = new HashSet<int>();
 
@@ -235,46 +214,140 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
             {
                 foreach (var taskDto in createDto.PracticeAttemptTasks)
                 {
-                    // Check 1: Does the submitted TaskId even exist in the template?
                     if (taskDto.TaskId.HasValue && templateTaskIds.Contains(taskDto.TaskId.Value))
                     {
-                        // Check 2: Did the client say this task passed?
-                        if (taskDto.IsPass == true)
-                        {
-                            submittedPassedTaskIds.Add(taskDto.TaskId.Value);
-                        }
+                        if (taskDto.IsPass == true) submittedPassedTaskIds.Add(taskDto.TaskId.Value);
                     }
                     else if (taskDto.TaskId.HasValue)
                     {
-                        // Submitted a task that isn't part of this practice's template
                         throw new ArgumentException($"Submitted TaskId {taskDto.TaskId.Value} is not part of Practice {createDto.PracticeId}.");
                     }
                 }
-
-                // Check 3: Does the set of passed tasks *exactly match* the set of template tasks?
-                // This ensures all required tasks were submitted and all were marked as passed.
                 allTasksPass = templateTaskIds.SetEquals(submittedPassedTaskIds);
             }
 
-            // Overwrite client-sent score and pass status with server-validated values
+            createDto.Score = allTasksPass ? 10 : 0;
+            createDto.IsPass = allTasksPass;
+            if (createDto.PracticeAttemptTasks == null)
+            {
+                createDto.PracticeAttemptTasks = new List<CreatePracticeAttemptTaskDto>();
+            }
+
+            return await SavePracticeAttempt(traineeId, createDto.ClassId, createDto.PracticeId,
+                createDto.Score, createDto.Description, createDto.IsPass,
+                createDto.PracticeAttemptTasks.Select(t => new PracticeAttemptTask
+                {
+                    TaskId = t.TaskId.GetValueOrDefault(),
+                    Score = t.Score,
+                    Description = t.Description,
+                    IsPass = t.IsPass,
+                    IsDeleted = false
+                }).ToList(),
+                templateTaskIds);
+        }
+
+        // --- NEW METHOD: Create by Code ---
+        public async Task<PracticeAttemptDto> CreatePracticeAttemptByCode(int traineeId, CreatePracticeAttemptWithCodeDto createDto)
+        {
+            if (traineeId <= 0) throw new ArgumentException("TraineeId must be greater than 0.", nameof(traineeId));
+            if (createDto.ClassId <= 0) throw new ArgumentException("ClassId must be greater than 0.", nameof(createDto.ClassId));
+            if (string.IsNullOrWhiteSpace(createDto.PracticeCode)) throw new ArgumentException("PracticeCode is required.", nameof(createDto.PracticeCode));
+
+            // 1. Look up Practice by Code
+            var practiceTemplate = await _uow.PracticeRepository
+                .GetAllAsQueryable()
+                .AsNoTracking()
+                .Include(p => p.PracticeTasks)
+                    .ThenInclude(pt => pt.Task) // Join SimTask to verify codes
+                .FirstOrDefaultAsync(p => p.PracticeCode == createDto.PracticeCode && (p.IsDeleted == null || p.IsDeleted == false));
+
+            if (practiceTemplate == null)
+                throw new KeyNotFoundException($"Practice with Code '{createDto.PracticeCode}' not found.");
+
+            int practiceId = practiceTemplate.Id;
+
+            // 2. Get Template Task Logic
+            // Map TaskCode -> TaskId for the specific practice
+            var taskCodeToIdMap = practiceTemplate.PracticeTasks
+                .Where(pt => pt.Task != null && pt.Task.TaskCode != null) // Assuming SimTask has TaskCode
+                .ToDictionary(pt => pt.Task.TaskCode!, pt => pt.TaskId);
+
+            var templateTaskIds = practiceTemplate.PracticeTasks.Select(pt => pt.TaskId).ToHashSet();
+
+            // 3. Validations
+            var traineeExists = await _uow.TraineeRepository.ExistsAsync(t => t.Id == traineeId && (t.IsDeleted == null || t.IsDeleted == false));
+            if (!traineeExists) throw new KeyNotFoundException($"Trainee with ID {traineeId} not found.");
+
+            var enrollmentExists = await _uow.EnrollmentRepository.ExistsAsync(e =>
+                e.TraineeId == traineeId && e.ClassId == createDto.ClassId && (e.IsDeleted == null || e.IsDeleted == false));
+            if (!enrollmentExists) throw new KeyNotFoundException($"Trainee {traineeId} is not enrolled in Class {createDto.ClassId}.");
+
+            // 4. Validate submitted tasks and map codes to IDs
+            bool allTasksPass = false;
+            var submittedPassedTaskIds = new HashSet<int>();
+            var practiceAttemptTasksToSave = new List<PracticeAttemptTask>();
+
+            if (createDto.PracticeAttemptTasks != null && createDto.PracticeAttemptTasks.Any())
+            {
+                foreach (var taskDto in createDto.PracticeAttemptTasks)
+                {
+                    if (!taskCodeToIdMap.TryGetValue(taskDto.TaskCode, out int taskId))
+                    {
+                        throw new ArgumentException($"Submitted TaskCode '{taskDto.TaskCode}' is not valid for Practice '{createDto.PracticeCode}'.");
+                    }
+
+                    // If we found the ID, check if it passed
+                    if (taskDto.IsPass == true)
+                    {
+                        submittedPassedTaskIds.Add(taskId);
+                    }
+
+                    practiceAttemptTasksToSave.Add(new PracticeAttemptTask
+                    {
+                        TaskId = taskId,
+                        Score = taskDto.Score,
+                        Description = taskDto.Description,
+                        IsPass = taskDto.IsPass,
+                        IsDeleted = false
+                    });
+                }
+
+                allTasksPass = templateTaskIds.SetEquals(submittedPassedTaskIds);
+            }
+
             createDto.Score = allTasksPass ? 10 : 0;
             createDto.IsPass = allTasksPass;
 
-            // 1. Find ActivityRecord based on TraineeId, ClassId, and PracticeId
+            return await SavePracticeAttempt(traineeId, createDto.ClassId, practiceId,
+                createDto.Score, createDto.Description, createDto.IsPass,
+                practiceAttemptTasksToSave, templateTaskIds);
+        }
+
+        // Helper method to avoid code duplication between ID-based and Code-based creation
+        private async Task<PracticeAttemptDto> SavePracticeAttempt(
+            int traineeId,
+            int classId,
+            int practiceId,
+            decimal? score,
+            string? description,
+            bool? isPass,
+            List<PracticeAttemptTask> tasksToSave,
+            HashSet<int> templateTaskIds)
+        {
+            // Find ActivityRecord
             var activityRecord = await _uow.ActivityRecordRepository
                 .GetAllAsQueryable()
-                // We need to track this entity to update it
                 .Include(ar => ar.SectionRecord)
                     .ThenInclude(sr => sr.LearningProgress)
                         .ThenInclude(lp => lp.Enrollment)
                 .FirstOrDefaultAsync(ar =>
                     ar.SectionRecord.LearningProgress.Enrollment.TraineeId == traineeId &&
-                    ar.SectionRecord.LearningProgress.Enrollment.ClassId == createDto.ClassId &&
-                    ar.ActivityType == (int)ActivityType.Practice && // <-- Ensure it's a practice AR
+                    ar.SectionRecord.LearningProgress.Enrollment.ClassId == classId &&
+                    ar.ActivityType == (int)ActivityType.Practice &&
                     ar.ActivityId != null &&
                     ar.ActivityId == (
                         _uow.ActivityPracticeRepository.GetAllAsQueryable()
-                            .Where(ap => ap.PracticeId == createDto.PracticeId)
+                            .Where(ap => ap.PracticeId == practiceId)
                             .Select(ap => ap.ActivityId)
                             .FirstOrDefault()
                     ));
@@ -282,11 +355,11 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
             if (activityRecord == null)
             {
                 throw new KeyNotFoundException(
-                    $"Activity record not found for TraineeId={traineeId}, ClassId={createDto.ClassId}, PracticeId={createDto.PracticeId}. " +
+                    $"Activity record not found for TraineeId={traineeId}, ClassId={classId}, PracticeId={practiceId}. " +
                     "Please ensure the practice is assigned to an activity in this class.");
             }
 
-            // 2. Set IsCurrent = false for all existing attempts for this activity record
+            // Set IsCurrent = false for existing
             var existingAttempts = await _uow.PracticeAttemptRepository
                 .GetAllAsQueryable()
                 .Where(pa => pa.ActivityRecordId == activityRecord.Id && pa.IsCurrent)
@@ -298,69 +371,46 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
                 await _uow.PracticeAttemptRepository.UpdateAsync(attempt);
             }
 
-            // 3. Create new PracticeAttempt
+            // Create Attempt
             var practiceAttempt = new PracticeAttempt
             {
                 ActivityRecordId = activityRecord.Id,
-                PracticeId = createDto.PracticeId,
-                Score = createDto.Score, // Use server-validated score
+                PracticeId = practiceId,
+                Score = score,
                 AttemptDate = DateTime.Now,
                 AttemptStatus = (int)ActivityRecordStatusEnum.InProgress,
-                Description = createDto.Description,
-                IsPass = createDto.IsPass, // Use server-validated pass status
+                Description = description,
+                IsPass = isPass,
                 IsCurrent = true,
                 IsDeleted = false
             };
 
             await _uow.PracticeAttemptRepository.CreateAsync(practiceAttempt);
-            await _uow.SaveChangesAsync(); // Save to get practiceAttempt.Id
+            await _uow.SaveChangesAsync();
 
-            // 4. Create PracticeAttemptTasks
-            var practiceAttemptTasks = new List<PracticeAttemptTask>();
-            if (createDto.PracticeAttemptTasks != null && createDto.PracticeAttemptTasks.Any())
+            // Create Tasks
+            foreach (var task in tasksToSave)
             {
-                foreach (var taskDto in createDto.PracticeAttemptTasks)
+                if (templateTaskIds.Contains(task.TaskId ?? -1))
                 {
-                    // Only save tasks that are part of the template
-                    if (taskDto.TaskId.HasValue && templateTaskIds.Contains(taskDto.TaskId.Value))
-                    {
-                        var practiceAttemptTask = new PracticeAttemptTask
-                        {
-                            PracticeAttemptId = practiceAttempt.Id,
-                            TaskId = taskDto.TaskId,
-                            Score = taskDto.Score,
-                            Description = taskDto.Description,
-                            IsPass = taskDto.IsPass,
-                            IsDeleted = false
-                        };
-
-                        practiceAttemptTasks.Add(practiceAttemptTask);
-                        await _uow.PracticeAttemptTaskRepository.CreateAsync(practiceAttemptTask);
-                    }
+                    task.PracticeAttemptId = practiceAttempt.Id;
+                    await _uow.PracticeAttemptTaskRepository.CreateAsync(task);
                 }
             }
 
-            // Save the tasks
             await _uow.SaveChangesAsync();
 
-            // -----------------------------------------------------------------
-            // MODIFICATION 3: Call ProgressHelper to update all statuses
-            // -----------------------------------------------------------------
-
-            // 5. Update ActivityRecord explicitly using the helper
-            // This will set its status to Completed or InProgress based on the new attempt
+            // Update Progress
             await _progressHelper.UpdateActivityRecordProgressAsync(traineeId, activityRecord.Id);
-
-            // 6. Propagate changes up to SectionRecord
             await _progressHelper.UpdateSectionRecordProgressAsync(traineeId, activityRecord.SectionRecordId);
-
-            // 7. Propagate changes up to LearningProgress
             await _progressHelper.UpdateLearningProgressProgressAsync(traineeId, activityRecord.SectionRecord.LearningProgressId);
 
-            // 8. Return DTO
-            practiceAttempt.PracticeAttemptTasks = practiceAttemptTasks;
+            // Hydrate navigation property for response mapping
+            practiceAttempt.PracticeAttemptTasks = tasksToSave;
             return MapToDto(practiceAttempt);
         }
+        #endregion
+
         #region Mapping Methods
 
         private static PracticeAttemptDto MapToDto(PracticeAttempt pa)

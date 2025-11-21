@@ -54,6 +54,25 @@ namespace Lssctc.ProgramManagement.SimulationComponents.Controllers
             }
         }
 
+        [HttpGet("by-code/{code}")]
+        public async Task<ActionResult<SimulationComponentDto>> GetSimulationComponentByCode(
+            string code,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var result = await _simulationComponentService.GetSimulationComponentByCode(code, cancellationToken);
+                if (result == null)
+                    return NotFound($"Simulation component with code '{code}' not found.");
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+            }
+        }
+
         [HttpGet("by-brand-model/{brandModelId}")]
         public async Task<ActionResult<PagedResult<SimulationComponentDto>>> GetSimulationComponentsByBrandModelId(
             int brandModelId,

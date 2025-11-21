@@ -38,6 +38,31 @@ namespace Lssctc.ProgramManagement.SimulationComponents.Services
             return component;
         }
 
+        public async Task<SimulationComponentDto?> GetSimulationComponentByCode(string code, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(code)) return null;
+
+            var component = await _uow.SimulationComponentRepository.GetAllAsQueryable()
+                .Where(sc => sc.ComponentCode == code && sc.IsDeleted != true)
+                .Include(sc => sc.BrandModel)
+                .Select(sc => new SimulationComponentDto
+                {
+                    Id = sc.Id,
+                    BrandModelId = sc.BrandModelId,
+                    BrandModelName = sc.BrandModel.Name,
+                    Name = sc.Name,
+                    ComponentCode = sc.ComponentCode,
+                    Description = sc.Description,
+                    ImageUrl = sc.ImageUrl,
+                    IsActive = sc.IsActive,
+                    CreatedDate = sc.CreatedDate,
+                    IsDeleted = sc.IsDeleted
+                })
+                .FirstOrDefaultAsync(cancellationToken);
+
+            return component;
+        }
+
         public async Task<PagedResult<SimulationComponentDto>> GetAllSimulationComponents(
             int page,
             int pageSize,
