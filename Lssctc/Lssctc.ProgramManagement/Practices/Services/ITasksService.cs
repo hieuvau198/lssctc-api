@@ -21,6 +21,8 @@ namespace Lssctc.ProgramManagement.Practices.Services
         Task<IEnumerable<TaskDto>> GetTasksByPracticeAsync(int practiceId);
         Task AddTaskToPracticeAsync(int practiceId, int taskId);
         Task RemoveTaskFromPracticeAsync(int practiceId, int taskId);
+        // Create task and add it directly to practice by practice code in one operation
+        Task<TaskDto> CreateTaskByPracticeAsync(string practiceCode, CreateTaskDto dto);
         #endregion
     }
 }

@@ -205,6 +205,66 @@ namespace Lssctc.ProgramManagement.Practices.Services
             await _uow.SaveChangesAsync();
         }
 
+        public async Task<TaskDto> CreateTaskByPracticeAsync(string practiceCode, CreateTaskDto dto)
+        {
+            // Validate practice code is provided
+            if (string.IsNullOrWhiteSpace(practiceCode))
+                throw new ArgumentException("Practice code is required.");
+
+            // Validate practice exists by code
+            var practice = await _uow.PracticeRepository
+                .GetAllAsQueryable()
+                .FirstOrDefaultAsync(p => p.PracticeCode != null && 
+                                         p.PracticeCode.ToLower() == practiceCode.ToLower() &&
+                                         (p.IsDeleted == null || p.IsDeleted == false));
+
+            if (practice == null)
+                throw new KeyNotFoundException($"Practice with code '{practiceCode}' not found.");
+
+            // Validate TaskName is required
+            if (string.IsNullOrWhiteSpace(dto.TaskName))
+                throw new ArgumentException("Task name is required.");
+
+            // Validate TaskCode uniqueness if provided
+            if (!string.IsNullOrWhiteSpace(dto.TaskCode))
+            {
+                var normalizedCode = dto.TaskCode.Trim();
+                bool codeExists = await _uow.SimTaskRepository
+                    .ExistsAsync(t => t.TaskCode != null && 
+                                     t.TaskCode.ToLower() == normalizedCode.ToLower() &&
+                                     (t.IsDeleted == null || t.IsDeleted == false));
+                
+                if (codeExists)
+                    throw new ArgumentException($"Task code '{normalizedCode}' already exists.");
+            }
+
+            // Create the task
+            var task = new SimTask
+            {
+                TaskName = dto.TaskName.Trim(),
+                TaskCode = dto.TaskCode?.Trim(),
+                TaskDescription = dto.TaskDescription?.Trim(),
+                ExpectedResult = dto.ExpectedResult?.Trim(),
+                IsDeleted = false
+            };
+
+            await _uow.SimTaskRepository.CreateAsync(task);
+            await _uow.SaveChangesAsync();
+
+            // Link task to practice
+            var link = new PracticeTask
+            {
+                PracticeId = practice.Id,
+                TaskId = task.Id,
+                Status = 1
+            };
+
+            await _uow.PracticeTaskRepository.CreateAsync(link);
+            await _uow.SaveChangesAsync();
+
+            return MapToDto(task);
+        }
+
         #endregion
 
         #region Mapping Helpers
