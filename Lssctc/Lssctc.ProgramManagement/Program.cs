@@ -192,7 +192,7 @@ builder.Services.AddCors(options =>
                   .AllowAnyMethod()
                   .AllowCredentials();
         });
-});
+}); 
 
 #endregion
 
