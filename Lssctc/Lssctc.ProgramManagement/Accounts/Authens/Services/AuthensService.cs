@@ -167,11 +167,38 @@ public class AuthensService : IAuthensService
         var googleUserInfo = await _googleAuthService.ValidateTokenAsync(accessToken);
         // If return == null => Exception
         if (googleUserInfo == null)
-            throw new Exception("Invalid email or password.");
+            throw new Exception("Account with this email does not exist.");
 
         // Check email have exit
-        //var account = await _dpUnitOfWork.AccountRepositories.GetByEmailAsync(googleUserInfo.Email);
+        var user = await _uow.UserRepository.GetAllAsQueryable()
+            .FirstOrDefaultAsync(x => x.Email == googleUserInfo.Email && !x.IsDeleted);
 
-        throw new Exception("");
+        if (user == null)
+        {
+            throw new Exception("Account with this email does not exist.");
+        }
+
+        var (token, expiresIn) = JwtHandler.GenerateJwtToken(
+           user.Username,
+           user.Id,
+           user.Role,
+           user.Fullname,  // <--- Pass Fullname
+           user.Email,     // <--- Pass Email
+           user.AvatarUrl, // <--- Pass AvatarUrl
+           _configuration);
+
+        return new LoginResponseModel
+        {
+            UserName = user.Username,
+            AccessToken = token,
+            ExpiresIn = expiresIn
+        };
+
+        //return new LoginResponseModel
+        //{
+        //    UserName = googleUserInfo.Name,
+        //    AccessToken = "12312312 Token",
+        //    ExpiresIn = 123
+        //};
     }
 }

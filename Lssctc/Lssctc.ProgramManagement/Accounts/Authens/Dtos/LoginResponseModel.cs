@@ -1,11 +1,10 @@
-﻿namespace Lssctc.ProgramManagement.Accounts.Authens.Dtos
+﻿namespace Lssctc.ProgramManagement.Accounts.Authens.Dtos;
+
+public class LoginResponseModel
 {
-    public class LoginResponseModel
-    {
-        public string? UserName { get; set; }
-        public string? AccessToken { get; set; }
-        public int ExpiresIn { get; set; } // time in seconds
+    public string? UserName { get; set; }
+    public string? AccessToken { get; set; }
+    public int ExpiresIn { get; set; } // time in seconds
 
 
-    }
 }

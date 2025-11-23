@@ -69,14 +69,20 @@ namespace Lssctc.ProgramManagement.Accounts.Authens.Controllers
             }
         }
 
-        [HttpPost("login-google", Name = "LoginGoogleCommand")]
+        [HttpPost("login-google")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> LoginGoogle([FromBody] LoginGoogleRequestDto request)
         {
-            var result = await _authensService.LoginWithGoogle(request.AccessToken);
-
-            return Ok("");
+            try
+            {
+                var result = await _authensService.LoginWithGoogle(request.AccessToken);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
     }
 }

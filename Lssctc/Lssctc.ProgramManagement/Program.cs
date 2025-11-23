@@ -172,15 +172,28 @@ builder.Services.AddScoped<IProfilesService, ProfilesService>();
 #endregion
 
 #region CORS
+//builder.Services.AddCors(options =>
+//{
+//    options.AddPolicy("AllowAll", policy =>
+//    {
+//        policy.AllowAnyOrigin()
+//              .AllowAnyMethod()
+//              .AllowAnyHeader();
+//    });
+//});
+
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", policy =>
-    {
-        policy.AllowAnyOrigin()
-              .AllowAnyMethod()
-              .AllowAnyHeader();
-    });
+    options.AddPolicy("AllowSpecificOrigin",
+        option =>
+        {
+            option.WithOrigins("http://localhost:5173")
+                  .AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .AllowCredentials();
+        });
 });
+
 #endregion
 
 // add distributed cache so we can store revoked token JTIs without DB
@@ -194,8 +207,9 @@ if (true)
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
-app.UseCors("AllowAll");
+app.UseCors("AllowSpecificOrigin");
+
+//app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 
