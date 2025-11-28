@@ -170,38 +170,6 @@ namespace Lssctc.ProgramManagement.Materials.Services
             return MapToDto(material);
         }
 
-        public async Task DeleteMaterialAsync(int id)
-        {
-            var material = await _uow.LearningMaterialRepository
-                .GetAllAsQueryable()
-                .Include(m => m.ActivityMaterials)
-                .FirstOrDefaultAsync(m => m.Id == id);
-
-            if (material == null)
-                throw new KeyNotFoundException($"Material with ID {id} not found.");
-
-            if (material.ActivityMaterials.Any())
-            {
-                // --- ADDED LOGIC ---
-                // Check if any linked activities are part of a locked course
-                var linkedActivityIds = material.ActivityMaterials.Select(am => am.ActivityId).ToList();
-                foreach (var activityId in linkedActivityIds)
-                {
-                    if (await IsActivityLockedAsync(activityId))
-                    {
-                        throw new InvalidOperationException("Cannot delete material. It is assigned to an activity that is part of a course already in use.");
-                    }
-                }
-                // --- END ADDED LOGIC ---
-
-                // If not locked, but still linked, throw original error
-                throw new InvalidOperationException("Cannot delete material linked to activities. Please remove it from all activities first.");
-            }
-
-            await _uow.LearningMaterialRepository.DeleteAsync(material);
-            await _uow.SaveChangesAsync();
-        }
-
         public async Task DeleteMaterialAsync(int id, int? instructorId)
         {
             // If instructorId is provided and > 0, check if instructor is the author
@@ -235,6 +203,17 @@ namespace Lssctc.ProgramManagement.Materials.Services
 
                 // If not locked, but still linked, throw original error
                 throw new InvalidOperationException("Cannot delete material linked to activities. Please remove it from all activities first.");
+            }
+
+            // Delete all MaterialAuthor records first
+            var materialAuthors = await _uow.MaterialAuthorRepository
+                .GetAllAsQueryable()
+                .Where(ma => ma.MaterialId == id)
+                .ToListAsync();
+
+            foreach (var materialAuthor in materialAuthors)
+            {
+                await _uow.MaterialAuthorRepository.DeleteAsync(materialAuthor);
             }
 
             await _uow.LearningMaterialRepository.DeleteAsync(material);
