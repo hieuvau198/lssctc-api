@@ -54,25 +54,6 @@ namespace Lssctc.ProgramManagement.Quizzes.DTOs
         public string? Description { get; set; }
     }
 
-    public class ImportQuizExcelDto
-    {
-        [Required(ErrorMessage = "Excel file is required.")]
-        public IFormFile File { get; set; } = null!;
-
-        [Required(ErrorMessage = "Quiz name is required.")]
-        [StringLength(100, ErrorMessage = "Quiz name cannot exceed 100 characters.")]
-        public string Name { get; set; } = null!;
-
-        [Range(0.01, 10, ErrorMessage = "Pass score must be between 0.01 and 10.")]
-        public decimal? PassScoreCriteria { get; set; }
-
-        [Range(1, 600, ErrorMessage = "Time limit must be between 1 and 600 minutes.")]
-        public int? TimelimitMinute { get; set; }
-
-        [StringLength(2000, ErrorMessage = "Description cannot exceed 2000 characters.")]
-        public string? Description { get; set; }
-    }
-
     #endregion
 
     #region Question DTOs

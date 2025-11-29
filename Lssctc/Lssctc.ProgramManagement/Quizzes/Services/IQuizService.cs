@@ -25,7 +25,6 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
         Task<bool> DeleteQuizById(int id, int? instructorId);
         Task<int> CreateQuizWithQuestions(CreateQuizWithQuestionsDto dto);
         Task<int> CreateQuizWithQuestions(CreateQuizWithQuestionsDto dto, int instructorId);
-        Task<int> CreateQuizFromExcel(ImportQuizExcelDto dto, int instructorId);
         Task<bool> UpdateQuizWithQuestionsAsync(int quizId, UpdateQuizWithQuestionsDto dto);
         Task<bool> UpdateQuizWithQuestionsAsync(int quizId, UpdateQuizWithQuestionsDto dto, int? instructorId);
         Task<int> AddQuizToActivity(CreateActivityQuizDto dto);

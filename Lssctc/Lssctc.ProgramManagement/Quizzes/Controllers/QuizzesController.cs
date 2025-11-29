@@ -205,41 +205,6 @@ namespace Lssctc.ProgramManagement.Quizzes.Controllers
             }
         }
 
-
-        [HttpPost("import-excel")]
-        [Authorize(Roles = "Admin, Instructor")]
-        public async Task<IActionResult> ImportQuizFromExcel([FromForm] ImportQuizExcelDto input)
-        {
-            try
-            {
-                if (!ModelState.IsValid)
-                    return BadRequest(new { status = 400, message = "Invalid model state", type = "ValidationException", errors = ModelState });
-
-                
-                var instructorId = GetInstructorIdFromClaims();
-
-                var quizId = await _service.CreateQuizFromExcel(input, instructorId);
-
-                return Ok(new { status = 200, message = "Import quiz from excel successfully", data = new { quizId } });
-            }
-            catch (ValidationException ex)
-            {
-                // Bắt lỗi validation (ví dụ: sai tổng điểm, thiếu file...)
-                return BadRequest(new { status = 400, message = ex.Message, type = "ValidationException" });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                // Bắt lỗi auth từ GetInstructorIdFromClaims
-                return Unauthorized(new { status = 401, message = ex.Message, type = "Unauthorized" });
-            }
-            catch (Exception ex)
-            {
-                // Lỗi hệ thống khác
-                return StatusCode(500, new { status = 500, message = ex.Message, type = ex.GetType().Name });
-            }
-        }
-
-
         [HttpPost("add-to-activity")]
         [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> AddQuizToActivity([FromBody] CreateActivityQuizDto dto)
