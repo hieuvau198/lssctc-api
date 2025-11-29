@@ -624,11 +624,11 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
                     {
                         // Replace comma with dot to normalize to InvariantCulture
                         var normalizedScore = scoreRaw.Replace(",", ".");
+
                         if (!decimal.TryParse(normalizedScore, NumberStyles.Any, CultureInfo.InvariantCulture, out qScore))
                         {
-                            // If parsing fails, qScore will be 0 -> Will be blocked at the final total score validation step
-                            // Or you can throw an error right here if you want to be strict:
-                            // throw new ValidationException($"Row {rowIndex}: Score '{scoreRaw}' is invalid.");
+                            //  Throw error immediately so the user knows exactly which row is wrong
+                            throw new ValidationException($"Row {rowIndex}: Score '{scoreRaw}' is invalid. Please ensure it is a number (e.g., 2.5) and not a date.");
                         }
                     }
 
