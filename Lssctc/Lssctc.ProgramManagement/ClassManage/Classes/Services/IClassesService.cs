@@ -37,6 +37,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
         #region Classes By other Filters
         Task<IEnumerable<ClassDto>> GetClassesByProgramAndCourseAsync(int programId, int courseId);
         Task<IEnumerable<ClassDto>> GetClassesByCourseAsync(int courseId);
+        Task<IEnumerable<ClassDto>> GetClassesByCourseIdForTrainee(int courseId);
         Task<IEnumerable<ClassDto>> GetClassesByInstructorAsync(int instructorId);
         Task<IEnumerable<ClassDto>> GetAllClassesByTraineeAsync(int traineeId);
         Task<PagedResult<ClassDto>> GetPagedClassesByTraineeAsync(int traineeId, int pageNumber, int pageSize);

@@ -291,6 +291,19 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
             return classes.Select(MapToDto);
         }
 
+        public async Task<IEnumerable<ClassDto>> GetClassesByCourseIdForTrainee(int courseId)
+        {
+            var classes = await _uow.ClassRepository
+                .GetAllAsQueryable()
+                .Include(c => c.ProgramCourse)
+                .Include(c => c.ClassCode)
+                .Where(c => c.ProgramCourse.CourseId == courseId &&
+                           (c.Status == (int)ClassStatusEnum.Open || c.Status == (int)ClassStatusEnum.Inprogress))
+                .ToListAsync();
+
+            return classes.Select(MapToDto);
+        }
+
         public async Task<IEnumerable<ClassDto>> GetClassesByInstructorAsync(int instructorId)
         {
             var classes = await _uow.ClassInstructorRepository

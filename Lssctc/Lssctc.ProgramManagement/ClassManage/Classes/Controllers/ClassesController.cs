@@ -311,6 +311,25 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
             }
         }
 
+        [HttpGet("course/{courseId}/for-trainee")]
+        [Authorize(Roles = "Admin, Trainee")]
+        [ProducesResponseType(typeof(IEnumerable<ClassDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> GetByCourseForTrainee(int courseId)
+        {
+            try
+            {
+                var result = await _service.GetClassesByCourseIdForTrainee(courseId);
+                if (result == null || !result.Any())
+                    return NotFound("No open or in-progress classes found for this course.");
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
         [HttpGet("instructor/{instructorId}")]
         [Authorize(Roles = "Admin, Instructor")]
         [ProducesResponseType(typeof(IEnumerable<ClassDto>), StatusCodes.Status200OK)]
