@@ -17,6 +17,7 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Services
         Task<UserDto> CreateSimulationManagerAccountAsync(CreateUserDto dto);
         Task<bool> UpdateUserAsync(int id, UpdateUserDto dto);
         Task<bool> DeleteUserAsync(int id);
+        Task<bool> IsEmailExistsAsync(string email);
         #endregion
 
         #region Profiles

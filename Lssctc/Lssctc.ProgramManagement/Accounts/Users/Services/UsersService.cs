@@ -233,6 +233,13 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Services
             return true;
         }
 
+        public async Task<bool> IsEmailExistsAsync(string email)
+        {
+            return await _uow.UserRepository
+                .GetAllAsQueryable()
+                .AnyAsync(u => u.Email.ToLower() == email.ToLower() && !u.IsDeleted);
+        }
+
         #endregion
 
         #region Profiles

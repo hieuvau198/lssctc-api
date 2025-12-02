@@ -10,6 +10,7 @@
 	<PackageReference Include="EPPlus" Version="8.3.1" />
 	<PackageReference Include="ExcelDataReader" Version="3.8.0" />
 	<PackageReference Include="ExcelDataReader.DataSet" Version="3.8.0" />
+	<PackageReference Include="MailKit" Version="4.14.1" />
 	<PackageReference Include="Microsoft.AspNetCore.OData" Version="9.4.1" />
 	<PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
 	<PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.0">

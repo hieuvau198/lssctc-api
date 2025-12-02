@@ -1,3 +1,4 @@
+﻿using Lssctc.ProgramManagement.Accounts.Authens.Dtos;
 using Lssctc.ProgramManagement.Accounts.Authens.Services;
 using Lssctc.ProgramManagement.Accounts.Profiles.Services;
 using Lssctc.ProgramManagement.Accounts.Users.Services;
@@ -169,6 +170,7 @@ builder.Services.AddScoped<IQuizQuestionOptionsService, QuizQuestionOptionsServi
 builder.Services.AddScoped<IBrandModel, Lssctc.ProgramManagement.BrandModel.Services.BrandModel>();
 builder.Services.AddScoped<ISimulationComponentService, SimulationComponentService>();
 builder.Services.AddScoped<IProfilesService, ProfilesService>();
+builder.Services.AddScoped<IOtpService, OtpService>();
 #endregion
 
 #region CORS
@@ -192,12 +194,20 @@ builder.Services.AddCors(options =>
                   .AllowAnyMethod()
                   .AllowCredentials();
         });
-}); 
+});
 
+// 1. Bind configuration from appsettings to EmailSettings class
+builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
+
+// 2. Register MailService as Transient (creates new instance each time to ensure clean connection)
+builder.Services.AddTransient<IMailService, MailService>();
 #endregion
 
 // add distributed cache so we can store revoked token JTIs without DB
 builder.Services.AddDistributedMemoryCache();
+
+// add memory cache for OTP storage
+builder.Services.AddMemoryCache();
 
 var app = builder.Build();
 
