@@ -13,7 +13,7 @@ namespace Lssctc.ProgramManagement.Accounts.Authens.Services
         // Configuration constants
         private const int OTP_LENGTH = 6;
         private const int OTP_EXPIRATION_MINUTES = 5;
-        private const int COOLDOWN_SECONDS = 60;
+        private const int COOLDOWN_SECONDS = 5;
         private const int RESET_TOKEN_EXPIRATION_MINUTES = 10;
 
         // Cache key prefixes
