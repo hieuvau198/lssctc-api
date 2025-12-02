@@ -240,6 +240,23 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Services
                 .AnyAsync(u => u.Email.ToLower() == email.ToLower() && !u.IsDeleted);
         }
 
+        public async Task<bool> ResetPasswordByEmailAsync(string email, string newPassword)
+        {
+            var user = await _uow.UserRepository
+                .GetAllAsQueryable()
+                .FirstOrDefaultAsync(u => u.Email.ToLower() == email.ToLower() && !u.IsDeleted);
+
+            if (user == null)
+                throw new Exception("User not found.");
+
+            // Hash the new password
+            user.Password = PasswordHashHandler.HashPassword(newPassword);
+
+            await _uow.UserRepository.UpdateAsync(user);
+            await _uow.SaveChangesAsync();
+            return true;
+        }
+
         #endregion
 
         #region Profiles

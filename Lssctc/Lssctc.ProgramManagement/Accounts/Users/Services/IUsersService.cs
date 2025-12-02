@@ -18,6 +18,7 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Services
         Task<bool> UpdateUserAsync(int id, UpdateUserDto dto);
         Task<bool> DeleteUserAsync(int id);
         Task<bool> IsEmailExistsAsync(string email);
+        Task<bool> ResetPasswordByEmailAsync(string email, string newPassword);
         #endregion
 
         #region Profiles

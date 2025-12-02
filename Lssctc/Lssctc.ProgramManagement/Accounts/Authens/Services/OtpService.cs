@@ -14,10 +14,12 @@ namespace Lssctc.ProgramManagement.Accounts.Authens.Services
         private const int OTP_LENGTH = 6;
         private const int OTP_EXPIRATION_MINUTES = 5;
         private const int COOLDOWN_SECONDS = 60;
+        private const int RESET_TOKEN_EXPIRATION_MINUTES = 10;
 
         // Cache key prefixes
         private const string OTP_KEY_PREFIX = "otp_";
         private const string COOLDOWN_KEY_PREFIX = "otp_cooldown_";
+        private const string RESET_TOKEN_KEY_PREFIX = "reset_token_";
 
         public OtpService(IMemoryCache memoryCache)
         {
@@ -70,7 +72,7 @@ namespace Lssctc.ProgramManagement.Accounts.Authens.Services
         }
 
         /// <summary>
-        /// Verify OTP code for given email
+        /// Verify OTP code for given email and generate reset token
         /// </summary>
         public async Task<OtpVerificationResult> VerifyOtpAsync(string email, string otpCode)
         {
@@ -104,11 +106,73 @@ namespace Lssctc.ProgramManagement.Accounts.Authens.Services
             var cooldownCacheKey = $"{COOLDOWN_KEY_PREFIX}{normalizedEmail}";
             _memoryCache.Remove(cooldownCacheKey);
 
+            // Generate reset token
+            var resetToken = await CreateResetTokenAsync(normalizedEmail);
+
             return await Task.FromResult(new OtpVerificationResult
             {
                 Success = true,
                 Message = "Verification successful! You can proceed to reset your password.",
-                Email = email
+                Email = email,
+                ResetToken = resetToken
+            });
+        }
+
+        /// <summary>
+        /// Create a secure reset token for password reset
+        /// </summary>
+        public async Task<string> CreateResetTokenAsync(string email)
+        {
+            var normalizedEmail = email.ToLower();
+            
+            // Generate a secure GUID token
+            var resetToken = Guid.NewGuid().ToString();
+
+            // Store token in cache with 10 minutes expiration
+            var resetTokenCacheKey = $"{RESET_TOKEN_KEY_PREFIX}{normalizedEmail}";
+            var cacheOptions = new MemoryCacheEntryOptions()
+                .SetAbsoluteExpiration(TimeSpan.FromMinutes(RESET_TOKEN_EXPIRATION_MINUTES));
+
+            _memoryCache.Set(resetTokenCacheKey, resetToken, cacheOptions);
+
+            return await Task.FromResult(resetToken);
+        }
+
+        /// <summary>
+        /// Validate reset token and remove it after validation (single-use)
+        /// </summary>
+        public async Task<ResetTokenValidationResult> ValidateResetTokenAsync(string email, string resetToken)
+        {
+            var normalizedEmail = email.ToLower();
+            var resetTokenCacheKey = $"{RESET_TOKEN_KEY_PREFIX}{normalizedEmail}";
+
+            // Try to get reset token from cache
+            if (!_memoryCache.TryGetValue(resetTokenCacheKey, out string? cachedToken))
+            {
+                return await Task.FromResult(new ResetTokenValidationResult
+                {
+                    Success = false,
+                    Message = "Reset token has expired or is invalid"
+                });
+            }
+
+            // Verify token matches
+            if (cachedToken != resetToken)
+            {
+                return await Task.FromResult(new ResetTokenValidationResult
+                {
+                    Success = false,
+                    Message = "Reset token is invalid"
+                });
+            }
+
+            // Token is valid, remove it from cache (single-use)
+            _memoryCache.Remove(resetTokenCacheKey);
+
+            return await Task.FromResult(new ResetTokenValidationResult
+            {
+                Success = true,
+                Message = "Reset token validated successfully"
             });
         }
 

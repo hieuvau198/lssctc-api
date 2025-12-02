@@ -138,10 +138,10 @@ namespace Lssctc.ProgramManagement.Accounts.Authens.Controllers
         }
 
         /// <summary>
-        /// Verify OTP code
+        /// Verify OTP code and receive reset token
         /// </summary>
         /// <param name="request">Email and OTP code</param>
-        /// <returns>Success or error message</returns>
+        /// <returns>Success message with reset token</returns>
         [HttpPost("verify-otp")]
         public async Task<IActionResult> VerifyOtp([FromBody] VerifyOtpDto request)
         {
@@ -162,7 +162,9 @@ namespace Lssctc.ProgramManagement.Accounts.Authens.Controllers
                 {
                     success = true,
                     message = result.Message,
-                    email = result.Email
+                    email = result.Email,
+                    resetToken = result.ResetToken,
+                    expiresIn = 600 // Reset token valid for 10 minutes
                 });
             }
             catch (Exception ex)
@@ -171,6 +173,48 @@ namespace Lssctc.ProgramManagement.Accounts.Authens.Controllers
                 {
                     success = false,
                     message = "OTP verification failed",
+                    error = ex.Message
+                });
+            }
+        }
+
+        /// <summary>
+        /// Reset password using reset token
+        /// </summary>
+        /// <param name="request">Email, reset token, new password, and confirm password</param>
+        /// <returns>Success or error message</returns>
+        [HttpPost("reset")]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto request)
+        {
+            try
+            {
+                // Step 1: Validate reset token
+                var tokenValidation = await _otpService.ValidateResetTokenAsync(request.Email, request.ResetToken);
+
+                if (!tokenValidation.Success)
+                {
+                    return BadRequest(new
+                    {
+                        success = false,
+                        message = tokenValidation.Message
+                    });
+                }
+
+                // Step 2: Reset password in database
+                await _usersService.ResetPasswordByEmailAsync(request.Email, request.NewPassword);
+
+                return Ok(new
+                {
+                    success = true,
+                    message = "Password has been reset successfully. You can now login with your new password."
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    message = "Failed to reset password",
                     error = ex.Message
                 });
             }
