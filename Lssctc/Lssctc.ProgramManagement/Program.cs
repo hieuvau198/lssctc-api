@@ -174,6 +174,7 @@ builder.Services.AddScoped<IProfilesService, ProfilesService>();
 builder.Services.AddScoped<IOtpService, OtpService>();
 builder.Services.AddScoped<IAdminDashboardService, AdminDashboardService>();
 builder.Services.AddScoped<IInstructorDashboardService, InstructorDashboardService>();
+builder.Services.AddScoped<ISimulationManagerDashboardService, SimulationManagerDashboardService>();
 #endregion
 
 #region CORS
