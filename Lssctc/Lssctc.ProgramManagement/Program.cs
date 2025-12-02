@@ -12,6 +12,7 @@ using Lssctc.ProgramManagement.ClassManage.Progresses.Services;
 using Lssctc.ProgramManagement.ClassManage.QuizAttempts.Services;
 using Lssctc.ProgramManagement.ClassManage.SectionRecords.Services;
 using Lssctc.ProgramManagement.Courses.Services;
+using Lssctc.ProgramManagement.Dashboard.Services;
 using Lssctc.ProgramManagement.Materials.Services;
 using Lssctc.ProgramManagement.Practices.Services;
 using Lssctc.ProgramManagement.Programs.Services;
@@ -171,6 +172,7 @@ builder.Services.AddScoped<IBrandModel, Lssctc.ProgramManagement.BrandModel.Serv
 builder.Services.AddScoped<ISimulationComponentService, SimulationComponentService>();
 builder.Services.AddScoped<IProfilesService, ProfilesService>();
 builder.Services.AddScoped<IOtpService, OtpService>();
+builder.Services.AddScoped<IAdminDashboardService, AdminDashboardService>();
 #endregion
 
 #region CORS
