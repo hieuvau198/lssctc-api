@@ -15,5 +15,7 @@ public partial class Certificate
 
     public bool? IsActive { get; set; }
 
+    public string? TemplateHtml { get; set; }
+
     public virtual ICollection<CourseCertificate> CourseCertificates { get; set; } = new List<CourseCertificate>();
 }

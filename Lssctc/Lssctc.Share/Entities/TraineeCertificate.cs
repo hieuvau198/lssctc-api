@@ -15,6 +15,8 @@ public partial class TraineeCertificate
 
     public string? CertificateCode { get; set; }
 
+    public string? PdfUrl { get; set; }
+
     public virtual CourseCertificate CourseCertificate { get; set; } = null!;
 
     public virtual Enrollment Enrollment { get; set; } = null!;

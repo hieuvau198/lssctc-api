@@ -17,4 +17,10 @@
     <ProjectReference Include="..\Lssctc.Share\Lssctc.Share.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Update="firebase_config.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
 </Project>

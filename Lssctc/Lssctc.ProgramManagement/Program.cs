@@ -4,6 +4,7 @@ using Lssctc.ProgramManagement.Accounts.Profiles.Services;
 using Lssctc.ProgramManagement.Accounts.Users.Services;
 using Lssctc.ProgramManagement.Activities.Services;
 using Lssctc.ProgramManagement.BrandModel.Services;
+using Lssctc.ProgramManagement.Certificates.Services;
 using Lssctc.ProgramManagement.ClassManage.ActivityRecords.Services;
 using Lssctc.ProgramManagement.ClassManage.Classes.Services;
 using Lssctc.ProgramManagement.ClassManage.Enrollments.Services;
@@ -11,6 +12,7 @@ using Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services;
 using Lssctc.ProgramManagement.ClassManage.Progresses.Services;
 using Lssctc.ProgramManagement.ClassManage.QuizAttempts.Services;
 using Lssctc.ProgramManagement.ClassManage.SectionRecords.Services;
+using Lssctc.ProgramManagement.Common.Services;
 using Lssctc.ProgramManagement.Courses.Services;
 using Lssctc.ProgramManagement.Materials.Services;
 using Lssctc.ProgramManagement.Practices.Services;
@@ -171,6 +173,9 @@ builder.Services.AddScoped<IBrandModel, Lssctc.ProgramManagement.BrandModel.Serv
 builder.Services.AddScoped<ISimulationComponentService, SimulationComponentService>();
 builder.Services.AddScoped<IProfilesService, ProfilesService>();
 builder.Services.AddScoped<IOtpService, OtpService>();
+
+builder.Services.AddScoped<ICertificatesService, CertificatesService>();
+builder.Services.AddScoped<ITraineeCertificatesService, TraineeCertificatesService>();
 #endregion
 
 #region CORS
@@ -205,6 +210,10 @@ builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("Emai
 
 // 2. Register MailService as Transient (creates new instance each time to ensure clean connection)
 builder.Services.AddTransient<IMailService, MailService>();
+#endregion
+
+#region Firebase
+builder.Services.AddSingleton<IFirebaseStorageService, FirebaseStorageService>();
 #endregion
 
 // add distributed cache so we can store revoked token JTIs without DB

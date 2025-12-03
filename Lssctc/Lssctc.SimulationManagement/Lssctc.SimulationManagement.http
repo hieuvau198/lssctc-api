@@ -1,6 +1,0 @@
-@Lssctc.SimulationManagement_HostAddress = http://localhost:5133
-
-GET {{Lssctc.SimulationManagement_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###
