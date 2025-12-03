@@ -1,5 +1,5 @@
 ﻿using Lssctc.ProgramManagement.Certificates.Dtos;
-using Lssctc.ProgramManagement.Common.Services; // Your Firebase Service Namespace
+using Lssctc.ProgramManagement.Common.Services;
 using Lssctc.Share.Contexts;
 using Lssctc.Share.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -9,7 +9,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace Lssctc.ProgramManagement.Certificates.Services
@@ -67,7 +66,7 @@ namespace Lssctc.ProgramManagement.Certificates.Services
 
         public async Task<TraineeCertificateResponseDto> CreateCertificateAsync(CreateTraineeCertificateDto dto)
         {
-            // 1. Fetch Data (Same as before)
+            // 1. Fetch Data
             var enrollment = await _context.Enrollments
                 .Include(e => e.Trainee).ThenInclude(t => t.IdNavigation)
                 .Include(e => e.Class).ThenInclude(c => c.ProgramCourse).ThenInclude(pc => pc.Course)
@@ -80,29 +79,51 @@ namespace Lssctc.ProgramManagement.Certificates.Services
             if (enrollment == null || courseCert == null)
                 throw new Exception("Enrollment or Course Certificate Configuration not found");
 
-            // 2. Prepare HTML (Replace Placeholders - Same as before)
+            // 2. Prepare HTML
             string htmlContent = courseCert.Certificate.TemplateHtml ?? "<h1>No Template Found</h1>";
             htmlContent = htmlContent.Replace("{{TraineeName}}", enrollment.Trainee.IdNavigation.Fullname);
             htmlContent = htmlContent.Replace("{{CourseName}}", enrollment.Class.ProgramCourse.Course.Name);
             htmlContent = htmlContent.Replace("{{IssuedDate}}", DateTime.Now.ToString("dd MMM yyyy"));
 
             // ---------------------------------------------------------
-            // 3. Generate REAL PDF using PuppeteerSharp (NEW LOGIC)
+            // 3. Generate REAL PDF (Linux/Azure Compatible Logic)
             // ---------------------------------------------------------
 
-            // Download the browser revision if not present (only happens once usually)
-            var browserFetcher = new BrowserFetcher();
-            await browserFetcher.DownloadAsync();
+            // A. Define options to use the System Temp folder.
+            // This is critical because Azure/Linux services often block writing to the app's root folder.
+            var browserFetcherOptions = new BrowserFetcherOptions
+            {
+                Path = Path.GetTempPath()
+            };
 
-            // Launch a headless browser
-            await using var browser = await Puppeteer.LaunchAsync(new LaunchOptions { Headless = true });
+            var browserFetcher = new BrowserFetcher(browserFetcherOptions);
+
+            // B. Download the browser. 
+            // We do NOT pass 'DefaultChromiumRevision' because it is deprecated.
+            // The method returns an 'InstalledBrowser' object which contains the correct path.
+            var installedBrowser = await browserFetcher.DownloadAsync();
+
+            // C. Launch Options
+            // 'Headless = true' is required for servers.
+            // The 'Args' are mandatory for Linux/Docker/Azure environments to bypass sandbox restrictions.
+            var launchOptions = new LaunchOptions
+            {
+                Headless = true,
+                ExecutablePath = installedBrowser.GetExecutablePath(),
+                Args = new[]
+                {
+                    "--no-sandbox",
+                    "--disable-setuid-sandbox",
+                    "--disable-dev-shm-usage", // Fixes "out of memory" crashes in containers
+                    "--disable-gpu"            // Servers typically don't have GPUs
+                }
+            };
+
+            await using var browser = await Puppeteer.LaunchAsync(launchOptions);
             await using var page = await browser.NewPageAsync();
 
-            // Set the HTML content
             await page.SetContentAsync(htmlContent);
 
-            // Generate the PDF bytes
-            // Format.A4 is standard, PrintBackground=true ensures colors/borders show up
             byte[] pdfBytes = await page.PdfDataAsync(new PdfOptions
             {
                 Format = PaperFormat.A4,
@@ -111,14 +132,12 @@ namespace Lssctc.ProgramManagement.Certificates.Services
             });
 
             // ---------------------------------------------------------
-            // 4. Upload to Firebase (Same as before)
+            // 4. Upload to Firebase
             // ---------------------------------------------------------
             string uniqueFileName = $"certificates/{Guid.NewGuid()}_{enrollment.Trainee.TraineeCode}.pdf";
-
-            // Now 'pdfBytes' contains actual PDF binary data
             string pdfUrl = await _firebaseStorage.UploadFileAsync(new MemoryStream(pdfBytes), uniqueFileName, "application/pdf");
 
-            // 5. Save to DB (Same as before)
+            // 5. Save to DB
             var newCert = new TraineeCertificate
             {
                 EnrollmentId = dto.EnrollmentId,
@@ -138,8 +157,6 @@ namespace Lssctc.ProgramManagement.Certificates.Services
         {
             var entity = await _context.TraineeCertificates.FindAsync(id);
             if (entity == null) return false;
-
-            // Optional: You could also delete the file from Firebase here if the API supports it.
 
             _context.TraineeCertificates.Remove(entity);
             await _context.SaveChangesAsync();
