@@ -8,22 +8,22 @@ namespace Lssctc.ProgramManagement.Dashboard.Services
         /// Get simulation manager overview summary with total counts
         /// </summary>
         /// <param name="simulationManagerId">The ID of the simulation manager</param>
-        /// <returns>Summary with counts for trainees, practices, tasks, and active classes with simulations</returns>
+        /// <returns>Summary with counts for trainees, practices, tasks, and simulation sessions</returns>
         Task<SimulationManagerSummaryDto> GetManagerSummaryAsync(int simulationManagerId);
 
         /// <summary>
-        /// Get practice completion distribution (Completed vs NotCompleted) for a specific year
+        /// Get monthly practice completion distribution (Completed vs NotCompleted) for a specific year
         /// </summary>
         /// <param name="simulationManagerId">The ID of the simulation manager</param>
         /// <param name="year">The year to filter practice attempts</param>
-        /// <returns>Distribution of practice attempts by completion status</returns>
-        Task<IEnumerable<PracticeCompletionDistributionDto>> GetPracticeCompletionDistributionAsync(int simulationManagerId, int year);
+        /// <returns>Monthly distribution of practice attempts by completion status</returns>
+        Task<IEnumerable<MonthlyPracticeCompletionDto>> GetPracticeCompletionDistributionAsync(int simulationManagerId, int year);
 
         /// <summary>
-        /// Get average score per practice across all current attempts
+        /// Get practice duration distribution grouped by time ranges
         /// </summary>
         /// <param name="simulationManagerId">The ID of the simulation manager</param>
-        /// <returns>List of practices with their average scores and attempt counts</returns>
-        Task<IEnumerable<PracticeAverageScoreDto>> GetAverageScorePerPracticeAsync(int simulationManagerId);
+        /// <returns>Distribution of practice attempts by duration ranges</returns>
+        Task<IEnumerable<PracticeDurationDistributionDto>> GetPracticeDurationDistributionAsync(int simulationManagerId);
     }
 }

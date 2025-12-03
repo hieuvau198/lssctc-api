@@ -1,6 +1,7 @@
 using Lssctc.ProgramManagement.Dashboard.Dtos;
 using Lssctc.Share.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
 
 namespace Lssctc.ProgramManagement.Dashboard.Services
 {
@@ -44,37 +45,18 @@ namespace Lssctc.ProgramManagement.Dashboard.Services
                 .AsNoTracking()
                 .CountAsync(st => st.IsDeleted == false);
 
-            // Total Active Classes With Simulations:
-            // Count distinct classes that are:
-            // 1. Status is Open (1) or InProgress (2)
-            // 2. Linked to at least one non-deleted Practice via the section structure
-            // Path: Class -> ProgramCourse -> Course -> CourseSection -> Section -> SectionActivity -> Activity -> ActivityPractice -> Practice
-            var totalActiveClassesWithSimulations = await _uow.ClassRepository
+            // Total Simulation Sessions: Count all practice attempts (simulation sessions)
+            var totalSimulationSessions = await _uow.PracticeAttemptRepository
                 .GetAllAsQueryable()
                 .AsNoTracking()
-                .Where(c => c.Status == 1 || c.Status == 2) // Open or InProgress
-                .Include(c => c.ProgramCourse)
-                    .ThenInclude(pc => pc.Course)
-                        .ThenInclude(course => course.CourseSections)
-                            .ThenInclude(cs => cs.Section)
-                                .ThenInclude(s => s.SectionActivities)
-                                    .ThenInclude(sa => sa.Activity)
-                                        .ThenInclude(a => a.ActivityPractices)
-                                            .ThenInclude(ap => ap.Practice)
-                .Where(c => c.ProgramCourse.Course.CourseSections
-                    .Any(cs => cs.Section.SectionActivities
-                        .Any(sa => sa.Activity.ActivityPractices
-                            .Any(ap => ap.Practice.IsDeleted == false))))
-                .Select(c => c.Id)
-                .Distinct()
-                .CountAsync();
+                .CountAsync(pa => pa.IsDeleted != true);
 
             return new SimulationManagerSummaryDto
             {
                 TotalTrainees = totalTrainees,
                 TotalPractices = totalPractices,
                 TotalTasks = totalTasks,
-                TotalActiveClassesWithSimulations = totalActiveClassesWithSimulations
+                TotalSimulationSessions = totalSimulationSessions
             };
         }
 
@@ -82,7 +64,7 @@ namespace Lssctc.ProgramManagement.Dashboard.Services
 
         #region Part 2: Charts & Analytics
 
-        public async Task<IEnumerable<PracticeCompletionDistributionDto>> GetPracticeCompletionDistributionAsync(int simulationManagerId, int year)
+        public async Task<IEnumerable<MonthlyPracticeCompletionDto>> GetPracticeCompletionDistributionAsync(int simulationManagerId, int year)
         {
             // Validate simulation manager exists
             var simulationManagerExists = await _uow.SimulationManagerRepository
@@ -100,31 +82,39 @@ namespace Lssctc.ProgramManagement.Dashboard.Services
                 .Where(pa => pa.IsCurrent == true && 
                             pa.AttemptDate.Year == year &&
                             (pa.IsDeleted == null || pa.IsDeleted == false))
+                .Select(pa => new
+                {
+                    Month = pa.AttemptDate.Month,
+                    IsCompleted = pa.IsPass == true
+                })
                 .ToListAsync();
 
-            // Group by completion status
-            var completedCount = attemptsInYear.Count(pa => pa.IsPass == true);
-            var notCompletedCount = attemptsInYear.Count(pa => pa.IsPass == false || pa.IsPass == null);
+            // Group by month
+            var monthlyData = attemptsInYear
+                .GroupBy(pa => pa.Month)
+                .Select(g => new
+                {
+                    Month = g.Key,
+                    CompletedCount = g.Count(pa => pa.IsCompleted),
+                    NotCompletedCount = g.Count(pa => !pa.IsCompleted)
+                })
+                .ToDictionary(x => x.Month);
 
-            // Always return both statuses, even if count is zero
-            var result = new List<PracticeCompletionDistributionDto>
-            {
-                new PracticeCompletionDistributionDto
+            // Create result for all 12 months (fill with 0 if no data)
+            var result = Enumerable.Range(1, 12)
+                .Select(month => new MonthlyPracticeCompletionDto
                 {
-                    CompletionStatus = "Completed",
-                    TraineeCount = completedCount
-                },
-                new PracticeCompletionDistributionDto
-                {
-                    CompletionStatus = "NotCompleted",
-                    TraineeCount = notCompletedCount
-                }
-            };
+                    Month = month,
+                    MonthName = CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(month),
+                    CompletedCount = monthlyData.ContainsKey(month) ? monthlyData[month].CompletedCount : 0,
+                    NotCompletedCount = monthlyData.ContainsKey(month) ? monthlyData[month].NotCompletedCount : 0
+                })
+                .ToList();
 
             return result;
         }
 
-        public async Task<IEnumerable<PracticeAverageScoreDto>> GetAverageScorePerPracticeAsync(int simulationManagerId)
+        public async Task<IEnumerable<PracticeDurationDistributionDto>> GetPracticeDurationDistributionAsync(int simulationManagerId)
         {
             // Validate simulation manager exists
             var simulationManagerExists = await _uow.SimulationManagerRepository
@@ -135,54 +125,40 @@ namespace Lssctc.ProgramManagement.Dashboard.Services
             if (!simulationManagerExists)
                 throw new KeyNotFoundException($"Simulation Manager with ID {simulationManagerId} not found.");
 
-            // Get all practices that have at least one current attempt
-            var practicesWithAttempts = await _uow.PracticeRepository
+            // Get all valid practice attempts with their associated practice's estimated duration
+            var attempts = await _uow.PracticeAttemptRepository
                 .GetAllAsQueryable()
                 .AsNoTracking()
-                .Where(p => p.IsDeleted == false)
-                .Select(p => new
-                {
-                    PracticeId = p.Id,
-                    PracticeName = p.PracticeName,
-                    PracticeCode = p.PracticeCode,
-                    EstimatedDurationMinutes = p.EstimatedDurationMinutes,
-                    CurrentAttempts = p.ActivityPractices
-                        .SelectMany(ap => ap.Activity.SectionActivities)
-                        .SelectMany(sa => sa.Section.CourseSections)
-                        .SelectMany(cs => cs.Course.ProgramCourses)
-                        .SelectMany(pc => pc.Classes)
-                        .SelectMany(c => c.Enrollments)
-                        .SelectMany(e => e.LearningProgresses)
-                        .SelectMany(lp => lp.SectionRecords)
-                        .SelectMany(sr => sr.ActivityRecords)
-                        .SelectMany(ar => ar.PracticeAttempts)
-                        .Where(pa => pa.IsCurrent == true && 
-                                    pa.PracticeId == p.Id &&
-                                    (pa.IsDeleted == null || pa.IsDeleted == false))
-                        .ToList()
-                })
-                .Where(x => x.CurrentAttempts.Any())
+                .Where(pa => pa.IsCurrent == true && 
+                            pa.PracticeId.HasValue &&
+                            (pa.IsDeleted == null || pa.IsDeleted == false))
+                .Join(
+                    _uow.PracticeRepository.GetAllAsQueryable().AsNoTracking(),
+                    pa => pa.PracticeId,
+                    p => p.Id,
+                    (pa, p) => new
+                    {
+                        EstimatedDuration = p.EstimatedDurationMinutes
+                    })
                 .ToListAsync();
 
-            // Calculate average score for each practice
-            var result = practicesWithAttempts.Select(p =>
+            // Calculate duration in minutes for each attempt using estimated duration
+            var durationsInMinutes = attempts
+                .Where(a => a.EstimatedDuration.HasValue && a.EstimatedDuration.Value > 0)
+                .Select(a => a.EstimatedDuration!.Value)
+                .ToList();
+
+            // Group into time ranges (buckets)
+            var fastCount = durationsInMinutes.Count(d => d < 15);
+            var moderateCount = durationsInMinutes.Count(d => d >= 15 && d <= 45);
+            var slowCount = durationsInMinutes.Count(d => d > 45);
+
+            var result = new List<PracticeDurationDistributionDto>
             {
-                var scores = p.CurrentAttempts
-                    .Where(pa => pa.Score.HasValue)
-                    .Select(pa => pa.Score!.Value)
-                    .ToList();
-
-                decimal? averageScore = scores.Any() ? scores.Average() : null;
-
-                return new PracticeAverageScoreDto
-                {
-                    PracticeName = p.PracticeName ?? "Unknown",
-                    PracticeCode = p.PracticeCode ?? "N/A",
-                    AverageScore = averageScore,
-                    TotalAttempts = p.CurrentAttempts.Count,
-                    EstimatedDurationMinutes = p.EstimatedDurationMinutes
-                };
-            }).ToList();
+                new PracticeDurationDistributionDto { DurationRange = "Fast (< 15 mins)", TraineeCount = fastCount },
+                new PracticeDurationDistributionDto { DurationRange = "Moderate (15-45 mins)", TraineeCount = moderateCount },
+                new PracticeDurationDistributionDto { DurationRange = "Slow (> 45 mins)", TraineeCount = slowCount }
+            };
 
             return result;
         }

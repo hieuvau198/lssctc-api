@@ -23,7 +23,7 @@ namespace Lssctc.ProgramManagement.Dashboard.Controllers
         /// Get simulation manager overview summary with total counts
         /// </summary>
         /// <param name="simulationManagerId">The ID of the simulation manager</param>
-        /// <returns>Summary with counts for trainees, practices, tasks, and active classes with simulations</returns>
+        /// <returns>Summary with counts for trainees, practices, tasks, and simulation sessions</returns>
         [HttpGet("{simulationManagerId}/summary")]
         public async Task<IActionResult> GetManagerSummary(int simulationManagerId)
         {
@@ -50,27 +50,29 @@ namespace Lssctc.ProgramManagement.Dashboard.Controllers
         #region Part 2: Charts & Analytics
 
         /// <summary>
-        /// Get practice completion distribution (Completed vs NotCompleted) for a specific year
+        /// Get monthly practice completion distribution (Completed vs NotCompleted) for a specific year
         /// </summary>
         /// <param name="simulationManagerId">The ID of the simulation manager</param>
         /// <param name="year">The year to filter practice attempts (default: current year)</param>
-        /// <returns>Distribution of practice attempts by completion status</returns>
-        [HttpGet("{simulationManagerId}/practices/completion-distribution")]
+        /// <returns>Monthly distribution of practice attempts by completion status (Dual Column Chart)</returns>
+        [HttpGet("{simulationManagerId}/practices/completion-distribution/monthly")]
         public async Task<IActionResult> GetPracticeCompletionDistribution(int simulationManagerId, [FromQuery] int year = 0)
         {
             if (simulationManagerId <= 0)
                 return BadRequest(new { status = 400, message = "Invalid simulation manager ID.", type = "ValidationException" });
 
             // Default to current year if not provided or invalid
-            if (year <= 0 || year < 2000 || year > 2100)
-            {
-                year = DateTime.Now.Year;
-            }
+            if (year <= 0)
+                year = DateTime.UtcNow.Year;
+
+            // Validate year is reasonable
+            if (year < 2000 || year > DateTime.UtcNow.Year + 1)
+                return BadRequest(new { status = 400, message = "Invalid year specified.", type = "ValidationException" });
 
             try
             {
                 var distribution = await _dashboardService.GetPracticeCompletionDistributionAsync(simulationManagerId, year);
-                return Ok(new { status = 200, message = "Get practice completion distribution", data = distribution });
+                return Ok(new { status = 200, message = "Get monthly practice completion distribution", data = distribution });
             }
             catch (KeyNotFoundException ex)
             {
@@ -83,20 +85,20 @@ namespace Lssctc.ProgramManagement.Dashboard.Controllers
         }
 
         /// <summary>
-        /// Get average score per practice across all current attempts
+        /// Get practice duration distribution grouped by time ranges
         /// </summary>
         /// <param name="simulationManagerId">The ID of the simulation manager</param>
-        /// <returns>List of practices with their average scores and attempt counts</returns>
-        [HttpGet("{simulationManagerId}/practices/average-scores")]
-        public async Task<IActionResult> GetAverageScorePerPractice(int simulationManagerId)
+        /// <returns>Distribution of practice attempts by duration ranges (Pie Chart)</returns>
+        [HttpGet("{simulationManagerId}/practices/duration-distribution")]
+        public async Task<IActionResult> GetPracticeDurationDistribution(int simulationManagerId)
         {
             if (simulationManagerId <= 0)
                 return BadRequest(new { status = 400, message = "Invalid simulation manager ID.", type = "ValidationException" });
 
             try
             {
-                var averageScores = await _dashboardService.GetAverageScorePerPracticeAsync(simulationManagerId);
-                return Ok(new { status = 200, message = "Get average scores per practice", data = averageScores });
+                var distribution = await _dashboardService.GetPracticeDurationDistributionAsync(simulationManagerId);
+                return Ok(new { status = 200, message = "Get practice duration distribution", data = distribution });
             }
             catch (KeyNotFoundException ex)
             {
