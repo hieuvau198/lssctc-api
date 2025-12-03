@@ -11,5 +11,6 @@ namespace Lssctc.ProgramManagement.Programs.Services
         Task<ProgramDto> CreateProgramAsync(CreateProgramDto createDto);
         Task<ProgramDto> UpdateProgramAsync(int id, UpdateProgramDto updateDto);
         Task DeleteProgramAsync(int id);
+        Task<int> CreateProgramWithHierarchyAsync(CreateProgramWithHierarchyDto dto);
     }
 }

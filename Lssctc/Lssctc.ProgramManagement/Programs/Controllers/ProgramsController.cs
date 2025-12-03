@@ -1,13 +1,16 @@
 ﻿using Lssctc.ProgramManagement.Programs.Dtos;
 using Lssctc.ProgramManagement.Programs.Services;
 using Lssctc.Share.Common;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel.DataAnnotations;
 
 namespace Lssctc.ProgramManagement.Programs.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize(Roles = "Admin, Instructor")]
     public class ProgramsController : ControllerBase
     {
         private readonly IProgramsService _programsService;
@@ -92,6 +95,35 @@ namespace Lssctc.ProgramManagement.Programs.Controllers
             catch (Exception ex)
             {
                 return StatusCode(500, $"An internal server error occurred: {ex.Message}");
+            }
+        }
+
+        [HttpPost("create-full")]
+        [ProducesResponseType(typeof(object), 200)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(404)]
+        [ProducesResponseType(500)]
+        public async Task<IActionResult> CreateProgramWithHierarchy([FromBody] CreateProgramWithHierarchyDto dto)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                    return BadRequest(new { status = 400, message = "Invalid model state", type = "ValidationException", errors = ModelState });
+
+                var programId = await _programsService.CreateProgramWithHierarchyAsync(dto);
+                return Ok(new { status = 200, message = "Create program with courses and sections successfully", data = new { programId } });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { status = 404, message = ex.Message, type = "NotFound" });
+            }
+            catch (ValidationException ex)
+            {
+                return BadRequest(new { status = 400, message = ex.Message, type = "ValidationException" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = 500, message = ex.Message, type = ex.GetType().Name });
             }
         }
 
