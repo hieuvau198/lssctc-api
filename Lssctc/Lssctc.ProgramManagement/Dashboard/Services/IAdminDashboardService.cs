@@ -11,6 +11,6 @@ namespace Lssctc.ProgramManagement.Dashboard.Services
         Task<IEnumerable<PopularCourseDto>> GetTopPopularCoursesAsync(int topCount = 5);
         Task<IEnumerable<ActiveTraineeDto>> GetTopActiveTraineesAsync(int topCount = 5);
         Task<IEnumerable<ClassStatusDistributionDto>> GetClassStatusDistributionAsync();
-        Task<IEnumerable<CourseCompletionTrendDto>> GetCourseCompletionTrendsAsync(int year);
+        Task<IEnumerable<CourseCompletionTrendDto>> GetDailyCourseCompletionTrendsAsync(int month, int year);
     }
 }

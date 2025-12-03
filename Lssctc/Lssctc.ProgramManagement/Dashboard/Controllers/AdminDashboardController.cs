@@ -104,24 +104,32 @@ namespace Lssctc.ProgramManagement.Dashboard.Controllers
         }
 
         /// <summary>
-        /// Get course completion trends for a specific year (monthly breakdown)
+        /// Get daily course completion trends for a specific month and year
         /// </summary>
+        /// <param name="month">Month to get completion trends for (1-12, default: current month)</param>
         /// <param name="year">Year to get completion trends for (default: current year)</param>
-        /// <returns>Monthly completion counts for the specified year</returns>
-        [HttpGet("completions/trends")]
-        public async Task<IActionResult> GetCourseCompletionTrends([FromQuery] int year = 0)
+        /// <returns>Daily completion counts for the specified month</returns>
+        [HttpGet("completions/trends/daily")]
+        public async Task<IActionResult> GetDailyCourseCompletionTrends([FromQuery] int month = 0, [FromQuery] int year = 0)
         {
             try
             {
+                // Default to current month and year if not specified
+                if (month <= 0 || month > 12)
+                    month = DateTime.UtcNow.Month;
+                
                 if (year <= 0)
                     year = DateTime.UtcNow.Year;
 
-                // Validate year is reasonable
+                // Validate month and year
+                if (month < 1 || month > 12)
+                    return BadRequest(new { status = 400, message = "Month must be between 1 and 12.", type = "ValidationException" });
+
                 if (year < 2000 || year > DateTime.UtcNow.Year + 1)
                     return BadRequest(new { status = 400, message = "Invalid year specified.", type = "ValidationException" });
 
-                var trends = await _dashboardService.GetCourseCompletionTrendsAsync(year);
-                return Ok(new { status = 200, message = "Get course completion trends", data = trends });
+                var trends = await _dashboardService.GetDailyCourseCompletionTrendsAsync(month, year);
+                return Ok(new { status = 200, message = "Get daily course completion trends", data = trends });
             }
             catch (Exception ex)
             {

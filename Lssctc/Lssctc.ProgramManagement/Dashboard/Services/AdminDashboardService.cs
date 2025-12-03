@@ -2,7 +2,6 @@ using Lssctc.ProgramManagement.Dashboard.Dtos;
 using Lssctc.Share.Enums;
 using Lssctc.Share.Interfaces;
 using Microsoft.EntityFrameworkCore;
-using System.Globalization;
 
 namespace Lssctc.ProgramManagement.Dashboard.Services
 {
@@ -174,41 +173,51 @@ namespace Lssctc.ProgramManagement.Dashboard.Services
             return allStatuses;
         }
 
-        public async Task<IEnumerable<CourseCompletionTrendDto>> GetCourseCompletionTrendsAsync(int year)
+        public async Task<IEnumerable<CourseCompletionTrendDto>> GetDailyCourseCompletionTrendsAsync(int month, int year)
         {
-            // Get current year if not specified
+            // Default to current month and year if not specified or invalid
+            if (month <= 0 || month > 12)
+                month = DateTime.UtcNow.Month;
+            
             if (year <= 0)
                 year = DateTime.UtcNow.Year;
 
-            // Get all certificates issued in the specified year
+            // Validate year is reasonable
+            if (year < 2000 || year > DateTime.UtcNow.Year + 1)
+                year = DateTime.UtcNow.Year;
+
+            // Calculate number of days in the specified month
+            var daysInMonth = DateTime.DaysInMonth(year, month);
+
+            // Get all certificates issued in the specified month and year
             var certificates = await _uow.TraineeCertificateRepository
                 .GetAllAsQueryable()
                 .AsNoTracking()
                 .Where(tc => tc.IssuedDate.HasValue &&
-                            tc.IssuedDate.Value.Year == year)
+                            tc.IssuedDate.Value.Year == year &&
+                            tc.IssuedDate.Value.Month == month)
                 .Select(tc => new
                 {
-                    Month = tc.IssuedDate!.Value.Month
+                    Day = tc.IssuedDate!.Value.Day
                 })
                 .ToListAsync();
 
-            // Group by month and count
-            var monthlyCompletions = certificates
-                .GroupBy(c => c.Month)
+            // Group by day and count
+            var dailyCompletions = certificates
+                .GroupBy(c => c.Day)
                 .Select(g => new
                 {
-                    Month = g.Key,
+                    Day = g.Key,
                     Count = g.Count()
                 })
-                .ToDictionary(x => x.Month, x => x.Count);
+                .ToDictionary(x => x.Day, x => x.Count);
 
-            // Create result for all 12 months
-            var result = Enumerable.Range(1, 12)
-                .Select(month => new CourseCompletionTrendDto
+            // Create result for all days in the month (fill with 0 if no data)
+            var result = Enumerable.Range(1, daysInMonth)
+                .Select(day => new CourseCompletionTrendDto
                 {
-                    Month = month,
-                    MonthName = CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(month),
-                    CompletedCount = monthlyCompletions.ContainsKey(month) ? monthlyCompletions[month] : 0
+                    Day = day,
+                    CompletedCount = dailyCompletions.ContainsKey(day) ? dailyCompletions[day] : 0
                 })
                 .ToList();
 
