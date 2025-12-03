@@ -14,5 +14,6 @@ namespace Lssctc.ProgramManagement.Programs.Services
         Task DeleteProgramAsync(int id);
         Task<int> CreateProgramWithHierarchyAsync(CreateProgramWithHierarchyDto dto);
         Task<object> ImportProgramFromExcelAsync(IFormFile file);
+        Task CleanupProgramDataAsync(int id);
     }
 }

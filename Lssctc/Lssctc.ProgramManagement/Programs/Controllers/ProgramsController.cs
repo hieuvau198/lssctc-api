@@ -288,5 +288,38 @@ namespace Lssctc.ProgramManagement.Programs.Controllers
         }
 
         #endregion
+
+        #region System Data Cleanup
+
+        /// <summary>
+        /// Complete system cleanup of a Training Program and all its dependencies including Courses.
+        /// WARNING: This permanently deletes the program, its courses, sections, activities, enrollments, 
+        /// and certificates from the database. This operation cannot be undone.
+        /// </summary>
+        /// <param name="id">The ID of the program to cleanup</param>
+        /// <returns>204 No Content on success</returns>
+        [HttpDelete("{id}/cleanup")]
+        [Authorize(Roles = "Admin")]
+        [ProducesResponseType(204)]
+        [ProducesResponseType(404)]
+        [ProducesResponseType(500)]
+        public async Task<IActionResult> CleanupProgramData(int id)
+        {
+            try
+            {
+                await _programsService.CleanupProgramDataAsync(id);
+                return NoContent();
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An internal server error occurred during cleanup: {ex.Message}");
+            }
+        }
+
+        #endregion
     }
 }

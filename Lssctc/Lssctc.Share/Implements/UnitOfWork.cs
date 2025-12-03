@@ -1,6 +1,7 @@
 ﻿using Lssctc.Share.Contexts;
 using Lssctc.Share.Entities;
 using Lssctc.Share.Interfaces;
+using Microsoft.EntityFrameworkCore;
 
 namespace Lssctc.Share.Implements
 {
@@ -205,6 +206,11 @@ namespace Lssctc.Share.Implements
         public async Task<int> SaveChangesAsync()
         {
             return await _context.SaveChangesAsync();
+        }
+
+        public DbContext GetDbContext()
+        {
+            return _context;
         }
 
         public void Dispose()

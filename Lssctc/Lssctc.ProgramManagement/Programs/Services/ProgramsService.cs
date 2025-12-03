@@ -4,6 +4,7 @@ using Lssctc.Share.Entities;
 using Lssctc.Share.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using OfficeOpenXml;
 using System.ComponentModel.DataAnnotations;
 
@@ -521,6 +522,188 @@ namespace Lssctc.ProgramManagement.Programs.Services
             {
                 throw new ValidationException($"Unexpected error while creating program: {ex.Message}", ex);
             }
+        }
+
+        #endregion
+
+        #region System Data Cleanup
+
+        /// <summary>
+        /// Complete cleanup of a TrainingProgram and all its dependencies including Courses.
+        /// This is a system cleanup feature that performs deep deletion in a transaction.
+        /// </summary>
+        public async Task CleanupProgramDataAsync(int id)
+        {
+            // Get DbContext for transaction management
+            var dbContext = _uow.GetDbContext();
+            IDbContextTransaction? transaction = null;
+
+            try
+            {
+                // Begin transaction
+                transaction = await dbContext.Database.BeginTransactionAsync();
+
+                // 1. Retrieve the TrainingProgram (read-only to get IDs)
+                var program = await _uow.ProgramRepository
+                    .GetAllAsQueryable()
+                    .Where(p => p.Id == id)
+                    .AsNoTracking()
+                    .Include(p => p.ProgramCourses)
+                    .FirstOrDefaultAsync();
+
+                if (program == null)
+                {
+                    throw new KeyNotFoundException($"Program with ID {id} not found.");
+                }
+
+                // 2. Collect IDs for cleanup
+                var programCourseIds = program.ProgramCourses.Select(pc => pc.Id).ToList();
+                var courseIds = program.ProgramCourses.Select(pc => pc.CourseId).Distinct().ToList();
+
+                // 3. Delete TraineeCertificates linked to enrollments in this program
+                var enrollmentIds = await _uow.EnrollmentRepository
+                    .GetAllAsQueryable()
+                    .Where(e => programCourseIds.Contains(e.Class.ProgramCourseId))
+                    .Select(e => e.Id)
+                    .ToListAsync();
+
+                if (enrollmentIds.Any())
+                {
+                    // Delete trainee certificates
+                    await _uow.TraineeCertificateRepository
+                        .GetAllAsQueryable()
+                        .Where(tc => enrollmentIds.Contains(tc.EnrollmentId))
+                        .ExecuteDeleteAsync();
+
+                    // Delete enrollments
+                    await _uow.EnrollmentRepository
+                        .GetAllAsQueryable()
+                        .Where(e => enrollmentIds.Contains(e.Id))
+                        .ExecuteDeleteAsync();
+                }
+
+                // 4. Delete ProgramCourse mappings
+                await _uow.ProgramCourseRepository
+                    .GetAllAsQueryable()
+                    .Where(pc => programCourseIds.Contains(pc.Id))
+                    .ExecuteDeleteAsync();
+
+                // 5. Delete Courses and their children (Deep Delete)
+                foreach (var courseId in courseIds)
+                {
+                    await DeleteCourseDeepAsync(courseId);
+                }
+
+                // 6. Finally, delete the Program itself
+                await _uow.ProgramRepository
+                    .GetAllAsQueryable()
+                    .Where(p => p.Id == id)
+                    .ExecuteDeleteAsync();
+
+                // Commit transaction
+                await transaction.CommitAsync();
+            }
+            catch (Exception)
+            {
+                // Rollback transaction on error
+                if (transaction != null)
+                {
+                    await transaction.RollbackAsync();
+                }
+                throw;
+            }
+            finally
+            {
+                // Dispose transaction
+                if (transaction != null)
+                {
+                    await transaction.DisposeAsync();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Deep deletion of a Course including all its Sections, Activities, and related entities.
+        /// </summary>
+        private async Task DeleteCourseDeepAsync(int courseId)
+        {
+            // Get section IDs for this course
+            var sectionIds = await _uow.CourseSectionRepository
+                .GetAllAsQueryable()
+                .Where(cs => cs.CourseId == courseId)
+                .Select(cs => cs.SectionId)
+                .Distinct()
+                .ToListAsync();
+
+            // Delete CourseSection mappings
+            await _uow.CourseSectionRepository
+                .GetAllAsQueryable()
+                .Where(cs => cs.CourseId == courseId)
+                .ExecuteDeleteAsync();
+
+            // Delete Sections and their Activities
+            foreach (var sectionId in sectionIds)
+            {
+                await DeleteSectionDeepAsync(sectionId);
+            }
+
+            // Delete the Course entity itself
+            await _uow.CourseRepository
+                .GetAllAsQueryable()
+                .Where(c => c.Id == courseId)
+                .ExecuteDeleteAsync();
+        }
+
+        /// <summary>
+        /// Deep deletion of a Section including all its Activities.
+        /// </summary>
+        private async Task DeleteSectionDeepAsync(int sectionId)
+        {
+            // Get activity IDs for this section
+            var activityIds = await _uow.SectionActivityRepository
+                .GetAllAsQueryable()
+                .Where(sa => sa.SectionId == sectionId)
+                .Select(sa => sa.ActivityId)
+                .Distinct()
+                .ToListAsync();
+
+            // Delete SectionActivity mappings
+            await _uow.SectionActivityRepository
+                .GetAllAsQueryable()
+                .Where(sa => sa.SectionId == sectionId)
+                .ExecuteDeleteAsync();
+
+            // Delete Activities (including their related entities)
+            // First delete ActivityMaterials, ActivityPractices, ActivityQuizzes
+            if (activityIds.Any())
+            {
+                await _uow.ActivityMaterialRepository
+                    .GetAllAsQueryable()
+                    .Where(am => activityIds.Contains(am.ActivityId))
+                    .ExecuteDeleteAsync();
+
+                await _uow.ActivityPracticeRepository
+                    .GetAllAsQueryable()
+                    .Where(ap => activityIds.Contains(ap.ActivityId))
+                    .ExecuteDeleteAsync();
+
+                await _uow.ActivityQuizRepository
+                    .GetAllAsQueryable()
+                    .Where(aq => activityIds.Contains(aq.ActivityId))
+                    .ExecuteDeleteAsync();
+
+                // Delete Activities themselves
+                await _uow.ActivityRepository
+                    .GetAllAsQueryable()
+                    .Where(a => activityIds.Contains(a.Id))
+                    .ExecuteDeleteAsync();
+            }
+
+            // Delete Section
+            await _uow.SectionRepository
+                .GetAllAsQueryable()
+                .Where(s => s.Id == sectionId)
+                .ExecuteDeleteAsync();
         }
 
         #endregion
