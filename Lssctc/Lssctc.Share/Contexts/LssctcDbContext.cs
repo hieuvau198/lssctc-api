@@ -315,6 +315,7 @@ public partial class LssctcDbContext : DbContext
             entity.Property(e => e.Name)
                 .HasMaxLength(200)
                 .HasColumnName("name");
+            entity.Property(e => e.TemplateHtml).HasColumnName("template_html");
             entity.Property(e => e.TemplateUrl)
                 .HasMaxLength(1000)
                 .HasColumnName("template_url");
@@ -1308,6 +1309,9 @@ public partial class LssctcDbContext : DbContext
                 .HasPrecision(0)
                 .HasDefaultValueSql("(sysdatetime())")
                 .HasColumnName("issued_date");
+            entity.Property(e => e.PdfUrl)
+                .HasMaxLength(1000)
+                .HasColumnName("pdf_url");
 
             entity.HasOne(d => d.CourseCertificate).WithMany(p => p.TraineeCertificates)
                 .HasForeignKey(d => d.CourseCertificateId)
