@@ -31,7 +31,7 @@ namespace Lssctc.ProgramManagement.Programs.Controllers
                     // 2. Create Header (Row 1)
                     string[] headers = {
                         "Program Name", "Program Description", "Program Image URL",
-                        "Course Name", "Course Description", "Category ID", "Level ID",
+                        "Course Name", "Course Description", "Category Name", "Level Name",
                         "Duration Hours", "Price (VND)", "Course Image URL",
                         "Section Title", "Section Description", "Duration Minutes"
                     };
@@ -56,6 +56,7 @@ namespace Lssctc.ProgramManagement.Programs.Controllers
                     // - Course info (columns 4-10) should be repeated for each section of that course
                     // - Section info (columns 11-13) changes per section
                     // - Leave Section columns empty if the course has no sections
+                    // - Category Name and Level Name use "Find or Create" logic - if not found, they will be created
                     
                     var sampleData = new List<object[]>
                     {
@@ -67,8 +68,8 @@ namespace Lssctc.ProgramManagement.Programs.Controllers
                             "https://www-assets.liebherr.com/media/bu-media/lhbu-lwe/images/subhome/liebherr-ltm-1920x1920-1_w736.jpg",
                             "Basic Crane Operations",
                             "Introduction to crane operations and safety fundamentals",
-                            1, // Category ID (e.g., 1 = Heavy Equipment)
-                            1, // Level ID (e.g., 1 = Beginner)
+                            "Heavy Equipment", // Category Name (will be created if not exists)
+                            "Beginner", // Level Name (will be created if not exists)
                             40, // Duration Hours
                             5000000, // Price in VND
                             "https://example.com/course1.jpg",
@@ -82,8 +83,8 @@ namespace Lssctc.ProgramManagement.Programs.Controllers
                             "https://www-assets.liebherr.com/media/bu-media/lhbu-lwe/images/subhome/liebherr-ltm-1920x1920-1_w736.jpg",
                             "Basic Crane Operations",
                             "Introduction to crane operations and safety fundamentals",
-                            1,
-                            1,
+                            "Heavy Equipment",
+                            "Beginner",
                             40,
                             5000000,
                             "https://example.com/course1.jpg",
@@ -99,8 +100,8 @@ namespace Lssctc.ProgramManagement.Programs.Controllers
                             "https://www-assets.liebherr.com/media/bu-media/lhbu-lwe/images/subhome/liebherr-ltm-1920x1920-1_w736.jpg",
                             "Advanced Crane Techniques",
                             "Advanced lifting techniques and load calculations",
-                            1,
-                            2, // Level ID (e.g., 2 = Advanced)
+                            "Heavy Equipment",
+                            "Advanced", // Level Name
                             60,
                             7500000,
                             "https://example.com/course2.jpg",
@@ -116,8 +117,8 @@ namespace Lssctc.ProgramManagement.Programs.Controllers
                             "https://www-assets.liebherr.com/media/bu-media/lhbu-lwe/images/subhome/liebherr-ltm-1920x1920-1_w736.jpg",
                             "Maintenance and Inspection",
                             "Regular maintenance procedures and inspection checklists",
-                            1,
-                            1,
+                            "Heavy Equipment",
+                            "Beginner",
                             20,
                             3000000,
                             "https://example.com/course3.jpg",
@@ -139,8 +140,8 @@ namespace Lssctc.ProgramManagement.Programs.Controllers
                     }
 
                     // 6. Format specific columns as Text to prevent Excel auto-formatting issues
-                    worksheet.Column(6).Style.Numberformat.Format = "@"; // Category ID
-                    worksheet.Column(7).Style.Numberformat.Format = "@"; // Level ID
+                    worksheet.Column(6).Style.Numberformat.Format = "@"; // Category Name
+                    worksheet.Column(7).Style.Numberformat.Format = "@"; // Level Name
                     worksheet.Column(8).Style.Numberformat.Format = "@"; // Duration Hours
                     worksheet.Column(9).Style.Numberformat.Format = "#,##0"; // Price (Number with thousand separator)
                     worksheet.Column(13).Style.Numberformat.Format = "@"; // Duration Minutes
@@ -173,14 +174,19 @@ namespace Lssctc.ProgramManagement.Programs.Controllers
                         "• Program Image URL: Valid URL format (optional)",
                         "• Course Name: 3-200 characters (required)",
                         "• Course Description: Up to 1000 characters (optional)",
-                        "• Category ID: Must exist in system (required) - Check with admin for valid IDs",
-                        "• Level ID: Must exist in system (required) - Check with admin for valid IDs",
+                        "• Category Name: 2-100 characters (required) - Will be created if not exists (Find or Create logic)",
+                        "• Level Name: 2-100 characters (required) - Will be created if not exists (Find or Create logic)",
                         "• Duration Hours: 1-500 hours (required)",
                         "• Price (VND): 0 to 1,000,000,000 (optional, default currency is VND)",
                         "• Course Image URL: Valid URL format (optional)",
                         "• Section Title: 3-200 characters (required if creating sections)",
                         "• Section Description: Up to 1000 characters (optional)",
                         "• Duration Minutes: 1-1000 minutes (required if creating sections)",
+                        "",
+                        "FIND OR CREATE LOGIC:",
+                        "• Category Name & Level Name: If a category or level with the specified name exists (case-insensitive), it will be used.",
+                        "  If not found, a new category/level will be automatically created with that name.",
+                        "• This allows flexible data entry without requiring pre-existing ID lookup.",
                         "",
                         "EXAMPLE STRUCTURE:",
                         "Row 1: Program A | Course 1 | Section 1",
@@ -190,9 +196,10 @@ namespace Lssctc.ProgramManagement.Programs.Controllers
                         "",
                         "NEXT STEPS:",
                         "1. Fill out the template following the sample data in the first sheet",
-                        "2. Verify Category IDs and Level IDs exist in your system",
-                        "3. Import this file using your application's import functionality",
-                        "4. Or convert to JSON and POST to: /api/programs/create-full"
+                        "2. Use descriptive Category Names (e.g., 'Heavy Equipment', 'IT Software', 'Safety Training')",
+                        "3. Use standard Level Names (e.g., 'Beginner', 'Intermediate', 'Advanced')",
+                        "4. Import this file using: POST /api/programs/import-excel",
+                        "5. Or manually convert to JSON and POST to: /api/programs/create-full"
                     };
 
                     for (int i = 0; i < instructions.Count; i++)
