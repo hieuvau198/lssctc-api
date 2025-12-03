@@ -1,5 +1,9 @@
 ﻿using Google.Apis.Auth.OAuth2;
 using Google.Cloud.Storage.V1;
+using Microsoft.Extensions.Configuration;
+using System;
+using System.IO;
+using System.Threading.Tasks;
 
 namespace Lssctc.ProgramManagement.Common.Services
 {
@@ -10,19 +14,32 @@ namespace Lssctc.ProgramManagement.Common.Services
 
         public FirebaseStorageService(IConfiguration configuration)
         {
-            // 1. Load credentials from the JSON file you downloaded
-            // Ensure "firebase_config.json" is in your project root and copied to output
-            var credential = GoogleCredential.FromFile("firebase_config.json");
-            _storageClient = StorageClient.Create(credential);
-
-            // 2. Get bucket name from appsettings.json
+            // 1. Get bucket name
             _bucketName = configuration["Firebase:StorageBucket"]
                           ?? throw new ArgumentNullException("Firebase:StorageBucket configuration is missing");
+
+            // 2. Get Credentials safely
+            // PRIORITY: Check for Environment Variable (Azure) or AppSettings string
+            string credentialJson = configuration["Firebase:CredentialJson"];
+
+            // FALLBACK: If not found in config, try local file (Localhost development)
+            if (string.IsNullOrEmpty(credentialJson) && File.Exists("firebase_config.json"))
+            {
+                credentialJson = File.ReadAllText("firebase_config.json");
+            }
+
+            if (string.IsNullOrEmpty(credentialJson))
+            {
+                throw new Exception("Firebase credentials not found. Set 'Firebase:CredentialJson' in AppSettings/Azure or place 'firebase_config.json' in root.");
+            }
+
+            // Create credential from the JSON STRING, not file
+            var credential = GoogleCredential.FromJson(credentialJson);
+            _storageClient = StorageClient.Create(credential);
         }
 
         public async Task<string> UploadFileAsync(Stream fileStream, string fileName, string contentType)
         {
-            // Upload the object
             var dataObject = await _storageClient.UploadObjectAsync(
                 _bucketName,
                 fileName,
@@ -30,13 +47,6 @@ namespace Lssctc.ProgramManagement.Common.Services
                 fileStream
             );
 
-            // Make the object publicly readable (Optional: depends on your privacy needs)
-            // If you want private files, you'd generate a SignedURL instead.
-            // For public certificates, we often make the specific file public:
-            // await _storageClient.UpdateObjectAsync(dataObject, new UpdateObjectOptions { PredefinedAcl = PredefinedObjectAcl.PublicRead });
-
-            // Construct the public URL (This format works for public Firebase objects)
-            // Format: https://firebasestorage.googleapis.com/v0/b/{bucket}/o/{path}?alt=media
             var encodedName = Uri.EscapeDataString(fileName);
             return $"https://firebasestorage.googleapis.com/v0/b/{_bucketName}/o/{encodedName}?alt=media";
         }
