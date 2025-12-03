@@ -9,6 +9,8 @@ namespace Lssctc.ProgramManagement.Dashboard.Services
 
         // Part 2: Charts & Analytics
         Task<IEnumerable<ClassTraineeCountDto>> GetTopClassesByTraineeCountAsync(int instructorId, int topCount = 5);
-        Task<IEnumerable<ClassAverageScoreDto>> GetAverageScorePerClassAsync(int instructorId);
+        Task<IEnumerable<ClassStatusDistributionDto>> GetInstructorClassStatusDistributionAsync(int instructorId);
+        Task<IEnumerable<InstructorCourseCompletionTrendDto>> GetInstructorYearlyCompletionTrendsAsync(int instructorId, int year);
+        Task<IEnumerable<ClassGradeDistributionDto>> GetClassGradeDistributionAsync(int instructorId);
     }
 }
