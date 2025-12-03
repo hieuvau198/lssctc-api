@@ -5,6 +5,9 @@ using Lssctc.Share.Entities;
 using Lssctc.Share.Enums;
 using Lssctc.Share.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using OfficeOpenXml;
+using Microsoft.AspNetCore.Http;
+using System.Data;
 
 namespace Lssctc.ProgramManagement.Accounts.Users.Services
 {
@@ -347,5 +350,166 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Services
         }
 
         #endregion
+
+        public async Task<string> ImportTraineesAsync(IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+                throw new Exception("File is empty or null.");
+
+            if (!file.FileName.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase))
+                throw new Exception("Invalid file format. Please upload an Excel file (.xlsx).");
+
+            int importedCount = 0;
+            int skippedCount = 0;
+            var errors = new List<string>();
+
+            try
+            {
+                ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+
+                using (var stream = new MemoryStream())
+                {
+                    await file.CopyToAsync(stream);
+                    stream.Position = 0;
+
+                    using (var package = new ExcelPackage(stream))
+                    {
+                        var worksheet = package.Workbook.Worksheets.FirstOrDefault();
+                        if (worksheet == null)
+                            throw new Exception("Excel file does not contain any worksheets.");
+
+                        int rowCount = worksheet.Dimension?.Rows ?? 0;
+                        if (rowCount < 2)
+                            throw new Exception("Excel file must contain at least one data row (plus header row).");
+
+                        // Start a transaction for batch import
+                        var dbContext = _uow.GetDbContext();
+                        using (var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted))
+                        {
+                            try
+                            {
+                                // Process each row (skip header row 1)
+                                for (int row = 2; row <= rowCount; row++)
+                                {
+                                    try
+                                    {
+                                        // Read values from Excel
+                                        string? username = worksheet.Cells[row, 1].Value?.ToString()?.Trim();
+                                        string? email = worksheet.Cells[row, 2].Value?.ToString()?.Trim();
+                                        string? fullname = worksheet.Cells[row, 3].Value?.ToString()?.Trim();
+                                        string? password = worksheet.Cells[row, 4].Value?.ToString()?.Trim();
+                                        string? phoneNumber = worksheet.Cells[row, 5].Value?.ToString()?.Trim();
+                                        string? avatarUrl = worksheet.Cells[row, 6].Value?.ToString()?.Trim();
+
+                                        // Skip completely empty rows
+                                        if (string.IsNullOrWhiteSpace(username) && 
+                                            string.IsNullOrWhiteSpace(email) && 
+                                            string.IsNullOrWhiteSpace(fullname))
+                                        {
+                                            continue;
+                                        }
+
+                                        // Validate required fields
+                                        if (string.IsNullOrWhiteSpace(username) || 
+                                            string.IsNullOrWhiteSpace(email) || 
+                                            string.IsNullOrWhiteSpace(fullname) || 
+                                            string.IsNullOrWhiteSpace(password))
+                                        {
+                                            errors.Add($"Row {row}: Missing required fields (Username, Email, Fullname, or Password).");
+                                            skippedCount++;
+                                            continue;
+                                        }
+
+                                        // Check for duplicates in database (deduplication logic)
+                                        bool exists = await _uow.UserRepository
+                                            .GetAllAsQueryable()
+                                            .AnyAsync(u => 
+                                                (u.Username == username || u.Email.ToLower() == email.ToLower()) 
+                                                && !u.IsDeleted);
+
+                                        if (exists)
+                                        {
+                                            // Skip duplicate silently as per requirements
+                                            skippedCount++;
+                                            continue;
+                                        }
+
+                                        // Hash password
+                                        string hashedPassword = PasswordHashHandler.HashPassword(password);
+
+                                        // Generate unique trainee code
+                                        string traineeCode = await GenerateUniqueTraineeCode();
+
+                                        // Create Trainee Profile
+                                        var traineeProfile = new TraineeProfile
+                                        {
+                                        };
+
+                                        // Create Trainee
+                                        var trainee = new Trainee
+                                        {
+                                            TraineeCode = traineeCode,
+                                            IsActive = true,
+                                            IsDeleted = false,
+                                            TraineeProfile = traineeProfile
+                                        };
+
+                                        // Create User with Trainee role
+                                        var user = new User
+                                        {
+                                            Username = username,
+                                            Password = hashedPassword,
+                                            Email = email,
+                                            Fullname = fullname,
+                                            PhoneNumber = string.IsNullOrWhiteSpace(phoneNumber) ? null : phoneNumber,
+                                            AvatarUrl = string.IsNullOrWhiteSpace(avatarUrl) ? null : avatarUrl,
+                                            Role = (int)UserRoleEnum.Trainee,
+                                            IsActive = true,
+                                            IsDeleted = false,
+                                            Trainee = trainee
+                                        };
+
+                                        await _uow.UserRepository.CreateAsync(user);
+                                        importedCount++;
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        errors.Add($"Row {row}: {ex.Message}");
+                                        skippedCount++;
+                                    }
+                                }
+
+                                // Save all changes within transaction
+                                await _uow.SaveChangesAsync();
+                                await transaction.CommitAsync();
+                            }
+                            catch (Exception)
+                            {
+                                await transaction.RollbackAsync();
+                                throw;
+                            }
+                        }
+                    }
+                }
+
+                // Build result message
+                var resultMessage = $"Import completed successfully. Imported {importedCount} trainees. Skipped {skippedCount} duplicates/errors.";
+                
+                if (errors.Any())
+                {
+                    resultMessage += $" Errors: {string.Join("; ", errors.Take(10))}"; // Limit error messages
+                    if (errors.Count > 10)
+                    {
+                        resultMessage += $" (and {errors.Count - 10} more errors...)";
+                    }
+                }
+
+                return resultMessage;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error processing Excel file: {ex.Message}");
+            }
+        }
     }
 }

@@ -162,6 +162,24 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Controllers
             }
         }
 
+        [HttpPost("import-trainees")]
+        [Authorize(Roles = "Admin")]
+        [ProducesResponseType(200)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(500)]
+        public async Task<IActionResult> ImportTrainees(IFormFile file)
+        {
+            try
+            {
+                var result = await _usersService.ImportTraineesAsync(file);
+                return Ok(new { message = result });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
+            }
+        }
+
         [HttpPut("{id:int}")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> UpdateUser(int id, [FromBody] UpdateUserDto dto)
