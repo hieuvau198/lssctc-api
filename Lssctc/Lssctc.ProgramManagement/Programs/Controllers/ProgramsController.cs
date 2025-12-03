@@ -12,10 +12,15 @@ namespace Lssctc.ProgramManagement.Programs.Controllers
     {
         private readonly IProgramsService _programsService;
         private readonly IProgramCoursesService _programCoursesService;
-        public ProgramsController(IProgramsService programsService, IProgramCoursesService programCoursesService)
+        private readonly IProgramImportService _programImportService; // Injected new service
+        public ProgramsController(
+            IProgramsService programsService,
+            IProgramCoursesService programCoursesService,
+            IProgramImportService programImportService)
         {
             _programsService = programsService;
             _programCoursesService = programCoursesService;
+            _programImportService = programImportService;
         }
         #region Programs
 
@@ -219,6 +224,38 @@ namespace Lssctc.ProgramManagement.Programs.Controllers
                 if (ex is KeyNotFoundException)
                     return NotFound(ex.Message);
                 return StatusCode(500, $"An internal server error occurred: {ex.Message}");
+            }
+        }
+
+        #endregion
+
+        #region Import
+
+        [HttpPost("import")]
+        [ProducesResponseType(typeof(ProgramDto), 200)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(500)]
+        public async Task<IActionResult> ImportProgram(IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+                return BadRequest("No file uploaded.");
+
+            var extension = Path.GetExtension(file.FileName).ToLower();
+            if (extension != ".xlsx" && extension != ".xls")
+                return BadRequest("Invalid file format. Please upload an Excel file (.xlsx or .xls).");
+
+            try
+            {
+                var program = await _programImportService.ImportProgramFromExcelAsync(file);
+                return Ok(program);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Message = "An error occurred while importing the program: " + ex.Message });
             }
         }
 

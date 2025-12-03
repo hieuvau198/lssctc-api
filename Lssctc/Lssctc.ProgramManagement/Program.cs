@@ -180,6 +180,8 @@ builder.Services.AddScoped<ITraineeCertificatesService, TraineeCertificatesServi
 builder.Services.AddScoped<IAdminDashboardService, AdminDashboardService>();
 builder.Services.AddScoped<IInstructorDashboardService, InstructorDashboardService>();
 builder.Services.AddScoped<ISimulationManagerDashboardService, SimulationManagerDashboardService>();
+
+builder.Services.AddScoped<IProgramImportService, ProgramImportService>();
 #endregion
 
 #region CORS
