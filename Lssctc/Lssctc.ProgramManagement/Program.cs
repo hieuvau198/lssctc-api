@@ -14,6 +14,7 @@ using Lssctc.ProgramManagement.ClassManage.QuizAttempts.Services;
 using Lssctc.ProgramManagement.ClassManage.SectionRecords.Services;
 using Lssctc.ProgramManagement.Common.Services;
 using Lssctc.ProgramManagement.Courses.Services;
+using Lssctc.ProgramManagement.Dashboard.Services;
 using Lssctc.ProgramManagement.Materials.Services;
 using Lssctc.ProgramManagement.Practices.Services;
 using Lssctc.ProgramManagement.Programs.Services;
@@ -176,6 +177,9 @@ builder.Services.AddScoped<IOtpService, OtpService>();
 
 builder.Services.AddScoped<ICertificatesService, CertificatesService>();
 builder.Services.AddScoped<ITraineeCertificatesService, TraineeCertificatesService>();
+builder.Services.AddScoped<IAdminDashboardService, AdminDashboardService>();
+builder.Services.AddScoped<IInstructorDashboardService, InstructorDashboardService>();
+builder.Services.AddScoped<ISimulationManagerDashboardService, SimulationManagerDashboardService>();
 #endregion
 
 #region CORS
