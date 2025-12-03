@@ -22,6 +22,39 @@ namespace Lssctc.ProgramManagement.Programs.Controllers
         }
         #region Programs
 
+        [HttpPost("import-excel")]
+        [ProducesResponseType(typeof(object), 200)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(500)]
+        public async Task<IActionResult> ImportProgramFromExcel(IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+                return BadRequest(new { status = 400, message = "No file uploaded" });
+
+            var extension = Path.GetExtension(file.FileName).ToLower();
+            if (extension != ".xlsx" && extension != ".xls")
+                return BadRequest(new { status = 400, message = "Invalid file format. Only .xlsx and .xls files are allowed" });
+
+            try
+            {
+                var result = await _programsService.ImportProgramFromExcelAsync(file);
+                return Ok(new
+                {
+                    status = 200,
+                    message = "Programs imported successfully",
+                    data = result
+                });
+            }
+            catch (ValidationException ex)
+            {
+                return BadRequest(new { status = 400, message = ex.Message, type = "ValidationException" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = 500, message = ex.Message, type = ex.GetType().Name });
+            }
+        }
+
         [HttpGet]
         [ProducesResponseType(typeof(IEnumerable<ProgramDto>), 200)]
         [ProducesResponseType(500)]

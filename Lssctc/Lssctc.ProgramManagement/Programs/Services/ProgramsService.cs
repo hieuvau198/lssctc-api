@@ -2,7 +2,9 @@
 using Lssctc.Share.Common;
 using Lssctc.Share.Entities;
 using Lssctc.Share.Interfaces;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using OfficeOpenXml;
 using System.ComponentModel.DataAnnotations;
 
 namespace Lssctc.ProgramManagement.Programs.Services
@@ -15,6 +17,153 @@ namespace Lssctc.ProgramManagement.Programs.Services
             _uow = uow;
         }
         #region Programs
+        
+        public async Task<object> ImportProgramFromExcelAsync(IFormFile file)
+        {
+            using var stream = new MemoryStream();
+            await file.CopyToAsync(stream);
+            stream.Position = 0;
+            
+            using var package = new ExcelPackage(stream);
+            var worksheet = package.Workbook.Worksheets[0];
+            
+            if (worksheet == null || worksheet.Dimension == null)
+                throw new ValidationException("Excel file is empty or invalid");
+
+            var programs = new List<CreateProgramWithHierarchyDto>();
+            var rowCount = worksheet.Dimension.End.Row;
+
+            // Group rows by program
+            var programGroups = new Dictionary<string, List<ExcelRowData>>();
+            
+            for (int row = 2; row <= rowCount; row++)
+            {
+                var rowData = ReadExcelRow(worksheet, row);
+                
+                if (string.IsNullOrWhiteSpace(rowData.ProgramName))
+                    continue;
+
+                if (!programGroups.ContainsKey(rowData.ProgramName))
+                    programGroups[rowData.ProgramName] = new List<ExcelRowData>();
+                
+                programGroups[rowData.ProgramName].Add(rowData);
+            }
+
+            // Build DTO hierarchy
+            foreach (var programGroup in programGroups)
+            {
+                var firstRow = programGroup.Value.First();
+                var programDto = new CreateProgramWithHierarchyDto
+                {
+                    Name = firstRow.ProgramName,
+                    Description = firstRow.ProgramDescription,
+                    ImageUrl = firstRow.ProgramImageUrl,
+                    Courses = new List<CreateCourseWithSectionsDto>()
+                };
+
+                // Group by course within this program
+                var courseGroups = programGroup.Value
+                    .Where(r => !string.IsNullOrWhiteSpace(r.CourseName))
+                    .GroupBy(r => new { r.CourseName, r.CourseDescription, r.CategoryId, r.LevelId, r.DurationHours, r.Price, r.CourseImageUrl });
+
+                foreach (var courseGroup in courseGroups)
+                {
+                    var courseDto = new CreateCourseWithSectionsDto
+                    {
+                        Name = courseGroup.Key.CourseName,
+                        Description = courseGroup.Key.CourseDescription,
+                        CategoryId = courseGroup.Key.CategoryId,
+                        LevelId = courseGroup.Key.LevelId,
+                        DurationHours = courseGroup.Key.DurationHours,
+                        Price = courseGroup.Key.Price,
+                        ImageUrl = courseGroup.Key.CourseImageUrl,
+                        Sections = new List<CreateSectionForHierarchyDto>()
+                    };
+
+                    // Add sections for this course
+                    foreach (var row in courseGroup)
+                    {
+                        if (!string.IsNullOrWhiteSpace(row.SectionTitle))
+                        {
+                            courseDto.Sections.Add(new CreateSectionForHierarchyDto
+                            {
+                                SectionTitle = row.SectionTitle,
+                                SectionDescription = row.SectionDescription,
+                                EstimatedDurationMinutes = row.DurationMinutes ?? 0
+                            });
+                        }
+                    }
+
+                    programDto.Courses.Add(courseDto);
+                }
+
+                programs.Add(programDto);
+            }
+
+            // Create all programs
+            var createdProgramIds = new List<int>();
+            var errors = new List<string>();
+
+            foreach (var programDto in programs)
+            {
+                try
+                {
+                    var programId = await CreateProgramWithHierarchyAsync(programDto);
+                    createdProgramIds.Add(programId);
+                }
+                catch (Exception ex)
+                {
+                    errors.Add($"Program '{programDto.Name}': {ex.Message}");
+                }
+            }
+
+            return new
+            {
+                totalProgramsInFile = programs.Count,
+                successfullyCreated = createdProgramIds.Count,
+                failed = errors.Count,
+                createdProgramIds,
+                errors
+            };
+        }
+
+        private ExcelRowData ReadExcelRow(ExcelWorksheet worksheet, int row)
+        {
+            return new ExcelRowData
+            {
+                ProgramName = worksheet.Cells[row, 1].Text?.Trim(),
+                ProgramDescription = worksheet.Cells[row, 2].Text?.Trim(),
+                ProgramImageUrl = worksheet.Cells[row, 3].Text?.Trim(),
+                CourseName = worksheet.Cells[row, 4].Text?.Trim(),
+                CourseDescription = worksheet.Cells[row, 5].Text?.Trim(),
+                CategoryId = int.TryParse(worksheet.Cells[row, 6].Text, out var catId) ? catId : 0,
+                LevelId = int.TryParse(worksheet.Cells[row, 7].Text, out var lvlId) ? lvlId : 0,
+                DurationHours = int.TryParse(worksheet.Cells[row, 8].Text, out var durHrs) ? durHrs : 0,
+                Price = decimal.TryParse(worksheet.Cells[row, 9].Text, out var price) ? price : (decimal?)null,
+                CourseImageUrl = worksheet.Cells[row, 10].Text?.Trim(),
+                SectionTitle = worksheet.Cells[row, 11].Text?.Trim(),
+                SectionDescription = worksheet.Cells[row, 12].Text?.Trim(),
+                DurationMinutes = int.TryParse(worksheet.Cells[row, 13].Text, out var durMin) ? durMin : (int?)null
+            };
+        }
+
+        private class ExcelRowData
+        {
+            public string ProgramName { get; set; }
+            public string ProgramDescription { get; set; }
+            public string ProgramImageUrl { get; set; }
+            public string CourseName { get; set; }
+            public string CourseDescription { get; set; }
+            public int CategoryId { get; set; }
+            public int LevelId { get; set; }
+            public int DurationHours { get; set; }
+            public decimal? Price { get; set; }
+            public string CourseImageUrl { get; set; }
+            public string SectionTitle { get; set; }
+            public string SectionDescription { get; set; }
+            public int? DurationMinutes { get; set; }
+        }
+
         public async Task<IEnumerable<ProgramDto>> GetAllProgramsAsync()
         {
             var programs = await _uow.ProgramRepository

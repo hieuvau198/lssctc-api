@@ -1,5 +1,6 @@
 ﻿using Lssctc.ProgramManagement.Programs.Dtos;
 using Lssctc.Share.Common;
+using Microsoft.AspNetCore.Http;
 
 namespace Lssctc.ProgramManagement.Programs.Services
 {
@@ -12,5 +13,6 @@ namespace Lssctc.ProgramManagement.Programs.Services
         Task<ProgramDto> UpdateProgramAsync(int id, UpdateProgramDto updateDto);
         Task DeleteProgramAsync(int id);
         Task<int> CreateProgramWithHierarchyAsync(CreateProgramWithHierarchyDto dto);
+        Task<object> ImportProgramFromExcelAsync(IFormFile file);
     }
 }

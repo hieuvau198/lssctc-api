@@ -29,10 +29,14 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using OfficeOpenXml;
 using System.IdentityModel.Tokens.Jwt;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Configure EPPlus License for version 8.x
+// EPPlus 8.x requires license to be set before first use
+ExcelPackage.LicenseContext = OfficeOpenXml.LicenseContext.NonCommercial;
 
 #region DbContext
 

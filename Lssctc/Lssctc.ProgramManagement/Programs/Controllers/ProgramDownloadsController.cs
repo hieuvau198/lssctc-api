@@ -23,9 +23,6 @@ namespace Lssctc.ProgramManagement.Programs.Controllers
         {
             try
             {
-                // Set EPPlus license (matching the pattern from DownloadsController)
-                ExcelPackage.License.SetNonCommercialPersonal("Instructor");
-
                 using (var package = new ExcelPackage())
                 {
                     // 1. Create Worksheet
