@@ -13,3 +13,6 @@
 *.cache
 *.pdb
 ~$*
+
+**/firebase_config.json
+Lssctc/Lssctc.ProgramManagement/firebase_config.json
