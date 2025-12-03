@@ -9,6 +9,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
+using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Lssctc.ProgramManagement.Certificates.Services
@@ -17,11 +20,19 @@ namespace Lssctc.ProgramManagement.Certificates.Services
     {
         private readonly LssctcDbContext _context;
         private readonly IFirebaseStorageService _firebaseStorage;
+        private readonly IHttpClientFactory _httpClientFactory;
+        private readonly IConfiguration _configuration;
 
-        public TraineeCertificatesService(LssctcDbContext context, IFirebaseStorageService firebaseStorage)
+        public TraineeCertificatesService(
+            LssctcDbContext context,
+            IFirebaseStorageService firebaseStorage,
+            IHttpClientFactory httpClientFactory,
+            IConfiguration configuration)
         {
             _context = context;
             _firebaseStorage = firebaseStorage;
+            _httpClientFactory = httpClientFactory;
+            _configuration = configuration;
         }
 
         public async Task<IEnumerable<TraineeCertificateResponseDto>> GetAllAsync()
@@ -65,6 +76,121 @@ namespace Lssctc.ProgramManagement.Certificates.Services
         }
 
         public async Task<TraineeCertificateResponseDto> CreateCertificateAsync(CreateTraineeCertificateDto dto)
+        {
+            // 1. Fetch Data
+            var enrollment = await _context.Enrollments
+                .Include(e => e.Trainee).ThenInclude(t => t.IdNavigation)
+                .Include(e => e.Class).ThenInclude(c => c.ProgramCourse).ThenInclude(pc => pc.Course)
+                .FirstOrDefaultAsync(e => e.Id == dto.EnrollmentId);
+
+            var courseCert = await _context.CourseCertificates
+                .Include(cc => cc.Certificate)
+                .FirstOrDefaultAsync(cc => cc.Id == dto.CourseCertificateId);
+
+            if (enrollment == null || courseCert == null)
+                throw new Exception("Enrollment or Course Certificate Configuration not found");
+
+            // 2. Prepare HTML
+            string htmlContent = courseCert.Certificate.TemplateHtml ?? "<h1>No Template Found</h1>";
+            htmlContent = htmlContent.Replace("{{TraineeName}}", enrollment.Trainee.IdNavigation.Fullname);
+            htmlContent = htmlContent.Replace("{{CourseName}}", enrollment.Class.ProgramCourse.Course.Name);
+            htmlContent = htmlContent.Replace("{{IssuedDate}}", DateTime.Now.ToString("dd MMM yyyy"));
+
+            // ---------------------------------------------------------
+            // 3. Generate PDF using PDFBolt API
+            // ---------------------------------------------------------
+
+            string apiKey = _configuration["PdfBoltApiKey"];
+
+            if (string.IsNullOrEmpty(apiKey))
+            {
+                throw new Exception("PDFBolt API Key is missing in configuration.");
+            }
+
+            using var client = _httpClientFactory.CreateClient();
+
+            // Encode HTML to Base64 as required by PDFBolt API
+            string base64Html = Convert.ToBase64String(Encoding.UTF8.GetBytes(htmlContent));
+
+            var requestPayload = new
+            {
+                html = base64Html, // Send Base64 encoded HTML
+                format = "A4",
+                landscape = true,
+                scale = 1.0,
+                printBackground = true,
+                waitUntil = "networkidle" // Wait for network to be idle (images loaded)
+            };
+
+            var jsonContent = new StringContent(
+                JsonSerializer.Serialize(requestPayload),
+                Encoding.UTF8,
+                "application/json");
+
+            var request = new HttpRequestMessage(HttpMethod.Post, "https://api.pdfbolt.com/v1/direct");
+
+            // Authentication Header
+            request.Headers.Add("API-KEY", apiKey);
+            request.Content = jsonContent;
+
+            var response = await client.SendAsync(request);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                // Log the error for debugging
+                Console.WriteLine($"PDFBolt Error: {response.StatusCode} - {errorContent}");
+                throw new Exception($"PDF Generation failed. Status: {response.StatusCode}. Error: {errorContent}");
+            }
+
+            byte[] pdfBytes = await response.Content.ReadAsByteArrayAsync();
+
+            // ---------------------------------------------------------
+            // 4. Upload to Firebase
+            // ---------------------------------------------------------
+            string uniqueFileName = $"certificates/{Guid.NewGuid()}_{enrollment.Trainee.TraineeCode}.pdf";
+            string pdfUrl = await _firebaseStorage.UploadFileAsync(new MemoryStream(pdfBytes), uniqueFileName, "application/pdf");
+
+            // 5. Save to DB
+            var newCert = new TraineeCertificate
+            {
+                EnrollmentId = dto.EnrollmentId,
+                CourseCertificateId = dto.CourseCertificateId,
+                CertificateCode = Guid.NewGuid().ToString().Substring(0, 8).ToUpper(),
+                IssuedDate = DateTime.Now,
+                PdfUrl = pdfUrl
+            };
+
+            _context.TraineeCertificates.Add(newCert);
+            await _context.SaveChangesAsync();
+
+            return await GetByIdAsync(newCert.Id);
+        }
+
+        public async Task<bool> DeleteCertificateAsync(int id)
+        {
+            var entity = await _context.TraineeCertificates.FindAsync(id);
+            if (entity == null) return false;
+
+            _context.TraineeCertificates.Remove(entity);
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        private TraineeCertificateResponseDto MapToDto(TraineeCertificate entity)
+        {
+            return new TraineeCertificateResponseDto
+            {
+                Id = entity.Id,
+                CertificateCode = entity.CertificateCode,
+                IssuedDate = entity.IssuedDate,
+                PdfUrl = entity.PdfUrl,
+                TraineeName = entity.Enrollment?.Trainee?.IdNavigation?.Fullname ?? "Unknown",
+                CourseName = entity.CourseCertificate?.Course?.Name ?? "Unknown"
+            };
+        }
+
+        public async Task<TraineeCertificateResponseDto> PuppeCreateCertificateAsync(CreateTraineeCertificateDto dto)
         {
             // 1. Fetch Data
             var enrollment = await _context.Enrollments
@@ -153,27 +279,5 @@ namespace Lssctc.ProgramManagement.Certificates.Services
             return await GetByIdAsync(newCert.Id);
         }
 
-        public async Task<bool> DeleteCertificateAsync(int id)
-        {
-            var entity = await _context.TraineeCertificates.FindAsync(id);
-            if (entity == null) return false;
-
-            _context.TraineeCertificates.Remove(entity);
-            await _context.SaveChangesAsync();
-            return true;
-        }
-
-        private TraineeCertificateResponseDto MapToDto(TraineeCertificate entity)
-        {
-            return new TraineeCertificateResponseDto
-            {
-                Id = entity.Id,
-                CertificateCode = entity.CertificateCode,
-                IssuedDate = entity.IssuedDate,
-                PdfUrl = entity.PdfUrl,
-                TraineeName = entity.Enrollment?.Trainee?.IdNavigation?.Fullname ?? "Unknown",
-                CourseName = entity.CourseCertificate?.Course?.Name ?? "Unknown"
-            };
-        }
     }
 }
