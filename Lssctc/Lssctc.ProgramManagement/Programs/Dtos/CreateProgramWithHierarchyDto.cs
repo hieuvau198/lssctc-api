@@ -11,6 +11,9 @@ namespace Lssctc.ProgramManagement.Programs.Dtos
     /// 3. CourseOrder will be auto-generated based on position in list (1, 2, 3, ...)
     /// 4. SectionOrder will be auto-generated based on position in list (1, 2, 3, ...)
     /// 5. All operations are transactional - if any part fails, the entire operation is rolled back
+    /// 6. CategoryName and LevelName are used for "Find or Create" logic:
+    ///    - If a category/level with the given name exists, it will be used
+    ///    - If not, a new one will be created automatically
     /// 
     /// EXAMPLE JSON:
     /// {
@@ -21,8 +24,8 @@ namespace Lssctc.ProgramManagement.Programs.Dtos
     ///     {
     ///       "name": "Basic Crane Operations",
     ///       "description": "Introduction to crane operations",
-    ///       "categoryId": 1,
-    ///       "levelId": 1,
+    ///       "categoryName": "Heavy Equipment",
+    ///       "levelName": "Beginner",
     ///       "durationHours": 40,
     ///       "price": 5000000,
     ///       "imageUrl": "https://example.com/course1.jpg",
@@ -42,8 +45,8 @@ namespace Lssctc.ProgramManagement.Programs.Dtos
     ///     {
     ///       "name": "Course Without Sections",
     ///       "description": "This course has no sections yet",
-    ///       "categoryId": 1,
-    ///       "levelId": 1,
+    ///       "categoryName": "Heavy Equipment",
+    ///       "levelName": "Beginner",
     ///       "durationHours": 20,
     ///       "sections": []
     ///     }
@@ -72,6 +75,7 @@ namespace Lssctc.ProgramManagement.Programs.Dtos
     /// DTO to create a Course with its Sections.
     /// Used as part of CreateProgramWithHierarchyDto.
     /// Sections are now optional - course can be created without any sections.
+    /// Category and Level are specified by name (Find or Create logic applies).
     /// </summary>
     public class CreateCourseWithSectionsDto
     {
@@ -85,13 +89,13 @@ namespace Lssctc.ProgramManagement.Programs.Dtos
         [StringLength(1000, ErrorMessage = "Description cannot exceed 1000 characters.")]
         public string? Description { get; set; }
 
-        [Required(ErrorMessage = "Category ID is required.")]
-        [Range(1, int.MaxValue, ErrorMessage = "Category ID must be a positive number.")]
-        public int CategoryId { get; set; }
+        [Required(ErrorMessage = "Category name is required.")]
+        [StringLength(100, MinimumLength = 2, ErrorMessage = "Category name must be between 2 and 100 characters.")]
+        public string CategoryName { get; set; } = null!;
 
-        [Required(ErrorMessage = "Level ID is required.")]
-        [Range(1, int.MaxValue, ErrorMessage = "Level ID must be a positive number.")]
-        public int LevelId { get; set; }
+        [Required(ErrorMessage = "Level name is required.")]
+        [StringLength(100, MinimumLength = 2, ErrorMessage = "Level name must be between 2 and 100 characters.")]
+        public string LevelName { get; set; } = null!;
 
         [Range(0, 1000000000, ErrorMessage = "Price must be between 0 and 1,000,000,000. Default currency is VND")]
         public decimal? Price { get; set; }

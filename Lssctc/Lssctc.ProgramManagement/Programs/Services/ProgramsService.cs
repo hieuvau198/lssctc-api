@@ -65,7 +65,7 @@ namespace Lssctc.ProgramManagement.Programs.Services
                 // Group by course within this program
                 var courseGroups = programGroup.Value
                     .Where(r => !string.IsNullOrWhiteSpace(r.CourseName))
-                    .GroupBy(r => new { r.CourseName, r.CourseDescription, r.CategoryId, r.LevelId, r.DurationHours, r.Price, r.CourseImageUrl });
+                    .GroupBy(r => new { r.CourseName, r.CourseDescription, r.CategoryName, r.LevelName, r.DurationHours, r.Price, r.CourseImageUrl });
 
                 foreach (var courseGroup in courseGroups)
                 {
@@ -73,8 +73,8 @@ namespace Lssctc.ProgramManagement.Programs.Services
                     {
                         Name = courseGroup.Key.CourseName,
                         Description = courseGroup.Key.CourseDescription,
-                        CategoryId = courseGroup.Key.CategoryId,
-                        LevelId = courseGroup.Key.LevelId,
+                        CategoryName = courseGroup.Key.CategoryName,
+                        LevelName = courseGroup.Key.LevelName,
                         DurationHours = courseGroup.Key.DurationHours,
                         Price = courseGroup.Key.Price,
                         ImageUrl = courseGroup.Key.CourseImageUrl,
@@ -137,8 +137,8 @@ namespace Lssctc.ProgramManagement.Programs.Services
                 ProgramImageUrl = worksheet.Cells[row, 3].Text?.Trim(),
                 CourseName = worksheet.Cells[row, 4].Text?.Trim(),
                 CourseDescription = worksheet.Cells[row, 5].Text?.Trim(),
-                CategoryId = int.TryParse(worksheet.Cells[row, 6].Text, out var catId) ? catId : 0,
-                LevelId = int.TryParse(worksheet.Cells[row, 7].Text, out var lvlId) ? lvlId : 0,
+                CategoryName = worksheet.Cells[row, 6].Text?.Trim() ?? "",
+                LevelName = worksheet.Cells[row, 7].Text?.Trim() ?? "",
                 DurationHours = int.TryParse(worksheet.Cells[row, 8].Text, out var durHrs) ? durHrs : 0,
                 Price = decimal.TryParse(worksheet.Cells[row, 9].Text, out var price) ? price : (decimal?)null,
                 CourseImageUrl = worksheet.Cells[row, 10].Text?.Trim(),
@@ -155,8 +155,8 @@ namespace Lssctc.ProgramManagement.Programs.Services
             public string ProgramImageUrl { get; set; }
             public string CourseName { get; set; }
             public string CourseDescription { get; set; }
-            public int CategoryId { get; set; }
-            public int LevelId { get; set; }
+            public string CategoryName { get; set; }
+            public string LevelName { get; set; }
             public int DurationHours { get; set; }
             public decimal? Price { get; set; }
             public string CourseImageUrl { get; set; }
@@ -328,6 +328,7 @@ namespace Lssctc.ProgramManagement.Programs.Services
         /// <summary>
         /// Creates a complete TrainingProgram with its Courses and Sections in a single transactional operation.
         /// Follows the same pattern as CreateQuizWithQuestions.
+        /// Implements "Find or Create" logic for CategoryName and LevelName.
         /// </summary>
         public async Task<int> CreateProgramWithHierarchyAsync(CreateProgramWithHierarchyDto dto)
         {
@@ -358,15 +359,13 @@ namespace Lssctc.ProgramManagement.Programs.Services
                     if (normalizedCourseName.Length < 3 || normalizedCourseName.Length > 200)
                         throw new ValidationException($"Course #{courseIndex}: Name must be between 3 and 200 characters (actual: {normalizedCourseName.Length} chars).");
 
-                    // Validate category exists
-                    var category = await _uow.CourseCategoryRepository.GetByIdAsync(courseDto.CategoryId);
-                    if (category == null)
-                        throw new ValidationException($"Course #{courseIndex} ('{TruncateText(normalizedCourseName, 50)}'): Category with ID {courseDto.CategoryId} not found.");
+                    // Validate category name
+                    if (string.IsNullOrWhiteSpace(courseDto.CategoryName))
+                        throw new ValidationException($"Course #{courseIndex} ('{TruncateText(normalizedCourseName, 50)}'): Category name cannot be empty.");
 
-                    // Validate level exists
-                    var level = await _uow.CourseLevelRepository.GetByIdAsync(courseDto.LevelId);
-                    if (level == null)
-                        throw new ValidationException($"Course #{courseIndex} ('{TruncateText(normalizedCourseName, 50)}'): Level with ID {courseDto.LevelId} not found.");
+                    // Validate level name
+                    if (string.IsNullOrWhiteSpace(courseDto.LevelName))
+                        throw new ValidationException($"Course #{courseIndex} ('{TruncateText(normalizedCourseName, 50)}'): Level name cannot be empty.");
 
                     // Validate sections only if provided
                     if (courseDto.Sections != null && courseDto.Sections.Count > 0)
@@ -421,15 +420,51 @@ namespace Lssctc.ProgramManagement.Programs.Services
 
                     try
                     {
-                        // Create Course
+                        // Find or Create Category
+                        var normalizedCategoryName = string.Join(' ', courseDto.CategoryName.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries));
+                        var category = await _uow.CourseCategoryRepository
+                            .GetAllAsQueryable()
+                            .FirstOrDefaultAsync(c => c.Name.ToLower() == normalizedCategoryName.ToLower());
+
+                        if (category == null)
+                        {
+                            // Create new category
+                            category = new CourseCategory
+                            {
+                                Name = normalizedCategoryName,
+                                Description = "" // Empty description as per requirements
+                            };
+                            await _uow.CourseCategoryRepository.CreateAsync(category);
+                            await _uow.SaveChangesAsync();
+                        }
+
+                        // Find or Create Level
+                        var normalizedLevelName = string.Join(' ', courseDto.LevelName.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries));
+                        var level = await _uow.CourseLevelRepository
+                            .GetAllAsQueryable()
+                            .FirstOrDefaultAsync(l => l.Name.ToLower() == normalizedLevelName.ToLower());
+
+                        if (level == null)
+                        {
+                            // Create new level
+                            level = new CourseLevel
+                            {
+                                Name = normalizedLevelName,
+                                Description = null // Null description for levels
+                            };
+                            await _uow.CourseLevelRepository.CreateAsync(level);
+                            await _uow.SaveChangesAsync();
+                        }
+
+                        // Create Course with resolved CategoryId and LevelId
                         var normalizedCourseName = string.Join(' ', courseDto.Name.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries));
                         
                         var course = new Course
                         {
                             Name = normalizedCourseName,
                             Description = courseDto.Description,
-                            CategoryId = courseDto.CategoryId,
-                            LevelId = courseDto.LevelId,
+                            CategoryId = category.Id,
+                            LevelId = level.Id,
                             Price = courseDto.Price,
                             DurationHours = courseDto.DurationHours,
                             ImageUrl = courseDto.ImageUrl ?? "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS2sUcEWdSaINXf8E4hmy7obh3B1w0-l_T8Tw&s",
