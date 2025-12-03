@@ -64,11 +64,14 @@ ALTER TABLE practices
 ADD CONSTRAINT DF_practices_practice_code
 DEFAULT('NO PRACTICE CODE ASSIGNED') FOR practice_code;
 
-ALTER TABLE sim_tasks
-ADD task_code NVARCHAR(50) default 'NO PRACTICE CODE ASSIGNED'
+ALTER TABLE [trainee_certificates]
+ADD [pdf_url] NVARCHAR(1000)
 
 update sim_tasks
 set task_code = 'TASK_UNKNOWN'
 
 alter table simulation_components
 add component_code nvarchar(50) NULL default 'COMPONENT_UNKNOWN'
+
+INSERT INTO [dbo].[course_certificates] ([course_id], [certificate_id], [passing_score], [is_active])
+VALUES (2, 1, 5.0, 1);

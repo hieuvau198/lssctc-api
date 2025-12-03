@@ -403,7 +403,7 @@ BEGIN TRY
         [name] NVARCHAR(200) NOT NULL,
         [description] NVARCHAR(1000),
         [template_url] NVARCHAR(1000),
-        [template_html] NVARCHAR(MAX), -- New column to store the HTML code value
+        [template_html] NVARCHAR(MAX),
         [is_active] BIT DEFAULT 1
     );
 
@@ -423,7 +423,7 @@ BEGIN TRY
         [course_certificate_id] INT NOT NULL,
         [issued_date] DATETIME2(0) DEFAULT SYSDATETIME(),
         [certificate_code] NVARCHAR(100) UNIQUE,
-        [pdf_url] NVARCHAR(1000), -- New column to store the generated PDF link
+        [pdf_url] NVARCHAR(1000), 
         FOREIGN KEY ([enrollment_id]) REFERENCES [dbo].[enrollments]([id]),
         FOREIGN KEY ([course_certificate_id]) REFERENCES [dbo].[course_certificates]([id])
     );
