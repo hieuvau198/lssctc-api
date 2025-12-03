@@ -19,9 +19,11 @@ namespace Lssctc.ProgramManagement.Programs.Services
             var programs = await _uow.ProgramRepository
                 .GetAllAsQueryable()
                 .Where(p => p.IsDeleted != true)
+                .Include(p => p.ProgramCourses)
+                    .ThenInclude(pc => pc.Course)
                 .ToListAsync();
 
-            return programs.Select(MapToDto);
+            return programs.Select(MapToDtoWithCalculations);
         }
         
         public async Task<PagedResult<ProgramDto>> GetProgramsAsync(int pageNumber, int pageSize)
@@ -29,28 +31,47 @@ namespace Lssctc.ProgramManagement.Programs.Services
             if (pageNumber < 1) pageNumber = 1;
             if (pageSize < 1) pageSize = 10;
 
+            // CHANGED: Perform projection directly in query with Include
             var query = _uow.ProgramRepository
                 .GetAllAsQueryable()
                 .Where(p => p.IsDeleted != true)
-                .Select(p => MapToDto(p));
+                .Include(p => p.ProgramCourses)
+                    .ThenInclude(pc => pc.Course)
+                .Select(p => new ProgramDto
+                {
+                    Id = p.Id,
+                    Name = p.Name,
+                    Description = p.Description,
+                    IsActive = p.IsActive,
+                    ImageUrl = p.ImageUrl,
+                    // Calculate TotalCourses: count the number of ProgramCourses
+                    TotalCourses = p.ProgramCourses.Count(),
+                    // Calculate DurationHours: sum of DurationHours from related Courses
+                    DurationHours = p.ProgramCourses
+                        .Where(pc => pc.Course != null && pc.Course.DurationHours.HasValue)
+                        .Sum(pc => pc.Course.DurationHours!.Value)
+                });
 
             var pagedResult = await query.ToPagedResultAsync(pageNumber, pageSize);
-
-
 
             return pagedResult;
         }
 
         public async Task<ProgramDto?> GetProgramByIdAsync(int id)
         {
-            var program = await _uow.ProgramRepository.GetByIdAsync(id);
+            var program = await _uow.ProgramRepository
+                .GetAllAsQueryable()
+                .Where(p => p.Id == id && p.IsDeleted != true)
+                .Include(p => p.ProgramCourses)
+                    .ThenInclude(pc => pc.Course)
+                .FirstOrDefaultAsync();
 
-            if (program == null || program.IsDeleted == true)
+            if (program == null)
             {
                 return null;
             }
 
-            return MapToDto(program);
+            return MapToDtoWithCalculations(program);
         }
 
         public async Task<ProgramDto> CreateProgramAsync(CreateProgramDto createDto)
@@ -98,7 +119,16 @@ namespace Lssctc.ProgramManagement.Programs.Services
 
             await _uow.ProgramRepository.UpdateAsync(existingProgram);
             await _uow.SaveChangesAsync();
-            return MapToDto(existingProgram);
+            
+            // Reload with ProgramCourses to recalculate
+            var reloadedProgram = await _uow.ProgramRepository
+                .GetAllAsQueryable()
+                .Where(p => p.Id == id)
+                .Include(p => p.ProgramCourses)
+                    .ThenInclude(pc => pc.Course)
+                .FirstOrDefaultAsync();
+            
+            return MapToDtoWithCalculations(reloadedProgram!);
         }
 
         public async Task DeleteProgramAsync(int id)
@@ -147,6 +177,7 @@ namespace Lssctc.ProgramManagement.Programs.Services
 
         #region Private Mapping Methods
 
+        // Old mapper - only retrieves values from entity (no calculations)
         private static ProgramDto MapToDto(TrainingProgram program)
         {
             return new ProgramDto
@@ -157,6 +188,29 @@ namespace Lssctc.ProgramManagement.Programs.Services
                 IsActive = program.IsActive,
                 DurationHours = program.DurationHours,
                 TotalCourses = program.TotalCourses,
+                ImageUrl = program.ImageUrl
+            };
+        }
+
+        // New mapper - calculates TotalCourses and DurationHours from ProgramCourses
+        private static ProgramDto MapToDtoWithCalculations(TrainingProgram program)
+        {
+            // Calculate TotalCourses
+            int totalCourses = program.ProgramCourses?.Count() ?? 0;
+
+            // Calculate DurationHours: sum of DurationHours from related Courses
+            int durationHours = program.ProgramCourses?
+                .Where(pc => pc.Course != null && pc.Course.DurationHours.HasValue)
+                .Sum(pc => pc.Course.DurationHours!.Value) ?? 0;
+
+            return new ProgramDto
+            {
+                Id = program.Id,
+                Name = program.Name,
+                Description = program.Description,
+                IsActive = program.IsActive,
+                DurationHours = durationHours,
+                TotalCourses = totalCourses,
                 ImageUrl = program.ImageUrl
             };
         }
