@@ -263,6 +263,214 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
             await _uow.ClassRepository.UpdateAsync(existing);
             await _uow.SaveChangesAsync();
         }
+
+        public async Task DeleteClassDataRecursiveAsync(int classId)
+        {
+            // Begin database transaction to ensure atomicity
+            var dbContext = _uow.GetDbContext();
+            await using var transaction = await dbContext.Database.BeginTransactionAsync();
+
+            try
+            {
+                // 1. Check if class exists
+                var classEntity = await _uow.ClassRepository
+                    .GetAllAsQueryable()
+                    .FirstOrDefaultAsync(c => c.Id == classId);
+
+                if (classEntity == null)
+                    throw new KeyNotFoundException($"Class with ID {classId} not found.");
+
+                // 2. Get all enrollments for this class
+                var enrollments = await _uow.EnrollmentRepository
+                    .GetAllAsQueryable()
+                    .Where(e => e.ClassId == classId)
+                    .ToListAsync();
+
+                var enrollmentIds = enrollments.Select(e => e.Id).ToList();
+
+                // 3. Delete child data in proper order to avoid FK constraints
+
+                // 3.1 Delete QuizAttemptAnswers (child of QuizAttemptQuestions)
+                if (enrollmentIds.Any())
+                {
+                    var quizAttempts = await _uow.QuizAttemptRepository
+                        .GetAllAsQueryable()
+                        .Where(qa => enrollmentIds.Contains(qa.ActivityRecord.SectionRecord.LearningProgress.EnrollmentId))
+                        .Include(qa => qa.QuizAttemptQuestions)
+                        .ThenInclude(qaq => qaq.QuizAttemptAnswers)
+                        .ToListAsync();
+
+                    foreach (var quizAttempt in quizAttempts)
+                    {
+                        foreach (var question in quizAttempt.QuizAttemptQuestions)
+                        {
+                            foreach (var answer in question.QuizAttemptAnswers)
+                            {
+                                await _uow.QuizAttemptAnswerRepository.DeleteAsync(answer);
+                            }
+                        }
+                    }
+                }
+
+                // 3.2 Delete QuizAttemptQuestions (child of QuizAttempts)
+                if (enrollmentIds.Any())
+                {
+                    var quizAttemptQuestions = await _uow.QuizAttemptQuestionRepository
+                        .GetAllAsQueryable()
+                        .Where(qaq => enrollmentIds.Contains(qaq.QuizAttempt.ActivityRecord.SectionRecord.LearningProgress.EnrollmentId))
+                        .ToListAsync();
+
+                    foreach (var question in quizAttemptQuestions)
+                    {
+                        await _uow.QuizAttemptQuestionRepository.DeleteAsync(question);
+                    }
+                }
+
+                // 3.3 Delete QuizAttempts (child of ActivityRecords)
+                if (enrollmentIds.Any())
+                {
+                    var quizAttempts = await _uow.QuizAttemptRepository
+                        .GetAllAsQueryable()
+                        .Where(qa => enrollmentIds.Contains(qa.ActivityRecord.SectionRecord.LearningProgress.EnrollmentId))
+                        .ToListAsync();
+
+                    foreach (var quizAttempt in quizAttempts)
+                    {
+                        await _uow.QuizAttemptRepository.DeleteAsync(quizAttempt);
+                    }
+                }
+
+                // 3.4 Delete PracticeAttemptTasks (child of PracticeAttempts)
+                if (enrollmentIds.Any())
+                {
+                    var practiceAttemptTasks = await _uow.PracticeAttemptTaskRepository
+                        .GetAllAsQueryable()
+                        .Where(pat => enrollmentIds.Contains(pat.PracticeAttempt.ActivityRecord.SectionRecord.LearningProgress.EnrollmentId))
+                        .ToListAsync();
+
+                    foreach (var task in practiceAttemptTasks)
+                    {
+                        await _uow.PracticeAttemptTaskRepository.DeleteAsync(task);
+                    }
+                }
+
+                // 3.5 Delete PracticeAttempts (child of ActivityRecords)
+                if (enrollmentIds.Any())
+                {
+                    var practiceAttempts = await _uow.PracticeAttemptRepository
+                        .GetAllAsQueryable()
+                        .Where(pa => enrollmentIds.Contains(pa.ActivityRecord.SectionRecord.LearningProgress.EnrollmentId))
+                        .ToListAsync();
+
+                    foreach (var practiceAttempt in practiceAttempts)
+                    {
+                        await _uow.PracticeAttemptRepository.DeleteAsync(practiceAttempt);
+                    }
+                }
+
+                // 3.6 Delete InstructorFeedbacks (child of ActivityRecords)
+                if (enrollmentIds.Any())
+                {
+                    var instructorFeedbacks = await _uow.InstructorFeedbackRepository
+                        .GetAllAsQueryable()
+                        .Where(f => enrollmentIds.Contains(f.ActivityRecord.SectionRecord.LearningProgress.EnrollmentId))
+                        .ToListAsync();
+
+                    foreach (var feedback in instructorFeedbacks)
+                    {
+                        await _uow.InstructorFeedbackRepository.DeleteAsync(feedback);
+                    }
+                }
+
+                // 3.7 Delete ActivityRecords (child of SectionRecords)
+                if (enrollmentIds.Any())
+                {
+                    var activityRecords = await _uow.ActivityRecordRepository
+                        .GetAllAsQueryable()
+                        .Where(ar => enrollmentIds.Contains(ar.SectionRecord.LearningProgress.EnrollmentId))
+                        .ToListAsync();
+
+                    foreach (var activityRecord in activityRecords)
+                    {
+                        await _uow.ActivityRecordRepository.DeleteAsync(activityRecord);
+                    }
+                }
+
+                // 3.8 Delete SectionRecords (child of LearningProgress)
+                if (enrollmentIds.Any())
+                {
+                    var sectionRecords = await _uow.SectionRecordRepository
+                        .GetAllAsQueryable()
+                        .Where(sr => enrollmentIds.Contains(sr.LearningProgress.EnrollmentId))
+                        .ToListAsync();
+
+                    foreach (var sectionRecord in sectionRecords)
+                    {
+                        await _uow.SectionRecordRepository.DeleteAsync(sectionRecord);
+                    }
+                }
+
+                // 3.9 Delete TraineeCertificates (child of Enrollments)
+                if (enrollmentIds.Any())
+                {
+                    var traineeCertificates = await _uow.TraineeCertificateRepository
+                        .GetAllAsQueryable()
+                        .Where(tc => enrollmentIds.Contains(tc.EnrollmentId))
+                        .ToListAsync();
+
+                    foreach (var certificate in traineeCertificates)
+                    {
+                        await _uow.TraineeCertificateRepository.DeleteAsync(certificate);
+                    }
+                }
+
+                // 3.10 Delete LearningProgress (child of Enrollments)
+                if (enrollmentIds.Any())
+                {
+                    var learningProgresses = await _uow.LearningProgressRepository
+                        .GetAllAsQueryable()
+                        .Where(lp => enrollmentIds.Contains(lp.EnrollmentId))
+                        .ToListAsync();
+
+                    foreach (var progress in learningProgresses)
+                    {
+                        await _uow.LearningProgressRepository.DeleteAsync(progress);
+                    }
+                }
+
+                // 3.11 Delete Enrollments
+                foreach (var enrollment in enrollments)
+                {
+                    await _uow.EnrollmentRepository.DeleteAsync(enrollment);
+                }
+
+                // 3.12 Delete ClassInstructors
+                var classInstructors = await _uow.ClassInstructorRepository
+                    .GetAllAsQueryable()
+                    .Where(ci => ci.ClassId == classId)
+                    .ToListAsync();
+
+                foreach (var instructor in classInstructors)
+                {
+                    await _uow.ClassInstructorRepository.DeleteAsync(instructor);
+                }
+
+                // 4. Finally, delete the Class itself
+                await _uow.ClassRepository.DeleteAsync(classEntity);
+
+                // 5. Save all changes
+                await _uow.SaveChangesAsync();
+
+                // 6. Commit transaction
+                await transaction.CommitAsync();
+            }
+            catch (Exception)
+            {
+                // Rollback transaction if any error occurs
+                await transaction.RollbackAsync();
+                throw;
+            }
+        }
         #endregion
 
         #region Classes By other Filters

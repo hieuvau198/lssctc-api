@@ -496,5 +496,47 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
             throw new UnauthorizedAccessException("User ID claim is missing or invalid.");
         }
         #endregion
+
+        #region Hard Delete for Demo
+
+        /// <summary>
+        /// HARD DELETE: Permanently deletes a Class and ALL its associated data.
+        /// This endpoint is for demo/cleanup purposes only.
+        /// WARNING: This operation is irreversible and will delete:
+        /// - ClassInstructors
+        /// - Enrollments
+        /// - LearningProgress
+        /// - SectionRecords
+        /// - ActivityRecords
+        /// - QuizAttempts, QuizAttemptQuestions, QuizAttemptAnswers
+        /// - PracticeAttempts, PracticeAttemptTasks
+        /// - InstructorFeedbacks
+        /// - TraineeCertificates
+        /// </summary>
+        /// <param name="id">The Class ID to delete</param>
+        /// <returns>Success message or error</returns>
+        [HttpDelete("{id}/hard-delete")]
+        [Authorize(Roles = "Admin")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> DeleteClassDataRecursive(int id)
+        {
+            try
+            {
+                await _service.DeleteClassDataRecursiveAsync(id);
+                return Ok(new { message = $"Class with ID {id} and all associated data has been permanently deleted." });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = $"An error occurred while deleting class data: {ex.Message}" });
+            }
+        }
+
+        #endregion
     }
 }

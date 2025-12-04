@@ -32,6 +32,11 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
         // BR cancel class: allow for delete only if no enrolled students,
         // class status is 'Draft' or 'Open'
         Task CancelClassAsync(int id);
+        // BR hard delete class: permanently delete class and all associated data for demo purposes
+        // This includes: ClassInstructors, Enrollments, LearningProgress, SectionRecords, ActivityRecords,
+        // QuizAttempts, QuizAttemptQuestions, QuizAttemptAnswers, PracticeAttempts, PracticeAttemptTasks
+        // Uses database transaction to ensure atomicity
+        Task DeleteClassDataRecursiveAsync(int classId);
         #endregion
 
         #region Classes By other Filters
