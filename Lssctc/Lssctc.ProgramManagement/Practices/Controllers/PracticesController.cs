@@ -597,6 +597,129 @@ namespace Lssctc.ProgramManagement.Practices.Controllers
 
         #endregion
 
+        #region Activity Practices
+
+        [HttpGet("activity/{activityId}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> GetPracticesByActivity(int activityId)
+        {
+            try
+            {
+                if (activityId <= 0)
+                {
+                    return ErrorResponse(
+                        "INVALID_ACTIVITY_ID",
+                        "Activity ID must be a positive number",
+                        StatusCodes.Status400BadRequest
+                    );
+                }
+
+                var practices = await _tasksService.GetPracticesByActivityAsync(activityId);
+                return SuccessResponse(practices);
+            }
+            catch (Exception ex)
+            {
+                return ErrorResponse(
+                    "FETCH_ACTIVITY_PRACTICES_ERROR",
+                    "Failed to fetch practices for activity",
+                    StatusCodes.Status500InternalServerError,
+                    new { exceptionMessage = ex.Message }
+                );
+            }
+        }
+
+        [HttpPost("activity/{activityId}/add/{practiceId}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> AddPracticeToActivity(int activityId, int practiceId)
+        {
+            try
+            {
+                if (activityId <= 0 || practiceId <= 0)
+                {
+                    return ErrorResponse(
+                        "INVALID_ID",
+                        "Activity ID and Practice ID must be positive numbers",
+                        StatusCodes.Status400BadRequest
+                    );
+                }
+
+                await _tasksService.AddPracticeToActivityAsync(activityId, practiceId);
+                return SuccessResponse(new { activityId, practiceId }, "Practice assigned to activity successfully");
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return ErrorResponse(
+                    "RESOURCE_NOT_FOUND",
+                    ex.Message,
+                    StatusCodes.Status404NotFound
+                );
+            }
+            catch (InvalidOperationException ex)
+            {
+                return ErrorResponse(
+                    "INVALID_OPERATION",
+                    ex.Message,
+                    StatusCodes.Status400BadRequest
+                );
+            }
+            catch (Exception ex)
+            {
+                return ErrorResponse(
+                    "ASSIGN_PRACTICE_ERROR",
+                    "Failed to assign practice to activity",
+                    StatusCodes.Status500InternalServerError,
+                    new { exceptionMessage = ex.Message }
+                );
+            }
+        }
+
+        [HttpDelete("activity/{activityId}/remove/{practiceId}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> RemovePracticeFromActivity(int activityId, int practiceId)
+        {
+            try
+            {
+                if (activityId <= 0 || practiceId <= 0)
+                {
+                    return ErrorResponse(
+                        "INVALID_ID",
+                        "Activity ID and Practice ID must be positive numbers",
+                        StatusCodes.Status400BadRequest
+                    );
+                }
+
+                await _tasksService.RemovePracticeFromActivityAsync(activityId, practiceId);
+                return SuccessResponse(new { activityId, practiceId }, "Practice removed from activity successfully");
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return ErrorResponse(
+                    "RESOURCE_NOT_FOUND",
+                    ex.Message,
+                    StatusCodes.Status404NotFound
+                );
+            }
+            catch (Exception ex)
+            {
+                return ErrorResponse(
+                    "REMOVE_PRACTICE_ERROR",
+                    "Failed to remove practice from activity",
+                    StatusCodes.Status500InternalServerError,
+                    new { exceptionMessage = ex.Message }
+                );
+            }
+        }
+
+        #endregion
+
         #region Helpers
 
         private int GetTraineeIdFromClaims()
