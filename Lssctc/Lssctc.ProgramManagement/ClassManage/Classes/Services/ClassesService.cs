@@ -1,4 +1,5 @@
-﻿using Lssctc.ProgramManagement.Accounts.Helpers;
+﻿using Lssctc.ProgramManagement.Accounts.Authens.Services;
+using Lssctc.ProgramManagement.Accounts.Helpers;
 using Lssctc.ProgramManagement.ClassManage.Classes.Dtos;
 using Lssctc.ProgramManagement.ClassManage.Helpers;
 using Lssctc.Share.Common;
@@ -16,11 +17,13 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
     {
         private readonly IUnitOfWork _uow;
         private readonly ClassManageHandler _handler;
+        private readonly IMailService _mailService;
         private static readonly Random _random = new Random();
 
-        public ClassesService(IUnitOfWork uow)
+        public ClassesService(IUnitOfWork uow, IMailService mailService)
         {
             _uow = uow;
+            _mailService = mailService;
             _handler = new ClassManageHandler(uow);
         }
 
@@ -646,10 +649,11 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
             if (!file.FileName.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase))
                 throw new Exception("Invalid file format. Please upload an Excel file (.xlsx).");
 
-            // Verify that the class exists
+            // Verify that the class exists and get class details for email
             var targetClass = await _uow.ClassRepository
                 .GetAllAsQueryable()
                 .Include(c => c.Enrollments)
+                .Include(c => c.ClassCode)
                 .FirstOrDefaultAsync(c => c.Id == classId);
 
             if (targetClass == null)
@@ -729,11 +733,15 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
 
                                         int userId;
                                         bool userCreated = false;
+                                        string traineeFullname = fullname;
+                                        string traineeEmail = email;
 
                                         if (existingUser != null)
                                         {
                                             // Use existing user
                                             userId = existingUser.Id;
+                                            traineeFullname = existingUser.Fullname;
+                                            traineeEmail = existingUser.Email;
                                         }
                                         else
                                         {
@@ -822,6 +830,239 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
 
                                         await _uow.EnrollmentRepository.CreateAsync(newEnrollment);
                                         enrolledCount++;
+
+                                        // Step 3: Send Email Notification
+                                        try
+                                        {
+                                            string classCode = targetClass.ClassCode?.Name ?? "N/A";
+                                            string startDate = targetClass.StartDate.ToString("dd/MM/yyyy");
+                                            string endDate = targetClass.EndDate.HasValue 
+                                                ? targetClass.EndDate.Value.ToString("dd/MM/yyyy") 
+                                                : "TBD";
+
+                                            string emailSubject = $"🎓 Enrollment Confirmation - {targetClass.Name}";
+                                            
+                                            string emailBody = $@"
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <style>
+        body {{ 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            line-height: 1.6; 
+            color: #333; 
+            margin: 0; 
+            padding: 0; 
+            background-color: #f4f4f4; 
+        }}
+        .email-container {{ 
+            max-width: 600px; 
+            margin: 20px auto; 
+            background-color: #ffffff; 
+            border-radius: 10px; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1); 
+            overflow: hidden; 
+        }}
+        .email-header {{ 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+            color: #ffffff; 
+            padding: 30px 20px; 
+            text-align: center; 
+        }}
+        .email-header h1 {{ 
+            margin: 0; 
+            font-size: 28px; 
+            font-weight: 600; 
+        }}
+        .email-header .icon {{ 
+            font-size: 48px; 
+            margin-bottom: 10px; 
+        }}
+        .email-body {{ 
+            padding: 30px; 
+        }}
+        .greeting {{ 
+            font-size: 18px; 
+            font-weight: 500; 
+            color: #333; 
+            margin-bottom: 20px; 
+        }}
+        .message {{ 
+            font-size: 16px; 
+            color: #555; 
+            margin-bottom: 25px; 
+            line-height: 1.8; 
+        }}
+        .class-info {{ 
+            background-color: #f8f9fa; 
+            border-left: 4px solid #667eea; 
+            padding: 20px; 
+            margin: 20px 0; 
+            border-radius: 5px; 
+        }}
+        .class-info-title {{ 
+            font-size: 20px; 
+            font-weight: 600; 
+            color: #667eea; 
+            margin-bottom: 15px; 
+        }}
+        .info-row {{ 
+            display: flex; 
+            padding: 8px 0; 
+            border-bottom: 1px solid #e0e0e0; 
+        }}
+        .info-row:last-child {{ 
+            border-bottom: none; 
+        }}
+        .info-label {{ 
+            font-weight: 600; 
+            color: #666; 
+            min-width: 120px; 
+        }}
+        .info-value {{ 
+            color: #333; 
+            font-weight: 500; 
+        }}
+        .cta-button {{ 
+            display: inline-block; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+            color: #ffffff; 
+            padding: 14px 30px; 
+            text-decoration: none; 
+            border-radius: 5px; 
+            font-weight: 600; 
+            font-size: 16px; 
+            margin: 20px 0; 
+            text-align: center; 
+        }}
+        .cta-button:hover {{ 
+            opacity: 0.9; 
+        }}
+        .divider {{ 
+            height: 1px; 
+            background-color: #e0e0e0; 
+            margin: 25px 0; 
+        }}
+        .footer {{ 
+            background-color: #f8f9fa; 
+            padding: 20px; 
+            text-align: center; 
+            font-size: 14px; 
+            color: #666; 
+        }}
+        .footer-note {{ 
+            margin-top: 15px; 
+            font-size: 12px; 
+            color: #999; 
+        }}
+        .highlight {{ 
+            color: #667eea; 
+            font-weight: 600; 
+        }}
+        @media only screen and (max-width: 600px) {{ 
+            .email-container {{ 
+                margin: 10px; 
+                border-radius: 5px; 
+            }}
+            .email-header {{ 
+                padding: 20px 15px; 
+            }}
+            .email-header h1 {{ 
+                font-size: 22px; 
+            }}
+            .email-body {{ 
+                padding: 20px 15px; 
+            }}
+            .info-row {{ 
+                flex-direction: column; 
+            }}
+            .info-label {{ 
+                margin-bottom: 5px; 
+            }}
+        }}
+    </style>
+</head>
+<body>
+    <div class='email-container'>
+        <div class='email-header'>
+            <div class='icon'>🎓</div>
+            <h1>Enrollment Confirmed!</h1>
+        </div>
+        
+        <div class='email-body'>
+            <div class='greeting'>
+                Dear <span class='highlight'>{traineeFullname}</span>,
+            </div>
+            
+            <div class='message'>
+                Congratulations! We are delighted to inform you that you have been <strong>successfully enrolled</strong> in the training class. We look forward to supporting you on your learning journey.
+            </div>
+            
+            <div class='class-info'>
+                <div class='class-info-title'>📋 Class Information</div>
+                <div class='info-row'>
+                    <span class='info-label'>Class Name:</span>
+                    <span class='info-value'>{targetClass.Name}</span>
+                </div>
+                <div class='info-row'>
+                    <span class='info-label'>Class Code:</span>
+                    <span class='info-value'>{classCode}</span>
+                </div>
+                <div class='info-row'>
+                    <span class='info-label'>Start Date:</span>
+                    <span class='info-value'>{startDate}</span>
+                </div>
+                <div class='info-row'>
+                    <span class='info-label'>End Date:</span>
+                    <span class='info-value'>{endDate}</span>
+                </div>
+            </div>
+            
+            <div style='text-align: center;'>
+                <a href='#' class='cta-button'>View My Schedule</a>
+            </div>
+            
+            <div class='divider'></div>
+            
+            <div class='message'>
+                <strong>Next Steps:</strong>
+                <ul style='margin-top: 10px; padding-left: 20px;'>
+                    <li>Log in to the training management system</li>
+                    <li>Review your class schedule and materials</li>
+                    <li>Prepare any required documents or prerequisites</li>
+                    <li>Contact your instructor if you have any questions</li>
+                </ul>
+            </div>
+            
+            <div class='message' style='margin-top: 20px;'>
+                If you have any questions or concerns, please don't hesitate to reach out to our support team.
+            </div>
+            
+            <div class='message' style='margin-top: 20px;'>
+                Best regards,<br>
+                <strong>LSSCTC Training Management Team</strong>
+            </div>
+        </div>
+        
+        <div class='footer'>
+            <p>© 2024 LSSCTC Training Center. All rights reserved.</p>
+            <p class='footer-note'>
+                This is an automated message. Please do not reply directly to this email.
+            </p>
+        </div>
+    </div>
+</body>
+</html>";
+
+                                            await _mailService.SendEmailAsync(traineeEmail, emailSubject, emailBody);
+                                        }
+                                        catch (Exception emailEx)
+                                        {
+                                            // Log the email error but don't stop the import process
+                                            errors.Add($"Row {row}: User '{username}' enrolled successfully, but failed to send email notification: {emailEx.Message}");
+                                        }
                                     }
                                     catch (Exception ex)
                                     {
