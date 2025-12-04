@@ -1,5 +1,6 @@
 ﻿using Lssctc.ProgramManagement.ClassManage.Classes.Dtos;
 using Lssctc.Share.Common;
+using Microsoft.AspNetCore.Http;
 
 namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
 {
@@ -37,6 +38,10 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
         // QuizAttempts, QuizAttemptQuestions, QuizAttemptAnswers, PracticeAttempts, PracticeAttemptTasks
         // Uses database transaction to ensure atomicity
         Task DeleteClassDataRecursiveAsync(int classId);
+        // BR import trainees: bulk import trainees from Excel file
+        // For each row: Find or Create User with Role='Trainee', then Enroll in Class (if not already enrolled)
+        // Returns summary message of import results
+        Task<string> ImportTraineesToClassAsync(int classId, IFormFile file);
         #endregion
 
         #region Classes By other Filters

@@ -15,16 +15,16 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
     {
         private readonly IClassesService _service;
         private readonly IClassInstructorsService _instructorsService;
-        private readonly IEnrollmentsService _enrollmentsService; // <-- ADDED
+        private readonly IEnrollmentsService _enrollmentsService;
 
         public ClassesController(
             IClassesService service,
             IClassInstructorsService instructorsService,
-            IEnrollmentsService enrollmentsService) // <-- MODIFIED
+            IEnrollmentsService enrollmentsService)
         {
             _service = service;
             _instructorsService = instructorsService;
-            _enrollmentsService = enrollmentsService; // <-- ADDED
+            _enrollmentsService = enrollmentsService;
         }
 
         #region Class
@@ -268,6 +268,35 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
             {
                 // In a real app, you would log this exception
                 return StatusCode(500, $"An internal server error occurred: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Bulk import trainees into a specific class from an Excel file.
+        /// For each row: Find or Create User, then Enroll in Class (if not already enrolled).
+        /// </summary>
+        /// <param name="id">The Class ID to import trainees into</param>
+        /// <param name="file">Excel file (.xlsx) containing trainee data</param>
+        /// <returns>Summary message of the import operation</returns>
+        [HttpPost("{id}/import-trainees")]
+        [Authorize(Roles = "Admin")]
+        [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> ImportTraineesToClass(int id, IFormFile file)
+        {
+            try
+            {
+                var result = await _service.ImportTraineesToClassAsync(id, file);
+                return Ok(new { message = result });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
             }
         }
 
