@@ -21,6 +21,8 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Services
         Task<bool> IsEmailExistsAsync(string email);
         Task<bool> ResetPasswordByEmailAsync(string email, string newPassword);
         Task<string> ImportTraineesAsync(IFormFile file);
+        Task<string> ImportInstructorsAsync(IFormFile file);
+        Task<string> ImportSimulationManagersAsync(IFormFile file);
         #endregion
 
         #region Profiles

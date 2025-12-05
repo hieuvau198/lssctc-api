@@ -534,6 +534,360 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Services
             }
         }
 
+        public async Task<string> ImportInstructorsAsync(IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+                throw new Exception("File is empty or null.");
+
+            if (!file.FileName.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase))
+                throw new Exception("Invalid file format. Please upload an Excel file (.xlsx).");
+
+            int importedCount = 0;
+            int skippedCount = 0;
+            var errors = new List<string>();
+
+            try
+            {
+                ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+
+                using (var stream = new MemoryStream())
+                {
+                    await file.CopyToAsync(stream);
+                    stream.Position = 0;
+
+                    using (var package = new ExcelPackage(stream))
+                    {
+                        var worksheet = package.Workbook.Worksheets.FirstOrDefault();
+                        if (worksheet == null)
+                            throw new Exception("Excel file does not contain any worksheets.");
+
+                        int rowCount = worksheet.Dimension?.Rows ?? 0;
+                        if (rowCount < 2)
+                            throw new Exception("Excel file must contain at least one data row (plus header row).");
+
+                        // Start a transaction for batch import
+                        var dbContext = _uow.GetDbContext();
+                        using (var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted))
+                        {
+                            try
+                            {
+                                // Process each row (skip header row 1)
+                                for (int row = 2; row <= rowCount; row++)
+                                {
+                                    try
+                                    {
+                                        // Read values from Excel
+                                        string? username = worksheet.Cells[row, 1].Value?.ToString()?.Trim();
+                                        string? email = worksheet.Cells[row, 2].Value?.ToString()?.Trim();
+                                        string? fullname = worksheet.Cells[row, 3].Value?.ToString()?.Trim();
+                                        string? password = worksheet.Cells[row, 4].Value?.ToString()?.Trim();
+                                        string? phoneNumber = worksheet.Cells[row, 5].Value?.ToString()?.Trim();
+                                        string? avatarUrl = worksheet.Cells[row, 6].Value?.ToString()?.Trim();
+
+                                        // Skip completely empty rows
+                                        if (string.IsNullOrWhiteSpace(username) && 
+                                            string.IsNullOrWhiteSpace(email) && 
+                                            string.IsNullOrWhiteSpace(fullname))
+                                        {
+                                            continue;
+                                        }
+
+                                        // Validate required fields with detailed messages
+                                        var missingFields = new List<string>();
+                                        if (string.IsNullOrWhiteSpace(username))
+                                            missingFields.Add("Username (Column A)");
+                                        if (string.IsNullOrWhiteSpace(email))
+                                            missingFields.Add("Email (Column B)");
+                                        if (string.IsNullOrWhiteSpace(fullname))
+                                            missingFields.Add("Fullname (Column C)");
+                                        if (string.IsNullOrWhiteSpace(password))
+                                            missingFields.Add("Password (Column D)");
+
+                                        if (missingFields.Any())
+                                        {
+                                            errors.Add($"Row {row}: Missing required fields - {string.Join(", ", missingFields)}");
+                                            skippedCount++;
+                                            continue;
+                                        }
+
+                                        // Validate email format
+                                        if (!IsValidEmail(email))
+                                        {
+                                            errors.Add($"Row {row}: Invalid email format '{email}' (Column B)");
+                                            skippedCount++;
+                                            continue;
+                                        }
+
+                                        // Check for duplicates in database (deduplication logic)
+                                        var existingUser = await _uow.UserRepository
+                                            .GetAllAsQueryable()
+                                            .Where(u => !u.IsDeleted && (u.Username == username || u.Email.ToLower() == email.ToLower()))
+                                            .Select(u => new { u.Username, u.Email })
+                                            .FirstOrDefaultAsync();
+
+                                        if (existingUser != null)
+                                        {
+                                            if (existingUser.Username == username && existingUser.Email.ToLower() == email.ToLower())
+                                            {
+                                                errors.Add($"Row {row}: Username '{username}' and Email '{email}' already exist in the system");
+                                            }
+                                            else if (existingUser.Username == username)
+                                            {
+                                                errors.Add($"Row {row}: Username '{username}' already exists in the system (Column A)");
+                                            }
+                                            else
+                                            {
+                                                errors.Add($"Row {row}: Email '{email}' already exists in the system (Column B)");
+                                            }
+                                            skippedCount++;
+                                            continue;
+                                        }
+
+                                        // Hash password
+                                        string hashedPassword = PasswordHashHandler.HashPassword(password);
+
+                                        // Generate unique instructor code
+                                        string instructorCode = await GenerateUniqueInstructorCode();
+
+                                        // Create Instructor Profile
+                                        var instructorProfile = new InstructorProfile
+                                        {
+                                        };
+
+                                        // Create Instructor
+                                        var instructor = new Instructor
+                                        {
+                                            InstructorCode = instructorCode,
+                                            IsActive = true,
+                                            IsDeleted = false,
+                                            InstructorProfile = instructorProfile
+                                        };
+
+                                        // Create User with Instructor role
+                                        var user = new User
+                                        {
+                                            Username = username,
+                                            Password = hashedPassword,
+                                            Email = email,
+                                            Fullname = fullname,
+                                            PhoneNumber = string.IsNullOrWhiteSpace(phoneNumber) ? null : phoneNumber,
+                                            AvatarUrl = string.IsNullOrWhiteSpace(avatarUrl) ? null : avatarUrl,
+                                            Role = (int)UserRoleEnum.Instructor,
+                                            IsActive = true,
+                                            IsDeleted = false,
+                                            Instructor = instructor
+                                        };
+
+                                        await _uow.UserRepository.CreateAsync(user);
+                                        importedCount++;
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        errors.Add($"Row {row}: Unexpected error - {ex.Message}");
+                                        skippedCount++;
+                                    }
+                                }
+
+                                // Save all changes within transaction
+                                await _uow.SaveChangesAsync();
+                                await transaction.CommitAsync();
+                            }
+                            catch (Exception)
+                            {
+                                await transaction.RollbackAsync();
+                                throw;
+                            }
+                        }
+                    }
+                }
+
+                // Build detailed result message
+                var resultMessage = $"Import completed. Successfully imported: {importedCount} instructors. Skipped: {skippedCount} rows.";
+                
+                if (errors.Any())
+                {
+                    resultMessage += $"\n\n=== ERROR DETAILS ===\n{string.Join("\n", errors)}";
+                }
+
+                return resultMessage;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error processing Excel file: {ex.Message}");
+            }
+        }
+
+        public async Task<string> ImportSimulationManagersAsync(IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+                throw new Exception("File is empty or null.");
+
+            if (!file.FileName.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase))
+                throw new Exception("Invalid file format. Please upload an Excel file (.xlsx).");
+
+            int importedCount = 0;
+            int skippedCount = 0;
+            var errors = new List<string>();
+
+            try
+            {
+                ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+
+                using (var stream = new MemoryStream())
+                {
+                    await file.CopyToAsync(stream);
+                    stream.Position = 0;
+
+                    using (var package = new ExcelPackage(stream))
+                    {
+                        var worksheet = package.Workbook.Worksheets.FirstOrDefault();
+                        if (worksheet == null)
+                            throw new Exception("Excel file does not contain any worksheets.");
+
+                        int rowCount = worksheet.Dimension?.Rows ?? 0;
+                        if (rowCount < 2)
+                            throw new Exception("Excel file must contain at least one data row (plus header row).");
+
+                        // Start a transaction for batch import
+                        var dbContext = _uow.GetDbContext();
+                        using (var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted))
+                        {
+                            try
+                            {
+                                // Process each row (skip header row 1)
+                                for (int row = 2; row <= rowCount; row++)
+                                {
+                                    try
+                                    {
+                                        // Read values from Excel
+                                        string? username = worksheet.Cells[row, 1].Value?.ToString()?.Trim();
+                                        string? email = worksheet.Cells[row, 2].Value?.ToString()?.Trim();
+                                        string? fullname = worksheet.Cells[row, 3].Value?.ToString()?.Trim();
+                                        string? password = worksheet.Cells[row, 4].Value?.ToString()?.Trim();
+                                        string? phoneNumber = worksheet.Cells[row, 5].Value?.ToString()?.Trim();
+                                        string? avatarUrl = worksheet.Cells[row, 6].Value?.ToString()?.Trim();
+
+                                        // Skip completely empty rows
+                                        if (string.IsNullOrWhiteSpace(username) && 
+                                            string.IsNullOrWhiteSpace(email) && 
+                                            string.IsNullOrWhiteSpace(fullname))
+                                        {
+                                            continue;
+                                        }
+
+                                        // Validate required fields with detailed messages
+                                        var missingFields = new List<string>();
+                                        if (string.IsNullOrWhiteSpace(username))
+                                            missingFields.Add("Username (Column A)");
+                                        if (string.IsNullOrWhiteSpace(email))
+                                            missingFields.Add("Email (Column B)");
+                                        if (string.IsNullOrWhiteSpace(fullname))
+                                            missingFields.Add("Fullname (Column C)");
+                                        if (string.IsNullOrWhiteSpace(password))
+                                            missingFields.Add("Password (Column D)");
+
+                                        if (missingFields.Any())
+                                        {
+                                            errors.Add($"Row {row}: Missing required fields - {string.Join(", ", missingFields)}");
+                                            skippedCount++;
+                                            continue;
+                                        }
+
+                                        // Validate email format
+                                        if (!IsValidEmail(email))
+                                        {
+                                            errors.Add($"Row {row}: Invalid email format '{email}' (Column B)");
+                                            skippedCount++;
+                                            continue;
+                                        }
+
+                                        // Check for duplicates in database (deduplication logic)
+                                        var existingUser = await _uow.UserRepository
+                                            .GetAllAsQueryable()
+                                            .Where(u => !u.IsDeleted && (u.Username == username || u.Email.ToLower() == email.ToLower()))
+                                            .Select(u => new { u.Username, u.Email })
+                                            .FirstOrDefaultAsync();
+
+                                        if (existingUser != null)
+                                        {
+                                            if (existingUser.Username == username && existingUser.Email.ToLower() == email.ToLower())
+                                            {
+                                                errors.Add($"Row {row}: Username '{username}' and Email '{email}' already exist in the system");
+                                            }
+                                            else if (existingUser.Username == username)
+                                            {
+                                                errors.Add($"Row {row}: Username '{username}' already exists in the system (Column A)");
+                                            }
+                                            else
+                                            {
+                                                errors.Add($"Row {row}: Email '{email}' already exists in the system (Column B)");
+                                            }
+                                            skippedCount++;
+                                            continue;
+                                        }
+
+                                        // Hash password
+                                        string hashedPassword = PasswordHashHandler.HashPassword(password);
+
+                                        // Create Simulation Manager
+                                        var simulationManager = new SimulationManager
+                                        {
+                                        };
+
+                                        // Create User with SimulationManager role
+                                        var user = new User
+                                        {
+                                            Username = username,
+                                            Password = hashedPassword,
+                                            Email = email,
+                                            Fullname = fullname,
+                                            PhoneNumber = string.IsNullOrWhiteSpace(phoneNumber) ? null : phoneNumber,
+                                            AvatarUrl = string.IsNullOrWhiteSpace(avatarUrl) ? null : avatarUrl,
+                                            Role = (int)UserRoleEnum.SimulationManager,
+                                            IsActive = true,
+                                            IsDeleted = false,
+                                            SimulationManager = simulationManager
+                                        };
+
+                                        await _uow.UserRepository.CreateAsync(user);
+                                        importedCount++;
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        errors.Add($"Row {row}: Unexpected error - {ex.Message}");
+                                        skippedCount++;
+                                    }
+                                }
+
+                                // Save all changes within transaction
+                                await _uow.SaveChangesAsync();
+                                await transaction.CommitAsync();
+                            }
+                            catch (Exception)
+                            {
+                                await transaction.RollbackAsync();
+                                throw;
+                            }
+                        }
+                    }
+                }
+
+                // Build detailed result message
+                var resultMessage = $"Import completed. Successfully imported: {importedCount} simulation managers. Skipped: {skippedCount} rows.";
+                
+                if (errors.Any())
+                {
+                    resultMessage += $"\n\n=== ERROR DETAILS ===\n{string.Join("\n", errors)}";
+                }
+
+                return resultMessage;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error processing Excel file: {ex.Message}");
+            }
+        }
+
         // Helper method to validate email format
         private bool IsValidEmail(string email)
         {
