@@ -10,7 +10,7 @@ namespace Lssctc.ProgramManagement.Programs.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize(Roles = "Admin, Instructor")]
+   
     public class ProgramsController : ControllerBase
     {
         private readonly IProgramsService _programsService;
