@@ -55,6 +55,8 @@ namespace Lssctc.Share.Implements
         private IGenericRepository<TraineeCertificate>? _traineeCertificateRepository;
         private IGenericRepository<TraineeProfile>? _traineeProfileRepository;
         private IGenericRepository<TrainingProgram>? _programRepository;
+        private IGenericRepository<Timeslot>? _timeslotRepository;
+        private IGenericRepository<Attendance>? _attendanceRepository;
         private IGenericRepository<User>? _userRepository;
 
         public UnitOfWork(LssctcDbContext context)
@@ -199,7 +201,10 @@ namespace Lssctc.Share.Implements
 
         public IGenericRepository<TrainingProgram> ProgramRepository =>
             _programRepository ??= new GenericRepository<TrainingProgram>(_context);
-
+        public IGenericRepository<Timeslot> TimeslotRepository =>
+            _timeslotRepository ??= new GenericRepository<Timeslot>(_context);
+        public IGenericRepository<Attendance> AttendanceRepository =>
+            _attendanceRepository ??= new GenericRepository<Attendance>(_context);
         public IGenericRepository<User> UserRepository =>
             _userRepository ??= new GenericRepository<User>(_context);
 
