@@ -26,7 +26,7 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Controllers
                 using (var package = new ExcelPackage())
                 {
                     // 1. Create Worksheet
-                    var worksheet = package.Workbook.Worksheets.Add("Trainee_Import_Template");
+                    var worksheet = package.Workbook.Worksheets.Add("User_Import_Template");
 
                     // 2. Create Header (Row 1)
                     string[] headers = {
@@ -60,24 +60,24 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Controllers
                     var sampleData = new List<object[]>
                     {
                         new object[] {
-                            "trainee001",
-                            "trainee001@example.com",
+                            "user001",
+                            "user001@example.com",
                             "Nguyen Van A",
                             "Password123",
                             "0901234567",
                             "https://example.com/avatar1.jpg"
                         },
                         new object[] {
-                            "trainee002",
-                            "trainee002@example.com",
+                            "user002",
+                            "user002@example.com",
                             "Tran Thi B",
                             "Password123",
                             "0902345678",
                             "https://example.com/avatar2.jpg"
                         },
                         new object[] {
-                            "trainee003",
-                            "trainee003@example.com",
+                            "user003",
+                            "user003@example.com",
                             "Le Van C",
                             "Password123",
                             "", // Optional phone number
@@ -182,7 +182,7 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Controllers
                     package.SaveAs(stream);
                     stream.Position = 0;
 
-                    string excelName = "Trainee_Import_Template.xlsx";
+                    string excelName = "User_Import_Template.xlsx";
                     return File(stream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", excelName);
                 }
             }
