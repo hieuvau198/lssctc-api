@@ -28,6 +28,8 @@ public partial class LssctcDbContext : DbContext
 
     public virtual DbSet<Admin> Admins { get; set; }
 
+    public virtual DbSet<Attendance> Attendances { get; set; }
+
     public virtual DbSet<BrandModel> BrandModels { get; set; }
 
     public virtual DbSet<Certificate> Certificates { get; set; }
@@ -99,6 +101,8 @@ public partial class LssctcDbContext : DbContext
     public virtual DbSet<SimulationComponent> SimulationComponents { get; set; }
 
     public virtual DbSet<SimulationManager> SimulationManagers { get; set; }
+
+    public virtual DbSet<Timeslot> Timeslots { get; set; }
 
     public virtual DbSet<Trainee> Trainees { get; set; }
 
@@ -270,6 +274,42 @@ public partial class LssctcDbContext : DbContext
                 .HasForeignKey<Admin>(d => d.Id)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK__admins__id__3414ACBA");
+        });
+
+        modelBuilder.Entity<Attendance>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__attendan__3213E83F16FB9E66");
+
+            entity.ToTable("attendances");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.Description)
+                .HasMaxLength(1000)
+                .HasColumnName("description");
+            entity.Property(e => e.EnrollmentId).HasColumnName("enrollment_id");
+            entity.Property(e => e.IsActive)
+                .HasDefaultValue(true)
+                .HasColumnName("is_active");
+            entity.Property(e => e.IsDeleted)
+                .HasDefaultValue(false)
+                .HasColumnName("is_deleted");
+            entity.Property(e => e.Name)
+                .HasMaxLength(200)
+                .HasColumnName("name");
+            entity.Property(e => e.Status)
+                .HasDefaultValue(1)
+                .HasColumnName("status");
+            entity.Property(e => e.TimeslotId).HasColumnName("timeslot_id");
+
+            entity.HasOne(d => d.Enrollment).WithMany(p => p.Attendances)
+                .HasForeignKey(d => d.EnrollmentId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__attendanc__enrol__161A357F");
+
+            entity.HasOne(d => d.Timeslot).WithMany(p => p.Attendances)
+                .HasForeignKey(d => d.TimeslotId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__attendanc__times__170E59B8");
         });
 
         modelBuilder.Entity<BrandModel>(entity =>
@@ -1264,6 +1304,45 @@ public partial class LssctcDbContext : DbContext
                 .HasForeignKey<SimulationManager>(d => d.Id)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK__simulation_m__id__36F11965");
+        });
+
+        modelBuilder.Entity<Timeslot>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__timeslot__3213E83F8B5C84B1");
+
+            entity.ToTable("timeslots");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.ClassId).HasColumnName("class_id");
+            entity.Property(e => e.EndTime)
+                .HasPrecision(0)
+                .HasColumnName("end_time");
+            entity.Property(e => e.IsDeleted)
+                .HasDefaultValue(false)
+                .HasColumnName("is_deleted");
+            entity.Property(e => e.LocationBuilding)
+                .HasMaxLength(200)
+                .HasColumnName("location_building");
+            entity.Property(e => e.LocationDetail)
+                .HasMaxLength(1000)
+                .HasColumnName("location_detail");
+            entity.Property(e => e.LocationRoom)
+                .HasMaxLength(100)
+                .HasColumnName("location_room");
+            entity.Property(e => e.Name)
+                .HasMaxLength(200)
+                .HasColumnName("name");
+            entity.Property(e => e.StartTime)
+                .HasPrecision(0)
+                .HasColumnName("start_time");
+            entity.Property(e => e.Status)
+                .HasDefaultValue(1)
+                .HasColumnName("status");
+
+            entity.HasOne(d => d.Class).WithMany(p => p.Timeslots)
+                .HasForeignKey(d => d.ClassId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__timeslots__class__10615C29");
         });
 
         modelBuilder.Entity<Trainee>(entity =>
