@@ -421,6 +421,44 @@ BEGIN TRY
     );
 
 
+	CREATE TABLE [dbo].[activity_sessions] (
+        [id] INT IDENTITY(1,1) PRIMARY KEY,
+        [class_id] INT NOT NULL,
+        [activity_id] INT NOT NULL,
+        [is_active] BIT DEFAULT 1,
+        [start_time] DATETIME2(0),
+        [end_time] DATETIME2(0),
+        FOREIGN KEY ([class_id]) REFERENCES [dbo].[classes]([id]),
+        FOREIGN KEY ([activity_id]) REFERENCES [dbo].[activities]([id])
+    );
+
+    -- ========================================
+    --  Final Exams and Partial Results
+    -- ========================================
+
+    CREATE TABLE [dbo].[final_exams] (
+        [id] INT IDENTITY(1,1) PRIMARY KEY,
+        [enrollment_id] INT NOT NULL,
+        [is_pass] BIT DEFAULT 0,
+        [total_marks] DECIMAL(5,2),
+        [complete_time] DATETIME2(0),
+        FOREIGN KEY ([enrollment_id]) REFERENCES [dbo].[enrollments]([id])
+    );
+
+    CREATE TABLE [dbo].[final_exam_partials] (
+        [id] INT IDENTITY(1,1) PRIMARY KEY,
+        [final_exam_id] INT NOT NULL,
+        [is_pass] BIT DEFAULT 0,
+        [type] INT,
+        [marks] DECIMAL(5,2),
+        [description] NVARCHAR(1000),
+        [duration] INT, -- Assuming duration in minutes/seconds
+        [start_time] DATETIME2(0),
+        [end_time] DATETIME2(0),
+        [complete_time] DATETIME2(0),
+        FOREIGN KEY ([final_exam_id]) REFERENCES [dbo].[final_exams]([id])
+    );
+
     -- ========================================
     --  Certificates and progress tracking
     -- ========================================

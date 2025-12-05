@@ -25,6 +25,8 @@ public partial class Enrollment
 
     public virtual Class Class { get; set; } = null!;
 
+    public virtual ICollection<FinalExam> FinalExams { get; set; } = new List<FinalExam>();
+
     public virtual ICollection<LearningProgress> LearningProgresses { get; set; } = new List<LearningProgress>();
 
     public virtual Trainee Trainee { get; set; } = null!;
