@@ -409,27 +409,53 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Services
                                             continue;
                                         }
 
-                                        // Validate required fields
-                                        if (string.IsNullOrWhiteSpace(username) || 
-                                            string.IsNullOrWhiteSpace(email) || 
-                                            string.IsNullOrWhiteSpace(fullname) || 
-                                            string.IsNullOrWhiteSpace(password))
+                                        // Validate required fields with detailed messages
+                                        var missingFields = new List<string>();
+                                        if (string.IsNullOrWhiteSpace(username))
+                                            missingFields.Add("Username (Column A)");
+                                        if (string.IsNullOrWhiteSpace(email))
+                                            missingFields.Add("Email (Column B)");
+                                        if (string.IsNullOrWhiteSpace(fullname))
+                                            missingFields.Add("Fullname (Column C)");
+                                        if (string.IsNullOrWhiteSpace(password))
+                                            missingFields.Add("Password (Column D)");
+
+                                        if (missingFields.Any())
                                         {
-                                            errors.Add($"Row {row}: Missing required fields (Username, Email, Fullname, or Password).");
+                                            errors.Add($"Row {row}: Missing required fields - {string.Join(", ", missingFields)}");
+                                            skippedCount++;
+                                            continue;
+                                        }
+
+                                        // Validate email format
+                                        if (!IsValidEmail(email))
+                                        {
+                                            errors.Add($"Row {row}: Invalid email format '{email}' (Column B)");
                                             skippedCount++;
                                             continue;
                                         }
 
                                         // Check for duplicates in database (deduplication logic)
-                                        bool exists = await _uow.UserRepository
+                                        var existingUser = await _uow.UserRepository
                                             .GetAllAsQueryable()
-                                            .AnyAsync(u => 
-                                                (u.Username == username || u.Email.ToLower() == email.ToLower()) 
-                                                && !u.IsDeleted);
+                                            .Where(u => !u.IsDeleted && (u.Username == username || u.Email.ToLower() == email.ToLower()))
+                                            .Select(u => new { u.Username, u.Email })
+                                            .FirstOrDefaultAsync();
 
-                                        if (exists)
+                                        if (existingUser != null)
                                         {
-                                            // Skip duplicate silently as per requirements
+                                            if (existingUser.Username == username && existingUser.Email.ToLower() == email.ToLower())
+                                            {
+                                                errors.Add($"Row {row}: Username '{username}' and Email '{email}' already exist in the system");
+                                            }
+                                            else if (existingUser.Username == username)
+                                            {
+                                                errors.Add($"Row {row}: Username '{username}' already exists in the system (Column A)");
+                                            }
+                                            else
+                                            {
+                                                errors.Add($"Row {row}: Email '{email}' already exists in the system (Column B)");
+                                            }
                                             skippedCount++;
                                             continue;
                                         }
@@ -474,7 +500,7 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Services
                                     }
                                     catch (Exception ex)
                                     {
-                                        errors.Add($"Row {row}: {ex.Message}");
+                                        errors.Add($"Row {row}: Unexpected error - {ex.Message}");
                                         skippedCount++;
                                     }
                                 }
@@ -492,16 +518,12 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Services
                     }
                 }
 
-                // Build result message
-                var resultMessage = $"Import completed successfully. Imported {importedCount} trainees. Skipped {skippedCount} duplicates/errors.";
+                // Build detailed result message
+                var resultMessage = $"Import completed. Successfully imported: {importedCount} trainees. Skipped: {skippedCount} rows.";
                 
                 if (errors.Any())
                 {
-                    resultMessage += $" Errors: {string.Join("; ", errors.Take(10))}"; // Limit error messages
-                    if (errors.Count > 10)
-                    {
-                        resultMessage += $" (and {errors.Count - 10} more errors...)";
-                    }
+                    resultMessage += $"\n\n=== ERROR DETAILS ===\n{string.Join("\n", errors)}";
                 }
 
                 return resultMessage;
@@ -509,6 +531,23 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Services
             catch (Exception ex)
             {
                 throw new Exception($"Error processing Excel file: {ex.Message}");
+            }
+        }
+
+        // Helper method to validate email format
+        private bool IsValidEmail(string email)
+        {
+            if (string.IsNullOrWhiteSpace(email))
+                return false;
+
+            try
+            {
+                var addr = new System.Net.Mail.MailAddress(email);
+                return addr.Address == email;
+            }
+            catch
+            {
+                return false;
             }
         }
     }
