@@ -1,7 +1,6 @@
 ﻿using Lssctc.ProgramManagement.Programs.Dtos;
 using Lssctc.ProgramManagement.Programs.Services;
 using Lssctc.Share.Common;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -260,24 +259,6 @@ namespace Lssctc.ProgramManagement.Programs.Controllers
             }
         }
 
-
-        [HttpDelete("{id}/import-revert")]
-        public async Task<IActionResult> RevertImportedProgram(int id)
-        {
-            try
-            {
-                await _programImportService.DeleteImportedProgramAsync(id);
-                return NoContent();
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new { Message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { Message = "An error occurred while reverting the program: " + ex.Message });
-            }
-        }
         #endregion
     }
 }
