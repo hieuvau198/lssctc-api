@@ -1,7 +1,9 @@
 using Lssctc.ProgramManagement.Dashboard.Dtos;
 using Lssctc.ProgramManagement.Dashboard.Services;
+using Lssctc.ProgramManagement.HttpCustomResponse;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace Lssctc.ProgramManagement.Dashboard.Controllers
 {
@@ -22,18 +24,23 @@ namespace Lssctc.ProgramManagement.Dashboard.Controllers
         /// <summary>
         /// Get simulation manager overview summary with total counts
         /// </summary>
-        /// <param name="simulationManagerId">The ID of the simulation manager</param>
         /// <returns>Summary with counts for trainees, practices, tasks, and simulation sessions</returns>
-        [HttpGet("{simulationManagerId}/summary")]
-        public async Task<IActionResult> GetManagerSummary(int simulationManagerId)
+        [HttpGet("summary")]
+        public async Task<IActionResult> GetManagerSummary()
         {
-            if (simulationManagerId <= 0)
-                return BadRequest(new { status = 400, message = "Invalid simulation manager ID.", type = "ValidationException" });
-
             try
             {
-                var summary = await _dashboardService.GetManagerSummaryAsync(simulationManagerId);
+                var currentUserId = GetCurrentUserIdFromClaims();
+                var summary = await _dashboardService.GetManagerSummaryAsync(currentUserId);
                 return Ok(new { status = 200, message = "Get simulation manager summary", data = summary });
+            }
+            catch (BadRequestException ex)
+            {
+                return BadRequest(new { status = 400, message = ex.Message, type = "BadRequestException" });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { status = 401, message = ex.Message, type = "UnauthorizedAccessException" });
             }
             catch (KeyNotFoundException ex)
             {
@@ -52,15 +59,11 @@ namespace Lssctc.ProgramManagement.Dashboard.Controllers
         /// <summary>
         /// Get monthly practice completion distribution (Completed vs NotCompleted) for a specific year
         /// </summary>
-        /// <param name="simulationManagerId">The ID of the simulation manager</param>
         /// <param name="year">The year to filter practice attempts (default: current year)</param>
         /// <returns>Monthly distribution of practice attempts by completion status (Dual Column Chart)</returns>
-        [HttpGet("{simulationManagerId}/practices/completion-distribution/monthly")]
-        public async Task<IActionResult> GetPracticeCompletionDistribution(int simulationManagerId, [FromQuery] int year = 0)
+        [HttpGet("practices/completion-distribution/monthly")]
+        public async Task<IActionResult> GetPracticeCompletionDistribution([FromQuery] int year = 0)
         {
-            if (simulationManagerId <= 0)
-                return BadRequest(new { status = 400, message = "Invalid simulation manager ID.", type = "ValidationException" });
-
             // Default to current year if not provided or invalid
             if (year <= 0)
                 year = DateTime.UtcNow.Year;
@@ -71,8 +74,17 @@ namespace Lssctc.ProgramManagement.Dashboard.Controllers
 
             try
             {
-                var distribution = await _dashboardService.GetPracticeCompletionDistributionAsync(simulationManagerId, year);
+                var currentUserId = GetCurrentUserIdFromClaims();
+                var distribution = await _dashboardService.GetPracticeCompletionDistributionAsync(currentUserId, year);
                 return Ok(new { status = 200, message = "Get monthly practice completion distribution", data = distribution });
+            }
+            catch (BadRequestException ex)
+            {
+                return BadRequest(new { status = 400, message = ex.Message, type = "BadRequestException" });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { status = 401, message = ex.Message, type = "UnauthorizedAccessException" });
             }
             catch (KeyNotFoundException ex)
             {
@@ -87,18 +99,23 @@ namespace Lssctc.ProgramManagement.Dashboard.Controllers
         /// <summary>
         /// Get practice duration distribution grouped by time ranges
         /// </summary>
-        /// <param name="simulationManagerId">The ID of the simulation manager</param>
         /// <returns>Distribution of practice attempts by duration ranges (Pie Chart)</returns>
-        [HttpGet("{simulationManagerId}/practices/duration-distribution")]
-        public async Task<IActionResult> GetPracticeDurationDistribution(int simulationManagerId)
+        [HttpGet("practices/duration-distribution")]
+        public async Task<IActionResult> GetPracticeDurationDistribution()
         {
-            if (simulationManagerId <= 0)
-                return BadRequest(new { status = 400, message = "Invalid simulation manager ID.", type = "ValidationException" });
-
             try
             {
-                var distribution = await _dashboardService.GetPracticeDurationDistributionAsync(simulationManagerId);
+                var currentUserId = GetCurrentUserIdFromClaims();
+                var distribution = await _dashboardService.GetPracticeDurationDistributionAsync(currentUserId);
                 return Ok(new { status = 200, message = "Get practice duration distribution", data = distribution });
+            }
+            catch (BadRequestException ex)
+            {
+                return BadRequest(new { status = 400, message = ex.Message, type = "BadRequestException" });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { status = 401, message = ex.Message, type = "UnauthorizedAccessException" });
             }
             catch (KeyNotFoundException ex)
             {
@@ -108,6 +125,22 @@ namespace Lssctc.ProgramManagement.Dashboard.Controllers
             {
                 return StatusCode(500, new { status = 500, message = ex.Message, type = ex.GetType().Name });
             }
+        }
+
+        #endregion
+
+        #region Private Helpers
+
+        private int GetCurrentUserIdFromClaims()
+        {
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (int.TryParse(userIdClaim, out int userId))
+            {
+                return userId;
+            }
+
+            throw new UnauthorizedAccessException("User ID claim is missing or invalid.");
         }
 
         #endregion

@@ -1,4 +1,5 @@
 using Lssctc.ProgramManagement.Dashboard.Dtos;
+using Lssctc.ProgramManagement.HttpCustomResponse;
 using Lssctc.Share.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
@@ -16,16 +17,19 @@ namespace Lssctc.ProgramManagement.Dashboard.Services
 
         #region Part 1: Overview (Summary Cards)
 
-        public async Task<SimulationManagerSummaryDto> GetManagerSummaryAsync(int simulationManagerId)
+        public async Task<SimulationManagerSummaryDto> GetManagerSummaryAsync(int userId)
         {
-            // Validate simulation manager exists
-            var simulationManagerExists = await _uow.SimulationManagerRepository
+            // Validate that the user has a SimulationManager profile
+            var simulationManager = await _uow.SimulationManagerRepository
                 .GetAllAsQueryable()
                 .AsNoTracking()
-                .AnyAsync(sm => sm.Id == simulationManagerId);
+                .FirstOrDefaultAsync(sm => sm.Id == userId);
 
-            if (!simulationManagerExists)
-                throw new KeyNotFoundException($"Simulation Manager with ID {simulationManagerId} not found.");
+            if (simulationManager == null)
+                throw new BadRequestException("Current user is not a Simulation Manager.");
+
+            // Use simulationManager.Id for the actual queries (though in this case it's the same as userId)
+            var simulationManagerId = simulationManager.Id;
 
             // Total Trainees: Count all non-deleted trainees
             var totalTrainees = await _uow.TraineeRepository
@@ -64,16 +68,19 @@ namespace Lssctc.ProgramManagement.Dashboard.Services
 
         #region Part 2: Charts & Analytics
 
-        public async Task<IEnumerable<MonthlyPracticeCompletionDto>> GetPracticeCompletionDistributionAsync(int simulationManagerId, int year)
+        public async Task<IEnumerable<MonthlyPracticeCompletionDto>> GetPracticeCompletionDistributionAsync(int userId, int year)
         {
-            // Validate simulation manager exists
-            var simulationManagerExists = await _uow.SimulationManagerRepository
+            // Validate that the user has a SimulationManager profile
+            var simulationManager = await _uow.SimulationManagerRepository
                 .GetAllAsQueryable()
                 .AsNoTracking()
-                .AnyAsync(sm => sm.Id == simulationManagerId);
+                .FirstOrDefaultAsync(sm => sm.Id == userId);
 
-            if (!simulationManagerExists)
-                throw new KeyNotFoundException($"Simulation Manager with ID {simulationManagerId} not found.");
+            if (simulationManager == null)
+                throw new BadRequestException("Current user is not a Simulation Manager.");
+
+            // Use simulationManager.Id for the actual queries
+            var simulationManagerId = simulationManager.Id;
 
             // Get all current practice attempts for the specified year
             var attemptsInYear = await _uow.PracticeAttemptRepository
@@ -114,16 +121,19 @@ namespace Lssctc.ProgramManagement.Dashboard.Services
             return result;
         }
 
-        public async Task<IEnumerable<PracticeDurationDistributionDto>> GetPracticeDurationDistributionAsync(int simulationManagerId)
+        public async Task<IEnumerable<PracticeDurationDistributionDto>> GetPracticeDurationDistributionAsync(int userId)
         {
-            // Validate simulation manager exists
-            var simulationManagerExists = await _uow.SimulationManagerRepository
+            // Validate that the user has a SimulationManager profile
+            var simulationManager = await _uow.SimulationManagerRepository
                 .GetAllAsQueryable()
                 .AsNoTracking()
-                .AnyAsync(sm => sm.Id == simulationManagerId);
+                .FirstOrDefaultAsync(sm => sm.Id == userId);
 
-            if (!simulationManagerExists)
-                throw new KeyNotFoundException($"Simulation Manager with ID {simulationManagerId} not found.");
+            if (simulationManager == null)
+                throw new BadRequestException("Current user is not a Simulation Manager.");
+
+            // Use simulationManager.Id for the actual queries
+            var simulationManagerId = simulationManager.Id;
 
             // Get all valid practice attempts with their associated practice's estimated duration
             var attempts = await _uow.PracticeAttemptRepository
