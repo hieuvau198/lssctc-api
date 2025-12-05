@@ -19,6 +19,8 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Controllers
             _timeslotService = timeslotService;
         }
 
+        #region Timeslot
+
         // --- Instructor APIs (Auth: Admin, Instructor) ---
         /// <summary>
         /// API cho Admin/Giảng viên tạo một timeslot mới cho một lớp học.
@@ -87,6 +89,9 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Controllers
             catch (Exception) { return StatusCode(500, new { message = "An unexpected error occurred." }); }
         }
 
+        #endregion
+
+        #region Attendance
         /// <summary>
         /// API cho giảng viên lấy danh sách học viên cần điểm danh cho 1 slot.
         /// </summary>
@@ -182,7 +187,9 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Controllers
             catch (Exception) { return StatusCode(500, new { message = "An unexpected error occurred." }); }
         }
 
-        // --- Helper ---
+        #endregion
+
+        #region Helper
         private int GetUserIdFromClaims()
         {
             var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -194,5 +201,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Controllers
 
             throw new UnauthorizedAccessException("User ID claim is missing or invalid.");
         }
+
+        #endregion
     }
 }
