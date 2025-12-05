@@ -1,5 +1,6 @@
 ﻿using Lssctc.ProgramManagement.Accounts.Users.Dtos;
 using Lssctc.Share.Common;
+using Microsoft.AspNetCore.Http;
 
 namespace Lssctc.ProgramManagement.Accounts.Users.Services
 {
@@ -19,6 +20,7 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Services
         Task<bool> DeleteUserAsync(int id);
         Task<bool> IsEmailExistsAsync(string email);
         Task<bool> ResetPasswordByEmailAsync(string email, string newPassword);
+        Task<string> ImportTraineesAsync(IFormFile file);
         #endregion
 
         #region Profiles

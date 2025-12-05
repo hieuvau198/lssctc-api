@@ -1,13 +1,16 @@
 ﻿using Lssctc.ProgramManagement.Programs.Dtos;
 using Lssctc.ProgramManagement.Programs.Services;
 using Lssctc.Share.Common;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel.DataAnnotations;
 
 namespace Lssctc.ProgramManagement.Programs.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize(Roles = "Admin, Instructor")]
     public class ProgramsController : ControllerBase
     {
         private readonly IProgramsService _programsService;
@@ -23,6 +26,39 @@ namespace Lssctc.ProgramManagement.Programs.Controllers
             _programImportService = programImportService;
         }
         #region Programs
+
+        [HttpPost("import-excel")]
+        [ProducesResponseType(typeof(object), 200)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(500)]
+        public async Task<IActionResult> ImportProgramFromExcel(IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+                return BadRequest(new { status = 400, message = "No file uploaded" });
+
+            var extension = Path.GetExtension(file.FileName).ToLower();
+            if (extension != ".xlsx" && extension != ".xls")
+                return BadRequest(new { status = 400, message = "Invalid file format. Only .xlsx and .xls files are allowed" });
+
+            try
+            {
+                var result = await _programsService.ImportProgramFromExcelAsync(file);
+                return Ok(new
+                {
+                    status = 200,
+                    message = "Programs imported successfully",
+                    data = result
+                });
+            }
+            catch (ValidationException ex)
+            {
+                return BadRequest(new { status = 400, message = ex.Message, type = "ValidationException" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = 500, message = ex.Message, type = ex.GetType().Name });
+            }
+        }
 
         [HttpGet]
         [ProducesResponseType(typeof(IEnumerable<ProgramDto>), 200)]
@@ -97,6 +133,35 @@ namespace Lssctc.ProgramManagement.Programs.Controllers
             catch (Exception ex)
             {
                 return StatusCode(500, $"An internal server error occurred: {ex.Message}");
+            }
+        }
+
+        [HttpPost("create-full")]
+        [ProducesResponseType(typeof(object), 200)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(404)]
+        [ProducesResponseType(500)]
+        public async Task<IActionResult> CreateProgramWithHierarchy([FromBody] CreateProgramWithHierarchyDto dto)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                    return BadRequest(new { status = 400, message = "Invalid model state", type = "ValidationException", errors = ModelState });
+
+                var programId = await _programsService.CreateProgramWithHierarchyAsync(dto);
+                return Ok(new { status = 200, message = "Create program with courses and sections successfully", data = new { programId } });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { status = 404, message = ex.Message, type = "NotFound" });
+            }
+            catch (ValidationException ex)
+            {
+                return BadRequest(new { status = 400, message = ex.Message, type = "ValidationException" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = 500, message = ex.Message, type = ex.GetType().Name });
             }
         }
 
@@ -229,33 +294,34 @@ namespace Lssctc.ProgramManagement.Programs.Controllers
 
         #endregion
 
-        #region Import
+        #region System Data Cleanup
 
-        [HttpPost("import")]
-        [ProducesResponseType(typeof(ProgramDto), 200)]
-        [ProducesResponseType(400)]
+        /// <summary>
+        /// Complete system cleanup of a Training Program and all its dependencies including Courses.
+        /// WARNING: This permanently deletes the program, its courses, sections, activities, enrollments, 
+        /// and certificates from the database. This operation cannot be undone.
+        /// </summary>
+        /// <param name="id">The ID of the program to cleanup</param>
+        /// <returns>204 No Content on success</returns>
+        [HttpDelete("{id}/cleanup")]
+        [Authorize(Roles = "Admin")]
+        [ProducesResponseType(204)]
+        [ProducesResponseType(404)]
         [ProducesResponseType(500)]
-        public async Task<IActionResult> ImportProgram(IFormFile file)
+        public async Task<IActionResult> CleanupProgramData(int id)
         {
-            if (file == null || file.Length == 0)
-                return BadRequest("No file uploaded.");
-
-            var extension = Path.GetExtension(file.FileName).ToLower();
-            if (extension != ".xlsx" && extension != ".xls")
-                return BadRequest("Invalid file format. Please upload an Excel file (.xlsx or .xls).");
-
             try
             {
-                var program = await _programImportService.ImportProgramFromExcelAsync(file);
-                return Ok(program);
+                await _programsService.CleanupProgramDataAsync(id);
+                return NoContent();
             }
-            catch (ArgumentException ex)
+            catch (KeyNotFoundException ex)
             {
-                return BadRequest(new { Message = ex.Message });
+                return NotFound(ex.Message);
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { Message = "An error occurred while importing the program: " + ex.Message });
+                return StatusCode(500, $"An internal server error occurred during cleanup: {ex.Message}");
             }
         }
 

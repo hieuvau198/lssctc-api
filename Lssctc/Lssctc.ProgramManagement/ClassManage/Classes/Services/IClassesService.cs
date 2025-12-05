@@ -1,5 +1,6 @@
 ﻿using Lssctc.ProgramManagement.ClassManage.Classes.Dtos;
 using Lssctc.Share.Common;
+using Microsoft.AspNetCore.Http;
 
 namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
 {
@@ -32,6 +33,15 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
         // BR cancel class: allow for delete only if no enrolled students,
         // class status is 'Draft' or 'Open'
         Task CancelClassAsync(int id);
+        // BR hard delete class: permanently delete class and all associated data for demo purposes
+        // This includes: ClassInstructors, Enrollments, LearningProgress, SectionRecords, ActivityRecords,
+        // QuizAttempts, QuizAttemptQuestions, QuizAttemptAnswers, PracticeAttempts, PracticeAttemptTasks
+        // Uses database transaction to ensure atomicity
+        Task DeleteClassDataRecursiveAsync(int classId);
+        // BR import trainees: bulk import trainees from Excel file
+        // For each row: Find or Create User with Role='Trainee', then Enroll in Class (if not already enrolled)
+        // Returns summary message of import results
+        Task<string> ImportTraineesToClassAsync(int classId, IFormFile file);
         #endregion
 
         #region Classes By other Filters

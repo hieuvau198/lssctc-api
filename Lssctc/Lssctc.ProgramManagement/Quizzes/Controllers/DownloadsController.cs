@@ -17,9 +17,6 @@ namespace Lssctc.ProgramManagement.Quizzes.Controllers
         {
             try
             {
-               
-                ExcelPackage.License.SetNonCommercialPersonal("Instructor");
-
                 using (var package = new ExcelPackage())
                 {
                     // 1. Tạo Sheet

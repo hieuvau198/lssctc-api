@@ -1,4 +1,5 @@
 ﻿using Lssctc.Share.Entities;
+using Microsoft.EntityFrameworkCore;
 
 namespace Lssctc.Share.Interfaces
 {
@@ -53,5 +54,6 @@ namespace Lssctc.Share.Interfaces
         IGenericRepository<User> UserRepository { get; }
 
         Task<int> SaveChangesAsync();
+        DbContext GetDbContext();
     }
 }
