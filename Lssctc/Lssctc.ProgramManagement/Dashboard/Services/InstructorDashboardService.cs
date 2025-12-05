@@ -1,4 +1,5 @@
 using Lssctc.ProgramManagement.Dashboard.Dtos;
+using Lssctc.ProgramManagement.HttpCustomResponse;
 using Lssctc.Share.Enums;
 using Lssctc.Share.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -17,16 +18,18 @@ namespace Lssctc.ProgramManagement.Dashboard.Services
 
         #region Part 1: Overview (Summary Cards)
 
-        public async Task<InstructorSummaryDto> GetInstructorSummaryAsync(int instructorId)
+        public async Task<InstructorSummaryDto> GetInstructorSummaryAsync(int userId)
         {
-            // Validate instructor exists
-            var instructorExists = await _uow.InstructorRepository
+            // Validate that the user is an instructor and get instructor ID
+            var instructor = await _uow.InstructorRepository
                 .GetAllAsQueryable()
                 .AsNoTracking()
-                .AnyAsync(i => i.Id == instructorId && i.IsDeleted == false);
+                .FirstOrDefaultAsync(i => i.Id == userId && i.IsDeleted == false);
 
-            if (!instructorExists)
-                throw new KeyNotFoundException($"Instructor with ID {instructorId} not found or has been deleted.");
+            if (instructor == null)
+                throw new BadRequestException("Current user is not an Instructor.");
+
+            int instructorId = instructor.Id;
 
             // Total Assigned Trainees: Count unique Trainees enrolled in classes assigned to this instructor
             // Path: ClassInstructor -> Class -> Enrollment -> Count distinct TraineeId
@@ -81,16 +84,18 @@ namespace Lssctc.ProgramManagement.Dashboard.Services
 
         #region Part 2: Charts & Analytics
 
-        public async Task<IEnumerable<ClassTraineeCountDto>> GetTopClassesByTraineeCountAsync(int instructorId, int topCount = 5)
+        public async Task<IEnumerable<ClassTraineeCountDto>> GetTopClassesByTraineeCountAsync(int userId, int topCount = 5)
         {
-            // Validate instructor exists
-            var instructorExists = await _uow.InstructorRepository
+            // Validate that the user is an instructor and get instructor ID
+            var instructor = await _uow.InstructorRepository
                 .GetAllAsQueryable()
                 .AsNoTracking()
-                .AnyAsync(i => i.Id == instructorId && i.IsDeleted == false);
+                .FirstOrDefaultAsync(i => i.Id == userId && i.IsDeleted == false);
 
-            if (!instructorExists)
-                throw new KeyNotFoundException($"Instructor with ID {instructorId} not found or has been deleted.");
+            if (instructor == null)
+                throw new BadRequestException("Current user is not an Instructor.");
+
+            int instructorId = instructor.Id;
 
             // Get classes assigned to the instructor, order by number of Enrollments (descending), take top N
             var topClasses = await _uow.ClassInstructorRepository
@@ -122,16 +127,18 @@ namespace Lssctc.ProgramManagement.Dashboard.Services
             });
         }
 
-        public async Task<IEnumerable<ClassStatusDistributionDto>> GetInstructorClassStatusDistributionAsync(int instructorId)
+        public async Task<IEnumerable<ClassStatusDistributionDto>> GetInstructorClassStatusDistributionAsync(int userId)
         {
-            // Validate instructor exists
-            var instructorExists = await _uow.InstructorRepository
+            // Validate that the user is an instructor and get instructor ID
+            var instructor = await _uow.InstructorRepository
                 .GetAllAsQueryable()
                 .AsNoTracking()
-                .AnyAsync(i => i.Id == instructorId && i.IsDeleted == false);
+                .FirstOrDefaultAsync(i => i.Id == userId && i.IsDeleted == false);
 
-            if (!instructorExists)
-                throw new KeyNotFoundException($"Instructor with ID {instructorId} not found or has been deleted.");
+            if (instructor == null)
+                throw new BadRequestException("Current user is not an Instructor.");
+
+            int instructorId = instructor.Id;
 
             // Get class status distribution for classes assigned to this instructor
             var classDistribution = await _uow.ClassInstructorRepository
@@ -168,16 +175,18 @@ namespace Lssctc.ProgramManagement.Dashboard.Services
             return allStatuses;
         }
 
-        public async Task<IEnumerable<InstructorCourseCompletionTrendDto>> GetInstructorYearlyCompletionTrendsAsync(int instructorId, int year)
+        public async Task<IEnumerable<InstructorCourseCompletionTrendDto>> GetInstructorYearlyCompletionTrendsAsync(int userId, int year)
         {
-            // Validate instructor exists
-            var instructorExists = await _uow.InstructorRepository
+            // Validate that the user is an instructor and get instructor ID
+            var instructor = await _uow.InstructorRepository
                 .GetAllAsQueryable()
                 .AsNoTracking()
-                .AnyAsync(i => i.Id == instructorId && i.IsDeleted == false);
+                .FirstOrDefaultAsync(i => i.Id == userId && i.IsDeleted == false);
 
-            if (!instructorExists)
-                throw new KeyNotFoundException($"Instructor with ID {instructorId} not found or has been deleted.");
+            if (instructor == null)
+                throw new BadRequestException("Current user is not an Instructor.");
+
+            int instructorId = instructor.Id;
 
             // Default to current year if not specified
             if (year <= 0)
@@ -243,16 +252,18 @@ namespace Lssctc.ProgramManagement.Dashboard.Services
             return result;
         }
 
-        public async Task<IEnumerable<ClassGradeDistributionDto>> GetClassGradeDistributionAsync(int instructorId)
+        public async Task<IEnumerable<ClassGradeDistributionDto>> GetClassGradeDistributionAsync(int userId)
         {
-            // Validate instructor exists
-            var instructorExists = await _uow.InstructorRepository
+            // Validate that the user is an instructor and get instructor ID
+            var instructor = await _uow.InstructorRepository
                 .GetAllAsQueryable()
                 .AsNoTracking()
-                .AnyAsync(i => i.Id == instructorId && i.IsDeleted == false);
+                .FirstOrDefaultAsync(i => i.Id == userId && i.IsDeleted == false);
 
-            if (!instructorExists)
-                throw new KeyNotFoundException($"Instructor with ID {instructorId} not found or has been deleted.");
+            if (instructor == null)
+                throw new BadRequestException("Current user is not an Instructor.");
+
+            int instructorId = instructor.Id;
 
             // For each class assigned to the instructor, calculate the average FinalScore
             var classesWithScores = await _uow.ClassInstructorRepository

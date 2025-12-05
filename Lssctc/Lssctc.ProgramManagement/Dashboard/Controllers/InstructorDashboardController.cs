@@ -2,6 +2,7 @@ using Lssctc.ProgramManagement.Dashboard.Dtos;
 using Lssctc.ProgramManagement.Dashboard.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace Lssctc.ProgramManagement.Dashboard.Controllers
 {
@@ -22,18 +23,19 @@ namespace Lssctc.ProgramManagement.Dashboard.Controllers
         /// <summary>
         /// Get instructor overview summary with total counts
         /// </summary>
-        /// <param name="instructorId">The ID of the instructor</param>
         /// <returns>Instructor summary with counts for assigned trainees, classes, materials, and quizzes</returns>
-        [HttpGet("{instructorId}/summary")]
-        public async Task<IActionResult> GetInstructorSummary(int instructorId)
+        [HttpGet("summary")]
+        public async Task<IActionResult> GetInstructorSummary()
         {
-            if (instructorId <= 0)
-                return BadRequest(new { status = 400, message = "Invalid instructor ID.", type = "ValidationException" });
-
             try
             {
-                var summary = await _dashboardService.GetInstructorSummaryAsync(instructorId);
+                var userId = GetUserIdFromClaims();
+                var summary = await _dashboardService.GetInstructorSummaryAsync(userId);
                 return Ok(new { status = 200, message = "Get instructor summary", data = summary });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { status = 401, message = ex.Message, type = "UnauthorizedAccess" });
             }
             catch (KeyNotFoundException ex)
             {
@@ -50,25 +52,26 @@ namespace Lssctc.ProgramManagement.Dashboard.Controllers
         #region Part 2: Charts & Analytics
 
         /// <summary>
-        /// Get top N classes by trainee count for a specific instructor
+        /// Get top N classes by trainee count for the current instructor
         /// </summary>
-        /// <param name="instructorId">The ID of the instructor</param>
         /// <param name="top">Number of top classes to return (default: 5)</param>
         /// <returns>List of classes with their trainee counts</returns>
-        [HttpGet("{instructorId}/classes/top-by-trainees")]
-        public async Task<IActionResult> GetTopClassesByTraineeCount(int instructorId, [FromQuery] int top = 5)
+        [HttpGet("classes/top-by-trainees")]
+        public async Task<IActionResult> GetTopClassesByTraineeCount([FromQuery] int top = 5)
         {
-            if (instructorId <= 0)
-                return BadRequest(new { status = 400, message = "Invalid instructor ID.", type = "ValidationException" });
-
             if (top <= 0) top = 5;
             if (top > 20) top = 20; // Limit to prevent excessive data
 
             try
             {
-                var topClasses = await _dashboardService.GetTopClassesByTraineeCountAsync(instructorId, top);
+                var userId = GetUserIdFromClaims();
+                var topClasses = await _dashboardService.GetTopClassesByTraineeCountAsync(userId, top);
                 return Ok(new { status = 200, message = "Get top classes by trainee count", data = topClasses });
             }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { status = 401, message = ex.Message, type = "UnauthorizedAccess" });
+            }
             catch (KeyNotFoundException ex)
             {
                 return NotFound(new { status = 404, message = ex.Message, type = "NotFound" });
@@ -80,20 +83,21 @@ namespace Lssctc.ProgramManagement.Dashboard.Controllers
         }
 
         /// <summary>
-        /// Get class status distribution for a specific instructor
+        /// Get class status distribution for the current instructor
         /// </summary>
-        /// <param name="instructorId">The ID of the instructor</param>
         /// <returns>Distribution of class statuses for the instructor's classes</returns>
-        [HttpGet("{instructorId}/classes/status-distribution")]
-        public async Task<IActionResult> GetInstructorClassStatusDistribution(int instructorId)
+        [HttpGet("classes/status-distribution")]
+        public async Task<IActionResult> GetInstructorClassStatusDistribution()
         {
-            if (instructorId <= 0)
-                return BadRequest(new { status = 400, message = "Invalid instructor ID.", type = "ValidationException" });
-
             try
             {
-                var distribution = await _dashboardService.GetInstructorClassStatusDistributionAsync(instructorId);
+                var userId = GetUserIdFromClaims();
+                var distribution = await _dashboardService.GetInstructorClassStatusDistributionAsync(userId);
                 return Ok(new { status = 200, message = "Get instructor class status distribution", data = distribution });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { status = 401, message = ex.Message, type = "UnauthorizedAccess" });
             }
             catch (KeyNotFoundException ex)
             {
@@ -106,17 +110,13 @@ namespace Lssctc.ProgramManagement.Dashboard.Controllers
         }
 
         /// <summary>
-        /// Get yearly course completion trends for a specific instructor
+        /// Get yearly course completion trends for the current instructor
         /// </summary>
-        /// <param name="instructorId">The ID of the instructor</param>
         /// <param name="year">Year to get completion trends for (default: current year)</param>
         /// <returns>Monthly completion counts for the specified year in instructor's classes</returns>
-        [HttpGet("{instructorId}/completions/trends/yearly")]
-        public async Task<IActionResult> GetInstructorYearlyCompletionTrends(int instructorId, [FromQuery] int year = 0)
+        [HttpGet("completions/trends/yearly")]
+        public async Task<IActionResult> GetInstructorYearlyCompletionTrends([FromQuery] int year = 0)
         {
-            if (instructorId <= 0)
-                return BadRequest(new { status = 400, message = "Invalid instructor ID.", type = "ValidationException" });
-
             // Default to current year if not specified
             if (year <= 0)
                 year = DateTime.UtcNow.Year;
@@ -127,8 +127,13 @@ namespace Lssctc.ProgramManagement.Dashboard.Controllers
 
             try
             {
-                var trends = await _dashboardService.GetInstructorYearlyCompletionTrendsAsync(instructorId, year);
+                var userId = GetUserIdFromClaims();
+                var trends = await _dashboardService.GetInstructorYearlyCompletionTrendsAsync(userId, year);
                 return Ok(new { status = 200, message = "Get instructor yearly completion trends", data = trends });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { status = 401, message = ex.Message, type = "UnauthorizedAccess" });
             }
             catch (KeyNotFoundException ex)
             {
@@ -141,20 +146,21 @@ namespace Lssctc.ProgramManagement.Dashboard.Controllers
         }
 
         /// <summary>
-        /// Get class grade distribution for a specific instructor (Pie Chart)
+        /// Get class grade distribution for the current instructor (Pie Chart)
         /// </summary>
-        /// <param name="instructorId">The ID of the instructor</param>
         /// <returns>Distribution of classes by performance ranges (Excellent, Good, Average, Poor)</returns>
-        [HttpGet("{instructorId}/classes/grade-distribution")]
-        public async Task<IActionResult> GetClassGradeDistribution(int instructorId)
+        [HttpGet("classes/grade-distribution")]
+        public async Task<IActionResult> GetClassGradeDistribution()
         {
-            if (instructorId <= 0)
-                return BadRequest(new { status = 400, message = "Invalid instructor ID.", type = "ValidationException" });
-
             try
             {
-                var distribution = await _dashboardService.GetClassGradeDistributionAsync(instructorId);
+                var userId = GetUserIdFromClaims();
+                var distribution = await _dashboardService.GetClassGradeDistributionAsync(userId);
                 return Ok(new { status = 200, message = "Get class grade distribution", data = distribution });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { status = 401, message = ex.Message, type = "UnauthorizedAccess" });
             }
             catch (KeyNotFoundException ex)
             {
@@ -164,6 +170,20 @@ namespace Lssctc.ProgramManagement.Dashboard.Controllers
             {
                 return StatusCode(500, new { status = 500, message = ex.Message, type = ex.GetType().Name });
             }
+        }
+
+        #endregion
+
+        #region Helpers
+
+        private int GetUserIdFromClaims()
+        {
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (int.TryParse(userIdClaim, out int userId))
+            {
+                return userId;
+            }
+            throw new UnauthorizedAccessException("User ID claim is missing or invalid.");
         }
 
         #endregion
