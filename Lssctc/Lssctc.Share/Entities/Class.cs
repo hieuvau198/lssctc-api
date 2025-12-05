@@ -30,4 +30,6 @@ public partial class Class
     public virtual ICollection<Enrollment> Enrollments { get; set; } = new List<Enrollment>();
 
     public virtual ProgramCourse ProgramCourse { get; set; } = null!;
+
+    public virtual ICollection<Timeslot> Timeslots { get; set; } = new List<Timeslot>();
 }

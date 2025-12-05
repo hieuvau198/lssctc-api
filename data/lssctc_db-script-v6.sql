@@ -393,6 +393,33 @@ BEGIN TRY
         FOREIGN KEY ([trainee_id]) REFERENCES [dbo].[trainees]([id])
     );
 
+	CREATE TABLE [dbo].[timeslots] (
+        [id] INT IDENTITY(1,1) PRIMARY KEY,
+        [class_id] INT NOT NULL,
+        [name] NVARCHAR(200),
+        [location_detail] NVARCHAR(1000),
+        [location_building] NVARCHAR(200),
+        [location_room] NVARCHAR(100),
+        [start_time] DATETIME2(0) NOT NULL,
+        [end_time] DATETIME2(0) NOT NULL,
+        [status] INT DEFAULT 1, -- Not Started, Ongoing, Completed, Cancelled
+        [is_deleted] BIT DEFAULT 0, 
+        FOREIGN KEY ([class_id]) REFERENCES [dbo].[classes]([id])
+    );
+
+    CREATE TABLE [dbo].[attendances] (
+        [id] INT IDENTITY(1,1) PRIMARY KEY,
+        [enrollment_id] INT NOT NULL,
+        [timeslot_id] INT NOT NULL,
+        [name] NVARCHAR(200),
+        [description] NVARCHAR(1000),
+        [status] INT DEFAULT 1, -- Not Started, Present, Absent, Cancelled
+        [is_active] BIT DEFAULT 1,
+        [is_deleted] BIT DEFAULT 0,
+        FOREIGN KEY ([enrollment_id]) REFERENCES [dbo].[enrollments]([id]),
+        FOREIGN KEY ([timeslot_id]) REFERENCES [dbo].[timeslots]([id])
+    );
+
 
     -- ========================================
     --  Certificates and progress tracking

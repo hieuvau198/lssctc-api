@@ -51,6 +51,8 @@ namespace Lssctc.Share.Interfaces
         IGenericRepository<TraineeCertificate> TraineeCertificateRepository { get; }
         IGenericRepository<TraineeProfile> TraineeProfileRepository { get; }
         IGenericRepository<TrainingProgram> ProgramRepository { get; }
+        IGenericRepository<Timeslot> TimeslotRepository { get; }
+        IGenericRepository<Attendance> AttendanceRepository { get; }
         IGenericRepository<User> UserRepository { get; }
 
         Task<int> SaveChangesAsync();

@@ -12,6 +12,7 @@ using Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services;
 using Lssctc.ProgramManagement.ClassManage.Progresses.Services;
 using Lssctc.ProgramManagement.ClassManage.QuizAttempts.Services;
 using Lssctc.ProgramManagement.ClassManage.SectionRecords.Services;
+using Lssctc.ProgramManagement.ClassManage.Timeslots.Services;
 using Lssctc.ProgramManagement.Common.Services;
 using Lssctc.ProgramManagement.Courses.Services;
 using Lssctc.ProgramManagement.Dashboard.Services;
@@ -186,6 +187,8 @@ builder.Services.AddScoped<IInstructorDashboardService, InstructorDashboardServi
 builder.Services.AddScoped<ISimulationManagerDashboardService, SimulationManagerDashboardService>();
 
 builder.Services.AddScoped<IProgramImportService, ProgramImportService>();
+
+builder.Services.AddScoped<ITimeslotService, TimeslotService>();
 #endregion
 
 #region CORS
