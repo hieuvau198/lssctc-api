@@ -23,5 +23,7 @@ public partial class Activity
 
     public virtual ICollection<ActivityQuiz> ActivityQuizzes { get; set; } = new List<ActivityQuiz>();
 
+    public virtual ICollection<ActivitySession> ActivitySessions { get; set; } = new List<ActivitySession>();
+
     public virtual ICollection<SectionActivity> SectionActivities { get; set; } = new List<SectionActivity>();
 }

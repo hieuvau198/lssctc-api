@@ -26,6 +26,8 @@ public partial class LssctcDbContext : DbContext
 
     public virtual DbSet<ActivityRecord> ActivityRecords { get; set; }
 
+    public virtual DbSet<ActivitySession> ActivitySessions { get; set; }
+
     public virtual DbSet<Admin> Admins { get; set; }
 
     public virtual DbSet<Attendance> Attendances { get; set; }
@@ -53,6 +55,10 @@ public partial class LssctcDbContext : DbContext
     public virtual DbSet<CourseSection> CourseSections { get; set; }
 
     public virtual DbSet<Enrollment> Enrollments { get; set; }
+
+    public virtual DbSet<FinalExam> FinalExams { get; set; }
+
+    public virtual DbSet<FinalExamPartial> FinalExamPartials { get; set; }
 
     public virtual DbSet<Instructor> Instructors { get; set; }
 
@@ -258,6 +264,36 @@ public partial class LssctcDbContext : DbContext
                 .HasForeignKey(d => d.SectionRecordId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK__activity___secti__5540965B");
+        });
+
+        modelBuilder.Entity<ActivitySession>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__activity__3213E83FB1923640");
+
+            entity.ToTable("activity_sessions");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.ActivityId).HasColumnName("activity_id");
+            entity.Property(e => e.ClassId).HasColumnName("class_id");
+            entity.Property(e => e.EndTime)
+                .HasPrecision(0)
+                .HasColumnName("end_time");
+            entity.Property(e => e.IsActive)
+                .HasDefaultValue(true)
+                .HasColumnName("is_active");
+            entity.Property(e => e.StartTime)
+                .HasPrecision(0)
+                .HasColumnName("start_time");
+
+            entity.HasOne(d => d.Activity).WithMany(p => p.ActivitySessions)
+                .HasForeignKey(d => d.ActivityId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__activity___activ__1BD30ED5");
+
+            entity.HasOne(d => d.Class).WithMany(p => p.ActivitySessions)
+                .HasForeignKey(d => d.ClassId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__activity___class__1ADEEA9C");
         });
 
         modelBuilder.Entity<Admin>(entity =>
@@ -610,6 +646,65 @@ public partial class LssctcDbContext : DbContext
                 .HasForeignKey(d => d.TraineeId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK__enrollmen__train__33DFA290");
+        });
+
+        modelBuilder.Entity<FinalExam>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__final_ex__3213E83FD51A812D");
+
+            entity.ToTable("final_exams");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.CompleteTime)
+                .HasPrecision(0)
+                .HasColumnName("complete_time");
+            entity.Property(e => e.EnrollmentId).HasColumnName("enrollment_id");
+            entity.Property(e => e.IsPass)
+                .HasDefaultValue(false)
+                .HasColumnName("is_pass");
+            entity.Property(e => e.TotalMarks)
+                .HasColumnType("decimal(5, 2)")
+                .HasColumnName("total_marks");
+
+            entity.HasOne(d => d.Enrollment).WithMany(p => p.FinalExams)
+                .HasForeignKey(d => d.EnrollmentId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__final_exa__enrol__1FA39FB9");
+        });
+
+        modelBuilder.Entity<FinalExamPartial>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__final_ex__3213E83F63C1C510");
+
+            entity.ToTable("final_exam_partials");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.CompleteTime)
+                .HasPrecision(0)
+                .HasColumnName("complete_time");
+            entity.Property(e => e.Description)
+                .HasMaxLength(1000)
+                .HasColumnName("description");
+            entity.Property(e => e.Duration).HasColumnName("duration");
+            entity.Property(e => e.EndTime)
+                .HasPrecision(0)
+                .HasColumnName("end_time");
+            entity.Property(e => e.FinalExamId).HasColumnName("final_exam_id");
+            entity.Property(e => e.IsPass)
+                .HasDefaultValue(false)
+                .HasColumnName("is_pass");
+            entity.Property(e => e.Marks)
+                .HasColumnType("decimal(5, 2)")
+                .HasColumnName("marks");
+            entity.Property(e => e.StartTime)
+                .HasPrecision(0)
+                .HasColumnName("start_time");
+            entity.Property(e => e.Type).HasColumnName("type");
+
+            entity.HasOne(d => d.FinalExam).WithMany(p => p.FinalExamPartials)
+                .HasForeignKey(d => d.FinalExamId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__final_exa__final__2374309D");
         });
 
         modelBuilder.Entity<Instructor>(entity =>
