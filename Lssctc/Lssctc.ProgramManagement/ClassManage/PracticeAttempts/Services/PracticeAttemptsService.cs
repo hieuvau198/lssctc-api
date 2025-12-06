@@ -1,4 +1,5 @@
-﻿using Lssctc.ProgramManagement.ClassManage.Helpers;
+﻿using Lssctc.ProgramManagement.Activities.Services;
+using Lssctc.ProgramManagement.ClassManage.Helpers;
 using Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Dtos;
 using Lssctc.Share.Common;
 using Lssctc.Share.Entities;
@@ -12,11 +13,13 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
     {
         private readonly IUnitOfWork _uow;
         private readonly ProgressHelper _progressHelper;
+        private readonly IActivitySessionService _sessionService; 
 
-        public PracticeAttemptsService(IUnitOfWork uow)
+        public PracticeAttemptsService(IUnitOfWork uow, IActivitySessionService sessionService) // ADDED injection
         {
             _uow = uow;
             _progressHelper = new ProgressHelper(uow);
+            _sessionService = sessionService; 
         }
 
         // --- GET METHODS ---
@@ -364,7 +367,7 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
                     $"Activity record not found for TraineeId={traineeId}, ClassId={classId}, PracticeId={practiceId}. " +
                     "Please ensure the practice is assigned to an activity in this class.");
             }
-
+            await _sessionService.CheckActivityAccess(classId, activityRecord.ActivityId.Value);
             var existingAttempts = await _uow.PracticeAttemptRepository
                 .GetAllAsQueryable()
                 .Where(pa => pa.ActivityRecordId == activityRecord.Id && pa.IsCurrent)

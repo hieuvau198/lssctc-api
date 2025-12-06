@@ -1,4 +1,5 @@
-﻿using Lssctc.ProgramManagement.ClassManage.ActivityRecords.Dtos;
+﻿using Lssctc.ProgramManagement.Activities.Services;
+using Lssctc.ProgramManagement.ClassManage.ActivityRecords.Dtos;
 using Lssctc.Share.Entities;
 using Lssctc.Share.Enums;
 using Lssctc.Share.Interfaces;
@@ -9,10 +10,11 @@ namespace Lssctc.ProgramManagement.ClassManage.ActivityRecords.Services
     public class ActivityRecordsService : IActivityRecordsService
     {
         private readonly IUnitOfWork _uow;
-
-        public ActivityRecordsService(IUnitOfWork uow)
+        private readonly IActivitySessionService _sessionService;
+        public ActivityRecordsService(IUnitOfWork uow, IActivitySessionService activitySessionService)
         {
             _uow = uow;
+            _sessionService = activitySessionService;
         }
 
         public async Task<IEnumerable<ActivityRecordDto>> GetActivityRecordsAsync(int classId, int sectionId, int traineeId)
@@ -65,6 +67,9 @@ namespace Lssctc.ProgramManagement.ClassManage.ActivityRecords.Services
 
             if (activityRecord.SectionRecord.LearningProgress.Enrollment.TraineeId != traineeId)
                 throw new UnauthorizedAccessException("You are not authorized to submit this activity.");
+            await _sessionService.CheckActivityAccess(
+                activityRecord.SectionRecord.LearningProgress.Enrollment.ClassId,
+                activityRecord.ActivityId.Value);
 
             if (activityRecord.Status == (int)ActivityRecordStatusEnum.Completed)
                 throw new InvalidOperationException("This activity has already been completed.");
