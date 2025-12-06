@@ -7,7 +7,7 @@ namespace Lssctc.ProgramManagement.Programs.Services
     public interface IProgramsService
     {
         Task<IEnumerable<ProgramDto>> GetAllProgramsAsync();
-        Task<PagedResult<ProgramDto>> GetProgramsAsync(int pageNumber, int pageSize);
+        Task<PagedResult<ProgramDto>> GetProgramsAsync(int pageNumber, int pageSize, string? searchTerm = null);
         Task<ProgramDto?> GetProgramByIdAsync(int id);
         Task<ProgramDto> CreateProgramAsync(CreateProgramDto createDto);
         Task<ProgramDto> UpdateProgramAsync(int id, UpdateProgramDto updateDto);
