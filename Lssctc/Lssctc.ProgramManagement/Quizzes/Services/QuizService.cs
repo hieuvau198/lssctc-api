@@ -155,6 +155,99 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
             };
         }
 
+        public async Task<PagedResult<QuizOnlyDto>> GetQuizzes(
+            int pageIndex, 
+            int pageSize, 
+            int? instructorId, 
+            string? searchTerm, 
+            string? sortBy, 
+            string? sortDirection, 
+            CancellationToken ct = default)
+        {
+            if (pageIndex < 1) pageIndex = 1;
+            if (pageSize < 1) pageSize = 10;
+
+            // Step 1: Preserve existing logic - filter by instructorId if provided
+            IQueryable<Quiz> query = _uow.QuizRepository.GetAllAsQueryable();
+            
+            if (instructorId.HasValue && instructorId.Value > 0)
+            {
+                // Only get quizzes where this instructor is the author
+                query = query.Where(q => q.QuizAuthors.Any(qa => qa.InstructorId == instructorId.Value));
+            }
+
+            // Step 2: Filtering (Search) - case-insensitive search in Name OR Description
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                var normalizedSearchTerm = searchTerm.Trim().ToLower();
+                query = query.Where(q => 
+                    (q.Name != null && q.Name.ToLower().Contains(normalizedSearchTerm)) || 
+                    (q.Description != null && q.Description.ToLower().Contains(normalizedSearchTerm)));
+            }
+
+            // Get total count after filtering
+            var total = await query.CountAsync(ct);
+
+            // Step 3: Sorting Logic
+            IQueryable<Quiz> sortedQuery;
+
+            // Scenario A: Explicit Sort (sortBy provided)
+            if (!string.IsNullOrWhiteSpace(sortBy))
+            {
+                var isDescending = sortDirection?.ToLower() == "desc";
+
+                sortedQuery = sortBy.ToLower() switch
+                {
+                    "timelimit" => isDescending 
+                        ? query.OrderByDescending(q => q.TimelimitMinute) 
+                        : query.OrderBy(q => q.TimelimitMinute),
+                    "passscore" => isDescending 
+                        ? query.OrderByDescending(q => q.PassScoreCriteria) 
+                        : query.OrderBy(q => q.PassScoreCriteria),
+                    _ => query.OrderByDescending(q => q.CreatedAt) // Default fallback
+                };
+            }
+            // Scenario B: Search Relevance (no sortBy but searchTerm provided)
+            else if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                var normalizedSearchTerm = searchTerm.Trim().ToLower();
+                
+                // Order by relevance: Name matches first, then Description matches
+                sortedQuery = query
+                    .OrderByDescending(q => q.Name != null && q.Name.ToLower().Contains(normalizedSearchTerm))
+                    .ThenByDescending(q => q.Description != null && q.Description.ToLower().Contains(normalizedSearchTerm))
+                    .ThenByDescending(q => q.CreatedAt);
+            }
+            // Scenario C: Default (no search, no sort)
+            else
+            {
+                sortedQuery = query.OrderByDescending(q => q.CreatedAt);
+            }
+
+            // Step 4: Execute pagination and projection
+            var items = await sortedQuery
+                .Skip((pageIndex - 1) * pageSize)
+                .Take(pageSize)
+                .Select(q => new QuizOnlyDto
+                {
+                    Id = q.Id,
+                    Name = q.Name,
+                    PassScoreCriteria = q.PassScoreCriteria,
+                    TimelimitMinute = q.TimelimitMinute,
+                    TotalScore = q.TotalScore,
+                    Description = q.Description
+                })
+                .ToListAsync(ct);
+
+            return new PagedResult<QuizOnlyDto>
+            {
+                Items = items,
+                Page = pageIndex,
+                PageSize = pageSize,
+                TotalCount = total
+            };
+        }
+
         public async Task<QuizDto?> GetQuizById(int id)
         {
             var q = await _uow.QuizRepository.GetAllAsQueryable()

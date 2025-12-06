@@ -21,7 +21,12 @@ namespace Lssctc.ProgramManagement.Quizzes.Controllers
 
         [HttpGet]
         [Authorize(Roles = "Admin, Instructor")]
-        public async Task<IActionResult> GetQuizzes([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10)
+        public async Task<IActionResult> GetQuizzes(
+            [FromQuery] int pageIndex = 1, 
+            [FromQuery] int pageSize = 10,
+            [FromQuery] string? searchTerm = null,
+            [FromQuery] string? sortBy = null,
+            [FromQuery] string? sortDirection = null)
         {
             try
             {
@@ -32,7 +37,7 @@ namespace Lssctc.ProgramManagement.Quizzes.Controllers
                     instructorId = GetInstructorIdFromClaims();
                 }
                 
-                var result = await _service.GetQuizzes(pageIndex, pageSize, instructorId);
+                var result = await _service.GetQuizzes(pageIndex, pageSize, instructorId, searchTerm, sortBy, sortDirection);
                 return Ok(new { status = 200, message = "Get quizzes", data = result });
             }
             catch (Exception ex)
