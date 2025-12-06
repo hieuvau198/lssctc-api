@@ -1,5 +1,6 @@
 ﻿using Lssctc.ProgramManagement.Accounts.Authens.Services;
 using Lssctc.ProgramManagement.Accounts.Helpers;
+using Lssctc.ProgramManagement.Activities.Services;
 using Lssctc.ProgramManagement.ClassManage.Classes.Dtos;
 using Lssctc.ProgramManagement.ClassManage.Helpers;
 using Lssctc.ProgramManagement.ClassManage.Timeslots.Services;
@@ -20,13 +21,15 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
         private readonly ClassManageHandler _handler;
         private readonly IMailService _mailService;
         private readonly ITimeslotService _timeslotService;
+        private readonly IActivitySessionService _activitySessionService;
         private static readonly Random _random = new Random();
 
-        public ClassesService(IUnitOfWork uow, IMailService mailService, ITimeslotService timeslotService)
+        public ClassesService(IUnitOfWork uow, IMailService mailService, ITimeslotService timeslotService, IActivitySessionService activitySessionService)
         {
             _uow = uow;
             _mailService = mailService;
-            _timeslotService = timeslotService; 
+            _timeslotService = timeslotService;
+            _activitySessionService = activitySessionService;
             _handler = new ClassManageHandler(uow);
         }
 
@@ -223,6 +226,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
             await _handler.EnsureProgressScaffoldingForClassAsync(id);
             // Create Attendance Records for all Timeslots 
             await _timeslotService.CreateAttendanceForClassAsync(id);
+            await _activitySessionService.CreateSessionsOnClassStartAsync(id);
             //// Find all 'NotStarted' progresses for this class and set them to 'InProgress'
             //var progressesToStart = await _uow.LearningProgressRepository
             //    .GetAllAsQueryable()
