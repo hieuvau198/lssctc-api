@@ -25,5 +25,11 @@ public partial class FinalExamPartial
 
     public DateTime? CompleteTime { get; set; }
 
+    public decimal? ExamWeight { get; set; }
+
+    public virtual ICollection<FeSimulation> FeSimulations { get; set; } = new List<FeSimulation>();
+
+    public virtual ICollection<FeTheory> FeTheories { get; set; } = new List<FeTheory>();
+
     public virtual FinalExam FinalExam { get; set; } = null!;
 }

@@ -56,6 +56,10 @@ public partial class LssctcDbContext : DbContext
 
     public virtual DbSet<Enrollment> Enrollments { get; set; }
 
+    public virtual DbSet<FeSimulation> FeSimulations { get; set; }
+
+    public virtual DbSet<FeTheory> FeTheories { get; set; }
+
     public virtual DbSet<FinalExam> FinalExams { get; set; }
 
     public virtual DbSet<FinalExamPartial> FinalExamPartials { get; set; }
@@ -648,6 +652,60 @@ public partial class LssctcDbContext : DbContext
                 .HasConstraintName("FK__enrollmen__train__33DFA290");
         });
 
+        modelBuilder.Entity<FeSimulation>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__fe_simul__3213E83FCB94973F");
+
+            entity.ToTable("fe_simulation");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.Description)
+                .HasMaxLength(1000)
+                .HasColumnName("description");
+            entity.Property(e => e.FinalExamPartialId).HasColumnName("final_exam_partial_id");
+            entity.Property(e => e.Name)
+                .HasMaxLength(200)
+                .HasColumnName("name");
+            entity.Property(e => e.PracticeId).HasColumnName("practice_id");
+
+            entity.HasOne(d => d.FinalExamPartial).WithMany(p => p.FeSimulations)
+                .HasForeignKey(d => d.FinalExamPartialId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__fe_simula__final__2A212E2C");
+
+            entity.HasOne(d => d.Practice).WithMany(p => p.FeSimulations)
+                .HasForeignKey(d => d.PracticeId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__fe_simula__pract__2B155265");
+        });
+
+        modelBuilder.Entity<FeTheory>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__fe_theor__3213E83F533F3135");
+
+            entity.ToTable("fe_theory");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.Description)
+                .HasMaxLength(1000)
+                .HasColumnName("description");
+            entity.Property(e => e.FinalExamPartialId).HasColumnName("final_exam_partial_id");
+            entity.Property(e => e.Name)
+                .HasMaxLength(200)
+                .HasColumnName("name");
+            entity.Property(e => e.QuizId).HasColumnName("quiz_id");
+
+            entity.HasOne(d => d.FinalExamPartial).WithMany(p => p.FeTheories)
+                .HasForeignKey(d => d.FinalExamPartialId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__fe_theory__final__26509D48");
+
+            entity.HasOne(d => d.Quiz).WithMany(p => p.FeTheories)
+                .HasForeignKey(d => d.QuizId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__fe_theory__quiz___2744C181");
+        });
+
         modelBuilder.Entity<FinalExam>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("PK__final_ex__3213E83FD51A812D");
@@ -689,6 +747,10 @@ public partial class LssctcDbContext : DbContext
             entity.Property(e => e.EndTime)
                 .HasPrecision(0)
                 .HasColumnName("end_time");
+            entity.Property(e => e.ExamWeight)
+                .HasDefaultValue(0m)
+                .HasColumnType("decimal(5, 2)")
+                .HasColumnName("exam_weight");
             entity.Property(e => e.FinalExamId).HasColumnName("final_exam_id");
             entity.Property(e => e.IsPass)
                 .HasDefaultValue(false)
