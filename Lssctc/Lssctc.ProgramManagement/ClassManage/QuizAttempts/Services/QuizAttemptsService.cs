@@ -1,4 +1,5 @@
-﻿using Lssctc.ProgramManagement.ClassManage.Helpers;
+﻿using Lssctc.ProgramManagement.Activities.Services;
+using Lssctc.ProgramManagement.ClassManage.Helpers;
 using Lssctc.ProgramManagement.ClassManage.QuizAttempts.Dtos;
 using Lssctc.Share.Entities;
 using Lssctc.Share.Enums;
@@ -11,11 +12,13 @@ namespace Lssctc.ProgramManagement.ClassManage.QuizAttempts.Services
     {
         private readonly IUnitOfWork _uow;
         private readonly ProgressHelper _progressHelper;
+        private readonly IActivitySessionService _sessionService; 
 
-        public QuizAttemptsService(IUnitOfWork uow)
+        public QuizAttemptsService(IUnitOfWork uow, IActivitySessionService sessionService) // ADDED injection
         {
             _uow = uow;
             _progressHelper = new ProgressHelper(uow);
+            _sessionService = sessionService; 
         }
 
         #region Gets
@@ -109,6 +112,9 @@ namespace Lssctc.ProgramManagement.ClassManage.QuizAttempts.Services
                 throw new UnauthorizedAccessException("You are not authorized to submit this attempt.");
             if (activityRecord.ActivityType != (int)ActivityType.Quiz)
                 throw new InvalidOperationException("This activity is not a quiz.");
+            await _sessionService.CheckActivityAccess(
+                activityRecord.SectionRecord.LearningProgress.Enrollment.ClassId,
+                activityRecord.ActivityId.Value);
 
             var activityQuiz = await _uow.ActivityQuizRepository
                 .GetAllAsQueryable()

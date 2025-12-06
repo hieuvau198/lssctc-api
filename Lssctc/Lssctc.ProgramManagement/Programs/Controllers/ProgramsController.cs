@@ -80,11 +80,11 @@ namespace Lssctc.ProgramManagement.Programs.Controllers
         [HttpGet("paged")]
         [ProducesResponseType(typeof(PagedResult<ProgramDto>), 200)]
         [ProducesResponseType(500)]
-        public async Task<IActionResult> GetPrograms([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
+        public async Task<IActionResult> GetPrograms([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10, [FromQuery] string? searchTerm = null)
         {
             try
             {
-                var pagedResult = await _programsService.GetProgramsAsync(pageNumber, pageSize);
+                var pagedResult = await _programsService.GetProgramsAsync(pageNumber, pageSize, searchTerm);
                 return Ok(pagedResult);
             }
             catch (Exception ex)

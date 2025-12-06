@@ -189,6 +189,7 @@ builder.Services.AddScoped<ISimulationManagerDashboardService, SimulationManager
 builder.Services.AddScoped<IProgramImportService, ProgramImportService>();
 
 builder.Services.AddScoped<ITimeslotService, TimeslotService>();
+builder.Services.AddScoped<IActivitySessionService, ActivitySessionService>();
 #endregion
 
 #region CORS

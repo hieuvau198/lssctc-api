@@ -5,10 +5,12 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Services
 {
     public interface ITimeslotService
     {
-        // === Instructor APIs ===
-        // API 1a: Xem slot dạy cho 1 lớp
+        
+        Task CreateAttendanceForClassAsync(int classId);
         Task<TimeslotDto> CreateTimeslotAsync(CreateTimeslotDto dto, int creatorId);
-
+        Task<IEnumerable<TimeslotDto>> CreateListTimeslotAsync(CreateListTimeslotDto dto, int creatorId);
+        Task<TimeslotDto> UpdateTimeslotAsync(int timeslotId, UpdateTimeslotDto dto, int updaterId);
+        Task<IEnumerable<ImportTimeslotRecordDto>> ImportTimeslotsAsync(int classId, IFormFile file, int creatorId);
         Task<IEnumerable<TimeslotDto>> GetTimeslotsByClassAndInstructorAsync(int classId, int instructorId);
         // API 1b: Xem tất cả slot dạy trong tuần
         Task<IEnumerable<TimeslotDto>> GetTimeslotsByInstructorForWeekAsync(int instructorId, DateTime weekStart);

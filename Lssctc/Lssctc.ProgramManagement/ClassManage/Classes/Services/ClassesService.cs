@@ -2,6 +2,7 @@
 using Lssctc.ProgramManagement.Accounts.Helpers;
 using Lssctc.ProgramManagement.ClassManage.Classes.Dtos;
 using Lssctc.ProgramManagement.ClassManage.Helpers;
+using Lssctc.ProgramManagement.ClassManage.Timeslots.Services;
 using Lssctc.Share.Common;
 using Lssctc.Share.Entities;
 using Lssctc.Share.Enums;
@@ -18,12 +19,14 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
         private readonly IUnitOfWork _uow;
         private readonly ClassManageHandler _handler;
         private readonly IMailService _mailService;
+        private readonly ITimeslotService _timeslotService;
         private static readonly Random _random = new Random();
 
-        public ClassesService(IUnitOfWork uow, IMailService mailService)
+        public ClassesService(IUnitOfWork uow, IMailService mailService, ITimeslotService timeslotService)
         {
             _uow = uow;
             _mailService = mailService;
+            _timeslotService = timeslotService; 
             _handler = new ClassManageHandler(uow);
         }
 
@@ -218,7 +221,8 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
             await _uow.SaveChangesAsync();
 
             await _handler.EnsureProgressScaffoldingForClassAsync(id);
-
+            // Create Attendance Records for all Timeslots 
+            await _timeslotService.CreateAttendanceForClassAsync(id);
             //// Find all 'NotStarted' progresses for this class and set them to 'InProgress'
             //var progressesToStart = await _uow.LearningProgressRepository
             //    .GetAllAsQueryable()

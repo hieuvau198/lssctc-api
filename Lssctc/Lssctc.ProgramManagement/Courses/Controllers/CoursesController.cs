@@ -33,11 +33,16 @@ namespace Lssctc.ProgramManagement.Courses.Controllers
         }
 
         [HttpGet("paged")]
-        public async Task<IActionResult> GetCourses([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
+        public async Task<IActionResult> GetCourses(
+            [FromQuery] int pageNumber = 1, 
+            [FromQuery] int pageSize = 10,
+            [FromQuery] string? searchTerm = null,
+            [FromQuery] string? sortBy = null,
+            [FromQuery] string? sortDirection = null)
         {
             try
             {
-                var pagedResult = await _coursesService.GetCoursesAsync(pageNumber, pageSize);
+                var pagedResult = await _coursesService.GetCoursesAsync(pageNumber, pageSize, searchTerm, sortBy, sortDirection);
                 return Ok(pagedResult);
             }
             catch (Exception ex)

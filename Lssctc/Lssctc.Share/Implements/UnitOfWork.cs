@@ -57,6 +57,7 @@ namespace Lssctc.Share.Implements
         private IGenericRepository<TrainingProgram>? _programRepository;
         private IGenericRepository<Timeslot>? _timeslotRepository;
         private IGenericRepository<Attendance>? _attendanceRepository;
+        private IGenericRepository<ActivitySession>? _activitySessionRepository;
         private IGenericRepository<User>? _userRepository;
 
         public UnitOfWork(LssctcDbContext context)
@@ -205,6 +206,8 @@ namespace Lssctc.Share.Implements
             _timeslotRepository ??= new GenericRepository<Timeslot>(_context);
         public IGenericRepository<Attendance> AttendanceRepository =>
             _attendanceRepository ??= new GenericRepository<Attendance>(_context);
+        public IGenericRepository<ActivitySession> ActivitySessionRepository =>
+            _activitySessionRepository ??= new GenericRepository<ActivitySession>(_context);
         public IGenericRepository<User> UserRepository =>
             _userRepository ??= new GenericRepository<User>(_context);
 

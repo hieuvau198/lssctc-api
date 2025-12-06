@@ -177,33 +177,61 @@ namespace Lssctc.ProgramManagement.Programs.Services
             return programs.Select(MapToDtoWithCalculations);
         }
         
-        public async Task<PagedResult<ProgramDto>> GetProgramsAsync(int pageNumber, int pageSize)
+        public async Task<PagedResult<ProgramDto>> GetProgramsAsync(int pageNumber, int pageSize, string? searchTerm = null)
         {
             if (pageNumber < 1) pageNumber = 1;
             if (pageSize < 1) pageSize = 10;
 
-            // CHANGED: Perform projection directly in query with Include
+            // Start with base query
             var query = _uow.ProgramRepository
                 .GetAllAsQueryable()
                 .Where(p => p.IsDeleted != true)
                 .Include(p => p.ProgramCourses)
                     .ThenInclude(pc => pc.Course)
-                .Select(p => new ProgramDto
-                {
-                    Id = p.Id,
-                    Name = p.Name,
-                    Description = p.Description,
-                    IsActive = p.IsActive,
-                    ImageUrl = p.ImageUrl,
-                    // Calculate TotalCourses: count the number of ProgramCourses
-                    TotalCourses = p.ProgramCourses.Count(),
-                    // Calculate DurationHours: sum of DurationHours from related Courses
-                    DurationHours = p.ProgramCourses
-                        .Where(pc => pc.Course != null && pc.Course.DurationHours.HasValue)
-                        .Sum(pc => pc.Course.DurationHours!.Value)
-                });
+                .AsQueryable();
 
-            var pagedResult = await query.ToPagedResultAsync(pageNumber, pageSize);
+            // Apply search filter if searchTerm is provided
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                var normalizedSearchTerm = searchTerm.Trim();
+                query = query.Where(p => 
+                    p.Name.Contains(normalizedSearchTerm) || 
+                    (p.Description != null && p.Description.Contains(normalizedSearchTerm))
+                );
+            }
+
+            // Project to DTO
+            var projectedQuery = query.Select(p => new ProgramDto
+            {
+                Id = p.Id,
+                Name = p.Name,
+                Description = p.Description,
+                IsActive = p.IsActive,
+                ImageUrl = p.ImageUrl,
+                // Calculate TotalCourses: count the number of ProgramCourses
+                TotalCourses = p.ProgramCourses.Count(),
+                // Calculate DurationHours: sum of DurationHours from related Courses
+                DurationHours = p.ProgramCourses
+                    .Where(pc => pc.Course != null && pc.Course.DurationHours.HasValue)
+                    .Sum(pc => pc.Course.DurationHours!.Value)
+            });
+
+            // Apply prioritization if searchTerm is provided
+            // Priority 1: Programs where Name contains searchTerm
+            // Priority 2: Programs where only Description contains searchTerm
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                var normalizedSearchTerm = searchTerm.Trim();
+                projectedQuery = projectedQuery.OrderByDescending(p => p.Name!.Contains(normalizedSearchTerm))
+                                               .ThenBy(p => p.Name);
+            }
+            else
+            {
+                // Default ordering when no search term
+                projectedQuery = projectedQuery.OrderBy(p => p.Name);
+            }
+
+            var pagedResult = await projectedQuery.ToPagedResultAsync(pageNumber, pageSize);
 
             return pagedResult;
         }
