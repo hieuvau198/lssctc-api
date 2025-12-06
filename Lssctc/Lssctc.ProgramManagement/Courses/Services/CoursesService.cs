@@ -28,31 +28,86 @@ namespace Lssctc.ProgramManagement.Courses.Services
             return courses.Select(MapToDto);
         }
 
-        public async Task<PagedResult<CourseDto>> GetCoursesAsync(int pageNumber, int pageSize)
+        public async Task<PagedResult<CourseDto>> GetCoursesAsync(int pageNumber, int pageSize, string? searchTerm = null, string? sortBy = null, string? sortDirection = null)
         {
             if (pageNumber < 1) pageNumber = 1;
             if (pageSize < 1) pageSize = 10;
 
-            // CHANGED: We now project directly to CourseDto in the query.
-            // This is more efficient for paging as it doesn't use MapToDto
-            // and lets the database do the work.
+            // Start with base query including navigation properties
             var query = _uow.CourseRepository
                 .GetAllAsQueryable()
                 .Where(c => c.IsDeleted != true)
-                .Select(c => new CourseDto
-                {
-                    Id = c.Id,
-                    Name = c.Name,
-                    Description = c.Description,
-                    Category = c.Category != null ? c.Category.Name : null, // Map name
-                    Level = c.Level != null ? c.Level.Name : null,         // Map name
-                    Price = c.Price,
-                    DurationHours = c.DurationHours,
-                    ImageUrl = c.ImageUrl,
-                    IsActive = c.IsActive ?? false
-                });
+                .Include(c => c.Category)
+                .Include(c => c.Level)
+                .AsQueryable();
 
-            var pagedResult = await query.ToPagedResultAsync(pageNumber, pageSize);
+            // Apply search filter if searchTerm is provided
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                var normalizedSearchTerm = searchTerm.Trim();
+                query = query.Where(c =>
+                    c.Name.Contains(normalizedSearchTerm) ||
+                    (c.Description != null && c.Description.Contains(normalizedSearchTerm)) ||
+                    (c.Category != null && c.Category.Name.Contains(normalizedSearchTerm)) ||
+                    (c.Level != null && c.Level.Name.Contains(normalizedSearchTerm))
+                );
+            }
+
+            // Project to DTO
+            var projectedQuery = query.Select(c => new CourseDto
+            {
+                Id = c.Id,
+                Name = c.Name,
+                Description = c.Description,
+                Category = c.Category != null ? c.Category.Name : null,
+                Level = c.Level != null ? c.Level.Name : null,
+                Price = c.Price,
+                DurationHours = c.DurationHours,
+                ImageUrl = c.ImageUrl,
+                IsActive = c.IsActive ?? false
+            });
+
+            // Apply sorting logic
+            if (!string.IsNullOrWhiteSpace(sortBy))
+            {
+                // Scenario A: User selected specific sort
+                var isDescending = sortDirection?.ToLower() == "desc";
+
+                projectedQuery = sortBy.ToLower() switch
+                {
+                    "price" => isDescending
+                        ? projectedQuery.OrderByDescending(c => c.Price).ThenBy(c => c.Name)
+                        : projectedQuery.OrderBy(c => c.Price).ThenBy(c => c.Name),
+                    "duration" => isDescending
+                        ? projectedQuery.OrderByDescending(c => c.DurationHours).ThenBy(c => c.Name)
+                        : projectedQuery.OrderBy(c => c.DurationHours).ThenBy(c => c.Name),
+                    _ => projectedQuery.OrderBy(c => c.Name) // Default if invalid sortBy
+                };
+            }
+            else if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                // Scenario B: Search relevance sorting (no specific sort selected)
+                var normalizedSearchTerm = searchTerm.Trim();
+
+                // Priority 1: Name matches
+                // Priority 2: Category or Level matches
+                // Priority 3: Description matches
+                projectedQuery = projectedQuery
+                    .OrderByDescending(c => c.Name!.Contains(normalizedSearchTerm))
+                    .ThenByDescending(c =>
+                        (c.Category != null && c.Category.Contains(normalizedSearchTerm)) ||
+                        (c.Level != null && c.Level.Contains(normalizedSearchTerm))
+                    )
+                    .ThenByDescending(c => c.Description != null && c.Description.Contains(normalizedSearchTerm))
+                    .ThenBy(c => c.Name);
+            }
+            else
+            {
+                // Scenario C: No search term and no sort - default ordering
+                projectedQuery = projectedQuery.OrderBy(c => c.Name);
+            }
+
+            var pagedResult = await projectedQuery.ToPagedResultAsync(pageNumber, pageSize);
             return pagedResult;
         }
 
