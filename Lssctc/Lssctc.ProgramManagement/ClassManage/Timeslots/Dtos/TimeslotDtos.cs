@@ -23,7 +23,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Dtos
         public int ClassId { get; set; }
 
         [Required(ErrorMessage = "Timeslot name is required.")]
-        [StringLength(200, ErrorMessage = "Name cannot exceed 200 characters.")]
+        [StringLength(200, MinimumLength = 3, ErrorMessage = "Name must be between 3 and 200 characters.")]
         public string? Name { get; set; }
 
         [Required(ErrorMessage = "Start time is required.")]
@@ -32,14 +32,61 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Dtos
         [Required(ErrorMessage = "End time is required.")]
         public DateTime? EndTime { get; set; }
 
-        [StringLength(1000, ErrorMessage = "Location detail cannot exceed 1000 characters.")]
+        [Required(ErrorMessage = "Location detail is required.")]
+        [StringLength(1000, MinimumLength = 1, ErrorMessage = "Location detail cannot be empty.")]
         public string? LocationDetail { get; set; }
 
-        [StringLength(200, ErrorMessage = "Location building cannot exceed 200 characters.")]
+        [Required(ErrorMessage = "Location building is required.")]
+        [StringLength(200, MinimumLength = 1, ErrorMessage = "Location building cannot be empty.")]
         public string? LocationBuilding { get; set; }
 
-        [StringLength(100, ErrorMessage = "Location room cannot exceed 100 characters.")]
+        [Required(ErrorMessage = "Location room is required.")]
+        [StringLength(100, MinimumLength = 1, ErrorMessage = "Location room cannot be empty.")]
         public string? LocationRoom { get; set; }
+    }
+
+    public class UpdateTimeslotDto
+    {
+        [Required(ErrorMessage = "Timeslot name is required.")]
+        [StringLength(200, MinimumLength = 3, ErrorMessage = "Name must be between 3 and 200 characters.")]
+        public string? Name { get; set; }
+
+        [Required(ErrorMessage = "Start time is required.")]
+        public DateTime StartTime { get; set; }
+
+        [Required(ErrorMessage = "End time is required.")]
+        public DateTime? EndTime { get; set; }
+
+        [Required(ErrorMessage = "Location detail is required.")]
+        [StringLength(1000, MinimumLength = 1, ErrorMessage = "Location detail cannot be empty.")]
+        public string? LocationDetail { get; set; }
+
+        [Required(ErrorMessage = "Location building is required.")]
+        [StringLength(200, MinimumLength = 1, ErrorMessage = "Location building cannot be empty.")]
+        public string? LocationBuilding { get; set; }
+
+        [Required(ErrorMessage = "Location room is required.")]
+        [StringLength(100, MinimumLength = 1, ErrorMessage = "Location room cannot be empty.")]
+        public string? LocationRoom { get; set; }
+
+        public int? Status { get; set; }
+    }
+    public class CreateListTimeslotDto
+    {
+        [Required(ErrorMessage = "Timeslot list is required.")]
+        [MinLength(1, ErrorMessage = "At least one timeslot is required.")]
+        public List<CreateTimeslotDto> Timeslots { get; set; } = new List<CreateTimeslotDto>();
+    }
+    public class ImportTimeslotRecordDto
+    {
+        public int RowNumber { get; set; }
+        public string? Name { get; set; }
+        public string? LocationDetail { get; set; }
+        public string? LocationBuilding { get; set; }
+        public string? LocationRoom { get; set; }
+        public DateTime StartTime { get; set; }
+        public DateTime EndTime { get; set; }
+        public string? ErrorMessage { get; set; }
     }
     // --- Output DTO for Instructor to view Trainee list for attendance ---
     public class TimeslotAttendanceDto
