@@ -180,6 +180,42 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Controllers
             }
         }
 
+        [HttpPost("import-instructors")]
+        [Authorize(Roles = "Admin")]
+        [ProducesResponseType(200)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(500)]
+        public async Task<IActionResult> ImportInstructors(IFormFile file)
+        {
+            try
+            {
+                var result = await _usersService.ImportInstructorsAsync(file);
+                return Ok(new { message = result });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
+            }
+        }
+
+        [HttpPost("import-simulation-managers")]
+        [Authorize(Roles = "Admin")]
+        [ProducesResponseType(200)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(500)]
+        public async Task<IActionResult> ImportSimulationManagers(IFormFile file)
+        {
+            try
+            {
+                var result = await _usersService.ImportSimulationManagersAsync(file);
+                return Ok(new { message = result });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
+            }
+        }
+
         [HttpPut("{id:int}")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> UpdateUser(int id, [FromBody] UpdateUserDto dto)
