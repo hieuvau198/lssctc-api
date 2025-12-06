@@ -21,7 +21,6 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Controllers
 
         #region Timeslot
 
-        // --- Instructor APIs (Auth: Admin, Instructor) ---
         /// <summary>
         /// API cho Admin/Giảng viên tạo một timeslot mới cho một lớp học.
         /// </summary>
@@ -45,10 +44,105 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Controllers
             }
             catch (UnauthorizedAccessException ex) { return Unauthorized(new { message = ex.Message }); }
             catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
-            catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
+            catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); } // Catches duration/time errors (Issue 4)
             catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
             catch (Exception) { return StatusCode(500, new { message = "An unexpected error occurred." }); }
         }
+
+        /// <summary>
+        /// API cho Admin/Giảng viên tạo nhiều timeslot mới cho một lớp học (Issue 6).
+        /// </summary>
+        [HttpPost("bulk")]
+        [Authorize(Roles = "Admin, Instructor")]
+        [ProducesResponseType(typeof(IEnumerable<TimeslotDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<IActionResult> CreateListTimeslot([FromBody] CreateListTimeslotDto dto)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                    return BadRequest(ModelState);
+
+                var creatorId = GetUserIdFromClaims();
+                var result = await _timeslotService.CreateListTimeslotAsync(dto, creatorId);
+
+                return Ok(new { message = $"Successfully created {result.Count()} timeslots.", data = result });
+            }
+            catch (UnauthorizedAccessException ex) { return Unauthorized(new { message = ex.Message }); }
+            catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+            catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); } // Catches duration/time errors (Issue 4)
+            catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
+            catch (Exception) { return StatusCode(500, new { message = "An unexpected error occurred." }); }
+        }
+        /// <summary>
+        /// API cho Admin/Giảng viên cập nhật một timeslot hiện có .
+        /// </summary>
+        /// <param name="timeslotId">ID của Timeslot</param>
+        [HttpPut("{timeslotId}")]
+        [Authorize(Roles = "Admin, Instructor")]
+        [ProducesResponseType(typeof(TimeslotDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> UpdateTimeslot(int timeslotId, [FromBody] UpdateTimeslotDto dto)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                    return BadRequest(ModelState);
+
+                var updaterId = GetUserIdFromClaims();
+                var result = await _timeslotService.UpdateTimeslotAsync(timeslotId, dto, updaterId);
+
+                return Ok(result);
+            }
+            catch (UnauthorizedAccessException ex) { return Unauthorized(new { message = ex.Message }); }
+            catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+            catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); } // Catches duration/time errors (Issue 4)
+            catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
+            catch (Exception) { return StatusCode(500, new { message = "An unexpected error occurred." }); }
+        }
+        /// <summary>
+        /// API cho Admin/Giảng viên import timeslot từ file Excel.
+        /// </summary>
+        [HttpPost("import/class/{classId}")]
+        [Authorize(Roles = "Admin, Instructor")]
+        [ProducesResponseType(typeof(IEnumerable<ImportTimeslotRecordDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> ImportTimeslots(int classId, IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+                return BadRequest(new { message = "No file uploaded." });
+
+            var extension = Path.GetExtension(file.FileName).ToLower();
+            if (extension != ".xlsx" && extension != ".xls")
+                return BadRequest(new { message = "Invalid file format. Only .xlsx and .xls files are allowed." });
+
+            try
+            {
+                var creatorId = GetUserIdFromClaims();
+                var result = await _timeslotService.ImportTimeslotsAsync(classId, file, creatorId);
+
+                var failedCount = result.Count(r => r.ErrorMessage != null);
+                var successCount = result.Count() - failedCount;
+
+                return Ok(new
+                {
+                    message = $"Import finished. Successfully imported: {successCount}. Failed: {failedCount}. See data for details.",
+                    data = result,
+                    summary = new { successCount, failedCount }
+                });
+            }
+            catch (UnauthorizedAccessException ex) { return Unauthorized(new { message = ex.Message }); }
+            catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+            catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
+            catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
+            catch (Exception ex) { return StatusCode(500, new { message = "An unexpected error occurred: " + ex.Message }); }
+        }
+
         /// <summary>
         /// API cho giảng viên xem danh sách slot dạy cho 1 lớp.
         /// </summary>
@@ -72,22 +166,23 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Controllers
         /// <summary>
         /// API cho giảng viên xem danh sách tất cả slot dạy trong mỗi tuần.
         /// </summary>
-        /// <param name="weekStart">Ngày bắt đầu của tuần (e.g., 2025-12-01)</param>
+        /// <param name="dateInWeek">Ngày bất kỳ trong tuần (luôn trả về lịch từ T2 đến CN)</param>
         [HttpGet("instructor-schedule/week")]
         [Authorize(Roles = "Admin, Instructor")]
         [ProducesResponseType(typeof(IEnumerable<TimeslotDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        public async Task<IActionResult> GetInstructorTimeslotsForWeek([FromQuery] DateTime weekStart)
+        public async Task<IActionResult> GetInstructorTimeslotsForWeek([FromQuery] DateTime dateInWeek)
         {
             try
             {
                 var instructorId = GetUserIdFromClaims();
-                var result = await _timeslotService.GetTimeslotsByInstructorForWeekAsync(instructorId, weekStart);
+                var result = await _timeslotService.GetTimeslotsByInstructorForWeekAsync(instructorId, dateInWeek);
                 return Ok(result);
             }
             catch (UnauthorizedAccessException ex) { return Unauthorized(new { message = ex.Message }); }
             catch (Exception) { return StatusCode(500, new { message = "An unexpected error occurred." }); }
         }
+
 
         #endregion
 
@@ -168,19 +263,19 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Controllers
         }
 
         /// <summary>
-        /// API cho học viên xem danh sách tất cả slot cho 1 tuần.
+        /// API cho học viên xem danh sách tất cả slot cho 1 tuần .
         /// </summary>
-        /// <param name="weekStart">Ngày bắt đầu của tuần (e.g., 2025-12-01)</param>
+        /// <param name="dateInWeek">Ngày bất kỳ trong tuần (luôn trả về lịch từ T2 đến CN)</param>
         [HttpGet("trainee-schedule/week")]
         [Authorize(Roles = "Trainee")]
         [ProducesResponseType(typeof(IEnumerable<TimeslotDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        public async Task<IActionResult> GetTraineeTimeslotsForWeek([FromQuery] DateTime weekStart)
+        public async Task<IActionResult> GetTraineeTimeslotsForWeek([FromQuery] DateTime dateInWeek)
         {
             try
             {
                 var traineeId = GetUserIdFromClaims();
-                var result = await _timeslotService.GetTimeslotsByTraineeForWeekAsync(traineeId, weekStart);
+                var result = await _timeslotService.GetTimeslotsByTraineeForWeekAsync(traineeId, dateInWeek);
                 return Ok(result);
             }
             catch (UnauthorizedAccessException ex) { return Unauthorized(new { message = ex.Message }); }
