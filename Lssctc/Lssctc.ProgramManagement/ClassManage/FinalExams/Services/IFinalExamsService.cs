@@ -17,6 +17,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
 
         // 3. Partials CRUD (Create TE/SE/PE configurations)
         Task<FinalExamPartialDto> CreateFinalExamPartialAsync(CreateFinalExamPartialDto dto);
+        Task<IEnumerable<FinalExamDto>> CreatePartialsForClassAsync(CreateClassPartialDto dto);
         Task<FinalExamPartialDto> UpdateFinalExamPartialAsync(int id, UpdateFinalExamPartialDto dto);
         Task DeleteFinalExamPartialAsync(int id);
 

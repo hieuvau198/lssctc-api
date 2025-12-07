@@ -140,6 +140,66 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             await _uow.SaveChangesAsync();
             return MapToPartialDto(partial);
         }
+        public async Task<IEnumerable<FinalExamDto>> CreatePartialsForClassAsync(CreateClassPartialDto dto)
+        {
+            // 1. Get all exams in the class
+            var exams = await _uow.FinalExamRepository.GetAllAsQueryable()
+                .Where(fe => fe.Enrollment.ClassId == dto.ClassId && fe.Enrollment.IsDeleted != true)
+                .ToListAsync();
+
+            if (!exams.Any())
+                throw new KeyNotFoundException("No final exams found for this class. Has the class started?");
+
+            int typeId = ParseExamType(dto.Type);
+            var updatedExams = new List<FinalExamDto>();
+
+            // 2. Loop through each exam and create the partial
+            foreach (var exam in exams)
+            {
+                // Check if this partial type already exists for this student to avoid duplicates
+                var exists = await _uow.FinalExamPartialRepository.ExistsAsync(p => p.FinalExamId == exam.Id && p.Type == typeId);
+                if (exists) continue;
+
+                // Create Partial
+                var partial = new FinalExamPartial
+                {
+                    FinalExamId = exam.Id,
+                    Type = typeId,
+                    ExamWeight = dto.ExamWeight,
+                    Duration = dto.Duration,
+                    Marks = 0,
+                    IsPass = null
+                };
+
+                await _uow.FinalExamPartialRepository.CreateAsync(partial);
+                await _uow.SaveChangesAsync(); // Save to get partial.Id
+
+                // Create Links
+                if (typeId == 1 && dto.QuizId.HasValue) // Theory
+                {
+                    await _uow.FeTheoryRepository.CreateAsync(new FeTheory
+                    {
+                        FinalExamPartialId = partial.Id,
+                        QuizId = dto.QuizId.Value,
+                        Name = "Theory Exam"
+                    });
+                }
+                else if (typeId == 2 && dto.PracticeId.HasValue) // Simulation
+                {
+                    await _uow.FeSimulationRepository.CreateAsync(new FeSimulation
+                    {
+                        FinalExamPartialId = partial.Id,
+                        PracticeId = dto.PracticeId.Value,
+                        Name = "Simulation Exam"
+                    });
+                }
+
+                updatedExams.Add(await GetFinalExamByIdAsync(exam.Id));
+            }
+
+            await _uow.SaveChangesAsync();
+            return updatedExams;
+        }
 
         public async Task<FinalExamPartialDto> UpdateFinalExamPartialAsync(int id, UpdateFinalExamPartialDto dto)
         {
@@ -286,36 +346,40 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
 
         private async Task RecalculateFinalExamScore(int finalExamId)
         {
+            // [FIX] Clear the tracker. 
+            // We just saved changes in the previous step, so it is safe to detach 
+            // the 'partial' entity to avoid ID conflicts when we load the FinalExam graph below.
+            _uow.GetDbContext().ChangeTracker.Clear();
+
             var finalExam = await _uow.FinalExamRepository.GetAllAsQueryable()
                 .Include(fe => fe.FinalExamPartials)
                 .FirstOrDefaultAsync(fe => fe.Id == finalExamId);
 
             if (finalExam == null) return;
 
-            decimal weightedTotal = 0;
+            decimal total = 0;
             decimal totalWeight = 0;
 
             foreach (var p in finalExam.FinalExamPartials)
             {
                 decimal weight = p.ExamWeight ?? 0;
                 decimal marks = p.Marks ?? 0;
-
-                // Formula: Marks * (Weight/100)
-                weightedTotal += marks * (weight / 100m);
+                total += marks * (weight / 100m);
                 totalWeight += weight;
             }
 
-            finalExam.TotalMarks = weightedTotal;
+            finalExam.TotalMarks = total;
 
-            // Exam passed if total score >= 5 (and optionally if total weight was 100%)
+            // Logic Pass/Fail (e.g., Score >= 5)
             finalExam.IsPass = finalExam.TotalMarks >= 5;
 
-            // If all partials are done, mark exam as complete
+            // If all partials are done (have CompleteTime), mark exam as complete
             if (finalExam.FinalExamPartials.Any() && finalExam.FinalExamPartials.All(p => p.CompleteTime.HasValue))
             {
                 finalExam.CompleteTime = DateTime.UtcNow;
             }
 
+            // UpdateAsync will now safely attach the graph because the tracker is empty
             await _uow.FinalExamRepository.UpdateAsync(finalExam);
             await _uow.SaveChangesAsync();
         }
@@ -353,15 +417,25 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             return new FinalExamPartialDto
             {
                 Id = p.Id,
-                Type = p.Type ?? 0,
+                Type = GetTypeName(p.Type ?? 0), // Map int to string name
                 Marks = p.Marks,
                 ExamWeight = p.ExamWeight,
                 Description = p.Description,
                 Duration = p.Duration,
                 QuizId = theory?.QuizId,
-                QuizName = theory?.Quiz?.Name, // Assuming Quiz has Name
+                QuizName = theory?.Quiz?.Name,
                 PracticeId = sim?.PracticeId,
-                PracticeName = sim?.Practice?.PracticeName // Assuming Practice has Name
+                PracticeName = sim?.Practice?.PracticeName
+            };
+        }
+        private string GetTypeName(int typeId)
+        {
+            return typeId switch
+            {
+                1 => "Theory",
+                2 => "Simulation",
+                3 => "Practical",
+                _ => "Unknown"
             };
         }
         private static int ParseExamType(string type)
