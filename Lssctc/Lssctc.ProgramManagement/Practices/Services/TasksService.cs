@@ -27,17 +27,35 @@ namespace Lssctc.ProgramManagement.Practices.Services
             return tasks.Select(MapToDto);
         }
 
-        public async Task<PagedResult<TaskDto>> GetTasksAsync(int pageNumber, int pageSize)
+        public async Task<PagedResult<TaskDto>> GetTasksAsync(int pageNumber, int pageSize, string? searchTerm = null)
         {
             if (pageNumber < 1) pageNumber = 1;
             if (pageSize < 1) pageSize = 10;
 
             var query = _uow.SimTaskRepository
                 .GetAllAsQueryable()
-                .Where(t => t.IsDeleted == null || t.IsDeleted == false)
-                .Select(t => MapToDto(t));
+                .Where(t => t.IsDeleted == null || t.IsDeleted == false);
 
-            return await query.ToPagedResultAsync(pageNumber, pageSize);
+            // Apply search filter if searchTerm is provided
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                var normalizedSearchTerm = searchTerm.Trim();
+                query = query.Where(t => 
+                    (t.TaskName != null && t.TaskName.Contains(normalizedSearchTerm)) ||
+                    (t.TaskCode != null && t.TaskCode.Contains(normalizedSearchTerm)) ||
+                    (t.TaskDescription != null && t.TaskDescription.Contains(normalizedSearchTerm))
+                );
+
+                // Apply relevance sorting: prioritize TaskName and TaskCode matches
+                query = query.OrderByDescending(t => 
+                    (t.TaskName != null && t.TaskName.Contains(normalizedSearchTerm)) ||
+                    (t.TaskCode != null && t.TaskCode.Contains(normalizedSearchTerm))
+                );
+            }
+
+            var pagedQuery = query.Select(t => MapToDto(t));
+
+            return await pagedQuery.ToPagedResultAsync(pageNumber, pageSize);
         }
 
         public async Task<TaskDto?> GetTaskByIdAsync(int id)

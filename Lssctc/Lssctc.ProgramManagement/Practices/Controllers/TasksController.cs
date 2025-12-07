@@ -79,7 +79,7 @@ namespace Lssctc.ProgramManagement.Practices.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> GetPaged([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
+        public async Task<IActionResult> GetPaged([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10, [FromQuery] string? searchTerm = null)
         {
             try
             {
@@ -102,7 +102,7 @@ namespace Lssctc.ProgramManagement.Practices.Controllers
                     );
                 }
 
-                var result = await _tasksService.GetTasksAsync(pageNumber, pageSize);
+                var result = await _tasksService.GetTasksAsync(pageNumber, pageSize, searchTerm);
                 return SuccessResponse(result);
             }
             catch (Exception ex)

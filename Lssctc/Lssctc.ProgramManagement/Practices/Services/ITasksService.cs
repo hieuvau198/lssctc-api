@@ -7,7 +7,7 @@ namespace Lssctc.ProgramManagement.Practices.Services
     {
         #region Tasks
         Task<IEnumerable<TaskDto>> GetAllTasksAsync();
-        Task<PagedResult<TaskDto>> GetTasksAsync(int pageNumber, int pageSize);
+        Task<PagedResult<TaskDto>> GetTasksAsync(int pageNumber, int pageSize, string? searchTerm = null);
         Task<TaskDto?> GetTaskByIdAsync(int id);
         Task<TaskDto> CreateTaskAsync(CreateTaskDto dto);
         Task<TaskDto> UpdateTaskAsync(int id, UpdateTaskDto dto);
