@@ -136,4 +136,15 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Dtos
         [StringLength(1000)]
         public string? Note { get; set; }
     }
+
+    public class TraineeAttendanceRecordDto
+    {
+        public int TimeslotId { get; set; }
+        public string? TimeslotName { get; set; }
+        public DateTime StartTime { get; set; }
+        public DateTime EndTime { get; set; }
+        public string? Location { get; set; } // Combined Room - Building
+        public string AttendanceStatus { get; set; } = "NotStarted";
+        public string? Note { get; set; }
+    }
 }

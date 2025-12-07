@@ -8,6 +8,7 @@ using Lssctc.ProgramManagement.Certificates.Services;
 using Lssctc.ProgramManagement.ClassManage.ActivityRecords.Services;
 using Lssctc.ProgramManagement.ClassManage.Classes.Services;
 using Lssctc.ProgramManagement.ClassManage.Enrollments.Services;
+using Lssctc.ProgramManagement.ClassManage.FinalExams.Services;
 using Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services;
 using Lssctc.ProgramManagement.ClassManage.Progresses.Services;
 using Lssctc.ProgramManagement.ClassManage.QuizAttempts.Services;
@@ -190,6 +191,7 @@ builder.Services.AddScoped<IProgramImportService, ProgramImportService>();
 
 builder.Services.AddScoped<ITimeslotService, TimeslotService>();
 builder.Services.AddScoped<IActivitySessionService, ActivitySessionService>();
+builder.Services.AddScoped<IFinalExamsService, FinalExamsService>();
 #endregion
 
 #region CORS

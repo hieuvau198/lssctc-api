@@ -24,5 +24,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Services
         Task<IEnumerable<TimeslotDto>> GetTimeslotsByClassAndTraineeAsync(int classId, int traineeId);
         // API 5: Học viên xem danh sách tất cả slot cho 1 tuần
         Task<IEnumerable<TimeslotDto>> GetTimeslotsByTraineeForWeekAsync(int traineeId, DateTime weekStart);
+        Task<IEnumerable<TraineeAttendanceRecordDto>> GetTraineeAttendanceHistoryAsync(int classId, int traineeId);
     }
+
 }

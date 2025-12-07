@@ -2,6 +2,7 @@
 using Lssctc.ProgramManagement.Accounts.Helpers;
 using Lssctc.ProgramManagement.Activities.Services;
 using Lssctc.ProgramManagement.ClassManage.Classes.Dtos;
+using Lssctc.ProgramManagement.ClassManage.FinalExams.Services;
 using Lssctc.ProgramManagement.ClassManage.Helpers;
 using Lssctc.ProgramManagement.ClassManage.Timeslots.Services;
 using Lssctc.Share.Common;
@@ -22,14 +23,21 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
         private readonly IMailService _mailService;
         private readonly ITimeslotService _timeslotService;
         private readonly IActivitySessionService _activitySessionService;
+        private readonly IFinalExamsService _finalExamsService;
         private static readonly Random _random = new Random();
 
-        public ClassesService(IUnitOfWork uow, IMailService mailService, ITimeslotService timeslotService, IActivitySessionService activitySessionService)
+        public ClassesService(
+        IUnitOfWork uow,
+        IMailService mailService,
+        ITimeslotService timeslotService,
+        IActivitySessionService activitySessionService,
+        IFinalExamsService finalExamsService) 
         {
             _uow = uow;
             _mailService = mailService;
             _timeslotService = timeslotService;
             _activitySessionService = activitySessionService;
+            _finalExamsService = finalExamsService; 
             _handler = new ClassManageHandler(uow);
         }
 
@@ -304,6 +312,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
             // Create Attendance Records for all Timeslots 
             await _timeslotService.CreateAttendanceForClassAsync(id);
             await _activitySessionService.CreateSessionsOnClassStartAsync(id);
+            await _finalExamsService.AutoCreateFinalExamsForClassAsync(id);
             //// Find all 'NotStarted' progresses for this class and set them to 'InProgress'
             //var progressesToStart = await _uow.LearningProgressRepository
             //    .GetAllAsQueryable()

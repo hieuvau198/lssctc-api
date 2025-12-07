@@ -518,6 +518,67 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Services
             return timeslots.Select(MapToDto);
         }
 
+        public async Task<IEnumerable<TraineeAttendanceRecordDto>> GetTraineeAttendanceHistoryAsync(int classId, int traineeId)
+        {
+            // 1. Check Enrollment
+            var enrollment = await _uow.EnrollmentRepository.GetAllAsQueryable()
+                .AsNoTracking()
+                .FirstOrDefaultAsync(e => e.ClassId == classId && e.TraineeId == traineeId && e.IsDeleted != true);
+
+            if (enrollment == null)
+                throw new UnauthorizedAccessException($"Trainee {traineeId} is not enrolled in class {classId}.");
+
+            // 2. Get all Timeslots for the Class
+            var timeslots = await GetTimeslotQuery()
+                .Where(t => t.ClassId == classId)
+                .OrderBy(t => t.StartTime)
+                .ToListAsync();
+
+            if (!timeslots.Any()) return Enumerable.Empty<TraineeAttendanceRecordDto>();
+
+            // 3. Get existing Attendance records for this Enrollment
+            var attendances = await _uow.AttendanceRepository.GetAllAsQueryable()
+                .AsNoTracking()
+                .Where(a => a.EnrollmentId == enrollment.Id && a.IsDeleted != true)
+                .ToListAsync();
+
+            var attendanceMap = attendances.ToDictionary(a => a.TimeslotId);
+
+            // 4. Map to DTO
+            var result = timeslots.Select(t =>
+            {
+                attendanceMap.TryGetValue(t.Id, out var att);
+
+                string status = "NotStarted";
+                string? note = null;
+
+                if (att != null && att.Status.HasValue)
+                {
+                    status = Enum.GetName(typeof(AttendanceStatusEnum), att.Status.Value) ?? "NotStarted";
+                    note = att.Description;
+                }
+                else
+                {
+                    // Optional: If timeslot is completed/cancelled but no attendance record exists, logic can be handled here.
+                    // For now, default to "NotStarted" or implies Absent if strictly required.
+                    if (t.Status == (int)TimeslotStatusEnum.Cancelled) status = "Cancelled";
+                }
+
+                return new TraineeAttendanceRecordDto
+                {
+                    TimeslotId = t.Id,
+                    TimeslotName = t.Name,
+                    StartTime = t.StartTime,
+                    EndTime = t.EndTime,
+                    Location = $"{t.LocationRoom} - {t.LocationBuilding}",
+                    AttendanceStatus = status,
+                    Note = note
+                };
+            });
+
+            return result;
+        }
+
 
         #region helper
 
