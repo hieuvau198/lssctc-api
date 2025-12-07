@@ -10,8 +10,11 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Dtos
         public string? TraineeName { get; set; }
         public string? TraineeCode { get; set; }
         public bool? IsPass { get; set; }
-        public decimal? TotalMarks { get; set; } 
+        public decimal? TotalMarks { get; set; }
         public DateTime? CompleteTime { get; set; }
+
+        public string? ExamCode { get; set; }
+
         public List<FinalExamPartialDto> Partials { get; set; } = new List<FinalExamPartialDto>();
     }
 
@@ -31,13 +34,15 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Dtos
     public class FinalExamPartialDto
     {
         public int Id { get; set; }
-        public string? Type { get; set; } // Changed to String: "Theory", "Simulation", "Practical"
+        public string? Type { get; set; } // "Theory", "Simulation", "Practical"
         public decimal? Marks { get; set; }
         public decimal? ExamWeight { get; set; }
-        public string? Description { get; set; } // Contains JSON Checklist for PE
+        public string? Description { get; set; } // JSON Checklist for PE
         public int? Duration { get; set; }
 
-        // Linked Info (Flattened for easier frontend consumption)
+        public string? Status { get; set; } // "NotYet", "Submitted", "Approved"
+
+        // Linked Info
         public int? QuizId { get; set; }
         public string? QuizName { get; set; }
         public int? PracticeId { get; set; }
@@ -48,25 +53,6 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Dtos
     {
         [Required]
         public int FinalExamId { get; set; }
-
-        [Required]
-        [RegularExpression("^(Theory|Simulation|Practical)$", ErrorMessage = "Type must be 'Theory', 'Simulation', or 'Practical'.")]
-        public string Type { get; set; } = null!; // Changed from int to string
-
-        [Required]
-        [Range(0, 100, ErrorMessage = "Weight must be between 0 and 100")]
-        public decimal ExamWeight { get; set; }
-
-        public int? Duration { get; set; } // In minutes
-
-        public int? QuizId { get; set; }
-        public int? PracticeId { get; set; }
-    }
-
-    public class CreateClassPartialDto
-    {
-        [Required]
-        public int ClassId { get; set; } // Thay vì FinalExamId
 
         [Required]
         [RegularExpression("^(Theory|Simulation|Practical)$", ErrorMessage = "Type must be 'Theory', 'Simulation', or 'Practical'.")]
@@ -81,25 +67,68 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Dtos
         public int? PracticeId { get; set; }
     }
 
+    public class CreateClassPartialDto
+    {
+        [Required]
+        public int ClassId { get; set; }
+
+        [Required]
+        [RegularExpression("^(Theory|Simulation|Practical)$", ErrorMessage = "Type must be 'Theory', 'Simulation', or 'Practical'.")]
+        public string Type { get; set; } = null!;
+
+        [Required]
+        [Range(0, 100)]
+        public decimal ExamWeight { get; set; }
+
+        public int? Duration { get; set; }
+        public int? QuizId { get; set; }
+        public int? PracticeId { get; set; }
+    }
+
+    public class UpdateClassPartialConfigDto
+    {
+        [Required]
+        public int ClassId { get; set; }
+
+        [Required]
+        [RegularExpression("^(Theory|Simulation|Practical)$")]
+        public string Type { get; set; } = null!;
+
+        public decimal? ExamWeight { get; set; }
+        public int? Duration { get; set; }
+        public List<PeChecklistItemDto>? ChecklistConfig { get; set; }
+        public int? QuizId { get; set; }
+        public int? PracticeId { get; set; }
+    }
+
     public class UpdateFinalExamPartialDto
     {
         public decimal? ExamWeight { get; set; }
         public int? Duration { get; set; }
+        public string? Description { get; set; }
         public int? QuizId { get; set; }
         public int? PracticeId { get; set; }
     }
 
     // --- Submission DTOs ---
 
-    // For Theory Exam (TE)
     public class SubmitTeDto
     {
-        [Required]
-        [Range(0, 10)]
-        public decimal Marks { get; set; }
+        public List<QuizAnswerSubmissionDto> Answers { get; set; } = new List<QuizAnswerSubmissionDto>();
     }
 
-    // For Simulation Exam (SE)
+    public class QuizAnswerSubmissionDto
+    {
+        public int QuestionId { get; set; }
+        public int OptionId { get; set; }
+    }
+
+    public class GetTeQuizRequestDto
+    {
+        [Required]
+        public string ExamCode { get; set; } = null!;
+    }
+
     public class SubmitSeDto
     {
         [Required]
@@ -107,17 +136,19 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Dtos
         public decimal Marks { get; set; }
     }
 
-    // For Practical Exam (PE) - Using Checklist
     public class SubmitPeDto
     {
         [Required]
         public List<PeChecklistItemDto> Checklist { get; set; } = new List<PeChecklistItemDto>();
+
+        public bool IsOverallPass { get; set; }
     }
 
     public class PeChecklistItemDto
     {
-        public string Criteria { get; set; } = string.Empty; // e.g., "Kỹ thuật nâng hạ"
-        public decimal Score { get; set; } // Obtained score (e.g., 8)
-        public decimal MaxScore { get; set; } = 10; // Max score (e.g., 10)
+        public string Criteria { get; set; } = string.Empty;
+        public decimal Score { get; set; }
+        public decimal MaxScore { get; set; } = 10;
+        public bool IsItemPass { get; set; } = true;
     }
 }
