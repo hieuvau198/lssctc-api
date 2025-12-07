@@ -2,6 +2,7 @@
 using Lssctc.ProgramManagement.ClassManage.FinalExams.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims; // Cần thiết để lấy thông tin user từ Claim
 
 namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Controllers
 {
@@ -38,11 +39,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Controllers
         [HttpGet("{id}")]
         public async Task<IActionResult> GetFinalExam(int id)
         {
-            try
-            {
-                var result = await _service.GetFinalExamByIdAsync(id);
-                return Ok(result);
-            }
+            try { return Ok(await _service.GetFinalExamByIdAsync(id)); }
             catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
         }
 
@@ -52,10 +49,22 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Controllers
         /// <param name="classId">ID của lớp học</param>
         [HttpGet("class/{classId}")]
         [Authorize(Roles = "Admin, Instructor")]
-        public async Task<IActionResult> GetByClass(int classId)
+        public async Task<IActionResult> GetByClassForInstructor(int classId)
         {
             var result = await _service.GetFinalExamsByClassAsync(classId);
             return Ok(result);
+        }
+
+        /// <summary>
+        /// API cho Admin/Giảng viên cập nhật thông tin một Final Exam (Pass/Fail, TotalMarks).
+        /// </summary>
+        /// <param name="id">ID của Final Exam</param>
+        [HttpPut("{id}")]
+        [Authorize(Roles = "Admin, Instructor")]
+        public async Task<IActionResult> UpdateFinalExam(int id, [FromBody] UpdateFinalExamDto dto)
+        {
+            try { return Ok(await _service.UpdateFinalExamAsync(id, dto)); }
+            catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
         }
 
         /// <summary>
@@ -66,12 +75,34 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Controllers
         [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> DeleteFinalExam(int id)
         {
+            await _service.DeleteFinalExamAsync(id);
+            return NoContent();
+        }
+
+        /// <summary>
+        /// API tạo một Exam Code ngẫu nhiên cho một Final Exam (Dùng cho TE).
+        /// </summary>
+        [HttpPost("{id}/generate-code")]
+        [Authorize(Roles = "Admin, Instructor")]
+        public async Task<IActionResult> GenerateCode(int id)
+        {
             try
             {
-                await _service.DeleteFinalExamAsync(id);
-                return NoContent();
+                var code = await _service.GenerateExamCodeAsync(id);
+                return Ok(new { examCode = code });
             }
             catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+        }
+
+        /// <summary>
+        /// API dành cho Giảng viên confirm một Final Exam đã kết thúc cho toàn bộ lớp học.
+        /// </summary>
+        [HttpPost("class/{classId}/finish")]
+        [Authorize(Roles = "Admin, Instructor")]
+        public async Task<IActionResult> FinishClassExam(int classId)
+        {
+            await _service.FinishFinalExamAsync(classId);
+            return Ok(new { message = "Class exams finalized." });
         }
         #endregion
 
@@ -84,8 +115,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Controllers
         [Authorize(Roles = "Trainee")]
         public async Task<IActionResult> GetMyExams()
         {
-            // Requires helper to get userId from claim
-            var userIdStr = User.FindFirst("id")?.Value; // Adjust based on your ClaimTypes
+            var userIdStr = User.FindFirst("id")?.Value;
             if (int.TryParse(userIdStr, out int userId))
             {
                 var result = await _service.GetFinalExamsByTraineeAsync(userId);
@@ -93,20 +123,120 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Controllers
             }
             return Unauthorized();
         }
+
+        /// <summary>
+        /// API cho Học viên xem Final Exam của chính mình trong lớp học.
+        /// </summary>
+        /// <param name="classId">ID của lớp học</param>
+        [HttpGet("class/{classId}/my-exam")]
+        [Authorize(Roles = "Trainee")]
+        public async Task<IActionResult> GetMyExamInClass(int classId)
+        {
+            var userIdStr = User.FindFirst("id")?.Value;
+            if (int.TryParse(userIdStr, out int userId))
+            {
+                var result = await _service.GetMyFinalExamByClassAsync(classId, userId);
+                if (result == null) return NotFound(new { message = "Exam not found for this class." });
+                return Ok(result);
+            }
+            return Unauthorized();
+        }
+
+        /// <summary>
+        /// API cho Học viên xem chi tiết cấu hình một phần thi (TE/SE/PE) của chính mình.
+        /// </summary>
+        /// <param name="partialId">ID của phần thi</param>
+        [HttpGet("partial/{partialId}/my-detail")]
+        [Authorize(Roles = "Trainee")]
+        public async Task<IActionResult> GetMyPartialDetail(int partialId)
+        {
+            var userIdStr = User.FindFirst("id")?.Value;
+            if (!int.TryParse(userIdStr, out int userId)) return Unauthorized();
+
+            try
+            {
+                var result = await _service.GetFinalExamPartialByIdForTraineeAsync(partialId, userId);
+                return Ok(result);
+            }
+            catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+            catch (UnauthorizedAccessException) { return Forbid(); }
+        }
+
+        /// <summary>
+        /// API cho Học viên bắt đầu bài thi lý thuyết (TE) bằng Exam Code, ghi lại thời gian bắt đầu và trả về nội dung Quiz.
+        /// </summary>
+        /// <param name="partialId">ID của phần thi Theory</param>
+        [HttpPost("partial/{partialId}/start-te")]
+        [Authorize(Roles = "Trainee")]
+        public async Task<IActionResult> StartTe(int partialId, [FromBody] GetTeQuizRequestDto request)
+        {
+            var userIdStr = User.FindFirst("id")?.Value;
+            if (!int.TryParse(userIdStr, out int userId)) return Unauthorized();
+
+            try
+            {
+                // Truyền userId vào service để kiểm tra bảo mật
+                var quizContent = await _service.GetTeQuizContentAsync(partialId, request.ExamCode, userId);
+                return Ok(quizContent);
+            }
+            catch (UnauthorizedAccessException) { return Unauthorized(new { message = "Invalid Exam Code or Exam does not belong to user." }); }
+            catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+            catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
+        }
+
+        /// <summary>
+        /// API cho Học viên bắt đầu bài thi mô phỏng (SE), ghi lại thời gian bắt đầu.
+        /// </summary>
+        /// <param name="partialId">ID của phần thi Simulation</param>
+        [HttpPost("partial/{partialId}/start-se")]
+        [Authorize(Roles = "Trainee")]
+        public async Task<IActionResult> StartSe(int partialId)
+        {
+            var userIdStr = User.FindFirst("id")?.Value;
+            if (!int.TryParse(userIdStr, out int userId)) return Unauthorized();
+
+            try
+            {
+                var result = await _service.StartSimulationExamAsync(partialId, userId);
+                return Ok(result);
+            }
+            catch (Exception ex) { return BadRequest(new { message = ex.Message }); }
+        }
+
+        /// <summary>
+        /// API cho Học viên xem chi tiết kết quả chấm điểm (Checklist) của bài thi Thực hành (PE) đã được Giảng viên chấm.
+        /// </summary>
+        /// <param name="partialId">ID của phần thi Practical</param>
+        [HttpGet("partial/{partialId}/my-pe-submission")]
+        [Authorize(Roles = "Trainee")]
+        public async Task<IActionResult> GetMyPeSubmission(int partialId)
+        {
+            var userIdStr = User.FindFirst("id")?.Value;
+            if (!int.TryParse(userIdStr, out int userId)) return Unauthorized();
+
+            try
+            {
+                var checklist = await _service.GetPeSubmissionChecklistForTraineeAsync(partialId, userId);
+                return Ok(checklist);
+            }
+            catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+            catch (UnauthorizedAccessException) { return Forbid(); }
+            catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
+        }
         #endregion
 
         #region Partials Config
 
         /// <summary>
-        /// API tạo một phần thi (Partial) cho Final Exam (Theory, Simulation, Practical).
+        /// API tạo một phần thi (Partial) cho Final Exam.
         /// </summary>
         [HttpPost("partial")]
         [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> CreatePartial([FromBody] CreateFinalExamPartialDto dto)
         {
-            var result = await _service.CreateFinalExamPartialAsync(dto);
-            return Ok(result);
+            return Ok(await _service.CreateFinalExamPartialAsync(dto));
         }
+
         /// <summary>
         /// API cấu hình đề thi cho TOÀN BỘ lớp học (Tạo partial cho tất cả học viên trong lớp).
         /// </summary>
@@ -119,22 +249,29 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Controllers
                 var result = await _service.CreatePartialsForClassAsync(dto);
                 return Ok(new { message = $"Successfully added {dto.Type} exam to {result.Count()} students.", data = result });
             }
-            catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
             catch (Exception ex) { return BadRequest(new { message = ex.Message }); }
         }
+
         /// <summary>
-        /// API cập nhật thông tin một phần thi (Trọng số, thời gian, liên kết bài quiz/practice).
+        /// API cập nhật cấu hình (trọng số, thời gian, checklist PE) cho TẤT CẢ các partial cùng loại trong một lớp.
+        /// </summary>
+        [HttpPut("class-partial-config")]
+        [Authorize(Roles = "Admin, Instructor")]
+        public async Task<IActionResult> UpdateClassPartialConfig([FromBody] UpdateClassPartialConfigDto dto)
+        {
+            await _service.UpdatePartialsConfigForClassAsync(dto);
+            return Ok(new { message = "Updated partial configuration for the class." });
+        }
+
+        /// <summary>
+        /// API cập nhật thông tin một phần thi.
         /// </summary>
         /// <param name="id">ID của Partial Exam</param>
         [HttpPut("partial/{id}")]
         [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> UpdatePartial(int id, [FromBody] UpdateFinalExamPartialDto dto)
         {
-            try
-            {
-                var result = await _service.UpdateFinalExamPartialAsync(id, dto);
-                return Ok(result);
-            }
+            try { return Ok(await _service.UpdateFinalExamPartialAsync(id, dto)); }
             catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
         }
 
@@ -154,43 +291,32 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Controllers
         #region Submissions
 
         /// <summary>
-        /// API lấy danh sách tiêu chí chấm điểm cho bài thi Thực hành (PE).
-        /// </summary>
-        [HttpGet("pe-checklist-criteria")]
-        public IActionResult GetPeChecklist()
-        {
-            return Ok(_service.GetPeChecklistCriteria());
-        }
-
-        /// <summary>
         /// API chấm điểm bài thi Thực hành (PE) theo Checklist. (Dành cho Giảng viên).
         /// </summary>
         /// <param name="partialId">ID của phần thi Practical</param>
         [HttpPost("submit/pe/{partialId}")]
-        [Authorize(Roles = "Admin, Instructor")] // Only instructor grades PE
+        [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> SubmitPe(int partialId, [FromBody] SubmitPeDto dto)
         {
-            try
-            {
-                var result = await _service.SubmitPeAsync(partialId, dto);
-                return Ok(result);
-            }
+            try { return Ok(await _service.SubmitPeAsync(partialId, dto)); }
             catch (Exception ex) { return BadRequest(new { message = ex.Message }); }
         }
 
         /// <summary>
-        /// API submit điểm bài thi Lý thuyết (TE).
+        /// API submit bài làm Lý thuyết (TE) của Học viên.
         /// </summary>
         /// <param name="partialId">ID của phần thi Theory</param>
         [HttpPost("submit/te/{partialId}")]
+        [Authorize(Roles = "Trainee")]
         public async Task<IActionResult> SubmitTe(int partialId, [FromBody] SubmitTeDto dto)
         {
-            try
+            var userIdStr = User.FindFirst("id")?.Value;
+            if (int.TryParse(userIdStr, out int userId))
             {
-                var result = await _service.SubmitTeAsync(partialId, dto);
-                return Ok(result);
+                try { return Ok(await _service.SubmitTeAsync(partialId, userId, dto)); }
+                catch (Exception ex) { return BadRequest(new { message = ex.Message }); }
             }
-            catch (Exception ex) { return BadRequest(new { message = ex.Message }); }
+            return Unauthorized();
         }
 
         /// <summary>
@@ -200,11 +326,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Controllers
         [HttpPost("submit/se/{partialId}")]
         public async Task<IActionResult> SubmitSe(int partialId, [FromBody] SubmitSeDto dto)
         {
-            try
-            {
-                var result = await _service.SubmitSeAsync(partialId, dto);
-                return Ok(result);
-            }
+            try { return Ok(await _service.SubmitSeAsync(partialId, dto)); }
             catch (Exception ex) { return BadRequest(new { message = ex.Message }); }
         }
         #endregion

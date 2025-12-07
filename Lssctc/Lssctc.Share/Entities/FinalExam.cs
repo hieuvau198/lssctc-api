@@ -15,6 +15,8 @@ public partial class FinalExam
 
     public DateTime? CompleteTime { get; set; }
 
+    public string? ExamCode { get; set; }
+
     public virtual Enrollment Enrollment { get; set; } = null!;
 
     public virtual ICollection<FinalExamPartial> FinalExamPartials { get; set; } = new List<FinalExamPartial>();

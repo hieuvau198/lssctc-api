@@ -439,6 +439,7 @@ BEGIN TRY
     CREATE TABLE [dbo].[final_exams] (
         [id] INT IDENTITY(1,1) PRIMARY KEY,
         [enrollment_id] INT NOT NULL,
+		[exam_code] NVARCHAR(20),
         [is_pass] BIT DEFAULT 0,
         [total_marks] DECIMAL(5,2),
         [complete_time] DATETIME2(0),
@@ -450,6 +451,7 @@ BEGIN TRY
         [final_exam_id] INT NOT NULL,
         [is_pass] BIT DEFAULT 0,
         [type] INT,
+		[status] INT, -- Not Yet, Submitted, Approved
         [marks] DECIMAL(5,2),
 		[exam_weight] DECIMAL(5,2) DEFAULT 0,
         [description] NVARCHAR(1000),

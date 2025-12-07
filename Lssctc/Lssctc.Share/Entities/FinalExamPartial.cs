@@ -27,6 +27,8 @@ public partial class FinalExamPartial
 
     public decimal? ExamWeight { get; set; }
 
+    public int? Status { get; set; }
+
     public virtual ICollection<FeSimulation> FeSimulations { get; set; } = new List<FeSimulation>();
 
     public virtual ICollection<FeTheory> FeTheories { get; set; } = new List<FeTheory>();

@@ -717,6 +717,9 @@ public partial class LssctcDbContext : DbContext
                 .HasPrecision(0)
                 .HasColumnName("complete_time");
             entity.Property(e => e.EnrollmentId).HasColumnName("enrollment_id");
+            entity.Property(e => e.ExamCode)
+                .HasMaxLength(20)
+                .HasColumnName("exam_code");
             entity.Property(e => e.IsPass)
                 .HasDefaultValue(false)
                 .HasColumnName("is_pass");
@@ -761,6 +764,7 @@ public partial class LssctcDbContext : DbContext
             entity.Property(e => e.StartTime)
                 .HasPrecision(0)
                 .HasColumnName("start_time");
+            entity.Property(e => e.Status).HasColumnName("status");
             entity.Property(e => e.Type).HasColumnName("type");
 
             entity.HasOne(d => d.FinalExam).WithMany(p => p.FinalExamPartials)
