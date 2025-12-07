@@ -58,6 +58,10 @@ namespace Lssctc.Share.Implements
         private IGenericRepository<Timeslot>? _timeslotRepository;
         private IGenericRepository<Attendance>? _attendanceRepository;
         private IGenericRepository<ActivitySession>? _activitySessionRepository;
+        private IGenericRepository<FinalExam>? _finalExamRepository;
+        private IGenericRepository<FinalExamPartial>? _finalExamPartialRepository;
+        private IGenericRepository<FeSimulation>? _feSimulationRepository;
+        private IGenericRepository<FeTheory>? _feTheoryRepository;
         private IGenericRepository<User>? _userRepository;
 
         public UnitOfWork(LssctcDbContext context)
@@ -206,6 +210,14 @@ namespace Lssctc.Share.Implements
             _timeslotRepository ??= new GenericRepository<Timeslot>(_context);
         public IGenericRepository<Attendance> AttendanceRepository =>
             _attendanceRepository ??= new GenericRepository<Attendance>(_context);
+        public IGenericRepository<FinalExam> FinalExamRepository =>
+            _finalExamRepository ??= new GenericRepository<FinalExam>(_context);
+        public IGenericRepository<FinalExamPartial> FinalExamPartialRepository =>
+            _finalExamPartialRepository ??= new GenericRepository<FinalExamPartial>(_context);
+        public IGenericRepository<FeSimulation> FeSimulationRepository =>
+            _feSimulationRepository ??= new GenericRepository<FeSimulation>(_context);
+        public IGenericRepository<FeTheory> FeTheoryRepository =>
+            _feTheoryRepository ??= new GenericRepository<FeTheory>(_context);
         public IGenericRepository<ActivitySession> ActivitySessionRepository =>
             _activitySessionRepository ??= new GenericRepository<ActivitySession>(_context);
         public IGenericRepository<User> UserRepository =>

@@ -281,7 +281,27 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Controllers
             catch (UnauthorizedAccessException ex) { return Unauthorized(new { message = ex.Message }); }
             catch (Exception) { return StatusCode(500, new { message = "An unexpected error occurred." }); }
         }
-
+        /// <summary>
+        /// API cho học viên xem lịch sử điểm danh đầy đủ của mình trong 1 lớp.
+        /// </summary>
+        /// <param name="classId">ID của lớp</param>
+        [HttpGet("class/{classId}/my-attendance")]
+        [Authorize(Roles = "Trainee")]
+        [ProducesResponseType(typeof(IEnumerable<TraineeAttendanceRecordDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> GetMyAttendanceHistory(int classId)
+        {
+            try
+            {
+                var traineeId = GetUserIdFromClaims();
+                var result = await _timeslotService.GetTraineeAttendanceHistoryAsync(classId, traineeId);
+                return Ok(result);
+            }
+            catch (UnauthorizedAccessException ex) { return Unauthorized(new { message = ex.Message }); }
+            catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+            catch (Exception) { return StatusCode(500, new { message = "An unexpected error occurred." }); }
+        }
         #endregion
 
         #region Helper

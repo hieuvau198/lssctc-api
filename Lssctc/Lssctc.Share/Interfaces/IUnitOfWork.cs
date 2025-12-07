@@ -54,6 +54,10 @@ namespace Lssctc.Share.Interfaces
         IGenericRepository<Timeslot> TimeslotRepository { get; }
         IGenericRepository<Attendance> AttendanceRepository { get; }
         IGenericRepository<ActivitySession> ActivitySessionRepository { get; }
+        IGenericRepository<FinalExam> FinalExamRepository { get; }
+        IGenericRepository<FinalExamPartial> FinalExamPartialRepository { get; }
+        IGenericRepository<FeSimulation> FeSimulationRepository { get; }
+        IGenericRepository<FeTheory> FeTheoryRepository { get; }
         IGenericRepository<User> UserRepository { get; }
 
         Task<int> SaveChangesAsync();
