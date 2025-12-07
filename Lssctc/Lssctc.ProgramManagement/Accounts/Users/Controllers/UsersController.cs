@@ -58,11 +58,15 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Controllers
 
         [HttpGet("trainees")]
         [Authorize(Roles = "Admin,Instructor,SimulationManager")]
-        public async Task<ActionResult<PagedResult<UserDto>>> GetAllTrainees([FromQuery] int pageNumber, [FromQuery] int pageSize)
+        public async Task<ActionResult<PagedResult<UserDto>>> GetAllTrainees(
+            [FromQuery] int pageNumber, 
+            [FromQuery] int pageSize,
+            [FromQuery] string? searchTerm,
+            [FromQuery] bool? isActive)
         {
             try
             {
-                var users = await _usersService.GetAllTraineesAsync(pageNumber, pageSize);
+                var users = await _usersService.GetAllTraineesAsync(pageNumber, pageSize, searchTerm, isActive);
                 return Ok(users);
             }
             catch (Exception ex)

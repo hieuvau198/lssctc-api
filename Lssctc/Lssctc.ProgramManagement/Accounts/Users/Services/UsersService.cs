@@ -42,15 +42,42 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Services
             return MapToDto(user);
         }
 
-        public async Task<PagedResult<UserDto>> GetAllTraineesAsync(int pageNumber, int pageSize)
+        public async Task<PagedResult<UserDto>> GetAllTraineesAsync(int pageNumber, int pageSize, string? searchTerm = null, bool? isActive = null)
         {
             if (pageNumber < 1) pageNumber = 1;
             if (pageSize < 1) pageSize = 10;
+            
             var query = _uow.UserRepository
                 .GetAllAsQueryable()
-                .Where(u => !u.IsDeleted && u.Role == (int)UserRoleEnum.Trainee)
-                .Select(u => MapToDto(u));
-            return await query.ToPagedResultAsync(pageNumber, pageSize);
+                .Where(u => !u.IsDeleted && u.Role == (int)UserRoleEnum.Trainee);
+
+            // Filter by IsActive if provided
+            if (isActive.HasValue)
+            {
+                query = query.Where(u => u.IsActive == isActive.Value);
+            }
+
+            // Filter by search term if provided
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                var term = searchTerm.ToLower();
+                query = query.Where(u => 
+                    (u.Username != null && u.Username.ToLower().Contains(term)) ||
+                    (u.Email != null && u.Email.ToLower().Contains(term)) ||
+                    (u.PhoneNumber != null && u.PhoneNumber.ToLower().Contains(term)) ||
+                    (u.Fullname != null && u.Fullname.ToLower().Contains(term))
+                );
+
+                // Sort by relevance: prioritize Email and PhoneNumber matches
+                query = query.OrderByDescending(u => 
+                    (u.Email != null && u.Email.ToLower().Contains(term)) || 
+                    (u.PhoneNumber != null && u.PhoneNumber.ToLower().Contains(term))
+                );
+            }
+
+            var result = query.Select(u => MapToDto(u));
+            
+            return await result.ToPagedResultAsync(pageNumber, pageSize);
         }
 
         public async Task<PagedResult<UserDto>> GetAllInstructorsAsync(int pageNumber, int pageSize)
