@@ -18,6 +18,19 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Controllers
             _service = service;
         }
 
+        // Phương thức mới để lấy UserId từ Claims (ClaimTypes.NameIdentifier)
+        private int GetUserIdFromClaims()
+        {
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (int.TryParse(userIdClaim, out int userId))
+            {
+                return userId;
+            }
+
+            throw new UnauthorizedAccessException("User ID claim is missing or invalid.");
+        }
+
         #region FinalExam (Admin/Instructor)
 
         /// <summary>
@@ -106,6 +119,8 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Controllers
         }
         #endregion
 
+
+
         #region Trainee View
 
         /// <summary>
@@ -115,13 +130,16 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Controllers
         [Authorize(Roles = "Trainee")]
         public async Task<IActionResult> GetMyExams()
         {
-            var userIdStr = User.FindFirst("id")?.Value;
-            if (int.TryParse(userIdStr, out int userId))
+            try
             {
+                var userId = GetUserIdFromClaims(); // Sử dụng phương thức mới
                 var result = await _service.GetFinalExamsByTraineeAsync(userId);
                 return Ok(result);
             }
-            return Unauthorized();
+            catch (UnauthorizedAccessException)
+            {
+                return Unauthorized();
+            }
         }
 
         /// <summary>
@@ -132,14 +150,17 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Controllers
         [Authorize(Roles = "Trainee")]
         public async Task<IActionResult> GetMyExamInClass(int classId)
         {
-            var userIdStr = User.FindFirst("id")?.Value;
-            if (int.TryParse(userIdStr, out int userId))
+            try
             {
+                var userId = GetUserIdFromClaims(); // Sử dụng phương thức mới
                 var result = await _service.GetMyFinalExamByClassAsync(classId, userId);
                 if (result == null) return NotFound(new { message = "Exam not found for this class." });
                 return Ok(result);
             }
-            return Unauthorized();
+            catch (UnauthorizedAccessException)
+            {
+                return Unauthorized();
+            }
         }
 
         /// <summary>
@@ -150,8 +171,15 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Controllers
         [Authorize(Roles = "Trainee")]
         public async Task<IActionResult> GetMyPartialDetail(int partialId)
         {
-            var userIdStr = User.FindFirst("id")?.Value;
-            if (!int.TryParse(userIdStr, out int userId)) return Unauthorized();
+            int userId;
+            try
+            {
+                userId = GetUserIdFromClaims(); // Sử dụng phương thức mới
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Unauthorized();
+            }
 
             try
             {
@@ -170,8 +198,15 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Controllers
         [Authorize(Roles = "Trainee")]
         public async Task<IActionResult> StartTe(int partialId, [FromBody] GetTeQuizRequestDto request)
         {
-            var userIdStr = User.FindFirst("id")?.Value;
-            if (!int.TryParse(userIdStr, out int userId)) return Unauthorized();
+            int userId;
+            try
+            {
+                userId = GetUserIdFromClaims(); // Sử dụng phương thức mới
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Unauthorized();
+            }
 
             try
             {
@@ -192,8 +227,15 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Controllers
         [Authorize(Roles = "Trainee")]
         public async Task<IActionResult> StartSe(int partialId)
         {
-            var userIdStr = User.FindFirst("id")?.Value;
-            if (!int.TryParse(userIdStr, out int userId)) return Unauthorized();
+            int userId;
+            try
+            {
+                userId = GetUserIdFromClaims(); // Sử dụng phương thức mới
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Unauthorized();
+            }
 
             try
             {
@@ -211,8 +253,15 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Controllers
         [Authorize(Roles = "Trainee")]
         public async Task<IActionResult> GetMyPeSubmission(int partialId)
         {
-            var userIdStr = User.FindFirst("id")?.Value;
-            if (!int.TryParse(userIdStr, out int userId)) return Unauthorized();
+            int userId;
+            try
+            {
+                userId = GetUserIdFromClaims(); // Sử dụng phương thức mới
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Unauthorized();
+            }
 
             try
             {
@@ -224,6 +273,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Controllers
             catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
         }
         #endregion
+
 
         #region Partials Config
 
@@ -288,6 +338,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Controllers
         }
         #endregion
 
+        
         #region Submissions
 
         /// <summary>
@@ -310,13 +361,18 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Controllers
         [Authorize(Roles = "Trainee")]
         public async Task<IActionResult> SubmitTe(int partialId, [FromBody] SubmitTeDto dto)
         {
-            var userIdStr = User.FindFirst("id")?.Value;
-            if (int.TryParse(userIdStr, out int userId))
+            int userId;
+            try
             {
-                try { return Ok(await _service.SubmitTeAsync(partialId, userId, dto)); }
-                catch (Exception ex) { return BadRequest(new { message = ex.Message }); }
+                userId = GetUserIdFromClaims(); // Sử dụng phương thức mới
             }
-            return Unauthorized();
+            catch (UnauthorizedAccessException)
+            {
+                return Unauthorized();
+            }
+
+            try { return Ok(await _service.SubmitTeAsync(partialId, userId, dto)); }
+            catch (Exception ex) { return BadRequest(new { message = ex.Message }); }
         }
 
         /// <summary>
