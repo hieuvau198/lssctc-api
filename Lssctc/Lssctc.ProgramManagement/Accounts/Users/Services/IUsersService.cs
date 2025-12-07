@@ -12,7 +12,7 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Services
         Task<UserDto?> GetUserByIdAsync(int id);
         Task<PagedResult<UserDto>> GetAllTraineesAsync(int pageNumber, int pageSize, string? searchTerm = null, bool? isActive = null);
         Task<PagedResult<UserDto>> GetAllInstructorsAsync(int pageNumber, int pageSize);
-        Task<PagedResult<UserDto>> GetAllSimulationManagersAsync(int pageNumber, int pageSize);
+        Task<PagedResult<UserDto>> GetAllSimulationManagersAsync(int pageNumber, int pageSize, string? searchTerm = null, bool? isActive = null);
         Task<UserDto> CreateTraineeAccountAsync(CreateUserDto dto);
         Task<UserDto> CreateInstructorAccountAsync(CreateUserDto dto);
         Task<UserDto> CreateSimulationManagerAccountAsync(CreateUserDto dto);

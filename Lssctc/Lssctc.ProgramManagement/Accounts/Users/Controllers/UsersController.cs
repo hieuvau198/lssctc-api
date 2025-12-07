@@ -92,11 +92,15 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Controllers
 
         [HttpGet("simulation-managers")]
         [Authorize(Roles = "Admin")]
-        public async Task<ActionResult<PagedResult<UserDto>>> GetAllSimulationManagers([FromQuery] int pageNumber, [FromQuery] int pageSize)
+        public async Task<ActionResult<PagedResult<UserDto>>> GetAllSimulationManagers(
+            [FromQuery] int pageNumber, 
+            [FromQuery] int pageSize,
+            [FromQuery] string? searchTerm,
+            [FromQuery] bool? isActive)
         {
             try
             {
-                var users = await _usersService.GetAllSimulationManagersAsync(pageNumber, pageSize);
+                var users = await _usersService.GetAllSimulationManagersAsync(pageNumber, pageSize, searchTerm, isActive);
                 return Ok(users);
             }
             catch (Exception ex)
