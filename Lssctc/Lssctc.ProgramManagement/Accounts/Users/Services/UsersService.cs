@@ -80,15 +80,42 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Services
             return await result.ToPagedResultAsync(pageNumber, pageSize);
         }
 
-        public async Task<PagedResult<UserDto>> GetAllInstructorsAsync(int pageNumber, int pageSize)
+        public async Task<PagedResult<UserDto>> GetAllInstructorsAsync(int pageNumber, int pageSize, string? searchTerm = null, bool? isActive = null)
         {
             if (pageNumber < 1) pageNumber = 1;
             if (pageSize < 1) pageSize = 10;
+            
             var query = _uow.UserRepository
                 .GetAllAsQueryable()
-                .Where(u => !u.IsDeleted && u.Role == (int)UserRoleEnum.Instructor)
-                .Select(u => MapToDto(u));
-            return await query.ToPagedResultAsync(pageNumber, pageSize);
+                .Where(u => !u.IsDeleted && u.Role == (int)UserRoleEnum.Instructor);
+
+            // Filter by IsActive if provided
+            if (isActive.HasValue)
+            {
+                query = query.Where(u => u.IsActive == isActive.Value);
+            }
+
+            // Filter by search term if provided
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                var term = searchTerm.ToLower();
+                query = query.Where(u => 
+                    (u.Username != null && u.Username.ToLower().Contains(term)) ||
+                    (u.Email != null && u.Email.ToLower().Contains(term)) ||
+                    (u.PhoneNumber != null && u.PhoneNumber.ToLower().Contains(term)) ||
+                    (u.Fullname != null && u.Fullname.ToLower().Contains(term))
+                );
+
+                // Sort by relevance: prioritize Email and PhoneNumber matches
+                query = query.OrderByDescending(u => 
+                    (u.Email != null && u.Email.ToLower().Contains(term)) || 
+                    (u.PhoneNumber != null && u.PhoneNumber.ToLower().Contains(term))
+                );
+            }
+
+            var result = query.Select(u => MapToDto(u));
+            
+            return await result.ToPagedResultAsync(pageNumber, pageSize);
         }
 
         public async Task<PagedResult<UserDto>> GetAllSimulationManagersAsync(int pageNumber, int pageSize, string? searchTerm = null, bool? isActive = null)
@@ -401,6 +428,23 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Services
                     .AnyAsync(i => i.InstructorCode == instructorCode);
             } while (!isUnique);
             return instructorCode;
+        }
+
+        // Helper method to validate email format
+        private bool IsValidEmail(string email)
+        {
+            if (string.IsNullOrWhiteSpace(email))
+                return false;
+
+            try
+            {
+                var addr = new System.Net.Mail.MailAddress(email);
+                return addr.Address == email;
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         #endregion
@@ -939,23 +983,6 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Services
             catch (Exception ex)
             {
                 throw new Exception($"Error processing Excel file: {ex.Message}");
-            }
-        }
-
-        // Helper method to validate email format
-        private bool IsValidEmail(string email)
-        {
-            if (string.IsNullOrWhiteSpace(email))
-                return false;
-
-            try
-            {
-                var addr = new System.Net.Mail.MailAddress(email);
-                return addr.Address == email;
-            }
-            catch
-            {
-                return false;
             }
         }
     }
