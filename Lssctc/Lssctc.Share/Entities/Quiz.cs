@@ -23,6 +23,8 @@ public partial class Quiz
 
     public virtual ICollection<ActivityQuiz> ActivityQuizzes { get; set; } = new List<ActivityQuiz>();
 
+    public virtual ICollection<FeTheory> FeTheories { get; set; } = new List<FeTheory>();
+
     public virtual ICollection<QuizAuthor> QuizAuthors { get; set; } = new List<QuizAuthor>();
 
     public virtual ICollection<QuizQuestion> QuizQuestions { get; set; } = new List<QuizQuestion>();

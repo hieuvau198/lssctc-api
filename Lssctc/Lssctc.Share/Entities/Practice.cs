@@ -27,5 +27,7 @@ public partial class Practice
 
     public virtual ICollection<ActivityPractice> ActivityPractices { get; set; } = new List<ActivityPractice>();
 
+    public virtual ICollection<FeSimulation> FeSimulations { get; set; } = new List<FeSimulation>();
+
     public virtual ICollection<PracticeTask> PracticeTasks { get; set; } = new List<PracticeTask>();
 }

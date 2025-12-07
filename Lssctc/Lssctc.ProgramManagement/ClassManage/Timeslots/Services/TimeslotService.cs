@@ -434,6 +434,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Services
                     // Update existing record
                     attendance.Status = record.Status;
                     attendance.Description = record.Note;
+                    // This attaches the 'attendance' entity to the Context
                     await _uow.AttendanceRepository.UpdateAsync(attendance);
                 }
                 else
@@ -445,7 +446,6 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Services
                         TimeslotId = timeslotId,
                         Status = record.Status,
                         Description = record.Note,
-                        // Name is inherited from Enrollment (we could fetch it, but skipping for simplicity here)
                         Name = $"Attendance for Timeslot {timeslotId}",
                         IsActive = true,
                         IsDeleted = false
@@ -458,7 +458,14 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Services
             if (timeslot.Status < (int)TimeslotStatusEnum.Ongoing)
             {
                 timeslot.Status = (int)TimeslotStatusEnum.Ongoing;
-                await _uow.TimeslotRepository.UpdateAsync(timeslot); // Changed from _uow.ClassRepository.UpdateAsync(timeslot.Class)
+
+                // [FIX] Break the graph to prevent "already being tracked" error.
+                // We nullify the navigation property so UpdateAsync(timeslot) 
+                // doesn't try to attach the duplicate Attendance entities we loaded earlier.
+                timeslot.Attendances = null;
+                timeslot.Class = null; // Good practice to detach Class as well to be safe
+
+                await _uow.TimeslotRepository.UpdateAsync(timeslot);
             }
 
             await _uow.SaveChangesAsync();
@@ -466,7 +473,6 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Services
             // 5. Return the updated list for verification
             return await GetAttendanceListForTimeslotAsync(timeslotId, instructorId);
         }
-
 
         // --- Trainee APIs ---
 

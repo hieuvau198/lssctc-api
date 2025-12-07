@@ -451,12 +451,33 @@ BEGIN TRY
         [is_pass] BIT DEFAULT 0,
         [type] INT,
         [marks] DECIMAL(5,2),
+		[exam_weight] DECIMAL(5,2) DEFAULT 0,
         [description] NVARCHAR(1000),
         [duration] INT, -- Assuming duration in minutes/seconds
         [start_time] DATETIME2(0),
         [end_time] DATETIME2(0),
         [complete_time] DATETIME2(0),
         FOREIGN KEY ([final_exam_id]) REFERENCES [dbo].[final_exams]([id])
+    );
+
+	CREATE TABLE [dbo].[fe_theory] (
+        [id] INT IDENTITY(1,1) PRIMARY KEY,
+        [final_exam_partial_id] INT NOT NULL,
+        [quiz_id] INT NOT NULL,
+        [name] NVARCHAR(200),
+        [description] NVARCHAR(1000),
+        FOREIGN KEY ([final_exam_partial_id]) REFERENCES [dbo].[final_exam_partials]([id]),
+        FOREIGN KEY ([quiz_id]) REFERENCES [dbo].[quizzes]([id])
+    );
+
+    CREATE TABLE [dbo].[fe_simulation] (
+        [id] INT IDENTITY(1,1) PRIMARY KEY,
+        [final_exam_partial_id] INT NOT NULL,
+        [practice_id] INT NOT NULL,
+        [name] NVARCHAR(200),
+        [description] NVARCHAR(1000),
+        FOREIGN KEY ([final_exam_partial_id]) REFERENCES [dbo].[final_exam_partials]([id]),
+        FOREIGN KEY ([practice_id]) REFERENCES [dbo].[practices]([id])
     );
 
     -- ========================================
