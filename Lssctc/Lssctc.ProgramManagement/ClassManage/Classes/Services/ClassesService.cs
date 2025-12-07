@@ -47,7 +47,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
             return classes.Select(MapToDto);
         }
 
-        public async Task<PagedResult<ClassDto>> GetClassesAsync(int pageNumber, int pageSize)
+        public async Task<PagedResult<ClassDto>> GetClassesAsync(int pageNumber, int pageSize, string? searchTerm = null, string? sortBy = null, string? sortDirection = null, string? status = null)
         {
             if (pageNumber < 1) pageNumber = 1;
             if (pageSize < 1) pageSize = 10;
@@ -57,9 +57,86 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
                 .Include(c => c.ProgramCourse)
                     .ThenInclude(pc => pc.Course)
                 .Include(c => c.ClassCode)
-                .Select(c => MapToDto(c));
+                .AsQueryable();
 
-            return await query.ToPagedResultAsync(pageNumber, pageSize);
+            // 1. Status Filtering (String-based)
+            if (!string.IsNullOrWhiteSpace(status))
+            {
+                // Try to parse the status string to ClassStatusEnum (case-insensitive)
+                if (Enum.TryParse<ClassStatusEnum>(status, ignoreCase: true, out var parsedStatus))
+                {
+                    query = query.Where(c => c.Status == (int)parsedStatus);
+                }
+                else
+                {
+                    // If parsing fails, return empty result (invalid status)
+                    return new PagedResult<ClassDto>
+                    {
+                        Items = new List<ClassDto>(),
+                        TotalCount = 0,
+                        Page = pageNumber,
+                        PageSize = pageSize
+                    };
+                }
+            }
+
+            // 2. Search Term Filtering
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                var searchLower = searchTerm.ToLower();
+                query = query.Where(c =>
+                    c.Name.ToLower().Contains(searchLower) ||
+                    (c.ClassCode != null && c.ClassCode.Name.ToLower().Contains(searchLower)) ||
+                    (c.Description != null && c.Description.ToLower().Contains(searchLower))
+                );
+            }
+
+            // 3. Sorting Logic
+            if (!string.IsNullOrWhiteSpace(sortBy))
+            {
+                // Scenario A: Explicit Sort by StartDate or EndDate
+                var direction = sortDirection?.ToLower() ?? "asc";
+                
+                if (sortBy.ToLower() == "startdate")
+                {
+                    query = direction == "desc" 
+                        ? query.OrderByDescending(c => c.StartDate) 
+                        : query.OrderBy(c => c.StartDate);
+                }
+                else if (sortBy.ToLower() == "enddate")
+                {
+                    query = direction == "desc" 
+                        ? query.OrderByDescending(c => c.EndDate) 
+                        : query.OrderBy(c => c.EndDate);
+                }
+            }
+            else if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                // Scenario B: Search Relevance Sort (when searchTerm provided but no explicit sortBy)
+                var searchLower = searchTerm.ToLower();
+                query = query.OrderByDescending(c =>
+                    // Priority 1: Match in Name or ClassCode
+                    (c.Name.ToLower().Contains(searchLower) || 
+                     (c.ClassCode != null && c.ClassCode.Name.ToLower().Contains(searchLower))) ? 1 : 0
+                ).ThenByDescending(c =>
+                    // Priority 2: Match in Description
+                    (c.Description != null && c.Description.ToLower().Contains(searchLower)) ? 1 : 0
+                );
+            }
+            // Scenario C: Default sorting (keep existing order if no sorting specified)
+
+            // 4. Apply Pagination
+            var pagedEntities = await query.ToPagedResultAsync(pageNumber, pageSize);
+
+            var dtoItems = pagedEntities.Items.Select(MapToDto).ToList();
+
+            return new PagedResult<ClassDto>
+            {
+                Items = dtoItems,
+                TotalCount = pagedEntities.TotalCount,
+                Page = pagedEntities.Page,
+                PageSize = pagedEntities.PageSize
+            };
         }
 
         public async Task<ClassDto?> GetClassByIdAsync(int id)

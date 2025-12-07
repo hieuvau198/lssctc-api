@@ -48,11 +48,17 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
         [HttpGet("paged")]
         [ProducesResponseType(typeof(PagedResult<ClassDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<IActionResult> GetPaged([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
+        public async Task<IActionResult> GetPaged(
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10,
+            [FromQuery] string? searchTerm = null,
+            [FromQuery] string? sortBy = null,
+            [FromQuery] string? sortDirection = null,
+            [FromQuery] string? status = null)
         {
             try
             {
-                var result = await _service.GetClassesAsync(pageNumber, pageSize);
+                var result = await _service.GetClassesAsync(pageNumber, pageSize, searchTerm, sortBy, sortDirection, status);
                 return Ok(result);
             }
             catch (Exception ex)

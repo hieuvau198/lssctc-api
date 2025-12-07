@@ -8,7 +8,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
     {
         #region Classes
         Task<IEnumerable<ClassDto>> GetAllClassesAsync();
-        Task<PagedResult<ClassDto>> GetClassesAsync(int pageNumber, int pageSize);
+        Task<PagedResult<ClassDto>> GetClassesAsync(int pageNumber, int pageSize, string? searchTerm = null, string? sortBy = null, string? sortDirection = null, string? status = null);
         Task<ClassDto?> GetClassByIdAsync(int id);
         // BR create class: with initial status 'Draft'
         // startdate must be from current time to
