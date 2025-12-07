@@ -67,11 +67,11 @@ DEFAULT('NO PRACTICE CODE ASSIGNED') FOR practice_code;
 ALTER TABLE [trainee_certificates]
 ADD [pdf_url] NVARCHAR(1000)
 
-update sim_tasks
-set task_code = 'TASK_UNKNOWN'
+update [final_exams]
+set [exam_code] = 'LSSCTC_FE_565'
 
-alter table simulation_components
-add component_code nvarchar(50) NULL default 'COMPONENT_UNKNOWN'
+alter table [final_exam_partials]
+add [status] INT
 
 INSERT INTO [dbo].[course_certificates] ([course_id], [certificate_id], [passing_score], [is_active])
 VALUES (2, 1, 5.0, 1);
