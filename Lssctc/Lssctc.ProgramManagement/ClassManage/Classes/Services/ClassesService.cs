@@ -210,7 +210,18 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
             await _uow.ClassRepository.CreateAsync(newClass);
             await _uow.SaveChangesAsync();
 
-            return MapToDto(newClass);
+            // Reload the class with navigation properties for proper DTO mapping
+            var createdClass = await _uow.ClassRepository
+                .GetAllAsQueryable()
+                .Include(c => c.ProgramCourse)
+                    .ThenInclude(pc => pc.Course)
+                .Include(c => c.ClassCode)
+                .FirstOrDefaultAsync(c => c.Id == newClass.Id);
+
+            if (createdClass == null)
+                throw new InvalidOperationException("Failed to retrieve created class.");
+
+            return MapToDto(createdClass);
         }
 
         public async Task<ClassDto> UpdateClassAsync(int id, UpdateClassDto dto)
