@@ -199,6 +199,8 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                 Type = typeId,
                 ExamWeight = dto.ExamWeight,
                 Duration = dto.Duration,
+                StartTime = dto.StartTime, 
+                EndTime = dto.EndTime,
                 Marks = 0,
                 IsPass = null,
                 Status = (int)FinalExamPartialStatus.NotYet
@@ -242,6 +244,8 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                     Type = typeId,
                     ExamWeight = dto.ExamWeight,
                     Duration = dto.Duration,
+                    StartTime = dto.StartTime, 
+                    EndTime = dto.EndTime,
                     Marks = 0,
                     IsPass = null,
                     Status = (int)FinalExamPartialStatus.NotYet
@@ -311,7 +315,8 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                 // 1. Update common fields
                 if (dto.ExamWeight.HasValue) p.ExamWeight = dto.ExamWeight;
                 if (dto.Duration.HasValue) p.Duration = dto.Duration;
-
+                if (dto.StartTime.HasValue) p.StartTime = dto.StartTime; 
+                if (dto.EndTime.HasValue) p.EndTime = dto.EndTime;
                 // 2. Update Type-Specific Links and Description
                 if (typeId == 1 && dto.QuizId.HasValue) // Theory Exam (TE) Link update
                 {
@@ -349,6 +354,8 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
 
             if (dto.ExamWeight.HasValue) partial.ExamWeight = dto.ExamWeight;
             if (dto.Duration.HasValue) partial.Duration = dto.Duration;
+            if (dto.StartTime.HasValue) partial.StartTime = dto.StartTime; 
+            if (dto.EndTime.HasValue) partial.EndTime = dto.EndTime;
             if (!string.IsNullOrEmpty(dto.Description)) partial.Description = dto.Description;
 
             if (dto.QuizId.HasValue && partial.Type == 1)
@@ -600,6 +607,9 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                 ExamWeight = p.ExamWeight,
                 Description = p.Description,
                 Duration = p.Duration,
+                StartTime = p.StartTime,        
+                EndTime = p.EndTime,          
+                CompleteTime = p.CompleteTime,
                 Status = GetFinalExamPartialStatusName(statusId),
 
                 QuizId = isInstructor ? theory?.QuizId : null,

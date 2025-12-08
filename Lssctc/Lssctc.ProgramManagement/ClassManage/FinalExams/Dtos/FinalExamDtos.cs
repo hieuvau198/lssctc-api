@@ -39,7 +39,9 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Dtos
         public decimal? ExamWeight { get; set; }
         public string? Description { get; set; } // JSON Checklist for PE
         public int? Duration { get; set; }
-
+        public DateTime? StartTime { get; set; } 
+        public DateTime? EndTime { get; set; } 
+        public DateTime? CompleteTime { get; set; }
         public string? Status { get; set; } // "NotYet", "Submitted", "Approved"
 
         // Linked Info
@@ -61,7 +63,8 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Dtos
         [Required]
         [Range(0, 100)]
         public decimal ExamWeight { get; set; }
-
+        public DateTime? StartTime { get; set; } 
+        public DateTime? EndTime { get; set; }
         public int? Duration { get; set; }
         public int? QuizId { get; set; }
         public int? PracticeId { get; set; }
@@ -79,7 +82,8 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Dtos
         [Required]
         [Range(0, 100)]
         public decimal ExamWeight { get; set; }
-
+        public DateTime? StartTime { get; set; } 
+        public DateTime? EndTime { get; set; }
         public int? Duration { get; set; }
         public int? QuizId { get; set; }
         public int? PracticeId { get; set; }
@@ -96,6 +100,8 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Dtos
 
         public decimal? ExamWeight { get; set; }
         public int? Duration { get; set; }
+        public DateTime? StartTime { get; set; } 
+        public DateTime? EndTime { get; set; }
         public List<PeChecklistItemDto>? ChecklistConfig { get; set; }
         public int? QuizId { get; set; }
         public int? PracticeId { get; set; }
@@ -105,6 +111,8 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Dtos
     {
         public decimal? ExamWeight { get; set; }
         public int? Duration { get; set; }
+        public DateTime? StartTime { get; set; } 
+        public DateTime? EndTime { get; set; }
         public string? Description { get; set; }
         public int? QuizId { get; set; }
         public int? PracticeId { get; set; }
