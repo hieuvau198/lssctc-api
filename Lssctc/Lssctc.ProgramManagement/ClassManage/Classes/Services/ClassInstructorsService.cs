@@ -101,6 +101,42 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
             return instructor == null ? null : MapToDto(instructor);
         }
 
+        public async Task<IEnumerable<ClassInstructorDto>> GetAvailableInstructorsAsync(DateTime startDate, DateTime endDate)
+        {
+            // Validate date range
+            if (endDate <= startDate)
+                throw new ArgumentException("End date must be after start date.");
+
+            // Get all instructors who are assigned to classes with status Open or Inprogress
+            // that have date ranges overlapping with the specified date range
+            var busyInstructorIds = await _uow.ClassInstructorRepository
+                .GetAllAsQueryable()
+                .Include(ci => ci.Class)
+                .Where(ci => ci.Class != null &&
+                            (ci.Class.Status == (int)ClassStatusEnum.Open ||
+                             ci.Class.Status == (int)ClassStatusEnum.Inprogress) &&
+                            // Check date overlap: class starts before query ends AND class ends after query starts
+                            ci.Class.StartDate < endDate &&
+                            ci.Class.EndDate > startDate)
+                .Select(ci => ci.InstructorId)
+                .Distinct()
+                .ToListAsync();
+
+            // Get all active instructors who are NOT in the busy list
+            var availableInstructors = await _uow.InstructorRepository
+                .GetAllAsQueryable()
+                .Include(i => i.IdNavigation)
+                .Where(i => i.IsActive == true &&
+                           i.IsDeleted == false &&
+                           i.IdNavigation.IsActive == true &&
+                           i.IdNavigation.IsDeleted == false &&
+                           i.IdNavigation.Role == (int)UserRoleEnum.Instructor &&
+                           !busyInstructorIds.Contains(i.Id))
+                .ToListAsync();
+
+            return availableInstructors.Select(MapToDto);
+        }
+
         #region Mapping
 
         private static ClassInstructorDto MapToDto(Instructor i)

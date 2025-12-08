@@ -206,6 +206,38 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
             }
         }
 
+        /// <summary>
+        /// Get available instructors within a date range.
+        /// An instructor is available if they are NOT assigned to any class that:
+        /// 1. Has status Open or Inprogress, AND
+        /// 2. Has date range that overlaps with the specified date range
+        /// </summary>
+        /// <param name="startDate">Start date of the period (required)</param>
+        /// <param name="endDate">End date of the period (required)</param>
+        /// <returns>List of available instructors</returns>
+        [HttpGet("available-instructors")]
+        [Authorize(Roles = "Admin")]
+        [ProducesResponseType(typeof(IEnumerable<ClassInstructorDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> GetAvailableInstructors(
+            [FromQuery] DateTime startDate,
+            [FromQuery] DateTime endDate)
+        {
+            try
+            {
+                var result = await _instructorsService.GetAvailableInstructorsAsync(startDate, endDate);
+                return Ok(result);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
         [HttpPost("{id}/instructor")]
         [Authorize(Roles = "Admin")]
         [ProducesResponseType(StatusCodes.Status200OK)]

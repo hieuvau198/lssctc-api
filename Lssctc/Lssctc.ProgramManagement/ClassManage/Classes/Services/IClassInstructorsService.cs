@@ -15,6 +15,17 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
         Task RemoveInstructorAsync(int classId);
 
         Task<ClassInstructorDto?> GetInstructorByClassIdAsync(int classId);
+
+        /// <summary>
+        /// Get available instructors within a date range.
+        /// An instructor is available if they are NOT assigned to any class that:
+        /// 1. Has status Open or Inprogress, AND
+        /// 2. Has date range that overlaps with the specified date range
+        /// </summary>
+        /// <param name="startDate">Start date of the period</param>
+        /// <param name="endDate">End date of the period</param>
+        /// <returns>List of available instructors</returns>
+        Task<IEnumerable<ClassInstructorDto>> GetAvailableInstructorsAsync(DateTime startDate, DateTime endDate);
         #endregion
     }
 }
