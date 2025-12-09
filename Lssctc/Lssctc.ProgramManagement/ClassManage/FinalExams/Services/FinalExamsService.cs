@@ -65,16 +65,26 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
         #region Auto Creation
         public async Task AutoCreateFinalExamsForClassAsync(int classId)
         {
+            // 1. Get Class Info to determine default dates
+            var classInfo = await _uow.ClassRepository.GetByIdAsync(classId);
+            if (classInfo == null) return;
+
+            // Default time is Class EndDate. If null, fallback to StartDate + 1 month or DateTime.Now
+            var defaultTime = classInfo.EndDate ?? classInfo.StartDate.AddMonths(1);
+
             var enrollments = await _uow.EnrollmentRepository.GetAllAsQueryable()
                 .Where(e => e.ClassId == classId && e.IsDeleted != true)
                 .ToListAsync();
 
             foreach (var enrollment in enrollments)
             {
-                var exists = await _uow.FinalExamRepository.ExistsAsync(fe => fe.EnrollmentId == enrollment.Id);
-                if (!exists)
+                // 2. Check or Create Final Exam
+                var finalExam = await _uow.FinalExamRepository.GetAllAsQueryable()
+                    .FirstOrDefaultAsync(fe => fe.EnrollmentId == enrollment.Id);
+
+                if (finalExam == null)
                 {
-                    var finalExam = new FinalExam
+                    finalExam = new FinalExam
                     {
                         EnrollmentId = enrollment.Id,
                         IsPass = null,
@@ -82,9 +92,38 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                         CompleteTime = null
                     };
                     await _uow.FinalExamRepository.CreateAsync(finalExam);
+                    await _uow.SaveChangesAsync(); // Save to generate Id
                 }
+
+                // 3. Create Default Partials (TE, SE, PE)
+                // Type 1: Theory
+                await EnsurePartialExists(finalExam.Id, 1, defaultTime);
+                // Type 2: Simulation
+                await EnsurePartialExists(finalExam.Id, 2, defaultTime);
+                // Type 3: Practical
+                await EnsurePartialExists(finalExam.Id, 3, defaultTime);
             }
             await _uow.SaveChangesAsync();
+        }
+
+        private async Task EnsurePartialExists(int finalExamId, int type, DateTime defaultTime)
+        {
+            var exists = await _uow.FinalExamPartialRepository.ExistsAsync(p => p.FinalExamId == finalExamId && p.Type == type);
+            if (!exists)
+            {
+                var partial = new FinalExamPartial
+                {
+                    FinalExamId = finalExamId,
+                    Type = type,
+                    Marks = 0,
+                    ExamWeight = 0, // Default weight, to be configured later
+                    Duration = 60,  // Default duration: 60 minutes
+                    StartTime = defaultTime,
+                    EndTime = defaultTime.AddMinutes(60),
+                    Status = (int)FinalExamPartialStatus.NotYet
+                };
+                await _uow.FinalExamPartialRepository.CreateAsync(partial);
+            }
         }
         #endregion
 
@@ -127,6 +166,16 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
 
         public async Task<IEnumerable<FinalExamDto>> GetFinalExamsByClassAsync(int classId)
         {
+            // Check if any exams exist for this class
+            var hasExams = await _uow.FinalExamRepository.GetAllAsQueryable()
+                .AnyAsync(fe => fe.Enrollment.ClassId == classId);
+
+            // If not, auto-create structure for the whole class
+            if (!hasExams)
+            {
+                await AutoCreateFinalExamsForClassAsync(classId);
+            }
+
             var entities = await GetFinalExamQuery()
                 .Where(fe => fe.Enrollment.ClassId == classId)
                 .ToListAsync();
@@ -135,6 +184,16 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
 
         public async Task<FinalExamDto?> GetMyFinalExamByClassAsync(int classId, int userId)
         {
+            // Check if exams exist for this class (general check to ensure consistency)
+            var hasExams = await _uow.FinalExamRepository.GetAllAsQueryable()
+                .AnyAsync(fe => fe.Enrollment.ClassId == classId);
+
+            // If not, auto-create structure
+            if (!hasExams)
+            {
+                await AutoCreateFinalExamsForClassAsync(classId);
+            }
+
             var entity = await GetFinalExamQuery()
                 .FirstOrDefaultAsync(fe => fe.Enrollment.ClassId == classId && fe.Enrollment.TraineeId == userId);
             return entity == null ? null : MapToDto(entity, isInstructor: false);
