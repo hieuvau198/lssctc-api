@@ -80,6 +80,14 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Controllers
             catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
         }
 
+        [HttpGet("class/{classId}/config")]
+        [Authorize]
+        public async Task<IActionResult> GetClassExamConfig(int classId)
+        {
+            var result = await _service.GetClassExamConfigAsync(classId);
+            return Ok(result);
+        }
+
         /// <summary>
         /// API cho Admin/Giảng viên xóa một Final Exam.
         /// </summary>

@@ -148,6 +148,49 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             return entities.Select(e => MapToDto(e, isInstructor: false));
         }
 
+        public async Task<ClassExamConfigDto> GetClassExamConfigAsync(int classId)
+        {
+            // 1. Get ANY one final exam from this class (assuming all are synced)
+            var exampleExam = await _uow.FinalExamRepository.GetAllAsQueryable()
+                .Include(fe => fe.FinalExamPartials).ThenInclude(p => p.FeTheories).ThenInclude(t => t.Quiz)
+                .Include(fe => fe.FinalExamPartials).ThenInclude(p => p.FeSimulations).ThenInclude(s => s.Practice)
+                .FirstOrDefaultAsync(fe => fe.Enrollment.ClassId == classId && fe.Enrollment.IsDeleted != true);
+
+            var configDto = new ClassExamConfigDto { ClassId = classId };
+
+            if (exampleExam != null)
+            {
+                foreach (var p in exampleExam.FinalExamPartials)
+                {
+                    var theory = p.FeTheories.FirstOrDefault();
+                    var sim = p.FeSimulations.FirstOrDefault();
+
+                    // Parse Checklist if PE
+                    List<PeChecklistItemDto>? checklist = null;
+                    if (p.Type == 3 && !string.IsNullOrEmpty(p.Description))
+                    {
+                        try { checklist = JsonConvert.DeserializeObject<List<PeChecklistItemDto>>(p.Description); } catch { }
+                    }
+
+                    configDto.PartialConfigs.Add(new FinalExamPartialConfigDto
+                    {
+                        Type = GetTypeName(p.Type ?? 0),
+                        ExamWeight = p.ExamWeight,
+                        Duration = p.Duration,
+                        StartTime = p.StartTime,
+                        EndTime = p.EndTime,
+                        QuizId = theory?.QuizId,
+                        QuizName = theory?.Quiz?.Name,
+                        PracticeId = sim?.PracticeId,
+                        PracticeName = sim?.Practice?.PracticeName,
+                        Checklist = checklist
+                    });
+                }
+            }
+
+            return configDto;
+        }
+
         public async Task DeleteFinalExamAsync(int id)
         {
             var entity = await _uow.FinalExamRepository.GetByIdAsync(id);

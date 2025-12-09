@@ -159,4 +159,28 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Dtos
         public decimal MaxScore { get; set; } = 10;
         public bool IsItemPass { get; set; } = true;
     }
+
+    public class ClassExamConfigDto
+    {
+        public int ClassId { get; set; }
+        public List<FinalExamPartialConfigDto> PartialConfigs { get; set; } = new List<FinalExamPartialConfigDto>();
+    }
+
+    public class FinalExamPartialConfigDto
+    {
+        public string Type { get; set; }
+        public decimal? ExamWeight { get; set; }
+        public int? Duration { get; set; }
+        public DateTime? StartTime { get; set; }
+        public DateTime? EndTime { get; set; }
+
+        // Linked Info
+        public int? QuizId { get; set; }
+        public string? QuizName { get; set; }
+        public int? PracticeId { get; set; }
+        public string? PracticeName { get; set; }
+
+        // PE Checklist
+        public List<PeChecklistItemDto>? Checklist { get; set; }
+    }
 }
