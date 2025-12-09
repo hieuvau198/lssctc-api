@@ -135,7 +135,12 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Dtos
     public class QuizAnswerSubmissionDto
     {
         public int QuestionId { get; set; }
-        public int OptionId { get; set; }
+        
+        // Backward compatibility: single choice (optional)
+        public int? OptionId { get; set; }
+        
+        // New: multiple choice support (optional)
+        public List<int>? OptionIds { get; set; }
     }
 
     public class GetTeQuizRequestDto

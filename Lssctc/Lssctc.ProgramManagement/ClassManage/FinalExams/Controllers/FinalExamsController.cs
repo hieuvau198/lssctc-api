@@ -416,11 +416,35 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Controllers
             }
             catch (UnauthorizedAccessException)
             {
-                return Unauthorized();
+                return Unauthorized(new { message = "User ID not found in token." });
             }
 
-            try { return Ok(await _service.SubmitTeAsync(partialId, userId, dto)); }
-            catch (Exception ex) { return BadRequest(new { message = ex.Message }); }
+            try 
+            { 
+                var result = await _service.SubmitTeAsync(partialId, userId, dto);
+                return Ok(result);
+            }
+            catch (KeyNotFoundException ex) 
+            { 
+                return NotFound(new { message = ex.Message }); 
+            }
+            catch (UnauthorizedAccessException ex) 
+            { 
+                return Forbid(); 
+            }
+            catch (ArgumentException ex) 
+            { 
+                return BadRequest(new { message = ex.Message }); 
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex) 
+            { 
+                // Log the exception here if logging is available
+                return StatusCode(500, new { message = "An error occurred while processing the submission.", detail = ex.Message }); 
+            }
         }
 
         /// <summary>

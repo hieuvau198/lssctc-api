@@ -712,20 +712,152 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
 
         public async Task<FinalExamDto> SubmitTeAsync(int partialId, int userId, SubmitTeDto dto)
         {
-            var partial = await _uow.FinalExamPartialRepository.GetByIdAsync(partialId);
-            if (partial == null) throw new KeyNotFoundException("Partial not found.");
+            // 1. Get partial with security check
+            var partial = await _uow.FinalExamPartialRepository
+                .GetAllAsQueryable()
+                .Include(p => p.FinalExam).ThenInclude(fe => fe.Enrollment)
+                .Include(p => p.FeTheories)
+                .FirstOrDefaultAsync(p => p.Id == partialId);
 
-            // Placeholder for QuizService Grading Logic
-            decimal score = 0;
+            if (partial == null)
+                throw new KeyNotFoundException("Partial exam not found.");
 
-            partial.Marks = score;
+            if (partial.FinalExam.Enrollment.TraineeId != userId)
+                throw new UnauthorizedAccessException("This exam does not belong to the current user.");
+
+            if (partial.Type != 1)
+                throw new ArgumentException("This ID is not a Theory Exam.");
+
+            // 2. Get FeTheory and QuizId
+            var feTheory = partial.FeTheories.FirstOrDefault();
+            if (feTheory == null || feTheory.QuizId == 0)
+                throw new KeyNotFoundException("Quiz content not assigned to this exam.");
+
+            // 3. Get quiz with full details including correct answers using GetQuizById (not GetQuizDetailForTrainee which hides IsCorrect)
+            var quiz = await _quizService.GetQuizById(feTheory.QuizId);
+            if (quiz == null)
+                throw new KeyNotFoundException($"Quiz with ID {feTheory.QuizId} not found.");
+
+            // 4. Prepare lookup structures for grading
+            var questionsById = quiz.Questions.ToDictionary(q => q.Id);
+            
+            // Map questionId -> Set of correct optionIds
+            var correctOptionIdsByQuestion = new Dictionary<int, HashSet<int>>();
+            
+            // Map questionId -> question score
+            var questionScoreByQuestion = new Dictionary<int, decimal>();
+            
+            foreach (var question in quiz.Questions)
+            {
+                var correctOptionIds = question.Options
+                    .Where(o => o.IsCorrect)
+                    .Select(o => o.Id)
+                    .ToHashSet();
+                
+                correctOptionIdsByQuestion[question.Id] = correctOptionIds;
+                questionScoreByQuestion[question.Id] = question.QuestionScore ?? 0m;
+            }
+
+            // Calculate total possible score from quiz (fallback: sum question scores if TotalScore is null)
+            decimal totalPossible = quiz.TotalScore ?? quiz.Questions.Sum(q => q.QuestionScore ?? 0m);
+            
+            if (totalPossible == 0)
+            {
+                // Edge case: no score defined, treat as 10
+                totalPossible = 10m;
+            }
+
+            // 5. Grade the answers
+            decimal totalObtained = 0m;
+
+            // Handle null or empty answers (student submitted blank exam)
+            if (dto.Answers != null && dto.Answers.Any())
+            {
+                foreach (var answer in dto.Answers)
+                {
+                    // Skip if question doesn't exist in quiz
+                    if (!questionsById.ContainsKey(answer.QuestionId))
+                        continue;
+
+                    var question = questionsById[answer.QuestionId];
+                    var correctOptions = correctOptionIdsByQuestion[answer.QuestionId];
+                    var questionScore = questionScoreByQuestion[answer.QuestionId];
+
+                    // Normalize answer: use OptionIds if provided, otherwise convert OptionId to list
+                    HashSet<int> studentAnswerIds;
+                    
+                    if (answer.OptionIds != null && answer.OptionIds.Any())
+                    {
+                        // Multiple choice answer provided
+                        studentAnswerIds = answer.OptionIds.ToHashSet();
+                    }
+                    else if (answer.OptionId.HasValue)
+                    {
+                        // Single choice answer provided (backward compatibility)
+                        studentAnswerIds = new HashSet<int> { answer.OptionId.Value };
+                    }
+                    else
+                    {
+                        // No answer provided for this question
+                        continue;
+                    }
+
+                    // Grading logic:
+                    // For full credit: student's answer set must exactly match correct answer set
+                    // (This implements strict exact-match grading as specified)
+                    if (studentAnswerIds.SetEquals(correctOptions))
+                    {
+                        totalObtained += questionScore;
+                    }
+                    // Optional: implement partial credit for multiple choice
+                    // Currently: no partial credit (0 points if not exact match)
+                }
+            }
+
+            // 6. Normalize score to 0-10 scale
+            decimal marks = totalPossible > 0 
+                ? Math.Round((totalObtained / totalPossible) * 10m, 2) 
+                : 0m;
+
+            // 7. Determine IsPass based on quiz PassScoreCriteria
+            // Assumption: quiz.PassScoreCriteria is stored as a value on 0-10 scale (matching our normalized marks)
+            // If PassScoreCriteria is stored as percentage (0-100), adjust accordingly
+            bool isPass;
+            
+            if (quiz.PassScoreCriteria.HasValue)
+            {
+                // PassScoreCriteria interpretation:
+                // If it's >= 10, assume it's percentage (0-100) and convert to 0-10
+                // Otherwise, use directly as threshold on 0-10 scale
+                decimal passThreshold = quiz.PassScoreCriteria.Value;
+                
+                if (passThreshold > 10m)
+                {
+                    // Stored as percentage (0-100), convert to 0-10
+                    passThreshold = (passThreshold / 10m);
+                }
+                
+                isPass = marks >= passThreshold;
+            }
+            else
+            {
+                // Default: pass if score >= 5 out of 10
+                isPass = marks >= 5m;
+            }
+
+            // 8. Update partial exam
+            partial.Marks = marks;
             partial.Status = (int)FinalExamPartialStatus.Submitted;
             partial.CompleteTime = DateTime.UtcNow;
+            partial.IsPass = isPass;
 
             await _uow.FinalExamPartialRepository.UpdateAsync(partial);
             await _uow.SaveChangesAsync();
+
+            // 9. Recalculate final exam total score
             await RecalculateFinalExamScore(partial.FinalExamId);
 
+            // 10. Return updated final exam DTO
             return await GetFinalExamByIdAsync(partial.FinalExamId);
         }
 
