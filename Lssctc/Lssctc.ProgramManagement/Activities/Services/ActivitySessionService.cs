@@ -1,9 +1,10 @@
-﻿using Lssctc.ProgramManagement.Activities.Dtos;
+﻿// File: Lssctc.ProgramManagement/Activities/Services/ActivitySessionService.cs
+using Lssctc.ProgramManagement.Activities.Dtos;
 using Lssctc.Share.Entities;
 using Lssctc.Share.Enums;
 using Lssctc.Share.Interfaces;
 using Microsoft.EntityFrameworkCore;
-using System.Collections.Generic; // Added if necessary
+using System.Collections.Generic;
 
 namespace Lssctc.ProgramManagement.Activities.Services
 {
@@ -19,44 +20,54 @@ namespace Lssctc.ProgramManagement.Activities.Services
         // --- CORE LOGIC: Create Sessions on Class Start (Task 1) ---
         public async Task CreateSessionsOnClassStartAsync(int classId)
         {
-            // 1. Get Class Details (including start/end dates and ProgramCourseId)
+            // 1. Get Class Details (Fix: Get the actual CourseId from ProgramCourse navigation)
             var targetClass = await _uow.ClassRepository
                 .GetAllAsQueryable()
                 .AsNoTracking()
                 .Where(c => c.Id == classId)
-                .Select(c => new { c.ProgramCourseId, c.StartDate, c.EndDate })
+                .Select(c => new {
+                    CourseId = c.ProgramCourse.CourseId, // <--- CHANGED: Get the real CourseId
+                    c.StartDate,
+                    c.EndDate
+                })
                 .FirstOrDefaultAsync();
 
             if (targetClass == null)
                 throw new KeyNotFoundException($"Class with ID {classId} not found.");
 
             // 2. Get all distinct Activities linked to the Class's Course
-            // Logic giả định lấy hoạt động từ Course của lớp học
             var courseActivities = await _uow.CourseSectionRepository
                 .GetAllAsQueryable()
-                .Where(cs => cs.CourseId == targetClass.ProgramCourseId)
+                .AsNoTracking() // Optimization
+                .Where(cs => cs.CourseId == targetClass.CourseId) // <--- CHANGED: Compare with CourseId
+                .Include(cs => cs.Section)
+                    .ThenInclude(s => s.SectionActivities)
+                    .ThenInclude(sa => sa.Activity)
                 .SelectMany(cs => cs.Section.SectionActivities)
                 .Select(sa => sa.Activity)
                 .Where(a => a.IsDeleted == false)
                 .Distinct()
+                // Project to anonymous type first to ensure distinctness works on ID
                 .Select(a => new { a.Id, a.ActivityTitle, a.ActivityType })
                 .ToListAsync();
 
             if (!courseActivities.Any()) return;
 
-            // 3. Get existing sessions for the current class
-            var existingSessions = await _uow.ActivitySessionRepository
+            // 3. Get existing sessions for the current class to prevent duplicates
+            var existingSessionActivityIds = await _uow.ActivitySessionRepository
                 .GetAllAsQueryable()
                 .AsNoTracking()
                 .Where(s => s.ClassId == classId)
-                .ToDictionaryAsync(s => s.ActivityId);
+                .Select(s => s.ActivityId)
+                .ToListAsync();
 
+            var existingSet = new HashSet<int>(existingSessionActivityIds);
             var newSessions = new List<ActivitySession>();
 
             // 4. Create new Sessions
             foreach (var activity in courseActivities)
             {
-                if (existingSessions.ContainsKey(activity.Id)) continue; // Skip if session already exists
+                if (existingSet.Contains(activity.Id)) continue;
 
                 var newSession = new ActivitySession
                 {
@@ -67,7 +78,7 @@ namespace Lssctc.ProgramManagement.Activities.Services
                     EndTime = null,
                 };
 
-                // Logic: Material (Type 1) sẽ được Active và thời hạn theo lớp học
+                // Logic: Material (Type 1) is auto-activated with class duration
                 if (activity.ActivityType == (int)ActivityType.Material)
                 {
                     newSession.IsActive = true;
@@ -78,15 +89,12 @@ namespace Lssctc.ProgramManagement.Activities.Services
                 newSessions.Add(newSession);
             }
 
-            // FIX: Thay thế CreateRangeAsync bằng vòng lặp CreateAsync (Task 1 FIX)
             if (newSessions.Any())
             {
                 foreach (var session in newSessions)
                 {
-                    // Thêm từng session vào Unit of Work
                     await _uow.ActivitySessionRepository.CreateAsync(session);
                 }
-                // Chỉ gọi SaveChanges một lần sau khi thêm tất cả
                 await _uow.SaveChangesAsync();
             }
         }
@@ -99,16 +107,21 @@ namespace Lssctc.ProgramManagement.Activities.Services
 
             if (session == null)
             {
-                throw new InvalidOperationException($"Activity Session not found for Activity ID {activityId} in Class ID {classId}. Access denied. (Configuration Error)");
+                // Optional: Try to auto-fix if missing (lazy creation)
+                // await CreateSessionsOnClassStartAsync(classId);
+                // session = await GetSessionQuery().FirstOrDefaultAsync(...);
+
+                if (session == null)
+                    throw new InvalidOperationException($"Activity Session not found for Activity ID {activityId} in Class ID {classId}. Access denied. (Configuration Error)");
             }
 
-            // 1. Kiểm tra IsActive
+            // 1. Check IsActive
             if (session.IsActive == false)
             {
                 throw new UnauthorizedAccessException($"Access to Activity '{session.Activity.ActivityTitle}' is currently inactive. Please contact the instructor.");
             }
 
-            // 2. Kiểm tra cửa sổ thời gian (nếu được thiết lập)
+            // 2. Check Time Window
             var now = DateTime.UtcNow;
 
             if (session.StartTime.HasValue && now < session.StartTime.Value.ToUniversalTime())
@@ -124,7 +137,6 @@ namespace Lssctc.ProgramManagement.Activities.Services
 
         // --- CRUD API (Task 3 & 4) ---
 
-        // Task 3: Create Activity Session (Manual)
         public async Task<ActivitySessionDto> CreateActivitySessionAsync(CreateActivitySessionDto dto)
         {
             var existing = await _uow.ActivitySessionRepository
@@ -149,7 +161,6 @@ namespace Lssctc.ProgramManagement.Activities.Services
             return MapToDto(created);
         }
 
-        // Task 4: Update Activity Session
         public async Task<ActivitySessionDto> UpdateActivitySessionAsync(int sessionId, UpdateActivitySessionDto dto)
         {
             var existing = await _uow.ActivitySessionRepository
@@ -160,7 +171,6 @@ namespace Lssctc.ProgramManagement.Activities.Services
             if (existing == null)
                 throw new KeyNotFoundException($"Activity Session with ID {sessionId} not found.");
 
-            // Update fields
             existing.IsActive = dto.IsActive;
             existing.StartTime = dto.StartTime;
             existing.EndTime = dto.EndTime;
@@ -168,7 +178,6 @@ namespace Lssctc.ProgramManagement.Activities.Services
             await _uow.ActivitySessionRepository.UpdateAsync(existing);
             await _uow.SaveChangesAsync();
 
-            // Refetch with navigation for accurate mapping
             var updated = await GetSessionQuery().FirstAsync(s => s.Id == existing.Id);
             return MapToDto(updated);
         }
@@ -189,14 +198,17 @@ namespace Lssctc.ProgramManagement.Activities.Services
                 .Where(s => s.ClassId == classId)
                 .OrderBy(s => s.Activity.ActivityTitle)
                 .ToListAsync();
-            if(sessions == null || sessions.Count == 0)
-            { 
+
+            // Auto-heal: If no sessions exist, try to create them (useful for classes created before this feature)
+            if (!sessions.Any())
+            {
                 await CreateSessionsOnClassStartAsync(classId);
+                // Refetch
+                sessions = await GetSessionQuery()
+                    .Where(s => s.ClassId == classId)
+                    .OrderBy(s => s.Activity.ActivityTitle)
+                    .ToListAsync();
             }
-            sessions = await GetSessionQuery()
-                .Where(s => s.ClassId == classId)
-                .OrderBy(s => s.Activity.ActivityTitle)
-                .ToListAsync();
 
             return sessions.Select(MapToDto);
         }
@@ -207,7 +219,7 @@ namespace Lssctc.ProgramManagement.Activities.Services
             return _uow.ActivitySessionRepository
                 .GetAllAsQueryable()
                 .AsNoTracking()
-                .Include(s => s.Activity); // Ensure ActivityTitle and ActivityType are available
+                .Include(s => s.Activity);
         }
 
         private static ActivitySessionDto MapToDto(ActivitySession s)
@@ -217,8 +229,8 @@ namespace Lssctc.ProgramManagement.Activities.Services
                 Id = s.Id,
                 ClassId = s.ClassId,
                 ActivityId = s.ActivityId,
-                ActivityTitle = s.Activity.ActivityTitle,
-                ActivityType = s.Activity.ActivityType ?? 0,
+                ActivityTitle = s.Activity?.ActivityTitle ?? "Unknown Activity",
+                ActivityType = s.Activity?.ActivityType ?? 0,
                 IsActive = s.IsActive ?? false,
                 StartTime = s.StartTime,
                 EndTime = s.EndTime

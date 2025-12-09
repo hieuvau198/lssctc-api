@@ -1,8 +1,8 @@
-﻿using Lssctc.ProgramManagement.Activities.Dtos;
+﻿// File: Lssctc.ProgramManagement/Activities/Controllers/ActivitySessionsController.cs
+using Lssctc.ProgramManagement.Activities.Dtos;
 using Lssctc.ProgramManagement.Activities.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
 
 namespace Lssctc.ProgramManagement.Activities.Controllers
 {
@@ -18,10 +18,33 @@ namespace Lssctc.ProgramManagement.Activities.Controllers
             _sessionService = sessionService;
         }
 
+        // ... [Keep existing Create/Update/Get APIs] ...
+
         /// <summary>
-        /// API tạo một ActivitySession mới (Task 3).
-        /// Role: Admin, Instructor
+        /// DEBUG API: Manually triggers the generation of Activity Sessions for a class.
+        /// Useful if sessions were missing or class was started before logic implementation.
         /// </summary>
+        [HttpPost("test-create-sessions/{classId}")]
+        [Authorize(Roles = "Admin, Instructor")]
+        public async Task<IActionResult> TriggerCreateSessionsManual(int classId)
+        {
+            try
+            {
+                await _sessionService.CreateSessionsOnClassStartAsync(classId);
+                return Ok(new { message = $"Successfully triggered session creation for Class ID {classId}." });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = $"An error occurred: {ex.Message}" });
+            }
+        }
+
+        // ... [Rest of the controller] ...
+
         [HttpPost]
         [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> CreateSession([FromBody] CreateActivitySessionDto dto)
@@ -37,10 +60,6 @@ namespace Lssctc.ProgramManagement.Activities.Controllers
             catch (Exception) { return StatusCode(500, new { message = "An unexpected error occurred." }); }
         }
 
-        /// <summary>
-        /// API chỉnh sửa ActivitySession (Task 4 - kích hoạt/thiết lập thời gian).
-        /// Role: Admin, Instructor
-        /// </summary>
         [HttpPut("{sessionId}")]
         [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> UpdateSession(int sessionId, [FromBody] UpdateActivitySessionDto dto)
@@ -55,9 +74,6 @@ namespace Lssctc.ProgramManagement.Activities.Controllers
             catch (Exception) { return StatusCode(500, new { message = "An unexpected error occurred." }); }
         }
 
-        /// <summary>
-        /// Lấy thông tin chi tiết một Activity Session.
-        /// </summary>
         [HttpGet("{sessionId}")]
         [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> GetSessionById(int sessionId)
@@ -71,9 +87,6 @@ namespace Lssctc.ProgramManagement.Activities.Controllers
             catch (Exception) { return StatusCode(500, new { message = "An unexpected error occurred." }); }
         }
 
-        /// <summary>
-        /// Lấy danh sách tất cả Activity Sessions cho một lớp.
-        /// </summary>
         [HttpGet("class/{classId}")]
         [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> GetSessionsByClassId(int classId)
