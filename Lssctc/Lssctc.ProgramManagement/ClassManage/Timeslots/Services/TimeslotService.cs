@@ -331,11 +331,19 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Services
         }
         public async Task<IEnumerable<TimeslotDto>> GetTimeslotsByClassAndInstructorAsync(int classId, int instructorId)
         {
-            var isAssigned = await _uow.ClassInstructorRepository.ExistsAsync(ci =>
-                ci.ClassId == classId && ci.InstructorId == instructorId);
+            // [FIX] Check user role first. Only enforce assignment check for Instructors.
+            var user = await _uow.UserRepository.GetByIdAsync(instructorId);
 
-            if (!isAssigned)
-                throw new UnauthorizedAccessException($"Instructor {instructorId} is not assigned to class {classId}.");
+            // If the user is an Instructor, they MUST be assigned to the class.
+            // If the user is Admin (or other authorized roles), we skip this check.
+            if (user != null && user.Role == (int)UserRoleEnum.Instructor)
+            {
+                var isAssigned = await _uow.ClassInstructorRepository.ExistsAsync(ci =>
+                    ci.ClassId == classId && ci.InstructorId == instructorId);
+
+                if (!isAssigned)
+                    throw new UnauthorizedAccessException($"Instructor {instructorId} is not assigned to class {classId}.");
+            }
 
             var timeslots = await GetTimeslotQuery()
                 .Where(t => t.ClassId == classId)
