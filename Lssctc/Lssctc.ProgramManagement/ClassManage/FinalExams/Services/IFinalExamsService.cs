@@ -38,7 +38,8 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
         Task<FinalExamPartialDto> GetFinalExamPartialByIdForTraineeAsync(int partialId, int userId); // Đã thêm
         Task<List<PeChecklistItemDto>> GetPeSubmissionChecklistForTraineeAsync(int partialId, int userId); // Đã thêm
 
-        
+        // 5. Allow Retake (Admin/Instructor)
+        Task<FinalExamDto> AllowPartialRetakeAsync(int partialId, string? note = null);
 
         // TE Logic (Sử dụng Quiz Service)
         Task<object> GetTeQuizContentAsync(int partialId, string examCode, int userId); // Đã sửa signature

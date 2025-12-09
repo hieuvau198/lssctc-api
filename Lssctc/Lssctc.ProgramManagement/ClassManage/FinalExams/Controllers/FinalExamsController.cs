@@ -353,6 +353,37 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Controllers
             await _service.DeleteFinalExamPartialAsync(id);
             return NoContent();
         }
+
+        /// <summary>
+        /// API cho phép Admin/Instructor reset một phần thi Theory để học viên làm lại.
+        /// </summary>
+        /// <param name="id">ID của phần thi Theory</param>
+        /// <param name="dto">DTO chứa ghi chú (optional)</param>
+        [HttpPost("partial/{id}/allow-retake")]
+        [Authorize(Roles = "Admin, Instructor")]
+        public async Task<IActionResult> AllowRetake(int id, [FromBody] AllowRetakeDto dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            try
+            {
+                var result = await _service.AllowPartialRetakeAsync(id, dto.Note);
+                return Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = ex.Message });
+            }
+        }
         #endregion
 
 

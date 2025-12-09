@@ -579,6 +579,52 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
 
         #endregion
 
+        #region Allow Retake
+
+        public async Task<FinalExamDto> AllowPartialRetakeAsync(int partialId, string? note = null)
+        {
+            // 1. Get partial
+            var partial = await _uow.FinalExamPartialRepository.GetByIdAsync(partialId);
+            if (partial == null)
+                throw new KeyNotFoundException("Partial not found.");
+
+            // 2. Validate it's a Theory exam
+            if (partial.Type != 1)
+                throw new ArgumentException("Only Theory partial can be reset.");
+
+            // 3. Reset partial to allow retake
+            partial.Status = (int)FinalExamPartialStatus.NotYet;
+            partial.StartTime = null;
+            partial.CompleteTime = null;
+            partial.Marks = 0;
+            partial.IsPass = null;
+
+            // 4. Optionally append note to description
+            if (!string.IsNullOrWhiteSpace(note))
+            {
+                if (string.IsNullOrWhiteSpace(partial.Description))
+                {
+                    partial.Description = $"Reset note: {note}";
+                }
+                else
+                {
+                    partial.Description += $"\nReset note: {note}";
+                }
+            }
+
+            // 5. Update and save
+            await _uow.FinalExamPartialRepository.UpdateAsync(partial);
+            await _uow.SaveChangesAsync();
+
+            // 6. Recalculate final exam score
+            await RecalculateFinalExamScore(partial.FinalExamId);
+
+            // 7. Return updated final exam
+            return await GetFinalExamByIdAsync(partial.FinalExamId);
+        }
+
+        #endregion
+
         #region Submissions & Quiz Service Delegation
 
 
@@ -775,7 +821,6 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                 Marks = p.Marks,
                 ExamWeight = p.ExamWeight,
                 // Description field is less relevant for PE now, but kept for compatibility
-                Description = p.Description,
                 Duration = p.Duration,
                 StartTime = p.StartTime,
                 EndTime = p.EndTime,

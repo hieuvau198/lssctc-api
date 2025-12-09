@@ -191,4 +191,10 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Dtos
         // PE Checklist
         public List<PeChecklistItemDto>? Checklist { get; set; }
     }
+
+    // --- Allow Retake DTO ---
+    public class AllowRetakeDto
+    {
+        public string? Note { get; set; }
+    }
 }
