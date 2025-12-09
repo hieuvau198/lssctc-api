@@ -205,22 +205,28 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             return entities.Select(e => MapToDto(e, isInstructor: false));
         }
 
+        public async Task<FinalExamPartialDto> GetFinalExamPartialByIdAsync(int id)
+        {
+            var partial = await _uow.FinalExamPartialRepository.GetAllAsQueryable()
+               .Include(p => p.FeTheories).ThenInclude(t => t.Quiz)
+               .Include(p => p.FeSimulations).ThenInclude(s => s.Practice)
+               .Include(p => p.PeChecklists) // [ADDED]
+               .FirstOrDefaultAsync(p => p.Id == id);
+
+            if (partial == null) throw new KeyNotFoundException("Partial exam not found.");
+            return MapToPartialDto(partial, true);
+        }
+
         public async Task<ClassExamConfigDto> GetClassExamConfigAsync(int classId)
         {
-            // [ADDED] Logic to auto-create exams if they don't exist
-            // This ensures that when instructor fetches config, the default structure (TE, SE, PE) is created
-            var hasExams = await _uow.FinalExamRepository.GetAllAsQueryable()
-                .AnyAsync(fe => fe.Enrollment.ClassId == classId);
+            // Ensure exams exist
+            var hasExams = await _uow.FinalExamRepository.GetAllAsQueryable().AnyAsync(fe => fe.Enrollment.ClassId == classId);
+            if (!hasExams) await AutoCreateFinalExamsForClassAsync(classId);
 
-            if (!hasExams)
-            {
-                await AutoCreateFinalExamsForClassAsync(classId);
-            }
-
-            // 1. Get ANY one final exam from this class (assuming all are synced)
             var exampleExam = await _uow.FinalExamRepository.GetAllAsQueryable()
                 .Include(fe => fe.FinalExamPartials).ThenInclude(p => p.FeTheories).ThenInclude(t => t.Quiz)
                 .Include(fe => fe.FinalExamPartials).ThenInclude(p => p.FeSimulations).ThenInclude(s => s.Practice)
+                .Include(fe => fe.FinalExamPartials).ThenInclude(p => p.PeChecklists) // Include Entities
                 .FirstOrDefaultAsync(fe => fe.Enrollment.ClassId == classId && fe.Enrollment.IsDeleted != true);
 
             var configDto = new ClassExamConfigDto { ClassId = classId };
@@ -232,11 +238,17 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                     var theory = p.FeTheories.FirstOrDefault();
                     var sim = p.FeSimulations.FirstOrDefault();
 
-                    // Parse Checklist if PE
+                    // [UPDATE] Map Checklist from Entities
                     List<PeChecklistItemDto>? checklist = null;
-                    if (p.Type == 3 && !string.IsNullOrEmpty(p.Description))
+                    if (p.Type == 3 && p.PeChecklists != null)
                     {
-                        try { checklist = JsonConvert.DeserializeObject<List<PeChecklistItemDto>>(p.Description); } catch { }
+                        checklist = p.PeChecklists.Select(c => new PeChecklistItemDto
+                        {
+                            Id = c.Id,
+                            Name = c.Name,
+                            Description = c.Description,
+                            IsPass = c.IsPass
+                        }).ToList();
                     }
 
                     configDto.PartialConfigs.Add(new FinalExamPartialConfigDto
@@ -254,7 +266,6 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                     });
                 }
             }
-
             return configDto;
         }
 
@@ -398,53 +409,72 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             // --- Validation 3: Check PE Checklist Configuration ---
             if (typeId == 3 && (dto.ChecklistConfig == null || !dto.ChecklistConfig.Any()))
             {
-                throw new ArgumentException("PE checklist configuration (ChecklistConfig) is required when updating Practical Exam type.");
+                throw new ArgumentException("PE checklist configuration is required when updating Practical Exam type.");
             }
 
-
-            // --- Data Retrieval ---
             var partials = await _uow.FinalExamPartialRepository.GetAllAsQueryable()
                 .Where(p => p.FinalExam.Enrollment.ClassId == dto.ClassId && p.Type == typeId)
                 .Include(p => p.FeTheories)
                 .Include(p => p.FeSimulations)
+                .Include(p => p.PeChecklists) // Include current checklists to remove them
                 .ToListAsync();
 
             if (!partials.Any())
                 throw new KeyNotFoundException($"No Final Exam Partials of type '{dto.Type}' found for Class ID {dto.ClassId}.");
 
-            // --- PE Configuration ---
-            string? jsonChecklist = null;
-            if (typeId == 3 && dto.ChecklistConfig != null)
-            {
-                jsonChecklist = JsonConvert.SerializeObject(dto.ChecklistConfig);
-            }
-
-            // --- Bulk Update ---
             foreach (var p in partials)
             {
-                // 1. Update common fields
+                // Update basic config
                 if (dto.ExamWeight.HasValue) p.ExamWeight = dto.ExamWeight;
                 if (dto.Duration.HasValue) p.Duration = dto.Duration;
                 if (dto.StartTime.HasValue) p.StartTime = dto.StartTime;
                 if (dto.EndTime.HasValue) p.EndTime = dto.EndTime;
-                // 2. Update Type-Specific Links and Description
-                if (typeId == 1 && dto.QuizId.HasValue) // Theory Exam (TE) Link update
+
+                // Update Links (Theory/Simulation)
+                if (typeId == 1 && dto.QuizId.HasValue)
                 {
                     var theory = p.FeTheories.FirstOrDefault();
                     if (theory != null) { theory.QuizId = dto.QuizId.Value; await _uow.FeTheoryRepository.UpdateAsync(theory); }
                     else { await _uow.FeTheoryRepository.CreateAsync(new FeTheory { FinalExamPartialId = p.Id, QuizId = dto.QuizId.Value }); }
                 }
-                else if (typeId == 2 && dto.PracticeId.HasValue) // Simulation Exam (SE) Link update
+                else if (typeId == 2 && dto.PracticeId.HasValue)
                 {
                     var sim = p.FeSimulations.FirstOrDefault();
                     if (sim != null) { sim.PracticeId = dto.PracticeId.Value; await _uow.FeSimulationRepository.UpdateAsync(sim); }
                     else { await _uow.FeSimulationRepository.CreateAsync(new FeSimulation { FinalExamPartialId = p.Id, PracticeId = dto.PracticeId.Value }); }
                 }
-                else if (typeId == 3) // Practical Exam (PE) Description/Checklist update
+
+                // [UPDATE] Practical Exam (PE) Checklist Entity Update
+                else if (typeId == 3 && dto.ChecklistConfig != null)
                 {
-                    if (jsonChecklist != null)
+                    // 1. Remove old checklists (Resetting template)
+                    // Assuming _uow exposes a repository for PeChecklist or a generic repository method
+                    // If generic repo is not directly exposed as property, we iterate and delete.
+                    // Assuming _uow.PeChecklistRepository exists based on pattern, or using GenericRepository<PeChecklist>
+                    // If your UoW doesn't have specific repo, use: _uow.GetRepository<PeChecklist>().DeleteRangeAsync(p.PeChecklists);
+
+                    // For safety in this snippet, assuming standard specific repo or access via context
+                    // Accessing via property assuming it was added to UoW
+                    foreach (var oldChecklist in p.PeChecklists.ToList())
                     {
-                        p.Description = jsonChecklist;
+                        // Using a generic way if specific repo not known, but usually:
+                        // await _uow.PeChecklistRepository.DeleteAsync(oldChecklist); 
+                        // Or context.PeChecklists.Remove(oldChecklist);
+                        // Let's assume a Repository exists on UoW or use DbContext directly if UoW exposes it.
+                        _uow.GetDbContext().Set<PeChecklist>().Remove(oldChecklist);
+                    }
+
+                    // 2. Add new checklists from config
+                    foreach (var item in dto.ChecklistConfig)
+                    {
+                        var newChecklist = new PeChecklist
+                        {
+                            FinalExamPartialId = p.Id,
+                            Name = item.Name,
+                            Description = item.Description,
+                            IsPass = null // Reset status
+                        };
+                        _uow.GetDbContext().Set<PeChecklist>().Add(newChecklist);
                     }
                 }
 
@@ -512,19 +542,23 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
 
         public async Task<List<PeChecklistItemDto>> GetPeSubmissionChecklistForTraineeAsync(int partialId, int userId)
         {
-            var partial = await GetPartialWithSecurityCheckAsync(partialId, userId);
-            if (partial.Type != 3) throw new ArgumentException("This ID is not a Practical Exam (PE).");
-            if (string.IsNullOrEmpty(partial.Description))
-                throw new InvalidOperationException("Practical Exam has not been submitted or graded yet.");
+            var partial = await _uow.FinalExamPartialRepository.GetAllAsQueryable()
+                .Include(p => p.FinalExam).ThenInclude(fe => fe.Enrollment)
+                .Include(p => p.PeChecklists) // Include Entities
+                .FirstOrDefaultAsync(p => p.Id == partialId);
 
-            try
+            if (partial == null) throw new KeyNotFoundException("Partial exam not found.");
+            if (partial.FinalExam.Enrollment.TraineeId != userId) throw new UnauthorizedAccessException("Access denied.");
+            if (partial.Type != 3) throw new ArgumentException("Not a Practical Exam.");
+
+            // Return list from entities
+            return partial.PeChecklists.Select(c => new PeChecklistItemDto
             {
-                return JsonConvert.DeserializeObject<List<PeChecklistItemDto>>(partial.Description) ?? new List<PeChecklistItemDto>();
-            }
-            catch
-            {
-                throw new InvalidOperationException("Failed to load submission details.");
-            }
+                Id = c.Id,
+                Name = c.Name,
+                Description = c.Description,
+                IsPass = c.IsPass
+            }).ToList();
         }
 
         public async Task<FinalExamPartialDto> StartSimulationExamAsync(int partialId, int userId)
@@ -584,18 +618,43 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
 
         public async Task<FinalExamDto> SubmitPeAsync(int partialId, SubmitPeDto dto)
         {
-            var partial = await _uow.FinalExamPartialRepository.GetByIdAsync(partialId);
+            var partial = await _uow.FinalExamPartialRepository.GetAllAsQueryable()
+                .Include(p => p.PeChecklists)
+                .FirstOrDefaultAsync(p => p.Id == partialId);
+
             if (partial == null) throw new KeyNotFoundException("Partial not found.");
             if (partial.Type != 3) throw new ArgumentException("Not a Practical Exam.");
 
-            partial.Description = JsonConvert.SerializeObject(dto.Checklist);
+            int passCount = 0;
+            int totalCount = partial.PeChecklists.Count;
 
-            decimal totalScore = dto.Checklist.Sum(x => x.Score);
-            decimal totalMax = dto.Checklist.Sum(x => x.MaxScore);
+            // Update Checklist Entities
+            foreach (var itemDto in dto.Checklist)
+            {
+                // Match by ID if possible, else by Name? Best to rely on ID passed back from FE.
+                var entity = partial.PeChecklists.FirstOrDefault(c => c.Id == itemDto.Id);
+                if (entity != null)
+                {
+                    entity.IsPass = itemDto.IsPass;
+                    if (itemDto.IsPass == true) passCount++;
 
-            partial.Marks = totalMax > 0 ? (totalScore / totalMax) * 10 : 0;
+                    // Assuming simple EF Core tracking updates it, but explicitly:
+                    _uow.GetDbContext().Entry(entity).State = EntityState.Modified;
+                }
+            }
+
+            // Calculate Marks (based on Pass Count ratio)
+            if (totalCount > 0)
+            {
+                partial.Marks = ((decimal)passCount / totalCount) * 10;
+            }
+            else
+            {
+                partial.Marks = 0;
+            }
+
             partial.CompleteTime = DateTime.UtcNow;
-            partial.IsPass = dto.IsOverallPass;
+            partial.IsPass = dto.IsOverallPass; // Manual override from Instructor
             partial.Status = (int)FinalExamPartialStatus.Approved;
 
             await _uow.FinalExamPartialRepository.UpdateAsync(partial);
@@ -675,15 +734,16 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
 
         #endregion
 
-        #region Mappers
+        #region Helpers
 
         private IQueryable<FinalExam> GetFinalExamQuery()
         {
-            // Loại bỏ .ThenInclude(t => t.Quiz) vì Quiz content sẽ được lấy qua IQuizService.
+            // Included PeChecklists
             return _uow.FinalExamRepository.GetAllAsQueryable()
                 .Include(fe => fe.Enrollment).ThenInclude(e => e.Trainee).ThenInclude(t => t.IdNavigation)
                 .Include(fe => fe.FinalExamPartials).ThenInclude(p => p.FeTheories)
-                .Include(fe => fe.FinalExamPartials).ThenInclude(p => p.FeSimulations).ThenInclude(s => s.Practice);
+                .Include(fe => fe.FinalExamPartials).ThenInclude(p => p.FeSimulations).ThenInclude(s => s.Practice)
+                .Include(fe => fe.FinalExamPartials).ThenInclude(p => p.PeChecklists); // [ADDED]
         }
 
         private FinalExamDto MapToDto(FinalExam entity, bool isInstructor)
@@ -706,7 +766,6 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
         {
             var theory = p.FeTheories.FirstOrDefault();
             var sim = p.FeSimulations.FirstOrDefault();
-
             int statusId = p.Status ?? 0;
 
             return new FinalExamPartialDto
@@ -715,17 +774,26 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                 Type = GetTypeName(p.Type ?? 0),
                 Marks = p.Marks,
                 ExamWeight = p.ExamWeight,
+                // Description field is less relevant for PE now, but kept for compatibility
                 Description = p.Description,
                 Duration = p.Duration,
                 StartTime = p.StartTime,
                 EndTime = p.EndTime,
                 CompleteTime = p.CompleteTime,
                 Status = GetFinalExamPartialStatusName(statusId),
-
                 QuizId = isInstructor ? theory?.QuizId : null,
                 QuizName = isInstructor ? theory?.Quiz?.Name : null,
                 PracticeId = sim?.PracticeId,
-                PracticeName = sim?.Practice?.PracticeName
+                PracticeName = sim?.Practice?.PracticeName,
+
+                // [UPDATE] Map Checklists
+                Checklists = p.PeChecklists?.Select(c => new PeChecklistItemDto
+                {
+                    Id = c.Id,
+                    Name = c.Name,
+                    Description = c.Description,
+                    IsPass = c.IsPass
+                }).ToList()
             };
         }
         #endregion

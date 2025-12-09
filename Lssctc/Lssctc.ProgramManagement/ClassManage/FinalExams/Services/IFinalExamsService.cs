@@ -18,6 +18,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
         Task<IEnumerable<FinalExamDto>> GetFinalExamsByClassAsync(int classId);
         Task<FinalExamDto?> GetMyFinalExamByClassAsync(int classId, int userId);
         Task<IEnumerable<FinalExamDto>> GetFinalExamsByTraineeAsync(int traineeId);
+        Task<FinalExamPartialDto> GetFinalExamPartialByIdAsync(int id);
         Task<ClassExamConfigDto> GetClassExamConfigAsync(int classId);
 
         Task DeleteFinalExamAsync(int id);

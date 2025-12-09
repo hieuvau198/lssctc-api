@@ -37,10 +37,10 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Dtos
         public string? Type { get; set; } // "Theory", "Simulation", "Practical"
         public decimal? Marks { get; set; }
         public decimal? ExamWeight { get; set; }
-        public string? Description { get; set; } // JSON Checklist for PE
+        public string? Description { get; set; }
         public int? Duration { get; set; }
-        public DateTime? StartTime { get; set; } 
-        public DateTime? EndTime { get; set; } 
+        public DateTime? StartTime { get; set; }
+        public DateTime? EndTime { get; set; }
         public DateTime? CompleteTime { get; set; }
         public string? Status { get; set; } // "NotYet", "Submitted", "Approved"
 
@@ -49,6 +49,9 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Dtos
         public string? QuizName { get; set; }
         public int? PracticeId { get; set; }
         public string? PracticeName { get; set; }
+
+        // [UPDATE] List of checklist items from Entity
+        public List<PeChecklistItemDto>? Checklists { get; set; }
     }
 
     public class CreateFinalExamPartialDto
@@ -63,7 +66,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Dtos
         [Required]
         [Range(0, 100)]
         public decimal ExamWeight { get; set; }
-        public DateTime? StartTime { get; set; } 
+        public DateTime? StartTime { get; set; }
         public DateTime? EndTime { get; set; }
         public int? Duration { get; set; }
         public int? QuizId { get; set; }
@@ -82,7 +85,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Dtos
         [Required]
         [Range(0, 100)]
         public decimal ExamWeight { get; set; }
-        public DateTime? StartTime { get; set; } 
+        public DateTime? StartTime { get; set; }
         public DateTime? EndTime { get; set; }
         public int? Duration { get; set; }
         public int? QuizId { get; set; }
@@ -100,9 +103,12 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Dtos
 
         public decimal? ExamWeight { get; set; }
         public int? Duration { get; set; }
-        public DateTime? StartTime { get; set; } 
+        public DateTime? StartTime { get; set; }
         public DateTime? EndTime { get; set; }
+
+        // [UPDATE] Configuration now accepts a list of items to create entities
         public List<PeChecklistItemDto>? ChecklistConfig { get; set; }
+
         public int? QuizId { get; set; }
         public int? PracticeId { get; set; }
     }
@@ -111,7 +117,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Dtos
     {
         public decimal? ExamWeight { get; set; }
         public int? Duration { get; set; }
-        public DateTime? StartTime { get; set; } 
+        public DateTime? StartTime { get; set; }
         public DateTime? EndTime { get; set; }
         public string? Description { get; set; }
         public int? QuizId { get; set; }
@@ -152,12 +158,13 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Dtos
         public bool IsOverallPass { get; set; }
     }
 
+    // [UPDATE] Refactored to match Entity, removed Score/MaxScore
     public class PeChecklistItemDto
     {
-        public string Criteria { get; set; } = string.Empty;
-        public decimal Score { get; set; }
-        public decimal MaxScore { get; set; } = 10;
-        public bool IsItemPass { get; set; } = true;
+        public int? Id { get; set; } // ID of the PeChecklist entity (null if creating new template)
+        public string Name { get; set; } = string.Empty; // Name/Criteria
+        public string? Description { get; set; }
+        public bool? IsPass { get; set; } // Null = Not graded yet, True/False = Graded
     }
 
     public class ClassExamConfigDto

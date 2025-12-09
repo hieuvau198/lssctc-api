@@ -57,6 +57,19 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Controllers
             catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
         }
 
+        // [ADDED] API for Instructor to get a specific Partial Exam (including PE Checklist)
+        [HttpGet("partial/{partialId}")]
+        [Authorize(Roles = "Admin, Instructor")]
+        public async Task<IActionResult> GetPartial(int partialId)
+        {
+            try
+            {
+                // This returns the full DTO with checklist items mapped from entities
+                return Ok(await _service.GetFinalExamPartialByIdAsync(partialId));
+            }
+            catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+        }
+
         /// <summary>
         /// API cho Admin/Giảng viên xem danh sách Final Exam của một lớp học.
         /// </summary>
@@ -255,25 +268,19 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Controllers
         }
 
         /// <summary>
-        /// API cho Học viên xem chi tiết kết quả chấm điểm (Checklist) của bài thi Thực hành (PE) đã được Giảng viên chấm.
+        /// API for Trainee to view their PE results (Checklist status).
         /// </summary>
-        /// <param name="partialId">ID của phần thi Practical</param>
         [HttpGet("partial/{partialId}/my-pe-submission")]
         [Authorize(Roles = "Trainee")]
         public async Task<IActionResult> GetMyPeSubmission(int partialId)
         {
             int userId;
-            try
-            {
-                userId = GetUserIdFromClaims(); // Sử dụng phương thức mới
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return Unauthorized();
-            }
+            try { userId = GetUserIdFromClaims(); }
+            catch (UnauthorizedAccessException) { return Unauthorized(); }
 
             try
             {
+                // This now fetches from PeChecklist entity
                 var checklist = await _service.GetPeSubmissionChecklistForTraineeAsync(partialId, userId);
                 return Ok(checklist);
             }
@@ -318,8 +325,9 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Controllers
         [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> UpdateClassPartialConfig([FromBody] UpdateClassPartialConfigDto dto)
         {
+            // Now updates PeChecklist entities for the whole class
             await _service.UpdatePartialsConfigForClassAsync(dto);
-            return Ok(new { message = "Updated partial configuration for the class." });
+            return Ok(new { message = "Updated partial configuration and checklist templates for the class." });
         }
 
         /// <summary>
@@ -347,7 +355,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Controllers
         }
         #endregion
 
-        
+
         #region Submissions
 
         /// <summary>
