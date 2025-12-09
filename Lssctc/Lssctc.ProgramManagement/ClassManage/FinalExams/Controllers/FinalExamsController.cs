@@ -17,7 +17,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Controllers
         {
             _service = service;
         }
-
+        #region Helpers
         // Phương thức mới để lấy UserId từ Claims (ClaimTypes.NameIdentifier)
         private int GetUserIdFromClaims()
         {
@@ -30,6 +30,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Controllers
 
             throw new UnauthorizedAccessException("User ID claim is missing or invalid.");
         }
+        #endregion
 
         #region FinalExam (Admin/Instructor)
 

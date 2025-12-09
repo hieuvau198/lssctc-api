@@ -16,7 +16,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
         private readonly IUnitOfWork _uow;
         private readonly IQuizService _quizService;
 
-       
+
         public FinalExamsService(IUnitOfWork uow, IQuizService quizService)
         {
             _uow = uow;
@@ -116,8 +116,8 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                     FinalExamId = finalExamId,
                     Type = type,
                     Marks = 0,
-                    ExamWeight = 0, // Default weight, to be configured later
-                    Duration = 60,  // Default duration: 60 minutes
+                    ExamWeight = 0, // Default weight
+                    Duration = 60,  // Default duration
                     StartTime = defaultTime,
                     EndTime = defaultTime.AddMinutes(60),
                     Status = (int)FinalExamPartialStatus.NotYet
@@ -166,11 +166,10 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
 
         public async Task<IEnumerable<FinalExamDto>> GetFinalExamsByClassAsync(int classId)
         {
-            // Check if any exams exist for this class
+            // [ADDED] Logic to auto-create exams if they don't exist
             var hasExams = await _uow.FinalExamRepository.GetAllAsQueryable()
                 .AnyAsync(fe => fe.Enrollment.ClassId == classId);
 
-            // If not, auto-create structure for the whole class
             if (!hasExams)
             {
                 await AutoCreateFinalExamsForClassAsync(classId);
@@ -184,11 +183,10 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
 
         public async Task<FinalExamDto?> GetMyFinalExamByClassAsync(int classId, int userId)
         {
-            // Check if exams exist for this class (general check to ensure consistency)
+            // [ADDED] Logic to auto-create exams if they don't exist (ensures trainee sees the exam structure)
             var hasExams = await _uow.FinalExamRepository.GetAllAsQueryable()
                 .AnyAsync(fe => fe.Enrollment.ClassId == classId);
 
-            // If not, auto-create structure
             if (!hasExams)
             {
                 await AutoCreateFinalExamsForClassAsync(classId);
@@ -209,6 +207,16 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
 
         public async Task<ClassExamConfigDto> GetClassExamConfigAsync(int classId)
         {
+            // [ADDED] Logic to auto-create exams if they don't exist
+            // This ensures that when instructor fetches config, the default structure (TE, SE, PE) is created
+            var hasExams = await _uow.FinalExamRepository.GetAllAsQueryable()
+                .AnyAsync(fe => fe.Enrollment.ClassId == classId);
+
+            if (!hasExams)
+            {
+                await AutoCreateFinalExamsForClassAsync(classId);
+            }
+
             // 1. Get ANY one final exam from this class (assuming all are synced)
             var exampleExam = await _uow.FinalExamRepository.GetAllAsQueryable()
                 .Include(fe => fe.FinalExamPartials).ThenInclude(p => p.FeTheories).ThenInclude(t => t.Quiz)
@@ -301,7 +309,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                 Type = typeId,
                 ExamWeight = dto.ExamWeight,
                 Duration = dto.Duration,
-                StartTime = dto.StartTime, 
+                StartTime = dto.StartTime,
                 EndTime = dto.EndTime,
                 Marks = 0,
                 IsPass = null,
@@ -346,7 +354,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                     Type = typeId,
                     ExamWeight = dto.ExamWeight,
                     Duration = dto.Duration,
-                    StartTime = dto.StartTime, 
+                    StartTime = dto.StartTime,
                     EndTime = dto.EndTime,
                     Marks = 0,
                     IsPass = null,
@@ -417,7 +425,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                 // 1. Update common fields
                 if (dto.ExamWeight.HasValue) p.ExamWeight = dto.ExamWeight;
                 if (dto.Duration.HasValue) p.Duration = dto.Duration;
-                if (dto.StartTime.HasValue) p.StartTime = dto.StartTime; 
+                if (dto.StartTime.HasValue) p.StartTime = dto.StartTime;
                 if (dto.EndTime.HasValue) p.EndTime = dto.EndTime;
                 // 2. Update Type-Specific Links and Description
                 if (typeId == 1 && dto.QuizId.HasValue) // Theory Exam (TE) Link update
@@ -456,7 +464,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
 
             if (dto.ExamWeight.HasValue) partial.ExamWeight = dto.ExamWeight;
             if (dto.Duration.HasValue) partial.Duration = dto.Duration;
-            if (dto.StartTime.HasValue) partial.StartTime = dto.StartTime; 
+            if (dto.StartTime.HasValue) partial.StartTime = dto.StartTime;
             if (dto.EndTime.HasValue) partial.EndTime = dto.EndTime;
             if (!string.IsNullOrEmpty(dto.Description)) partial.Description = dto.Description;
 
@@ -709,8 +717,8 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                 ExamWeight = p.ExamWeight,
                 Description = p.Description,
                 Duration = p.Duration,
-                StartTime = p.StartTime,        
-                EndTime = p.EndTime,          
+                StartTime = p.StartTime,
+                EndTime = p.EndTime,
                 CompleteTime = p.CompleteTime,
                 Status = GetFinalExamPartialStatusName(statusId),
 
