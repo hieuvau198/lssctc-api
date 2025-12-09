@@ -76,6 +76,8 @@ public partial class LssctcDbContext : DbContext
 
     public virtual DbSet<MaterialAuthor> MaterialAuthors { get; set; }
 
+    public virtual DbSet<PeChecklist> PeChecklists { get; set; }
+
     public virtual DbSet<Practice> Practices { get; set; }
 
     public virtual DbSet<PracticeAttempt> PracticeAttempts { get; set; }
@@ -938,6 +940,30 @@ public partial class LssctcDbContext : DbContext
                 .HasForeignKey(d => d.MaterialId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK__material___mater__0307610B");
+        });
+
+        modelBuilder.Entity<PeChecklist>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__pe_check__3213E83FBC3C70A7");
+
+            entity.ToTable("pe_checklist");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.Description)
+                .HasMaxLength(1000)
+                .HasColumnName("description");
+            entity.Property(e => e.FinalExamPartialId).HasColumnName("final_exam_partial_id");
+            entity.Property(e => e.IsPass)
+                .HasDefaultValue(false)
+                .HasColumnName("is_pass");
+            entity.Property(e => e.Name)
+                .HasMaxLength(200)
+                .HasColumnName("name");
+
+            entity.HasOne(d => d.FinalExamPartial).WithMany(p => p.PeChecklists)
+                .HasForeignKey(d => d.FinalExamPartialId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__pe_checkl__final__2FDA0782");
         });
 
         modelBuilder.Entity<Practice>(entity =>

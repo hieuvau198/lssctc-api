@@ -34,4 +34,6 @@ public partial class FinalExamPartial
     public virtual ICollection<FeTheory> FeTheories { get; set; } = new List<FeTheory>();
 
     public virtual FinalExam FinalExam { get; set; } = null!;
+
+    public virtual ICollection<PeChecklist> PeChecklists { get; set; } = new List<PeChecklist>();
 }
