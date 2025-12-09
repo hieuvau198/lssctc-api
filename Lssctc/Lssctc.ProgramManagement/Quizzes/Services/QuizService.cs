@@ -1,4 +1,5 @@
 ﻿using ExcelDataReader;
+using Lssctc.ProgramManagement.Activities.Services;
 using Lssctc.ProgramManagement.Quizzes.DTOs;
 using Lssctc.Share.Common;
 using Lssctc.Share.Entities;
@@ -16,9 +17,12 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
     public class QuizService : IQuizService
     {
         private readonly IUnitOfWork _uow;
-        public QuizService(IUnitOfWork uow)
+        private readonly IActivitySessionService _sessionService;
+
+        public QuizService(IUnitOfWork uow, IActivitySessionService sessionService) 
         {
             _uow = uow;
+            _sessionService = sessionService;
         }
 
         public async Task<bool> DeleteQuizById(int id)
@@ -378,9 +382,34 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
             return q;
         }
 
-        public async Task<QuizTraineeDetailDto?> GetQuizDetailForTraineeByActivityIdAsync(int activityId, CancellationToken ct = default)
+        public async Task<QuizTraineeDetailDto?> GetQuizDetailForTraineeByActivityIdAsync(int activityId, int? traineeId = null, CancellationToken ct = default)
         {
-            // Find the ActivityQuiz link to get the QuizId
+            // 1. Enforce Time Access if TraineeId is present
+            if (traineeId.HasValue)
+            {
+                // Find the user's class for this activity
+                // Path: ActivityRecord -> SectionRecord -> LearningProgress -> Enrollment -> Class
+                var activityRecord = await _uow.ActivityRecordRepository
+                    .GetAllAsQueryable()
+                    .AsNoTracking()
+                    .Include(ar => ar.SectionRecord.LearningProgress.Enrollment)
+                    .Where(ar => ar.ActivityId == activityId &&
+                                 ar.SectionRecord.LearningProgress.Enrollment.TraineeId == traineeId.Value)
+                    .Select(ar => new { ar.SectionRecord.LearningProgress.Enrollment.ClassId })
+                    .FirstOrDefaultAsync(ct);
+
+                if (activityRecord != null)
+                {
+                    await _sessionService.CheckActivityAccess(activityRecord.ClassId, activityId);
+                }
+                // Note: If activityRecord is null, it means the trainee hasn't been assigned this activity yet
+                // (or hasn't "reached" it in progression), but we proceed to fetch the quiz definition
+                // assuming the controller/caller handles basic existence checks.
+                // However, strictly speaking, if they aren't enrolled, they shouldn't see it.
+                // For now, checking Time Access on *existing* enrollment is the requirement.
+            }
+
+            // 2. Find the ActivityQuiz link to get the QuizId
             var activityQuiz = await _uow.ActivityQuizRepository
                 .GetAllAsQueryable()
                 .AsNoTracking()
@@ -388,11 +417,10 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
 
             if (activityQuiz == null)
             {
-                // This activity is not a quiz or has no quiz linked
                 return null;
             }
 
-            // Now call the existing method with the found QuizId
+            // 3. Retrieve details
             return await GetQuizDetailForTrainee(activityQuiz.QuizId, ct);
         }
 

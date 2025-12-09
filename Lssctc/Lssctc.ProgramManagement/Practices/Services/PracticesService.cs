@@ -1,4 +1,5 @@
-﻿using Lssctc.ProgramManagement.Practices.Dtos;
+﻿using Lssctc.ProgramManagement.Activities.Services; // Added
+using Lssctc.ProgramManagement.Practices.Dtos;
 using Lssctc.Share.Common;
 using Lssctc.Share.Entities;
 using Lssctc.Share.Enums;
@@ -10,10 +11,12 @@ namespace Lssctc.ProgramManagement.Practices.Services
     public class PracticesService : IPracticesService
     {
         private readonly IUnitOfWork _uow;
+        private readonly IActivitySessionService _sessionService; // Added
 
-        public PracticesService(IUnitOfWork uow)
+        public PracticesService(IUnitOfWork uow, IActivitySessionService sessionService) // Updated Constructor
         {
             _uow = uow;
+            _sessionService = sessionService;
         }
 
         #region Practices CRUD
@@ -60,10 +63,10 @@ namespace Lssctc.ProgramManagement.Practices.Services
             {
                 var normalizedCode = createDto.PracticeCode.Trim();
                 bool codeExists = await _uow.PracticeRepository
-                    .ExistsAsync(p => p.PracticeCode != null && 
+                    .ExistsAsync(p => p.PracticeCode != null &&
                                      p.PracticeCode.ToLower() == normalizedCode.ToLower() &&
                                      (p.IsDeleted == null || p.IsDeleted == false));
-                
+
                 if (codeExists)
                     throw new ArgumentException($"Practice code '{normalizedCode}' already exists.");
             }
@@ -97,16 +100,16 @@ namespace Lssctc.ProgramManagement.Practices.Services
             if (!string.IsNullOrWhiteSpace(updateDto.PracticeCode))
             {
                 var normalizedCode = updateDto.PracticeCode.Trim();
-                
+
                 // Only check if the code is different from the current one
                 if (practice.PracticeCode?.ToLower() != normalizedCode.ToLower())
                 {
                     bool codeExists = await _uow.PracticeRepository
-                        .ExistsAsync(p => p.Id != id && 
-                                         p.PracticeCode != null && 
+                        .ExistsAsync(p => p.Id != id &&
+                                         p.PracticeCode != null &&
                                          p.PracticeCode.ToLower() == normalizedCode.ToLower() &&
                                          (p.IsDeleted == null || p.IsDeleted == false));
-                    
+
                     if (codeExists)
                         throw new ArgumentException($"Practice code '{normalizedCode}' already exists.");
                 }
@@ -118,7 +121,7 @@ namespace Lssctc.ProgramManagement.Practices.Services
             practice.DifficultyLevel = updateDto.DifficultyLevel ?? practice.DifficultyLevel;
             practice.MaxAttempts = updateDto.MaxAttempts ?? practice.MaxAttempts;
             practice.IsActive = updateDto.IsActive ?? practice.IsActive;
-            
+
             // Update PracticeCode if provided
             if (!string.IsNullOrWhiteSpace(updateDto.PracticeCode))
                 practice.PracticeCode = updateDto.PracticeCode.Trim();
@@ -390,7 +393,8 @@ namespace Lssctc.ProgramManagement.Practices.Services
                 {
                     ar.Id,
                     ar.ActivityId,
-                    ar.IsCompleted
+                    ar.IsCompleted,
+                    ClassId = ar.SectionRecord.LearningProgress.Enrollment.ClassId // Get ClassId
                 })
                 .FirstOrDefaultAsync();
 
@@ -398,6 +402,13 @@ namespace Lssctc.ProgramManagement.Practices.Services
             {
                 throw new KeyNotFoundException("Practice activity record not found for this trainee.");
             }
+
+            // --- FIX: CHECK ACCESS TIME ---
+            if (activityRecord.ActivityId.HasValue)
+            {
+                await _sessionService.CheckActivityAccess(activityRecord.ClassId, activityRecord.ActivityId.Value);
+            }
+            // ------------------------------
 
             // 2. Get the associated Practice and its task templates
             if (!activityRecord.ActivityId.HasValue)
