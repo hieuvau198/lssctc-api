@@ -379,7 +379,10 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Services
                     TraineeName = t.Fullname ?? t.TraineeCode,
                     TraineeCode = t.TraineeCode,
                     AvatarUrl = t.AvatarUrl,
-                    AttendanceStatus = status
+                    AttendanceStatus = status,
+
+                    // [ADDED] Map the description to the Note field
+                    Note = attendance?.Description
                 };
             }).ToList();
 

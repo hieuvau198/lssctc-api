@@ -108,6 +108,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Dtos
         public string TraineeName { get; set; } = null!;
         public string TraineeCode { get; set; } = null!;
         public string? AvatarUrl { get; set; }
+        public string? Note { get; set; }
         public string AttendanceStatus { get; set; } = "NotStarted";
     }
 
