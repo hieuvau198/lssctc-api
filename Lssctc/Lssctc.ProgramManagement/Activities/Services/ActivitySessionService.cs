@@ -189,6 +189,14 @@ namespace Lssctc.ProgramManagement.Activities.Services
                 .Where(s => s.ClassId == classId)
                 .OrderBy(s => s.Activity.ActivityTitle)
                 .ToListAsync();
+            if(!sessions.Any())
+            { 
+                await CreateSessionsOnClassStartAsync(classId);
+            }
+            sessions = await GetSessionQuery()
+                .Where(s => s.ClassId == classId)
+                .OrderBy(s => s.Activity.ActivityTitle)
+                .ToListAsync();
 
             return sessions.Select(MapToDto);
         }
