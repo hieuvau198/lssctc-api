@@ -781,6 +781,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                 EndTime = p.EndTime,
                 CompleteTime = p.CompleteTime,
                 Status = GetFinalExamPartialStatusName(statusId),
+                IsPass = p.IsPass,
                 QuizId = isInstructor ? theory?.QuizId : null,
                 QuizName = isInstructor ? theory?.Quiz?.Name : null,
                 PracticeId = sim?.PracticeId,

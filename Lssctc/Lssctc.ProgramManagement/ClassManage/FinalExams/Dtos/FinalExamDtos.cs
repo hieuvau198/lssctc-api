@@ -43,6 +43,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Dtos
         public DateTime? EndTime { get; set; }
         public DateTime? CompleteTime { get; set; }
         public string? Status { get; set; } // "NotYet", "Submitted", "Approved"
+        public bool? IsPass { get; set; }
 
         // Linked Info
         public int? QuizId { get; set; }
