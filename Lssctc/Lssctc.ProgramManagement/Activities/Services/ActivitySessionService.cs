@@ -189,7 +189,7 @@ namespace Lssctc.ProgramManagement.Activities.Services
                 .Where(s => s.ClassId == classId)
                 .OrderBy(s => s.Activity.ActivityTitle)
                 .ToListAsync();
-            if(!sessions.Any())
+            if(sessions == null || sessions.Count == 0)
             { 
                 await CreateSessionsOnClassStartAsync(classId);
             }

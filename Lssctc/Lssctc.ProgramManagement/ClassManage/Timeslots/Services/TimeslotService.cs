@@ -75,7 +75,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Services
         }
         public async Task<TimeslotDto> CreateTimeslotAsync(CreateTimeslotDto dto, int creatorId)
         {
-            // 1. Validate Timeslot Duration (Issue 4)
+            // 1. Validate Timeslot Duration
             ValidateTimeslotDuration(dto.StartTime, dto.EndTime.Value);
 
             // 2. Validate Class existence and status
@@ -86,11 +86,10 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Services
             if (targetClass == null)
                 throw new KeyNotFoundException($"Class with ID {dto.ClassId} not found.");
 
-            // BR: Only allow timeslot creation if class is in 'Draft', 'Open', or 'Inprogress'
             if (targetClass.Status == (int)ClassStatusEnum.Completed || targetClass.Status == (int)ClassStatusEnum.Cancelled)
                 throw new InvalidOperationException("Cannot create timeslots for completed or cancelled classes.");
 
-            // 3. Validate Creator/Instructor Authorization (Allow Admin to bypass this check)
+            // 3. Validate Creator/Instructor Authorization
             var creatorUser = await _uow.UserRepository.GetByIdAsync(creatorId);
             if (creatorUser?.Role == (int)UserRoleEnum.Instructor)
             {
@@ -101,7 +100,38 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Services
                     throw new UnauthorizedAccessException($"Instructor {creatorId} is not assigned to class {dto.ClassId}.");
             }
 
-            // 4. Create new Timeslot entity
+            // --- NEW LOGIC: Check Instructor Conflict ---
+            // Check if ANY instructor is assigned to this class
+            var currentInstructorAssignment = await _uow.ClassInstructorRepository
+                .GetAllAsQueryable()
+                .FirstOrDefaultAsync(ci => ci.ClassId == dto.ClassId);
+
+            if (currentInstructorAssignment != null)
+            {
+                var instructorId = currentInstructorAssignment.InstructorId;
+
+                // Check against timeslots in OTHER classes assigned to this instructor
+                var hasConflict = await _uow.TimeslotRepository
+                    .GetAllAsQueryable()
+                    .Include(t => t.Class)
+                    .ThenInclude(c => c.ClassInstructors)
+                    .AnyAsync(t =>
+                        t.IsDeleted == false &&
+                        // Timeslot belongs to a DIFFERENT class
+                        t.ClassId != dto.ClassId &&
+                        // That different class is assigned to the SAME instructor
+                        t.Class.ClassInstructors.Any(ci => ci.InstructorId == instructorId) &&
+                        // And the time overlaps
+                        t.StartTime < dto.EndTime.Value && t.EndTime > dto.StartTime
+                    );
+
+                if (hasConflict)
+                {
+                    throw new InvalidOperationException("The assigned instructor has a schedule conflict with this new timeslot in another class.");
+                }
+            }
+            // --------------------------------------------
+
             var newTimeslot = new Timeslot
             {
                 ClassId = dto.ClassId,
@@ -118,10 +148,10 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Services
             await _uow.TimeslotRepository.CreateAsync(newTimeslot);
             await _uow.SaveChangesAsync();
 
-            // 5. Return DTO by refetching with navigation data for accurate mapping
             var created = await GetTimeslotQuery().FirstAsync(t => t.Id == newTimeslot.Id);
             return MapToDto(created);
         }
+
         public async Task<IEnumerable<TimeslotDto>> CreateListTimeslotAsync(CreateListTimeslotDto dto, int creatorId)
         {
             var createdList = new List<TimeslotDto>();
@@ -151,6 +181,32 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Services
 
                 if (!isAssigned)
                     throw new UnauthorizedAccessException($"Instructor {updaterId} is not authorized to update timeslot in class {existing.ClassId}.");
+            }
+
+            var currentInstructorAssignment = await _uow.ClassInstructorRepository
+                .GetAllAsQueryable()
+                .FirstOrDefaultAsync(ci => ci.ClassId == existing.ClassId);
+
+            if (currentInstructorAssignment != null)
+            {
+                var instructorId = currentInstructorAssignment.InstructorId;
+
+                // Check against timeslots in OTHER classes
+                var hasConflict = await _uow.TimeslotRepository
+                    .GetAllAsQueryable()
+                    .Include(t => t.Class)
+                    .ThenInclude(c => c.ClassInstructors)
+                    .AnyAsync(t =>
+                        t.IsDeleted == false &&
+                        t.ClassId != existing.ClassId && // Ensure we look at other classes
+                        t.Class.ClassInstructors.Any(ci => ci.InstructorId == instructorId) &&
+                        t.StartTime < dto.EndTime.Value && t.EndTime > dto.StartTime
+                    );
+
+                if (hasConflict)
+                {
+                    throw new InvalidOperationException("The assigned instructor has a schedule conflict with this updated time in another class.");
+                }
             }
 
             // 3. Apply updates (all fields from DTO are required and validated at DTO level)
