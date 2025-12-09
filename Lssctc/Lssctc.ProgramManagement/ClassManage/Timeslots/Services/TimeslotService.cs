@@ -100,7 +100,19 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Services
                     throw new UnauthorizedAccessException($"Instructor {creatorId} is not assigned to class {dto.ClassId}.");
             }
 
-            // --- NEW LOGIC: Check Instructor Conflict ---
+            // --- [UPDATED] Check Class Conflict (No overlapping slots in the same class) ---
+            var isClassConflict = await _uow.TimeslotRepository.GetAllAsQueryable()
+                .AnyAsync(t => t.ClassId == dto.ClassId
+                            && t.IsDeleted == false
+                            && t.StartTime < dto.EndTime.Value
+                            && t.EndTime > dto.StartTime);
+
+            if (isClassConflict)
+            {
+                throw new InvalidOperationException("This time overlaps with another existing timeslot in this class.");
+            }
+
+            // --- Check Instructor Conflict (Existing Logic) ---
             // Check if ANY instructor is assigned to this class
             var currentInstructorAssignment = await _uow.ClassInstructorRepository
                 .GetAllAsQueryable()
@@ -181,6 +193,19 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Services
 
                 if (!isAssigned)
                     throw new UnauthorizedAccessException($"Instructor {updaterId} is not authorized to update timeslot in class {existing.ClassId}.");
+            }
+
+            // --- [UPDATED] Check Class Conflict (No overlapping slots in the same class) ---
+            var isClassConflict = await _uow.TimeslotRepository.GetAllAsQueryable()
+                .AnyAsync(t => t.ClassId == existing.ClassId
+                            && t.Id != timeslotId // Exclude current timeslot
+                            && t.IsDeleted == false
+                            && t.StartTime < dto.EndTime.Value
+                            && t.EndTime > dto.StartTime);
+
+            if (isClassConflict)
+            {
+                throw new InvalidOperationException("This time overlaps with another existing timeslot in this class.");
             }
 
             var currentInstructorAssignment = await _uow.ClassInstructorRepository
@@ -331,11 +356,19 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Services
         }
         public async Task<IEnumerable<TimeslotDto>> GetTimeslotsByClassAndInstructorAsync(int classId, int instructorId)
         {
-            var isAssigned = await _uow.ClassInstructorRepository.ExistsAsync(ci =>
-                ci.ClassId == classId && ci.InstructorId == instructorId);
+            // [FIX] Check user role first. Only enforce assignment check for Instructors.
+            var user = await _uow.UserRepository.GetByIdAsync(instructorId);
 
-            if (!isAssigned)
-                throw new UnauthorizedAccessException($"Instructor {instructorId} is not assigned to class {classId}.");
+            // If the user is an Instructor, they MUST be assigned to the class.
+            // If the user is Admin (or other authorized roles), we skip this check.
+            if (user != null && user.Role == (int)UserRoleEnum.Instructor)
+            {
+                var isAssigned = await _uow.ClassInstructorRepository.ExistsAsync(ci =>
+                    ci.ClassId == classId && ci.InstructorId == instructorId);
+
+                if (!isAssigned)
+                    throw new UnauthorizedAccessException($"Instructor {instructorId} is not assigned to class {classId}.");
+            }
 
             var timeslots = await GetTimeslotQuery()
                 .Where(t => t.ClassId == classId)

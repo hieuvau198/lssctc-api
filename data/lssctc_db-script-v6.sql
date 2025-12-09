@@ -462,6 +462,15 @@ BEGIN TRY
         FOREIGN KEY ([final_exam_id]) REFERENCES [dbo].[final_exams]([id])
     );
 
+	CREATE TABLE [dbo].[pe_checklist] (
+        [id] INT IDENTITY(1,1) PRIMARY KEY,
+        [final_exam_partial_id] INT NOT NULL,
+        [name] NVARCHAR(200),
+        [description] NVARCHAR(1000),
+        [is_pass] BIT DEFAULT 0,
+        FOREIGN KEY ([final_exam_partial_id]) REFERENCES [dbo].[final_exam_partials]([id])
+    );
+
 	CREATE TABLE [dbo].[fe_theory] (
         [id] INT IDENTITY(1,1) PRIMARY KEY,
         [final_exam_partial_id] INT NOT NULL,
