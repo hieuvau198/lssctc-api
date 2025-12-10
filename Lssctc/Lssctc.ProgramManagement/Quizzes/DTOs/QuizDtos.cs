@@ -149,4 +149,19 @@ namespace Lssctc.ProgramManagement.Quizzes.DTOs
     }
 
     #endregion
+
+    #region Trainee Quiz
+    public class TraineeQuizResponseDto
+    {
+        public QuizTraineeDetailDto Quiz { get; set; }
+        public QuizSessionStatusDto SessionStatus { get; set; }
+    }
+    public class QuizSessionStatusDto
+    {
+        public bool IsOpen { get; set; }
+        public DateTime? StartTime { get; set; }
+        public DateTime? EndTime { get; set; }
+        public string Message { get; set; }
+    }
+    #endregion
 }

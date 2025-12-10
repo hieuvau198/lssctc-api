@@ -189,6 +189,68 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
             var aq = await _uow.ActivityQuizRepository.GetByIdAsync(sectionQuizId);
             return aq == null ? null : await GetQuizDetailForTrainee(aq.QuizId, ct);
         }
+
+        public async Task<TraineeQuizResponseDto> GetQuizForTraineeByRecordIdAsync(int activityRecordId, CancellationToken ct = default)
+        {
+            // 1. Lấy thông tin ActivityRecord để tìm ClassId và ActivityId
+            var record = await _uow.ActivityRecordRepository.GetAllAsQueryable()
+                .AsNoTracking()
+                .Include(ar => ar.SectionRecord)
+                    .ThenInclude(sr => sr.LearningProgress)
+                        .ThenInclude(lp => lp.Enrollment)
+                .FirstOrDefaultAsync(ar => ar.Id == activityRecordId, ct);
+
+            if (record == null)
+                throw new KeyNotFoundException("Activity Record not found.");
+
+            var activityId = record.ActivityId.GetValueOrDefault();
+            var classId = record.SectionRecord.LearningProgress.Enrollment.ClassId;
+
+            // 2. Tìm Session của Activity trong Class này
+            var session = await _uow.ActivitySessionRepository.GetAllAsQueryable()
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s => s.ClassId == classId && s.ActivityId == activityId && s.IsActive == true, ct);
+
+            // 3. Xác định trạng thái Session
+            var status = new QuizSessionStatusDto
+            {
+                IsOpen = true,
+                Message = "Available"
+            };
+
+            if (session != null)
+            {
+                status.StartTime = session.StartTime;
+                status.EndTime = session.EndTime;
+                var now = DateTime.Now;
+
+                if (status.StartTime.HasValue && now < status.StartTime.Value)
+                {
+                    status.IsOpen = false;
+                    status.Message = "Not started yet";
+                }
+                else if (status.EndTime.HasValue && now > status.EndTime.Value)
+                {
+                    status.IsOpen = false;
+                    status.Message = "Expired";
+                }
+            }
+
+            // 4. Lấy chi tiết Quiz (Sử dụng lại logic cũ)
+            var quizDetail = await GetQuizDetailForTraineeByActivityIdAsync(activityId, null, ct);
+            // Note: Truyền null cho traineeId ở đây vì ta đã kiểm tra access/record ở trên rồi, 
+            // hoặc bạn có thể gọi GetQuizDetailForTrainee(quizId) nếu đã biết quizId. 
+            // Tuy nhiên GetQuizDetailForTraineeByActivityIdAsync tiện hơn vì nó tự tìm QuizId từ ActivityId.
+
+            if (quizDetail == null)
+                throw new KeyNotFoundException("Quiz content not found for this activity.");
+
+            return new TraineeQuizResponseDto
+            {
+                Quiz = quizDetail,
+                SessionStatus = status
+            };
+        }
         #endregion
 
         #region CREATE & UPDATE

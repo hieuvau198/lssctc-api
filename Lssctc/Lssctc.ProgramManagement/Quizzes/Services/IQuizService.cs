@@ -19,6 +19,7 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
         Task<QuizTraineeDetailDto?> GetQuizDetailForTrainee(int quizId, CancellationToken ct = default);
         Task<QuizTraineeDetailDto?> GetQuizDetailForTraineeByActivityIdAsync(int activityId, int? traineeId = null, CancellationToken ct = default); 
         Task<QuizTraineeDetailDto?> GetQuizTraineeDetailBySectionQuizIdAsync(int sectionQuizId, CancellationToken ct = default);
+        Task<TraineeQuizResponseDto> GetQuizForTraineeByRecordIdAsync(int activityRecordId, CancellationToken ct = default);
         #endregion
 
         #region Manage

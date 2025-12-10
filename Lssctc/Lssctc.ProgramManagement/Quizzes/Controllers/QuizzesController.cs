@@ -114,6 +114,25 @@ namespace Lssctc.ProgramManagement.Quizzes.Controllers
             }
         }
 
+        [HttpGet("trainee/activity-record/{activityRecordId}")]
+        [Authorize(Roles = "Trainee, Admin, Instructor")]
+        public async Task<IActionResult> GetQuizForTraineeByRecordId(int activityRecordId)
+        {
+            try
+            {
+                var result = await _service.GetQuizForTraineeByRecordIdAsync(activityRecordId);
+                return Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { Message = ex.Message });
+            }
+            catch (Exception)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "An unexpected error occurred." });
+            }
+        }
+
         [HttpPut("{id}/with-questions")]
         [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> UpdateQuizWithQuestions(int id, [FromBody] UpdateQuizWithQuestionsDto dto)
