@@ -103,6 +103,8 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddAuthorization();
 #endregion
 
+#region Controllers & Swagger
+
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
@@ -137,6 +139,8 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
+#endregion
+
 #region Domain
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
@@ -157,6 +161,8 @@ builder.Services.AddScoped<IActivitiesService, ActivitiesService>();
 
 builder.Services.AddScoped<IMaterialsService, MaterialsService>();
 builder.Services.AddScoped<IQuizService, QuizService>();
+builder.Services.AddScoped<IQuizValidator, QuizValidator>();
+builder.Services.AddScoped<IQuizExcelProcessor, QuizExcelProcessor>();
 builder.Services.AddScoped<IPracticesService, PracticesService>();
 builder.Services.AddScoped<ITasksService, TasksService>();
 

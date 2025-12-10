@@ -1,5 +1,4 @@
-﻿using ExcelDataReader;
-using Lssctc.ProgramManagement.Activities.Services;
+﻿using Lssctc.ProgramManagement.Activities.Services;
 using Lssctc.ProgramManagement.Quizzes.DTOs;
 using Lssctc.Share.Common;
 using Lssctc.Share.Entities;
@@ -7,10 +6,6 @@ using Lssctc.Share.Enums;
 using Lssctc.Share.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
-using System.Data;
-using System.Globalization;
-using System.Linq;
-using System.Threading;
 
 namespace Lssctc.ProgramManagement.Quizzes.Services
 {
@@ -18,338 +13,134 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
     {
         private readonly IUnitOfWork _uow;
         private readonly IActivitySessionService _sessionService;
+        private readonly IQuizValidator _validator;
+        private readonly IQuizExcelProcessor _excelProcessor;
 
-        public QuizService(IUnitOfWork uow, IActivitySessionService sessionService) 
+        public QuizService(
+            IUnitOfWork uow,
+            IActivitySessionService sessionService,
+            IQuizValidator validator,
+            IQuizExcelProcessor excelProcessor)
         {
             _uow = uow;
             _sessionService = sessionService;
+            _validator = validator;
+            _excelProcessor = excelProcessor;
         }
 
-        public async Task<bool> DeleteQuizById(int id)
-        {
-            return await DeleteQuizById(id, instructorId: null);
-        }
+        #region DELETE
+        public async Task<bool> DeleteQuizById(int id) => await DeleteQuizById(id, null);
 
         public async Task<bool> DeleteQuizById(int id, int? instructorId)
         {
             var entity = await _uow.QuizRepository.GetByIdAsync(id);
             if (entity == null) return false;
 
-            // If instructorId is provided and > 0, check if instructor is the author
-            if (instructorId.HasValue && instructorId.Value > 0)
+            if (instructorId.HasValue && instructorId > 0)
             {
-                // Check if this instructor is the author of this quiz
-                var isAuthor = await _uow.QuizAuthorRepository.ExistsAsync(qa => qa.QuizId == id && qa.InstructorId == instructorId.Value);
-                if (!isAuthor)
-                    return false; // Not the author, return false (simulating not found)
+                if (!await _uow.QuizAuthorRepository.ExistsAsync(qa => qa.QuizId == id && qa.InstructorId == instructorId.Value))
+                    return false;
             }
 
-            var usedInActivity = await _uow.ActivityQuizRepository.ExistsAsync(aq => aq.QuizId == id);
-            if (usedInActivity)
-                throw new ValidationException("Cannot delete quiz that is used in an activity.");
+            if (await _uow.ActivityQuizRepository.ExistsAsync(aq => aq.QuizId == id))
+                throw new ValidationException("Cannot delete quiz used in an activity.");
 
-            var hasAttempts = await _uow.QuizAttemptRepository.ExistsAsync(a => a.QuizId == id);
-            if (hasAttempts)
-                throw new ValidationException("Cannot delete quiz that has attempts recorded.");
+            if (await _uow.QuizAttemptRepository.ExistsAsync(a => a.QuizId == id))
+                throw new ValidationException("Cannot delete quiz that has attempts.");
 
-            var questions = await _uow.QuizQuestionRepository.GetAllAsQueryable()
-                .Where(qq => qq.QuizId == id)
-                .ToListAsync();
-
-            foreach (var question in questions)
+            // Cleanup related data
+            var questions = await _uow.QuizQuestionRepository.GetAllAsQueryable().Where(q => q.QuizId == id).ToListAsync();
+            foreach (var q in questions)
             {
-                var options = await _uow.QuizQuestionOptionRepository.GetAllAsQueryable()
-                    .Where(o => o.QuizQuestionId == question.Id)
-                    .ToListAsync();
-
-                foreach (var option in options)
-                {
-                   await _uow.QuizQuestionOptionRepository.DeleteAsync(option);
-                }
+                var options = await _uow.QuizQuestionOptionRepository.GetAllAsQueryable().Where(o => o.QuizQuestionId == q.Id).ToListAsync();
+                foreach (var o in options) await _uow.QuizQuestionOptionRepository.DeleteAsync(o);
+                await _uow.QuizQuestionRepository.DeleteAsync(q);
             }
 
-            //delete all questions
-            foreach (var question in questions)
-            {
-                await _uow.QuizQuestionRepository.DeleteAsync(question);
-            }
-
-            // Delete QuizAuthor records
-            var quizAuthors = await _uow.QuizAuthorRepository.GetAllAsQueryable()
-                .Where(qa => qa.QuizId == id)
-                .ToListAsync();
-
-            foreach (var quizAuthor in quizAuthors)
-            {
-                await _uow.QuizAuthorRepository.DeleteAsync(quizAuthor);
-            }
+            var authors = await _uow.QuizAuthorRepository.GetAllAsQueryable().Where(qa => qa.QuizId == id).ToListAsync();
+            foreach (var a in authors) await _uow.QuizAuthorRepository.DeleteAsync(a);
 
             await _uow.QuizRepository.DeleteAsync(entity);
             await _uow.SaveChangesAsync();
             return true;
         }
+        #endregion
 
-        public async Task<PagedResult<QuizOnlyDto>> GetQuizzes(int pageIndex, int pageSize, CancellationToken ct = default)
+        #region GET
+        public async Task<PagedResult<QuizOnlyDto>> GetQuizzes(int page, int size, CancellationToken ct = default)
+            => await GetQuizzes(page, size, null, null, null, null, ct);
+
+        public async Task<PagedResult<QuizOnlyDto>> GetQuizzes(int page, int size, int? instructorId, CancellationToken ct = default)
+            => await GetQuizzes(page, size, instructorId, null, null, null, ct);
+
+        public async Task<PagedResult<QuizOnlyDto>> GetQuizzes(int page, int size, int? instructorId, string? search, string? sort, string? dir, CancellationToken ct = default)
         {
-            if (pageIndex < 1) pageIndex = 1;
-            if (pageSize < 1) pageSize = 10;
+            if (page < 1) page = 1;
+            if (size < 1) size = 10;
 
             var query = _uow.QuizRepository.GetAllAsQueryable();
-            var total = await query.CountAsync(ct);
-            var items = await query
-                .OrderByDescending(q => q.CreatedAt)
-                .Skip((pageIndex - 1) * pageSize)
-                .Take(pageSize)
-                .Select(q => new QuizOnlyDto
-                {
-                    Id = q.Id,
-                    Name = q.Name,
-                    PassScoreCriteria = q.PassScoreCriteria,
-                    TimelimitMinute = q.TimelimitMinute,
-                    TotalScore = q.TotalScore,
-                    Description = q.Description
-                })
-                .ToListAsync(ct);
-
-            return new PagedResult<QuizOnlyDto>
-            {
-                Items = items,
-                Page = pageIndex,
-                PageSize = pageSize,
-                TotalCount = total
-            };
-        }
-
-        public async Task<PagedResult<QuizOnlyDto>> GetQuizzes(int pageIndex, int pageSize, int? instructorId, CancellationToken ct = default)
-        {
-            if (pageIndex < 1) pageIndex = 1;
-            if (pageSize < 1) pageSize = 10;
-
-            // If instructorId is provided and > 0, filter quizzes by instructor
-            IQueryable<Quiz> query = _uow.QuizRepository.GetAllAsQueryable();
-            
-            if (instructorId.HasValue && instructorId.Value > 0)
-            {
-                // Only get quizzes where this instructor is the author
+            if (instructorId > 0)
                 query = query.Where(q => q.QuizAuthors.Any(qa => qa.InstructorId == instructorId.Value));
-            }
 
-            var total = await query.CountAsync(ct);
-            var items = await query
-                .OrderByDescending(q => q.CreatedAt)
-                .Skip((pageIndex - 1) * pageSize)
-                .Take(pageSize)
-                .Select(q => new QuizOnlyDto
-                {
-                    Id = q.Id,
-                    Name = q.Name,
-                    PassScoreCriteria = q.PassScoreCriteria,
-                    TimelimitMinute = q.TimelimitMinute,
-                    TotalScore = q.TotalScore,
-                    Description = q.Description
-                })
-                .ToListAsync(ct);
+            query = query.ApplySearch(search).ApplySort(sort, dir);
 
-            return new PagedResult<QuizOnlyDto>
+            return await query.Select(q => new QuizOnlyDto
             {
-                Items = items,
-                Page = pageIndex,
-                PageSize = pageSize,
-                TotalCount = total
-            };
+                Id = q.Id,
+                Name = q.Name,
+                PassScoreCriteria = q.PassScoreCriteria,
+                TimelimitMinute = q.TimelimitMinute,
+                TotalScore = q.TotalScore,
+                Description = q.Description
+            }).ToPagedResultAsync(page, size);
         }
 
-        public async Task<PagedResult<QuizOnlyDto>> GetQuizzes(
-            int pageIndex, 
-            int pageSize, 
-            int? instructorId, 
-            string? searchTerm, 
-            string? sortBy, 
-            string? sortDirection, 
-            CancellationToken ct = default)
-        {
-            if (pageIndex < 1) pageIndex = 1;
-            if (pageSize < 1) pageSize = 10;
-
-            // Step 1: Preserve existing logic - filter by instructorId if provided
-            IQueryable<Quiz> query = _uow.QuizRepository.GetAllAsQueryable();
-            
-            if (instructorId.HasValue && instructorId.Value > 0)
-            {
-                // Only get quizzes where this instructor is the author
-                query = query.Where(q => q.QuizAuthors.Any(qa => qa.InstructorId == instructorId.Value));
-            }
-
-            // Step 2: Filtering (Search) - case-insensitive search in Name OR Description
-            if (!string.IsNullOrWhiteSpace(searchTerm))
-            {
-                var normalizedSearchTerm = searchTerm.Trim().ToLower();
-                query = query.Where(q => 
-                    (q.Name != null && q.Name.ToLower().Contains(normalizedSearchTerm)) || 
-                    (q.Description != null && q.Description.ToLower().Contains(normalizedSearchTerm)));
-            }
-
-            // Get total count after filtering
-            var total = await query.CountAsync(ct);
-
-            // Step 3: Sorting Logic
-            IQueryable<Quiz> sortedQuery;
-
-            // Scenario A: Explicit Sort (sortBy provided)
-            if (!string.IsNullOrWhiteSpace(sortBy))
-            {
-                var isDescending = sortDirection?.ToLower() == "desc";
-
-                sortedQuery = sortBy.ToLower() switch
-                {
-                    "timelimit" => isDescending 
-                        ? query.OrderByDescending(q => q.TimelimitMinute) 
-                        : query.OrderBy(q => q.TimelimitMinute),
-                    "passscore" => isDescending 
-                        ? query.OrderByDescending(q => q.PassScoreCriteria) 
-                        : query.OrderBy(q => q.PassScoreCriteria),
-                    _ => query.OrderByDescending(q => q.CreatedAt) // Default fallback
-                };
-            }
-            // Scenario B: Search Relevance (no sortBy but searchTerm provided)
-            else if (!string.IsNullOrWhiteSpace(searchTerm))
-            {
-                var normalizedSearchTerm = searchTerm.Trim().ToLower();
-                
-                // Order by relevance: Name matches first, then Description matches
-                sortedQuery = query
-                    .OrderByDescending(q => q.Name != null && q.Name.ToLower().Contains(normalizedSearchTerm))
-                    .ThenByDescending(q => q.Description != null && q.Description.ToLower().Contains(normalizedSearchTerm))
-                    .ThenByDescending(q => q.CreatedAt);
-            }
-            // Scenario C: Default (no search, no sort)
-            else
-            {
-                sortedQuery = query.OrderByDescending(q => q.CreatedAt);
-            }
-
-            // Step 4: Execute pagination and projection
-            var items = await sortedQuery
-                .Skip((pageIndex - 1) * pageSize)
-                .Take(pageSize)
-                .Select(q => new QuizOnlyDto
-                {
-                    Id = q.Id,
-                    Name = q.Name,
-                    PassScoreCriteria = q.PassScoreCriteria,
-                    TimelimitMinute = q.TimelimitMinute,
-                    TotalScore = q.TotalScore,
-                    Description = q.Description
-                })
-                .ToListAsync(ct);
-
-            return new PagedResult<QuizOnlyDto>
-            {
-                Items = items,
-                Page = pageIndex,
-                PageSize = pageSize,
-                TotalCount = total
-            };
-        }
-
-        public async Task<QuizDto?> GetQuizById(int id)
-        {
-            var q = await _uow.QuizRepository.GetAllAsQueryable()
-                .Where(x => x.Id == id)
-                .Select(x => new QuizDto
-                {
-                    Id = x.Id,
-                    Name = x.Name,
-                    PassScoreCriteria = x.PassScoreCriteria,
-                    TimelimitMinute = x.TimelimitMinute,
-                    TotalScore = x.TotalScore,
-                    Description = x.Description,
-                    CreatedAt = x.CreatedAt,
-                    UpdatedAt = x.UpdatedAt,
-                    Questions = x.QuizQuestions.Select(qq => new QuizQuestionDto
-                    {
-                        Id = qq.Id,
-                        QuizId = qq.QuizId,
-                        Name = qq.Name,
-                        QuestionScore = qq.QuestionScore,
-                        Description = qq.Description,
-                        IsMultipleAnswers = qq.IsMultipleAnswers,
-                        Options = qq.QuizQuestionOptions.Select(o => new QuizQuestionOptionDto
-                        {
-                            Id = o.Id,
-                            QuizQuestionId = o.QuizQuestionId,
-                            Name = o.Name,
-                            Description = o.Description,
-                            IsCorrect = o.IsCorrect,
-                            Explanation = o.Explanation,
-                            DisplayOrder = o.DisplayOrder,
-                            OptionScore = o.OptionScore
-                        }).ToList()
-                    }).ToList()
-                })
-                .FirstOrDefaultAsync();
-
-            return q;
-        }
+        public async Task<QuizDto?> GetQuizById(int id) => await GetQuizById(id, null);
 
         public async Task<QuizDto?> GetQuizById(int id, int? instructorId)
         {
-            // If instructorId is provided and > 0, check if instructor is the author
-            IQueryable<Quiz> query = _uow.QuizRepository.GetAllAsQueryable();
-            
-            if (instructorId.HasValue && instructorId.Value > 0)
-            {
-                // Only allow instructor to see quiz they created
+            var query = _uow.QuizRepository.GetAllAsQueryable();
+            if (instructorId > 0)
                 query = query.Where(q => q.Id == id && q.QuizAuthors.Any(qa => qa.InstructorId == instructorId.Value));
-            }
             else
-            {
-                // If no instructor specified, just get by ID (for Admin)
                 query = query.Where(q => q.Id == id);
-            }
 
-            var q = await query
-                .Select(x => new QuizDto
+            return await query.Select(x => new QuizDto
+            {
+                Id = x.Id,
+                Name = x.Name,
+                PassScoreCriteria = x.PassScoreCriteria,
+                TimelimitMinute = x.TimelimitMinute,
+                TotalScore = x.TotalScore,
+                Description = x.Description,
+                CreatedAt = x.CreatedAt,
+                UpdatedAt = x.UpdatedAt,
+                Questions = x.QuizQuestions.Select(qq => new QuizQuestionDto
                 {
-                    Id = x.Id,
-                    Name = x.Name,
-                    PassScoreCriteria = x.PassScoreCriteria,
-                    TimelimitMinute = x.TimelimitMinute,
-                    TotalScore = x.TotalScore,
-                    Description = x.Description,
-                    CreatedAt = x.CreatedAt,
-                    UpdatedAt = x.UpdatedAt,
-                    Questions = x.QuizQuestions.Select(qq => new QuizQuestionDto
+                    Id = qq.Id,
+                    QuizId = qq.QuizId,
+                    Name = qq.Name,
+                    QuestionScore = qq.QuestionScore,
+                    Description = qq.Description,
+                    IsMultipleAnswers = qq.IsMultipleAnswers,
+                    Options = qq.QuizQuestionOptions.Select(o => new QuizQuestionOptionDto
                     {
-                        Id = qq.Id,
-                        QuizId = qq.QuizId,
-                        Name = qq.Name,
-                        QuestionScore = qq.QuestionScore,
-                        Description = qq.Description,
-                        IsMultipleAnswers = qq.IsMultipleAnswers,
-                        Options = qq.QuizQuestionOptions.Select(o => new QuizQuestionOptionDto
-                        {
-                            Id = o.Id,
-                            QuizQuestionId = o.QuizQuestionId,
-                            Name = o.Name,
-                            Description = o.Description,
-                            IsCorrect = o.IsCorrect,
-                            Explanation = o.Explanation,
-                            DisplayOrder = o.DisplayOrder,
-                            OptionScore = o.OptionScore
-                        }).ToList()
+                        Id = o.Id,
+                        QuizQuestionId = o.QuizQuestionId,
+                        Name = o.Name,
+                        Description = o.Description,
+                        IsCorrect = o.IsCorrect,
+                        Explanation = o.Explanation,
+                        DisplayOrder = o.DisplayOrder,
+                        OptionScore = o.OptionScore
                     }).ToList()
-                })
-                .FirstOrDefaultAsync();
-
-            return q;
+                }).ToList()
+            }).FirstOrDefaultAsync();
         }
 
         public async Task<QuizTraineeDetailDto?> GetQuizDetailForTrainee(int quizId, CancellationToken ct = default)
         {
-            // return quiz detail for trainee (no IsCorrect on options)
-            var q = await _uow.QuizRepository.GetAllAsQueryable()
-                .Where(x => x.Id == quizId)
+            return await _uow.QuizRepository.GetAllAsQueryable().Where(x => x.Id == quizId)
                 .Select(x => new QuizTraineeDetailDto
                 {
                     Id = x.Id,
@@ -374,483 +165,149 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
                             Description = o.Description,
                             DisplayOrder = o.DisplayOrder,
                             OptionScore = o.OptionScore
-                        }).OrderBy(o => o.DisplayOrder ?? int.MaxValue).ToList()
+                        }).OrderBy(o => o.DisplayOrder).ToList()
                     }).ToList()
-                })
-                .FirstOrDefaultAsync(ct);
-
-            return q;
+                }).FirstOrDefaultAsync(ct);
         }
 
         public async Task<QuizTraineeDetailDto?> GetQuizDetailForTraineeByActivityIdAsync(int activityId, int? traineeId = null, CancellationToken ct = default)
         {
-            // 1. Enforce Time Access if TraineeId is present
             if (traineeId.HasValue)
             {
-                // Find the user's class for this activity
-                // Path: ActivityRecord -> SectionRecord -> LearningProgress -> Enrollment -> Class
-                var activityRecord = await _uow.ActivityRecordRepository
-                    .GetAllAsQueryable()
-                    .AsNoTracking()
-                    .Include(ar => ar.SectionRecord.LearningProgress.Enrollment)
-                    .Where(ar => ar.ActivityId == activityId &&
-                                 ar.SectionRecord.LearningProgress.Enrollment.TraineeId == traineeId.Value)
-                    .Select(ar => new { ar.SectionRecord.LearningProgress.Enrollment.ClassId })
-                    .FirstOrDefaultAsync(ct);
-
-                if (activityRecord != null)
-                {
-                    await _sessionService.CheckActivityAccess(activityRecord.ClassId, activityId);
-                }
-                // Note: If activityRecord is null, it means the trainee hasn't been assigned this activity yet
-                // (or hasn't "reached" it in progression), but we proceed to fetch the quiz definition
-                // assuming the controller/caller handles basic existence checks.
-                // However, strictly speaking, if they aren't enrolled, they shouldn't see it.
-                // For now, checking Time Access on *existing* enrollment is the requirement.
+                var record = await _uow.ActivityRecordRepository.GetAllAsQueryable().AsNoTracking()
+                    .Where(ar => ar.ActivityId == activityId && ar.SectionRecord.LearningProgress.Enrollment.TraineeId == traineeId.Value)
+                    .Select(ar => new { ar.SectionRecord.LearningProgress.Enrollment.ClassId }).FirstOrDefaultAsync(ct);
+                if (record != null) await _sessionService.CheckActivityAccess(record.ClassId, activityId);
             }
 
-            // 2. Find the ActivityQuiz link to get the QuizId
-            var activityQuiz = await _uow.ActivityQuizRepository
-                .GetAllAsQueryable()
-                .AsNoTracking()
-                .FirstOrDefaultAsync(aq => aq.ActivityId == activityId, ct);
-
-            if (activityQuiz == null)
-            {
-                return null;
-            }
-
-            // 3. Retrieve details
-            return await GetQuizDetailForTrainee(activityQuiz.QuizId, ct);
+            var aq = await _uow.ActivityQuizRepository.GetAllAsQueryable().AsNoTracking().FirstOrDefaultAsync(x => x.ActivityId == activityId, ct);
+            return aq == null ? null : await GetQuizDetailForTrainee(aq.QuizId, ct);
         }
 
         public async Task<QuizTraineeDetailDto?> GetQuizTraineeDetailBySectionQuizIdAsync(int sectionQuizId, CancellationToken ct = default)
         {
-            // Find ActivityQuiz -> SectionQuiz mapping
-            var activityQuiz = await _uow.ActivityQuizRepository.GetByIdAsync(sectionQuizId);
-            if (activityQuiz == null) return null;
-
-            return await GetQuizDetailForTrainee(activityQuiz.QuizId, ct);
+            var aq = await _uow.ActivityQuizRepository.GetByIdAsync(sectionQuizId);
+            return aq == null ? null : await GetQuizDetailForTrainee(aq.QuizId, ct);
         }
+        #endregion
 
-        public async Task<int> CreateQuizWithQuestions(CreateQuizWithQuestionsDto dto)
-        {
-            return await CreateQuizWithQuestions(dto, instructorId: 0);
-        }
+        #region CREATE & UPDATE
+        public async Task<int> CreateQuizWithQuestions(CreateQuizWithQuestionsDto dto) => await CreateQuizWithQuestions(dto, 0);
 
         public async Task<int> CreateQuizWithQuestions(CreateQuizWithQuestionsDto dto, int instructorId)
         {
-            if (dto == null) throw new ValidationException("Body is required.");
+            _validator.ValidateCreateQuiz(dto);
 
-            try
+            var normName = string.Join(' ', dto.Name.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries));
+            var quiz = new Quiz
             {
-                if (dto.Questions == null || dto.Questions.Count == 0)
-                    throw new ValidationException("At least one question is required.");
+                Name = normName,
+                PassScoreCriteria = dto.PassScoreCriteria.HasValue ? Math.Round(dto.PassScoreCriteria.Value, 2) : null,
+                TimelimitMinute = dto.TimelimitMinute,
+                Description = dto.Description,
+                TotalScore = 10m,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
 
-                if (dto.Questions.Count > 100)
-                    throw new ValidationException("A quiz cannot contain more than 100 questions.");
+            await _uow.QuizRepository.CreateAsync(quiz);
+            await _uow.SaveChangesAsync();
 
-                var totalScore = 0m;
-                int questionIndex = 0;
-                
-                foreach (var questionDto in dto.Questions)
-                {
-                    questionIndex++;
-                    
-                    // Validate question name
-                    if (string.IsNullOrWhiteSpace(questionDto.Name))
-                        throw new ValidationException($"Question #{questionIndex}: Name cannot be empty.");
-
-                    // Normalize FIRST, then validate length
-                    var normalizedName = string.Join(' ', questionDto.Name.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries));
-                    
-                    if (normalizedName.Length > 100)
-                    {
-                        throw new ValidationException(
-                            $"Question #{questionIndex}: Name exceeds 100 characters " +
-                            $"(actual: {normalizedName.Length} chars after removing extra spaces). " +
-                            $"Please shorten the question text.");
-                    }
-
-                    // Validate options count
-                    if (questionDto.Options == null || questionDto.Options.Count == 0)
-                        throw new ValidationException($"Question #{questionIndex} ('{TruncateText(normalizedName, 50)}'): Must have at least one option.");
-
-                    if (questionDto.Options.Count < 2)
-                        throw new ValidationException($"Question #{questionIndex} ('{TruncateText(normalizedName, 50)}'): Must have at least 2 options.");
-
-                    if (questionDto.Options.Count > 20)
-                        throw new ValidationException($"Question #{questionIndex} ('{TruncateText(normalizedName, 50)}'): Cannot have more than 20 answer options.");
-
-                    // At least one correct option
-                    var correctCount = questionDto.Options.Count(o => o.IsCorrect);
-                    if (correctCount == 0)
-                        throw new ValidationException($"Question #{questionIndex} ('{TruncateText(normalizedName, 50)}'): Must have at least one correct option.");
-
-                    // Single choice question: ch? ???c có 1 option ??ng
-                    if (!questionDto.IsMultipleAnswers && correctCount > 1)
-                        throw new ValidationException($"Question #{questionIndex} ('{TruncateText(normalizedName, 50)}'): Single choice question cannot have more than one correct option.");
-
-                    // Validate each option
-                    int optionIndex = 0;
-                    foreach (var opt in questionDto.Options)
-                    {
-                        optionIndex++;
-                        if (string.IsNullOrWhiteSpace(opt.Name))
-                            throw new ValidationException($"Question #{questionIndex}, Option #{optionIndex}: Name cannot be empty.");
-                    }
-
-                    // ImageUrl validation - only check length if provided and not empty
-                    // ImageUrl can be null or empty (optional field)
-                    if (!string.IsNullOrWhiteSpace(questionDto.ImageUrl) && questionDto.ImageUrl.Length > 500)
-                    {
-                        throw new ValidationException($"Question #{questionIndex}: ImageUrl exceeds 500 characters.");
-                    }
-
-                    // Validate question score - MUST be provided
-                    if (!questionDto.QuestionScore.HasValue)
-                    {
-                        throw new ValidationException($"Question #{questionIndex} ('{TruncateText(normalizedName, 50)}'): QuestionScore is required.");
-                    }
-
-                    decimal questionScore = Math.Round(questionDto.QuestionScore.Value, 2, MidpointRounding.AwayFromZero);
-                    
-                    // QuestionScore must be > 0 and < 10
-                    if (questionScore <= 0m || questionScore >= 10m)
-                        throw new ValidationException($"Question #{questionIndex} ('{TruncateText(normalizedName, 50)}'): QuestionScore must be greater than 0 and less than 10 (received: {questionScore}).");
-
-                    // Check total doesn't exceed 10
-                    totalScore += questionScore;
-                }
-
-                // Validate total score equals exactly 10
-                if (Math.Abs(totalScore - 10m) > 0.0001m)
-                {
-                    if (totalScore < 10m)
-                        throw new ValidationException($"Total questions scores ({totalScore:F2}) must equal 10. Currently under by {(10m - totalScore):F2}.");
-                    else
-                        throw new ValidationException($"Total questions scores ({totalScore:F2}) must equal 10. Currently over by {(totalScore - 10m):F2}.");
-                }
-
-                // Step 1: Create Quiz directly (instead of calling CreateQuiz method)
-                var rawName = (dto.Name ?? string.Empty).Trim();
-                if (string.IsNullOrWhiteSpace(rawName))
-                    throw new ValidationException("Quiz name is required.");
-
-                if (rawName.Length > 100)
-                    throw new ValidationException("Quiz name must be at most 100 characters.");
-
-                var normalizedQuizName = string.Join(' ', rawName.Split(' ', StringSplitOptions.RemoveEmptyEntries));
-
-                // TotalScore fixed to 10 (BR-37)
-                var totalQuizScore = 10m;
-
-                // Validate PassScoreCriteria: must be >0 and <= totalScore
-                if (dto.PassScoreCriteria.HasValue)
-                {
-                    var pass = Math.Round(dto.PassScoreCriteria.Value, 2, MidpointRounding.AwayFromZero);
-                    if (pass <= 0m || pass > totalQuizScore)
-                        throw new ValidationException($"PassScoreCriteria must be greater than 0 and less than or equal to {totalQuizScore}.");
-                }
-
-                var quiz = new Quiz
-                {
-                    Name = normalizedQuizName,
-                    PassScoreCriteria = dto.PassScoreCriteria.HasValue ? Math.Round(dto.PassScoreCriteria.Value, 2, MidpointRounding.AwayFromZero) : null,
-                    TimelimitMinute = dto.TimelimitMinute,
-                    Description = dto.Description,
-                    TotalScore = totalQuizScore,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                };
-
-                await _uow.QuizRepository.CreateAsync(quiz);
+            if (instructorId > 0)
+            {
+                if (await _uow.InstructorRepository.GetByIdAsync(instructorId) == null)
+                    throw new ValidationException($"Instructor {instructorId} not found.");
+                await _uow.QuizAuthorRepository.CreateAsync(new QuizAuthor { InstructorId = instructorId, QuizId = quiz.Id });
                 await _uow.SaveChangesAsync();
-                var quizId = quiz.Id;
-
-                // Step 1b: Save QuizAuthor if instructorId is provided (> 0)
-                if (instructorId > 0)
-                {
-                    // Verify instructor exists
-                    var instructor = await _uow.InstructorRepository.GetByIdAsync(instructorId);
-                    if (instructor == null)
-                        throw new ValidationException($"Instructor with ID {instructorId} not found.");
-
-                    var quizAuthor = new QuizAuthor
-                    {
-                        InstructorId = instructorId,
-                        QuizId = quizId
-                    };
-
-                    await _uow.QuizAuthorRepository.CreateAsync(quizAuthor);
-                    await _uow.SaveChangesAsync();
-                }
-
-                // Step 2: Create Questions with Options
-                // Get initial max displayOrder from database
-                int globalDisplayOrder = 0;
-                if (await _uow.QuizQuestionOptionRepository.GetAllAsQueryable().AnyAsync())
-                {
-                    globalDisplayOrder = await _uow.QuizQuestionOptionRepository.GetAllAsQueryable()
-                        .Select(x => x.DisplayOrder ?? 0)
-                        .MaxAsync();
-                }
-                globalDisplayOrder++; // Start from next available number
-
-                questionIndex = 0;
-                foreach (var questionDto in dto.Questions)
-                {
-                    questionIndex++;
-                    try
-                    {
-                        // Get question score (already validated above)
-                        var questionScore = Math.Round(questionDto.QuestionScore!.Value, 2, MidpointRounding.AwayFromZero);
-
-                        // Normalize question name (already validated above)
-                        var normalizedName = string.Join(' ', questionDto.Name.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries));
-
-                        // Create question
-                        var question = new QuizQuestion
-                        {
-                            QuizId = quizId,
-                            Name = normalizedName,
-                            Description = questionDto.Description,
-                            IsMultipleAnswers = questionDto.IsMultipleAnswers,
-                            ImageUrl = questionDto.ImageUrl,
-                            QuestionScore = questionScore
-                        };
-
-                        await _uow.QuizQuestionRepository.CreateAsync(question);
-                        await _uow.SaveChangesAsync();
-
-                        // Calculate option score based on question type
-                        var correctOptions = questionDto.Options.Where(o => o.IsCorrect).ToList();
-                        decimal optionScore = 0m;
-
-                        if (questionDto.IsMultipleAnswers)
-                        {
-                            // Multiple choice: divide score evenly among correct options
-                            optionScore = Math.Round(questionScore / correctOptions.Count, 2, MidpointRounding.AwayFromZero);
-                        }
-                        else
-                        {
-                            // Single choice: correct option gets full score
-                            optionScore = questionScore;
-                        }
-
-                        // Create options for this question - auto-generate DisplayOrder
-                        foreach (var opt in questionDto.Options)
-                        {
-                            try
-                            {
-                                // Calculate option score using helper method
-                                var finalOptionScore = CalculateOptionScore(questionScore, questionDto.IsMultipleAnswers, opt.IsCorrect, correctOptions.Count);
-
-                                var optionEntity = new QuizQuestionOption
-                                {
-                                    QuizQuestionId = question.Id,
-                                    Name = opt.Name,
-                                    Description = opt.Description,
-                                    IsCorrect = opt.IsCorrect,
-                                    DisplayOrder = globalDisplayOrder++,
-                                    OptionScore = finalOptionScore,
-                                    Explanation = opt.Explanation
-                                };
-
-                                await _uow.QuizQuestionOptionRepository.CreateAsync(optionEntity);
-                            }
-                            catch (Exception ex)
-                            {
-                                throw new ValidationException($"Question #{questionIndex}, failed to create option '{opt.Name}': {ex.Message}", ex);
-                            }
-                        }
-
-                        await _uow.SaveChangesAsync();
-                    }
-                    catch (Exception ex) when (ex is not ValidationException)
-                    {
-                        throw new ValidationException($"Question #{questionIndex} ('{TruncateText(questionDto.Name, 50)}'): {ex.Message}", ex);
-                    }
-                }
-
-                return quizId;
             }
-            catch (DbUpdateException dbEx)
-            {
-                var innerMessage = dbEx.InnerException?.Message ?? dbEx.Message;
-                throw new ValidationException($"Database error while creating quiz: {innerMessage}. Please check that all field mappings are correct.", dbEx);
-            }
-            catch (ValidationException)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                throw new ValidationException($"Unexpected error while creating quiz: {ex.Message}", ex);
-            }
+
+            await SaveQuestions(quiz.Id, dto.Questions);
+            return quiz.Id;
         }
 
         public async Task<int> CreateQuizFromExcel(ImportQuizExcelDto dto, int instructorId)
         {
-            // 1. Validate file extension
-            var ext = Path.GetExtension(dto.File.FileName).ToLower();
-            if (ext != ".xlsx" && ext != ".xls")
-                throw new ValidationException("Only Excel files (.xlsx, .xls) are allowed.");
-
-            var createQuizDto = new CreateQuizWithQuestionsDto
-            {
-                Name = dto.Name,
-                PassScoreCriteria = dto.PassScoreCriteria,
-                TimelimitMinute = dto.TimelimitMinute,
-                Description = dto.Description,
-                Questions = new List<CreateQuizQuestionWithOptionsDto>()
-            };
-
-            System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
-
-            using (var stream = dto.File.OpenReadStream())
-            using (var reader = ExcelReaderFactory.CreateReader(stream))
-            {
-                var result = reader.AsDataSet(new ExcelDataSetConfiguration()
-                {
-                    ConfigureDataTable = (_) => new ExcelDataTableConfiguration()
-                    {
-                        UseHeaderRow = true
-                    }
-                });
-
-                if (result.Tables.Count == 0)
-                    throw new ValidationException("The Excel file is empty.");
-
-                var dataTable = result.Tables[0];
-
-                // [FIX 1] Preliminary check for column count
-                if (dataTable.Columns.Count < 7)
-                    throw new ValidationException("The Excel file is missing columns. Please ensure there are at least 7 columns according to the template.");
-
-                var questionMap = new Dictionary<string, CreateQuizQuestionWithOptionsDto>();
-
-                int rowIndex = 1; // Used to report which row is invalid
-                foreach (DataRow row in dataTable.Rows)
-                {
-                    rowIndex++;
-                    var qName = row[0]?.ToString()?.Trim();
-                    if (string.IsNullOrEmpty(qName)) continue;
-
-                    // [FIX 2] More robust Score handling (Accepts both 2.5 and 2,5)
-                    var scoreRaw = row[1]?.ToString()?.Trim();
-                    decimal qScore = 0;
-
-                    if (!string.IsNullOrEmpty(scoreRaw))
-                    {
-                        // Replace comma with dot to normalize to InvariantCulture
-                        var normalizedScore = scoreRaw.Replace(",", ".");
-
-                        if (!decimal.TryParse(normalizedScore, NumberStyles.Any, CultureInfo.InvariantCulture, out qScore))
-                        {
-                            //  Throw error immediately so the user knows exactly which row is wrong
-                            throw new ValidationException($"Row {rowIndex}: Score '{scoreRaw}' is invalid. Please ensure it is a number (e.g., 2.5) and not a date.");
-                        }
-                    }
-
-                    var isMultiRaw = row[2]?.ToString()?.ToLower();
-                    bool isMulti = isMultiRaw == "true" || isMultiRaw == "1" || isMultiRaw == "yes";
-
-                    var qDesc = row[3]?.ToString();
-
-                    var optName = row[4]?.ToString()?.Trim();
-                    // If there is a question name but no option name -> Skip
-                    if (string.IsNullOrEmpty(optName)) continue;
-
-                    var isCorrectRaw = row[5]?.ToString()?.ToLower();
-                    bool isCorrect = isCorrectRaw == "true" || isCorrectRaw == "1" || isCorrectRaw == "yes";
-
-                    var optExplain = row[6]?.ToString();
-
-                    if (!questionMap.ContainsKey(qName))
-                    {
-                        var newQuestion = new CreateQuizQuestionWithOptionsDto
-                        {
-                            Name = qName,
-                            QuestionScore = qScore,
-                            IsMultipleAnswers = isMulti,
-                            Description = qDesc,
-                            Options = new List<CreateQuizQuestionOptionDto>()
-                        };
-                        questionMap.Add(qName, newQuestion);
-                        createQuizDto.Questions.Add(newQuestion);
-                    }
-
-                    // Additional logic: If subsequent rows of the same question have different scores, 
-                    // current code will keep the score of the first row. (Safe)
-
-                    questionMap[qName].Options.Add(new CreateQuizQuestionOptionDto
-                    {
-                        Name = optName,
-                        IsCorrect = isCorrect,
-                        Explanation = optExplain
-                    });
-                }
-            }
-
-            if (createQuizDto.Questions.Count == 0)
-                throw new ValidationException("No valid data found in the Excel file.");
-
-            var totalScore = createQuizDto.Questions.Sum(q => q.QuestionScore ?? 0);
-
-            // [FIX 3] Log the actual total score for easier debugging if errors persist
-            if (Math.Abs(totalScore - 10m) > 0.0001m)
-            {
-                throw new ValidationException($"Calculated total score is {totalScore} (Required = 10). Please check the Score column (Column B).");
-            }
-
-            return await CreateQuizWithQuestions(createQuizDto, instructorId);
+            var createDto = _excelProcessor.ParseExcel(dto);
+            return await CreateQuizWithQuestions(createDto, instructorId);
         }
 
-        public async Task<int> AddQuizToActivity(CreateActivityQuizDto dto)
+        public async Task<bool> UpdateQuizWithQuestionsAsync(int quizId, UpdateQuizWithQuestionsDto dto)
+            => await UpdateQuizWithQuestionsAsync(quizId, dto, null);
+
+        public async Task<bool> UpdateQuizWithQuestionsAsync(int quizId, UpdateQuizWithQuestionsDto dto, int? instructorId)
         {
-            if (dto == null) throw new ValidationException("Body is required.");
+            var quiz = await _uow.QuizRepository.GetByIdAsync(quizId);
+            if (quiz == null) throw new KeyNotFoundException($"Quiz {quizId} not found.");
 
-            var quiz = await _uow.QuizRepository.GetByIdAsync(dto.QuizId);
-            if (quiz == null)
-                throw new KeyNotFoundException($"Quiz with ID {dto.QuizId} not found.");
+            if (instructorId > 0 && !await _uow.QuizAuthorRepository.ExistsAsync(qa => qa.QuizId == quizId && qa.InstructorId == instructorId.Value))
+                throw new KeyNotFoundException($"Quiz {quizId} not found or access denied.");
 
-            var activity = await _uow.ActivityRepository.GetByIdAsync(dto.ActivityId);
-            if (activity == null || activity.IsDeleted == true)
-                throw new KeyNotFoundException($"Activity with ID {dto.ActivityId} not found.");
+            if (await _uow.QuizAttemptRepository.ExistsAsync(a => a.QuizId == quizId))
+                throw new ValidationException("Cannot update used quiz.");
 
-            if (activity.ActivityType != 2)
-                throw new ValidationException("Activity type must be Quiz to add a quiz.");
+            _validator.ValidateUpdateQuiz(dto);
 
-            var alreadyExists = await _uow.ActivityQuizRepository
-                .ExistsAsync(aq => aq.QuizId == dto.QuizId && aq.ActivityId == dto.ActivityId);
+            // Update Quiz Info
+            if (!string.IsNullOrEmpty(dto.Name)) quiz.Name = string.Join(' ', dto.Name.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries));
+            if (dto.PassScoreCriteria.HasValue) quiz.PassScoreCriteria = Math.Round(dto.PassScoreCriteria.Value, 2);
+            if (dto.TimelimitMinute.HasValue) quiz.TimelimitMinute = dto.TimelimitMinute;
+            if (dto.Description != null) quiz.Description = dto.Description;
+            quiz.UpdatedAt = DateTime.UtcNow;
 
-            if (alreadyExists)
-                throw new ValidationException("This quiz is already assigned to this activity.");
+            await _uow.QuizRepository.UpdateAsync(quiz);
 
-            var activityQuiz = new ActivityQuiz
+            // Clear old questions
+            var oldQs = await _uow.QuizQuestionRepository.GetAllAsQueryable().Where(q => q.QuizId == quizId).ToListAsync();
+            foreach (var q in oldQs)
             {
-                QuizId = dto.QuizId,
-                ActivityId = dto.ActivityId,
-                Name = quiz.Name ?? "Quiz",
-                Description = quiz.Description
-            };
-
-            await _uow.ActivityQuizRepository.CreateAsync(activityQuiz);
+                var oldOpts = await _uow.QuizQuestionOptionRepository.GetAllAsQueryable().Where(o => o.QuizQuestionId == q.Id).ToListAsync();
+                foreach (var o in oldOpts) await _uow.QuizQuestionOptionRepository.DeleteAsync(o);
+                await _uow.QuizQuestionRepository.DeleteAsync(q);
+            }
             await _uow.SaveChangesAsync();
 
-            return activityQuiz.Id;
+            // Convert UpdateDto to CreateDto format to reuse saving logic if possible, or just copy logic
+            // Since DTOs are different types, we duplicate the save loop or map it. 
+            // Mapping is cleaner.
+            var questionDtos = dto.Questions.Select(q => new CreateQuizQuestionWithOptionsDto
+            {
+                Name = q.Name,
+                Description = q.Description,
+                ImageUrl = q.ImageUrl,
+                IsMultipleAnswers = q.IsMultipleAnswers,
+                QuestionScore = q.QuestionScore,
+                Options = q.Options.Select(o => new CreateQuizQuestionOptionDto { Name = o.Name, Description = o.Description, IsCorrect = o.IsCorrect, Explanation = o.Explanation }).ToList()
+            }).ToList();
+
+            await SaveQuestions(quizId, questionDtos);
+            return true;
+        }
+        #endregion
+
+        #region ACTIVITY
+        public async Task<int> AddQuizToActivity(CreateActivityQuizDto dto)
+        {
+            if (dto == null) throw new ValidationException("Body required.");
+            var quiz = await _uow.QuizRepository.GetByIdAsync(dto.QuizId) ?? throw new KeyNotFoundException($"Quiz {dto.QuizId} not found.");
+            var act = await _uow.ActivityRepository.GetByIdAsync(dto.ActivityId);
+
+            if (act == null || act.IsDeleted == true) throw new KeyNotFoundException($"Activity {dto.ActivityId} not found.");
+            if (act.ActivityType != 2) throw new ValidationException("Activity must be Quiz type.");
+            if (await _uow.ActivityQuizRepository.ExistsAsync(aq => aq.QuizId == dto.QuizId && aq.ActivityId == dto.ActivityId))
+                throw new ValidationException("Already assigned.");
+
+            var link = new ActivityQuiz { QuizId = dto.QuizId, ActivityId = dto.ActivityId, Name = quiz.Name ?? "Quiz", Description = quiz.Description };
+            await _uow.ActivityQuizRepository.CreateAsync(link);
+            await _uow.SaveChangesAsync();
+            return link.Id;
         }
 
         public async Task<List<QuizOnlyDto>> GetQuizzesByActivityId(int activityId)
         {
-            var activity = await _uow.ActivityRepository.GetByIdAsync(activityId);
-            if (activity == null || activity.IsDeleted == true)
-                throw new KeyNotFoundException($"Activity with ID {activityId} not found.");
+            var act = await _uow.ActivityRepository.GetByIdAsync(activityId);
+            if (act == null || act.IsDeleted == true) throw new KeyNotFoundException($"Activity {activityId} not found.");
 
-            var quizzes = await _uow.ActivityQuizRepository
-                .GetAllAsQueryable()
-                .Where(aq => aq.ActivityId == activityId)
+            return await _uow.ActivityQuizRepository.GetAllAsQueryable().Where(aq => aq.ActivityId == activityId)
                 .Select(aq => new QuizOnlyDto
                 {
                     Id = aq.Quiz.Id,
@@ -859,400 +316,91 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
                     TimelimitMinute = aq.Quiz.TimelimitMinute,
                     TotalScore = aq.Quiz.TotalScore,
                     Description = aq.Quiz.Description
-                })
-                .ToListAsync();
-
-            return quizzes;
-        }
-
-        private string TruncateText(string text, int maxLength)
-        {
-            if (string.IsNullOrEmpty(text)) return string.Empty;
-            return text.Length <= maxLength ? text : text.Substring(0, maxLength) + "...";
-        }
-
-        private decimal CalculateOptionScore(decimal questionScore, bool isMultipleAnswers, bool isCorrectOption, int correctOptionsCount)
-        {
-            if (!isCorrectOption)
-                return 0m;
-
-            if (isMultipleAnswers)
-            {
-                return Math.Round(questionScore / correctOptionsCount, 2, MidpointRounding.AwayFromZero);
-            }
-            else
-            {
-                return questionScore;
-            }
-        }
-
-        public async Task<bool> UpdateQuizWithQuestionsAsync(int quizId, UpdateQuizWithQuestionsDto dto)
-        {
-            return await UpdateQuizWithQuestionsAsync(quizId, dto, instructorId: null);
-        }
-
-        public async Task<bool> UpdateQuizWithQuestionsAsync(int quizId, UpdateQuizWithQuestionsDto dto, int? instructorId)
-        {
-            if (dto == null) throw new ValidationException("Body is required.");
-
-            try
-            {
-                var quiz = await _uow.QuizRepository.GetByIdAsync(quizId);
-                if (quiz == null)
-                    throw new KeyNotFoundException($"Quiz with ID {quizId} not found.");
-
-                // If instructorId is provided and > 0, check if instructor is the author
-                if (instructorId.HasValue && instructorId.Value > 0)
-                {
-                    // Check if this instructor is the author of this quiz
-                    var isAuthor = await _uow.QuizAuthorRepository.ExistsAsync(qa => qa.QuizId == quizId && qa.InstructorId == instructorId.Value);
-                    if (!isAuthor)
-                        throw new KeyNotFoundException($"Quiz with ID {quizId} not found.");
-                }
-
-                await CheckQuizUsageAsync(quizId);
-
-                if (dto.Questions == null || dto.Questions.Count == 0)
-                    throw new ValidationException("At least one question is required.");
-
-                if (dto.Questions.Count > 100)
-                    throw new ValidationException("A quiz cannot contain more than 100 questions.");
-
-                var totalScore = 0m;
-                int questionIndex = 0;
-
-                foreach (var questionDto in dto.Questions)
-                {
-                    questionIndex++;
-
-                    if (string.IsNullOrWhiteSpace(questionDto.Name))
-                        throw new ValidationException($"Question #{questionIndex}: Name cannot be empty.");
-
-                    var normalizedName = string.Join(' ', questionDto.Name.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries));
-
-                    if (normalizedName.Length > 500)
-                    {
-                        throw new ValidationException(
-                            $"Question #{questionIndex}: Name exceeds 500 characters " +
-                            $"(actual: {normalizedName.Length} chars after removing extra spaces). " +
-                            $"Please shorten the question text.");
-                    }
-
-                    if (questionDto.Options == null || questionDto.Options.Count == 0)
-                        throw new ValidationException($"Question #{questionIndex} ('{TruncateText(normalizedName, 50)}'): Must have at least one option.");
-
-                    if (questionDto.Options.Count < 2)
-                        throw new ValidationException($"Question #{questionIndex} ('{TruncateText(normalizedName, 50)}'): Must have at least 2 options.");
-
-                    if (questionDto.Options.Count > 20)
-                        throw new ValidationException($"Question #{questionIndex} ('{TruncateText(normalizedName, 50)}'): Cannot have more than 20 answer options.");
-
-                    var correctCount = questionDto.Options.Count(o => o.IsCorrect);
-                    if (correctCount == 0)
-                        throw new ValidationException($"Question #{questionIndex} ('{TruncateText(normalizedName, 50)}'): Must have at least one correct option.");
-
-                    if (!questionDto.IsMultipleAnswers && correctCount > 1)
-                        throw new ValidationException($"Question #{questionIndex} ('{TruncateText(normalizedName, 50)}'): Single choice question cannot have more than one correct option.");
-
-                    int optionIndex = 0;
-                    foreach (var opt in questionDto.Options)
-                    {
-                        optionIndex++;
-                        if (string.IsNullOrWhiteSpace(opt.Name))
-                            throw new ValidationException($"Question #{questionIndex}, Option #{optionIndex}: Name cannot be empty.");
-                    }
-
-                    // ImageUrl validation - only check length if provided and not empty
-                    // ImageUrl can be null or empty (optional field)
-                    if (!string.IsNullOrWhiteSpace(questionDto.ImageUrl) && questionDto.ImageUrl.Length > 500)
-                    {
-                        throw new ValidationException($"Question #{questionIndex}: ImageUrl exceeds 500 characters.");
-                    }
-
-                    // Validate question score - MUST be provided
-                    if (!questionDto.QuestionScore.HasValue)
-                    {
-                        throw new ValidationException($"Question #{questionIndex} ('{TruncateText(normalizedName, 50)}'): QuestionScore is required.");
-                    }
-
-                    decimal questionScore = Math.Round(questionDto.QuestionScore.Value, 2, MidpointRounding.AwayFromZero);
-                    
-                    // QuestionScore must be > 0 and < 10
-                    if (questionScore <= 0m || questionScore >= 10m)
-                        throw new ValidationException($"Question #{questionIndex} ('{TruncateText(normalizedName, 50)}'): QuestionScore must be greater than 0 and less than 10 (received: {questionScore}).");
-
-                    // Check total doesn't exceed 10
-                    totalScore += questionScore;
-                }
-
-                // Validate total score equals exactly 10
-                if (Math.Abs(totalScore - 10m) > 0.0001m)
-                {
-                    if (totalScore < 10m)
-                        throw new ValidationException($"Total questions scores ({totalScore:F2}) must equal 10. Currently under by {(10m - totalScore):F2}.");
-                    else
-                        throw new ValidationException($"Total questions scores ({totalScore:F2}) must equal 10. Currently over by {(totalScore - 10m):F2}.");
-                }
-
-                // Step 1: Update quiz properties if provided
-                if (!string.IsNullOrEmpty(dto.Name))
-                {
-                    var rawName = dto.Name.Trim();
-                    if (string.IsNullOrWhiteSpace(rawName))
-                        throw new ValidationException("Quiz name cannot be empty.");
-                    if (rawName.Length > 100)
-                        throw new ValidationException("Quiz name must be at most 100 characters.");
-
-                    quiz.Name = string.Join(' ', rawName.Split(' ', StringSplitOptions.RemoveEmptyEntries));
-                }
-
-                if (dto.PassScoreCriteria.HasValue)
-                {
-                    var pass = Math.Round(dto.PassScoreCriteria.Value, 2, MidpointRounding.AwayFromZero);
-                    if (pass <= 0m || pass > 10m)
-                        throw new ValidationException("PassScoreCriteria must be greater than 0 and less than or equal to 10.");
-                    quiz.PassScoreCriteria = pass;
-                }
-
-                if (dto.TimelimitMinute.HasValue)
-                {
-                    if (dto.TimelimitMinute < 1 || dto.TimelimitMinute > 600)
-                        throw new ValidationException("TimelimitMinute must be between 1 and 600 minutes.");
-                    quiz.TimelimitMinute = dto.TimelimitMinute;
-                }
-
-                if (dto.Description != null)
-                {
-                    if (dto.Description.Length > 2000)
-                        throw new ValidationException("Description must be at most 2000 characters.");
-                    quiz.Description = dto.Description;
-                }
-
-                quiz.UpdatedAt = DateTime.UtcNow;
-                await _uow.QuizRepository.UpdateAsync(quiz);
-                await _uow.SaveChangesAsync();
-
-                // Step 2: Delete all existing questions and options for this quiz
-                var existingQuestions = await _uow.QuizQuestionRepository.GetAllAsQueryable()
-                    .Where(q => q.QuizId == quizId)
-                    .ToListAsync();
-
-                foreach (var question in existingQuestions)
-                {
-                    var options = await _uow.QuizQuestionOptionRepository.GetAllAsQueryable()
-                        .Where(o => o.QuizQuestionId == question.Id)
-                        .ToListAsync();
-
-                    foreach (var option in options)
-                    {
-                        await _uow.QuizQuestionOptionRepository.DeleteAsync(option);
-                    }
-
-                    await _uow.QuizQuestionRepository.DeleteAsync(question);
-                }
-
-                await _uow.SaveChangesAsync();
-
-                // Step 3: Create new Questions with Options
-                // Get initial max displayOrder from database
-                int globalDisplayOrder = 0;
-                if (await _uow.QuizQuestionOptionRepository.GetAllAsQueryable().AnyAsync())
-                {
-                    globalDisplayOrder = await _uow.QuizQuestionOptionRepository.GetAllAsQueryable()
-                        .Select(x => x.DisplayOrder ?? 0)
-                        .MaxAsync();
-                }
-                globalDisplayOrder++; // Start from next available number
-
-                questionIndex = 0;
-                foreach (var questionDto in dto.Questions)
-                {
-                    questionIndex++;
-                    try
-                    {
-                        // Get question score (already validated above)
-                        var questionScore = Math.Round(questionDto.QuestionScore!.Value, 2, MidpointRounding.AwayFromZero);
-
-                        // Normalize question name (already validated above)
-                        var normalizedName = string.Join(' ', questionDto.Name.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries));
-
-                        // Create question
-                        var question = new QuizQuestion
-                        {
-                            QuizId = quizId,
-                            Name = normalizedName,
-                            Description = questionDto.Description,
-                            IsMultipleAnswers = questionDto.IsMultipleAnswers,
-                            ImageUrl = questionDto.ImageUrl,
-                            QuestionScore = questionScore
-                        };
-
-                        await _uow.QuizQuestionRepository.CreateAsync(question);
-                        await _uow.SaveChangesAsync();
-
-                        // Calculate option score based on question type
-                        var correctOptions = questionDto.Options.Where(o => o.IsCorrect).ToList();
-                        decimal optionScore = 0m;
-
-                        if (questionDto.IsMultipleAnswers)
-                        {
-                            // Multiple choice: divide score evenly among correct options
-                            optionScore = Math.Round(questionScore / correctOptions.Count, 2, MidpointRounding.AwayFromZero);
-                        }
-                        else
-                        {
-                            // Single choice: correct option gets full score
-                            optionScore = questionScore;
-                        }
-
-                        // Create options for this question - auto-generate DisplayOrder
-                        foreach (var opt in questionDto.Options)
-                        {
-                            try
-                            {
-                                // Calculate option score using helper method
-                                var finalOptionScore = CalculateOptionScore(questionScore, questionDto.IsMultipleAnswers, opt.IsCorrect, correctOptions.Count);
-
-                                var optionEntity = new QuizQuestionOption
-                                {
-                                    QuizQuestionId = question.Id,
-                                    Name = opt.Name,
-                                    Description = opt.Description,
-                                    IsCorrect = opt.IsCorrect,
-                                    DisplayOrder = globalDisplayOrder++,
-                                    OptionScore = finalOptionScore,
-                                    Explanation = opt.Explanation
-                                };
-
-                                await _uow.QuizQuestionOptionRepository.CreateAsync(optionEntity);
-                            }
-                            catch (Exception ex)
-                            {
-                                throw new ValidationException($"Question #{questionIndex}, failed to create option '{opt.Name}': {ex.Message}", ex);
-                            }
-                        }
-
-                        await _uow.SaveChangesAsync();
-                    }
-                    catch (Exception ex) when (ex is not ValidationException)
-                    {
-                        throw new ValidationException($"Question #{questionIndex} ('{TruncateText(questionDto.Name, 50)}'): {ex.Message}", ex);
-                    }
-                }
-
-                return true;
-            }
-            catch (DbUpdateException dbEx)
-            {
-                var innerMessage = dbEx.InnerException?.Message ?? dbEx.Message;
-                throw new ValidationException($"Database error while updating quiz: {innerMessage}. Please check that all field mappings are correct.", dbEx);
-            }
-            catch (ValidationException)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                throw new ValidationException($"Unexpected error while updating quiz: {ex.Message}", ex);
-            }
+                }).ToListAsync();
         }
 
         public async Task<bool> RemoveQuizFromActivityAsync(int activityId, int quizId)
         {
-            // 1. Check the business rule: Is this activity already in use?
-            await CheckActivityUsageAsync(activityId);
+            await CheckActivityUsage(activityId);
+            var link = await _uow.ActivityQuizRepository.GetAllAsQueryable().FirstOrDefaultAsync(aq => aq.ActivityId == activityId && aq.QuizId == quizId);
+            if (link == null) throw new KeyNotFoundException("Link not found.");
 
-            // 2. Find the link
-            var link = await _uow.ActivityQuizRepository
-                .GetAllAsQueryable()
-                .FirstOrDefaultAsync(aq => aq.ActivityId == activityId && aq.QuizId == quizId);
-
-            if (link == null)
-            {
-                throw new KeyNotFoundException($"Quiz {quizId} is not assigned to Activity {activityId}.");
-            }
-
-            // 3. Delete the link
             await _uow.ActivityQuizRepository.DeleteAsync(link);
             await _uow.SaveChangesAsync();
-
             return true;
         }
 
         public async Task<bool> UpdateQuizInActivityAsync(int activityId, UpdateActivityQuizDto dto)
         {
-            // 1. Validate Activity exists and is a Quiz activity
-            var activity = await _uow.ActivityRepository.GetByIdAsync(activityId);
-            if (activity == null || activity.IsDeleted == true)
-                throw new KeyNotFoundException($"Activity with ID {activityId} not found.");
+            var act = await _uow.ActivityRepository.GetByIdAsync(activityId);
+            if (act == null || act.IsDeleted == true) throw new KeyNotFoundException($"Activity {activityId} not found.");
+            if (act.ActivityType != (int)ActivityType.Quiz) throw new InvalidOperationException("Not a Quiz activity.");
 
-            if (activity.ActivityType != (int)ActivityType.Quiz)
-                throw new InvalidOperationException("This activity is not a Quiz activity. Its type cannot be changed here.");
+            await CheckActivityUsage(activityId);
+            var newQuiz = await _uow.QuizRepository.GetByIdAsync(dto.NewQuizId) ?? throw new KeyNotFoundException($"New Quiz {dto.NewQuizId} not found.");
+            var link = await _uow.ActivityQuizRepository.GetAllAsQueryable().FirstOrDefaultAsync(aq => aq.ActivityId == activityId)
+                       ?? throw new KeyNotFoundException($"No quiz currently assigned to Activity {activityId}.");
 
-            // 2. Check the business rule: Is this activity already in use?
-            await CheckActivityUsageAsync(activityId);
+            if (link.QuizId == dto.NewQuizId) return true;
 
-            // 3. Validate the new Quiz exists
-            var newQuiz = await _uow.QuizRepository.GetByIdAsync(dto.NewQuizId);
-            if (newQuiz == null)
-            {
-                throw new KeyNotFoundException($"The new Quiz with ID {dto.NewQuizId} was not found.");
-            }
-
-            // 4. Find the existing link. An activity can only have one quiz,
-            // so we find by ActivityId.
-            var existingLink = await _uow.ActivityQuizRepository
-                .GetAllAsQueryable()
-                .FirstOrDefaultAsync(aq => aq.ActivityId == activityId);
-
-            if (existingLink == null)
-            {
-                throw new KeyNotFoundException($"No quiz is currently assigned to Activity {activityId}. Use the POST method to add one.");
-            }
-
-            // 5. Check if it's actually a change
-            if (existingLink.QuizId == dto.NewQuizId)
-            {
-                return true; // No change needed
-            }
-
-            // 6. Update the link to point to the new quiz
-            existingLink.QuizId = dto.NewQuizId;
-            existingLink.Name = newQuiz.Name ?? "Quiz";
-            existingLink.Description = newQuiz.Description;
-
-            await _uow.ActivityQuizRepository.UpdateAsync(existingLink);
+            link.QuizId = dto.NewQuizId;
+            link.Name = newQuiz.Name ?? "Quiz";
+            link.Description = newQuiz.Description;
+            await _uow.ActivityQuizRepository.UpdateAsync(link);
             await _uow.SaveChangesAsync();
-
             return true;
         }
+        #endregion
 
-        private async Task CheckActivityUsageAsync(int activityId)
+        #region PRIVATE HELPERS
+        private async Task SaveQuestions(int quizId, List<CreateQuizQuestionWithOptionsDto> questions)
         {
-            // Find all SectionIDs this Activity is linked to
-            var linkedSectionIds = _uow.SectionActivityRepository
-                .GetAllAsQueryable()
-                .Where(sa => sa.ActivityId == activityId)
-                .Select(sa => sa.SectionId);
+            int globalOrder = 1;
+            if (await _uow.QuizQuestionOptionRepository.GetAllAsQueryable().AnyAsync())
+                globalOrder = await _uow.QuizQuestionOptionRepository.GetAllAsQueryable().MaxAsync(x => x.DisplayOrder ?? 0) + 1;
 
-            // Check if any SectionRecord exists that points to one of those SectionIDs
-            var isActivityInUse = await _uow.SectionRecordRepository
-                .GetAllAsQueryable()
-                .AnyAsync(sr => linkedSectionIds.Contains(sr.SectionId ?? -1));
-
-            if (isActivityInUse)
+            foreach (var qDto in questions)
             {
-                throw new InvalidOperationException("This activity is already in use by trainees (has section records) and its quiz cannot be changed or removed.");
+                var qScore = Math.Round(qDto.QuestionScore!.Value, 2);
+                var normName = string.Join(' ', qDto.Name.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries));
+                var question = new QuizQuestion
+                {
+                    QuizId = quizId,
+                    Name = normName,
+                    Description = qDto.Description,
+                    IsMultipleAnswers = qDto.IsMultipleAnswers,
+                    ImageUrl = qDto.ImageUrl,
+                    QuestionScore = qScore
+                };
+                await _uow.QuizQuestionRepository.CreateAsync(question);
+                await _uow.SaveChangesAsync();
 
+                var correctCount = qDto.Options.Count(o => o.IsCorrect);
+                var optScore = qDto.IsMultipleAnswers ? Math.Round(qScore / correctCount, 2) : qScore;
+
+                foreach (var opt in qDto.Options)
+                {
+                    await _uow.QuizQuestionOptionRepository.CreateAsync(new QuizQuestionOption
+                    {
+                        QuizQuestionId = question.Id,
+                        Name = opt.Name,
+                        Description = opt.Description,
+                        IsCorrect = opt.IsCorrect,
+                        DisplayOrder = globalOrder++,
+                        Explanation = opt.Explanation,
+                        OptionScore = opt.IsCorrect ? optScore : 0
+                    });
+                }
+                await _uow.SaveChangesAsync();
             }
         }
 
-        private async Task CheckQuizUsageAsync(int quizId)
+        private async Task CheckActivityUsage(int activityId)
         {
-            // Check if quiz has any attempts recorded
-            var hasAttempts = await _uow.QuizAttemptRepository.ExistsAsync(a => a.QuizId == quizId);
-            if (hasAttempts)
-                throw new ValidationException("Cannot update quiz that has attempts recorded. Quiz is already in use by trainees.");
+            var sectionIds = _uow.SectionActivityRepository.GetAllAsQueryable().Where(sa => sa.ActivityId == activityId).Select(sa => sa.SectionId);
+            if (await _uow.SectionRecordRepository.GetAllAsQueryable().AnyAsync(sr => sectionIds.Contains(sr.SectionId ?? -1)))
+                throw new InvalidOperationException("Activity is in use by trainees.");
         }
+        #endregion
     }
 }
