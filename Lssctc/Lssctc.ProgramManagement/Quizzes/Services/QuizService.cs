@@ -207,9 +207,10 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
             var classId = record.SectionRecord.LearningProgress.Enrollment.ClassId;
 
             // 2. Tìm Session của Activity trong Class này
+            // FIX: Bỏ điều kiện IsActive == true để lấy được session ngay cả khi nó bị disable
             var session = await _uow.ActivitySessionRepository.GetAllAsQueryable()
                 .AsNoTracking()
-                .FirstOrDefaultAsync(s => s.ClassId == classId && s.ActivityId == activityId && s.IsActive == true, ct);
+                .FirstOrDefaultAsync(s => s.ClassId == classId && s.ActivityId == activityId, ct);
 
             // 3. Xác định trạng thái Session
             var status = new QuizSessionStatusDto
@@ -224,7 +225,14 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
                 status.EndTime = session.EndTime;
                 var now = DateTime.Now;
 
-                if (status.StartTime.HasValue && now < status.StartTime.Value)
+                // FIX: Kiểm tra IsActive trước. Nếu False thì đóng session.
+                // Lưu ý: IsActive có thể là bool? nên cần check IsActive != true hoặc (session.IsActive ?? false) == false
+                if (session.IsActive != true)
+                {
+                    status.IsOpen = false;
+                    status.Message = "Session is inactive";
+                }
+                else if (status.StartTime.HasValue && now < status.StartTime.Value)
                 {
                     status.IsOpen = false;
                     status.Message = "Not started yet";
@@ -236,11 +244,8 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
                 }
             }
 
-            // 4. Lấy chi tiết Quiz (Sử dụng lại logic cũ)
+            // 4. Lấy chi tiết Quiz (Giữ nguyên logic cũ)
             var quizDetail = await GetQuizDetailForTraineeByActivityIdAsync(activityId, null, ct);
-            // Note: Truyền null cho traineeId ở đây vì ta đã kiểm tra access/record ở trên rồi, 
-            // hoặc bạn có thể gọi GetQuizDetailForTrainee(quizId) nếu đã biết quizId. 
-            // Tuy nhiên GetQuizDetailForTraineeByActivityIdAsync tiện hơn vì nó tự tìm QuizId từ ActivityId.
 
             if (quizDetail == null)
                 throw new KeyNotFoundException("Quiz content not found for this activity.");
@@ -251,6 +256,7 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
                 SessionStatus = status
             };
         }
+
         #endregion
 
         #region CREATE & UPDATE
