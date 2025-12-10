@@ -239,6 +239,31 @@ namespace Lssctc.ProgramManagement.Materials.Controllers
 
         #endregion
 
+        #region Trainee Materials
+
+        [HttpGet("trainee/activity-record/{activityRecordId}")]
+        [Authorize(Roles = "Trainee, Admin, Instructor")]
+        public async Task<IActionResult> GetMaterialsForTrainee(int activityRecordId)
+        {
+            try
+            {
+                var result = await _materialsService.GetMaterialsForTraineeAsync(activityRecordId);
+                return Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { Message = ex.Message });
+            }
+            catch (Exception)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "An unexpected error occurred." });
+            }
+        }
+
+        #endregion
+
+        #region Helper 
+
         private int GetInstructorIdFromClaims()
         {
             // Try to get instructorId claim first, otherwise use NameIdentifier
@@ -251,5 +276,7 @@ namespace Lssctc.ProgramManagement.Materials.Controllers
 
             throw new UnauthorizedAccessException("Instructor ID claim is missing or invalid.");
         }
+
+        #endregion
     }
 }

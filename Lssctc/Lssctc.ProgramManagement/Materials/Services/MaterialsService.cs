@@ -314,7 +314,106 @@ namespace Lssctc.ProgramManagement.Materials.Services
 
         #endregion
 
-        #region --- ADDED HELPER METHODS ---
+        #region Trainee Materials
+        public async Task<TraineeMaterialResponseDto> GetMaterialsForTraineeAsync(int activityRecordId)
+        {
+            // 1. Lấy thông tin ActivityRecord cùng với ClassId thông qua chuỗi quan hệ
+            // ActivityRecord -> SectionRecord -> LearningProgress -> Enrollment -> ClassId
+            var record = await _uow.ActivityRecordRepository.GetAllAsQueryable()
+                .Include(ar => ar.SectionRecord)
+                    .ThenInclude(sr => sr.LearningProgress)
+                        .ThenInclude(lp => lp.Enrollment)
+                .FirstOrDefaultAsync(ar => ar.Id == activityRecordId);
+
+            if (record == null)
+                throw new KeyNotFoundException("Activity Record not found.");
+
+            var activityId = record.ActivityId.GetValueOrDefault();
+            var classId = record.SectionRecord.LearningProgress.Enrollment.ClassId;
+
+            // 2. Tìm Session của Activity trong Class này
+            var session = await _uow.ActivitySessionRepository.GetAllAsQueryable()
+                .FirstOrDefaultAsync(s => s.ClassId == classId && s.ActivityId == activityId && s.IsActive == true);
+
+            // 3. Kiểm tra trạng thái Session
+            var status = new TraineeSessionStatusDto
+            {
+                IsOpen = true, // Mặc định mở nếu không có session cài đặt
+                Message = "Available"
+            };
+
+            if (session != null)
+            {
+                status.StartTime = session.StartTime;
+                status.EndTime = session.EndTime;
+                var now = DateTime.Now;
+
+                if (status.StartTime.HasValue && now < status.StartTime.Value)
+                {
+                    status.IsOpen = false;
+                    status.Message = "Not started yet";
+                }
+                else if (status.EndTime.HasValue && now > status.EndTime.Value)
+                {
+                    status.IsOpen = false;
+                    status.Message = "Expired";
+                }
+            }
+
+            // 4. Lấy danh sách Material (Sử dụng lại logic cũ)
+            var materials = await GetMaterialsByActivityAsync(activityId);
+
+            return new TraineeMaterialResponseDto
+            {
+                Materials = materials,
+                SessionStatus = status
+            };
+        }
+        #endregion
+
+        #region Mapping Helpers
+
+        private static MaterialDto MapToDto(LearningMaterial m)
+        {
+            return new MaterialDto
+            {
+                Id = m.Id,
+                Name = m.Name,
+                Description = m.Description,
+                MaterialUrl = m.MaterialUrl,
+                LearningMaterialType = m.LearningMaterialType.HasValue
+                    ? Enum.GetName(typeof(LearningMaterialTypeEnum), m.LearningMaterialType.Value)
+                    : null
+            };
+        }
+
+        private static ActivityMaterialDto MapToActivityMaterialDto(ActivityMaterial am)
+        {
+            return new ActivityMaterialDto
+            {
+                Id = am.Id,
+                ActivityId = am.ActivityId,
+                LearningMaterialId = am.LearningMaterialId,
+                Name = am.Name,
+                Description = am.Description,
+                LearningMaterialType = am.LearningMaterial.LearningMaterialType.HasValue
+                    ? Enum.GetName(typeof(LearningMaterialTypeEnum), am.LearningMaterial.LearningMaterialType.Value)
+                    : null,
+                MaterialUrl = am.LearningMaterial.MaterialUrl // <-- ADDED
+            };
+        }
+
+        private static int? ParseLearningMaterialType(string? type)
+        {
+            if (string.IsNullOrWhiteSpace(type)) return null;
+
+            if (Enum.TryParse(typeof(LearningMaterialTypeEnum), type, true, out var parsed))
+            {
+                return (int)(LearningMaterialTypeEnum)parsed!;
+            }
+
+            throw new ArgumentException($"Invalid LearningMaterialType value: {type}");
+        }
 
         /// <summary>
         /// Checks if a course is "locked" (i.e., tied to a class that is InProgress, Completed, or Cancelled).
@@ -375,52 +474,6 @@ namespace Lssctc.ProgramManagement.Materials.Services
                 if (await IsSectionLockedAsync(sectionId)) return true;
             }
             return false;
-        }
-
-        #endregion
-
-        #region Mapping Helpers
-
-        private static MaterialDto MapToDto(LearningMaterial m)
-        {
-            return new MaterialDto
-            {
-                Id = m.Id,
-                Name = m.Name,
-                Description = m.Description,
-                MaterialUrl = m.MaterialUrl,
-                LearningMaterialType = m.LearningMaterialType.HasValue
-                    ? Enum.GetName(typeof(LearningMaterialTypeEnum), m.LearningMaterialType.Value)
-                    : null
-            };
-        }
-
-        private static ActivityMaterialDto MapToActivityMaterialDto(ActivityMaterial am)
-        {
-            return new ActivityMaterialDto
-            {
-                Id = am.Id,
-                ActivityId = am.ActivityId,
-                LearningMaterialId = am.LearningMaterialId,
-                Name = am.Name,
-                Description = am.Description,
-                LearningMaterialType = am.LearningMaterial.LearningMaterialType.HasValue
-                    ? Enum.GetName(typeof(LearningMaterialTypeEnum), am.LearningMaterial.LearningMaterialType.Value)
-                    : null,
-                MaterialUrl = am.LearningMaterial.MaterialUrl // <-- ADDED
-            };
-        }
-
-        private static int? ParseLearningMaterialType(string? type)
-        {
-            if (string.IsNullOrWhiteSpace(type)) return null;
-
-            if (Enum.TryParse(typeof(LearningMaterialTypeEnum), type, true, out var parsed))
-            {
-                return (int)(LearningMaterialTypeEnum)parsed!;
-            }
-
-            throw new ArgumentException($"Invalid LearningMaterialType value: {type}");
         }
 
         #endregion

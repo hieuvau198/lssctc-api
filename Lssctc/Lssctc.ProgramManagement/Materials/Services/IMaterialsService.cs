@@ -23,5 +23,9 @@ namespace Lssctc.ProgramManagement.Materials.Services
         Task AddMaterialToActivityAsync(int activityId, int materialId);
         Task RemoveMaterialFromActivityAsync(int activityId, int materialId);
         #endregion
+
+        #region Trainee Services
+        Task<TraineeMaterialResponseDto> GetMaterialsForTraineeAsync(int activityRecordId);
+        #endregion
     }
 }
