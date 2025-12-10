@@ -46,7 +46,11 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
         Task<FinalExamDto> SubmitTeAsync(int partialId, int userId, SubmitTeDto dto);
 
         // SE Logic
+        Task<IEnumerable<SePracticeListDto>> GetMySimulationExamPartialsByClassAsync(int classId, int userId);
+        Task<FinalExamPartialDto> ValidateSeCodeAndStartSimulationExamAsync(int partialId, string examCode, int userId);
+        Task<FinalExamDto> SubmitSeFinalAsync(int partialId, int userId, SubmitSeFinalDto dto);
         Task<FinalExamPartialDto> StartSimulationExamAsync(int partialId, int userId); // Đã thêm
+
         Task<FinalExamDto> SubmitSeAsync(int partialId, SubmitSeDto dto);
 
         // PE Logic

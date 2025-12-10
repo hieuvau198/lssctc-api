@@ -184,7 +184,46 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Controllers
                 return Unauthorized();
             }
         }
+        /// <summary>
+        /// API cho Học viên xem danh sách bài thi Mô phỏng SE trong lớp học (Dựa trên Practices/trainee/class/{classId}).
+        /// </summary>
+        [HttpGet("class/{classId}/my-final-se-practices")] // New/Updated Endpoint
+        [Authorize(Roles = "Trainee")]
+        public async Task<IActionResult> GetMySimulationExamPractices(int classId)
+        {
+            int userId;
+            try { userId = GetUserIdFromClaims(); }
+            catch (UnauthorizedAccessException) { return Unauthorized(); }
 
+            try
+            {
+                var result = await _service.GetMySimulationExamPartialsByClassAsync(classId, userId);
+                return Ok(result);
+            }
+            catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+            catch (UnauthorizedAccessException) { return Forbid(); }
+        }
+        // 2. POST API: Check the available Exam code when start the practice
+        /// <summary>
+        /// API cho Học viên kiểm tra Exam Code và bắt đầu bài thi mô phỏng (SE), ghi lại thời gian bắt đầu.
+        /// </summary>
+        [HttpPost("partial/{partialId}/validate-se-code")]
+        [Authorize(Roles = "Trainee")]
+        public async Task<IActionResult> ValidateSeCodeAndStartSe(int partialId, [FromBody] ValidateExamCodeDto dto)
+        {
+            int userId;
+            try { userId = GetUserIdFromClaims(); }
+            catch (UnauthorizedAccessException) { return Unauthorized(); }
+
+            try
+            {
+                var result = await _service.ValidateSeCodeAndStartSimulationExamAsync(partialId, dto.ExamCode, userId);
+                return Ok(result);
+            }
+            catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+            catch (UnauthorizedAccessException) { return Unauthorized(new { message = "Invalid Exam Code or Exam does not belong to user." }); }
+            catch (Exception ex) { return BadRequest(new { message = ex.Message }); }
+        }
         /// <summary>
         /// API cho Học viên xem chi tiết cấu hình một phần thi (TE/SE/PE) của chính mình.
         /// </summary>
@@ -388,7 +427,21 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Controllers
 
 
         #region Submissions
+        /// <summary>
+        /// API submit kết quả cuối cùng của bài thi Mô phỏng (SE).
+        /// Dùng để cập nhật Marks, IsPass, CompleteTime, và Status cho FinalExamPartial.
+        /// </summary>
+        [HttpPost("submit/se-final/{partialId}")] 
+        [Authorize(Roles = "Trainee")]
+        public async Task<IActionResult> SubmitSeFinal(int partialId, [FromBody] SubmitSeFinalDto dto)
+        {
+            int userId;
+            try { userId = GetUserIdFromClaims(); }
+            catch (UnauthorizedAccessException) { return Unauthorized(); }
 
+            try { return Ok(await _service.SubmitSeFinalAsync(partialId, userId, dto)); }
+            catch (Exception ex) { return BadRequest(new { message = ex.Message }); }
+        }
         /// <summary>
         /// API chấm điểm bài thi Thực hành (PE) theo Checklist. (Dành cho Giảng viên).
         /// </summary>

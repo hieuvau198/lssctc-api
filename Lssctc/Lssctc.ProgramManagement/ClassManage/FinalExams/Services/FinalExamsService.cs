@@ -533,6 +533,79 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
         #endregion
 
         #region Trainee View Specific
+        public async Task<IEnumerable<SePracticeListDto>> GetMySimulationExamPartialsByClassAsync(int classId, int userId)
+        {
+            // Auto-create exams to ensure the trainee always sees the structure
+            var hasExams = await _uow.FinalExamRepository.GetAllAsQueryable()
+                .AnyAsync(fe => fe.Enrollment.ClassId == classId);
+
+            var partials = await _uow.FinalExamPartialRepository.GetAllAsQueryable()
+                .Include(p => p.FinalExam).ThenInclude(fe => fe.Enrollment)
+                .Include(p => p.FeSimulations).ThenInclude(s => s.Practice)
+                .Where(p => p.FinalExam.Enrollment.ClassId == classId &&
+                            p.FinalExam.Enrollment.TraineeId == userId &&
+                            p.Type == 2) 
+                .ToListAsync();
+
+            var practiceDtos = new List<SePracticeListDto>();
+
+            foreach (var partial in partials)
+            {
+                var feSim = partial.FeSimulations.FirstOrDefault();
+                var practice = feSim?.Practice;
+
+                if (practice == null) continue;
+
+                // Map Practice entity and FinalExamPartial entity fields to SePracticeListDto
+                var dto = new SePracticeListDto
+                {
+                    // Fields from PracticeDto
+                    id = practice.Id,
+                    practiceName = practice.PracticeName,
+                    practiceCode = practice.PracticeCode,
+                    practiceDescription = practice.PracticeDescription ?? string.Empty,
+                    estimatedDurationMinutes = partial.Duration ?? 0, // Use partial duration for exam context
+                    difficultyLevel = practice.DifficultyLevel ?? string.Empty,
+                    maxAttempts = practice.MaxAttempts ?? 0,
+                    createdDate = practice.CreatedDate.ToString("yyyy-MM-dd HH:mm:ss") ?? string.Empty,
+                    isActive = practice.IsActive ?? false,
+                    isCompleted = partial.CompleteTime.HasValue,
+
+                    // Fields from FinalExamPartial
+                    FinalExamPartialId = partial.Id,
+                    FinalExamPartialStatus = GetFinalExamPartialStatusName(partial.Status ?? 0),
+                    StartTime = partial.StartTime,
+                    EndTime = partial.EndTime
+                };
+                practiceDtos.Add(dto);
+            }
+
+            return practiceDtos;
+        }
+        public async Task<FinalExamPartialDto> ValidateSeCodeAndStartSimulationExamAsync(int partialId, string examCode, int userId)
+        {
+            var partial = await GetPartialWithSecurityCheckAsync(partialId, userId);
+
+            if (partial.Type != 2) throw new ArgumentException("This ID is not a Simulation Exam (SE).");
+            if (partial.CompleteTime.HasValue) throw new InvalidOperationException("Exam is already complete.");
+
+            // 1. Check Exam Code
+            if (string.IsNullOrEmpty(partial.FinalExam.ExamCode) ||
+                !partial.FinalExam.ExamCode.Equals(examCode, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new UnauthorizedAccessException("Invalid Exam Code.");
+            }
+
+            // 2. Set StartTime if not already set
+            if (!partial.StartTime.HasValue)
+            {
+                partial.StartTime = DateTime.UtcNow;
+                await _uow.FinalExamPartialRepository.UpdateAsync(partial);
+                await _uow.SaveChangesAsync();
+            }
+
+            return MapToPartialDto(partial, isInstructor: false);
+        }
 
         public async Task<FinalExamPartialDto> GetFinalExamPartialByIdForTraineeAsync(int partialId, int userId)
         {
@@ -660,6 +733,30 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             if (quizContent == null) throw new KeyNotFoundException("Quiz content not found in Quiz Service.");
 
             return quizContent;
+        }
+        public async Task<FinalExamDto> SubmitSeFinalAsync(int partialId, int userId, SubmitSeFinalDto dto)
+        {
+            var partial = await GetPartialWithSecurityCheckAsync(partialId, userId);
+
+            if (partial.Type != 2) throw new ArgumentException("This ID is not a Simulation Exam (SE).");
+            if (partial.CompleteTime.HasValue) throw new InvalidOperationException("Exam is already complete.");
+
+            // 1. Update FinalExamPartial fields based on DTO
+            partial.Marks = dto.Marks;
+            partial.IsPass = dto.IsPass;
+            partial.Description = dto.Description;
+            partial.CompleteTime = DateTime.UtcNow;
+            partial.Status = (int)FinalExamPartialStatus.Submitted; 
+
+            // 2. Save changes to partial entity
+            await _uow.FinalExamPartialRepository.UpdateAsync(partial);
+            await _uow.SaveChangesAsync();
+
+            // 3. Recalculate Final Exam total score
+            await RecalculateFinalExamScore(partial.FinalExamId);
+
+            // 4. Return updated final exam DTO
+            return await GetFinalExamByIdAsync(partial.FinalExamId);
         }
 
         public async Task<FinalExamDto> SubmitPeAsync(int partialId, SubmitPeDto dto)

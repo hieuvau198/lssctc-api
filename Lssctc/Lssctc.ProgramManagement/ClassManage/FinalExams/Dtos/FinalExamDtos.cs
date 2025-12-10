@@ -30,6 +30,27 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Dtos
         public decimal? TotalMarks { get; set; }
     }
 
+    public class PracticeDto
+    {
+        public int id { get; set; }
+        public string practiceName { get; set; } = null!;
+        public string practiceCode { get; set; } = null!;
+        public string practiceDescription { get; set; } = null!;
+        public int estimatedDurationMinutes { get; set; }
+        public string difficultyLevel { get; set; } = null!;
+        public int maxAttempts { get; set; }
+        public string createdDate { get; set; } = null!;
+        public bool isActive { get; set; }
+        public bool isCompleted { get; set; }
+    }
+
+    public class SePracticeListDto : PracticeDto
+    {
+        public int FinalExamPartialId { get; set; }
+        public string? FinalExamPartialStatus { get; set; } // e.g., "NotYet", "Submitted"
+        public DateTime? StartTime { get; set; }
+        public DateTime? EndTime { get; set; }
+    }
     // --- Final Exam Partial DTOs ---
     public class FinalExamPartialDto
     {
@@ -124,7 +145,24 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Dtos
         public int? QuizId { get; set; }
         public int? PracticeId { get; set; }
     }
+    public class ValidateExamCodeDto
+    {
+        [Required]
+        public string ExamCode { get; set; } = null!;
+    }
+    public class SubmitSeFinalDto
+    {
+        [Required(ErrorMessage = "Marks are required.")]
+        [Range(0, 100, ErrorMessage = "Marks must be between 0 and 100.")] // Using 100 assuming the final score is normalized
+        public decimal Marks { get; set; }
 
+        [Required(ErrorMessage = "Pass/Fail status is required.")]
+        public bool IsPass { get; set; }
+
+        [StringLength(1000, ErrorMessage = "Description cannot exceed 1000 characters.")]
+        public string? Description { get; set; }
+        public DateTime? CompleteTime { get; set; }
+    }
     // --- Submission DTOs ---
 
     public class SubmitTeDto
