@@ -102,6 +102,8 @@ public partial class LssctcDbContext : DbContext
 
     public virtual DbSet<QuizQuestionOption> QuizQuestionOptions { get; set; }
 
+    public virtual DbSet<SeTask> SeTasks { get; set; }
+
     public virtual DbSet<Section> Sections { get; set; }
 
     public virtual DbSet<SectionActivity> SectionActivities { get; set; }
@@ -1336,6 +1338,46 @@ public partial class LssctcDbContext : DbContext
                 .HasForeignKey(d => d.QuizQuestionId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK__quiz_ques__quiz___7F6BDA51");
+        });
+
+        modelBuilder.Entity<SeTask>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__se_tasks__3213E83FA67B61C8");
+
+            entity.ToTable("se_tasks");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.AttemptTime)
+                .HasPrecision(0)
+                .HasColumnName("attempt_time");
+            entity.Property(e => e.CompleteTime)
+                .HasPrecision(0)
+                .HasColumnName("complete_time");
+            entity.Property(e => e.Description)
+                .HasMaxLength(1000)
+                .HasColumnName("description");
+            entity.Property(e => e.DurationSecond).HasColumnName("duration_second");
+            entity.Property(e => e.FeSimulationId).HasColumnName("fe_simulation_id");
+            entity.Property(e => e.IsPass)
+                .HasDefaultValue(false)
+                .HasColumnName("is_pass");
+            entity.Property(e => e.Name)
+                .HasMaxLength(200)
+                .HasColumnName("name");
+            entity.Property(e => e.SimTaskId).HasColumnName("sim_task_id");
+            entity.Property(e => e.Status)
+                .HasDefaultValue(1)
+                .HasColumnName("status");
+
+            entity.HasOne(d => d.FeSimulation).WithMany(p => p.SeTasks)
+                .HasForeignKey(d => d.FeSimulationId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__se_tasks__fe_sim__349EBC9F");
+
+            entity.HasOne(d => d.SimTask).WithMany(p => p.SeTasks)
+                .HasForeignKey(d => d.SimTaskId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__se_tasks__sim_ta__3592E0D8");
         });
 
         modelBuilder.Entity<Section>(entity =>

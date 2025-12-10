@@ -18,4 +18,6 @@ public partial class SimTask
     public string? TaskCode { get; set; }
 
     public virtual ICollection<PracticeTask> PracticeTasks { get; set; } = new List<PracticeTask>();
+
+    public virtual ICollection<SeTask> SeTasks { get; set; } = new List<SeTask>();
 }

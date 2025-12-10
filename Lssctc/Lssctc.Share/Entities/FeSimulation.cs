@@ -18,4 +18,6 @@ public partial class FeSimulation
     public virtual FinalExamPartial FinalExamPartial { get; set; } = null!;
 
     public virtual Practice Practice { get; set; } = null!;
+
+    public virtual ICollection<SeTask> SeTasks { get; set; } = new List<SeTask>();
 }
