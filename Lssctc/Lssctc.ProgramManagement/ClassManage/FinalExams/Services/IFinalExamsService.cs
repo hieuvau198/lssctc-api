@@ -56,5 +56,9 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
 
         // PE Logic
         Task<FinalExamDto> SubmitPeAsync(int partialId, SubmitPeDto dto);
+        #region New for SE
+        Task<SimulationExamDetailDto> GetSimulationExamDetailAsync(int partialId);
+        Task<IEnumerable<ClassSimulationResultDto>> GetClassSimulationResultsAsync(int classId);
+        #endregion
     }
 }

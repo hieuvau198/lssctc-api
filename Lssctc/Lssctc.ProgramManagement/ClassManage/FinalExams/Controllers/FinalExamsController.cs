@@ -530,5 +530,48 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Controllers
             catch (Exception ex) { return BadRequest(new { message = ex.Message }); }
         }
         #endregion
+
+        #region Simulation Exam Tracking (New)
+
+        /// <summary>
+        /// API lấy chi tiết bài thi Simulation (SE) bao gồm thông tin đề bài (Practice) và kết quả chi tiết từng Task.
+        /// </summary>
+        /// <param name="partialId">ID của FinalExamPartial (loại SE)</param>
+        [HttpGet("simulation-detail/{partialId}")]
+        [Authorize]
+        [ProducesResponseType(typeof(SimulationExamDetailDto), StatusCodes.Status200OK)] // <--- Thêm dòng này
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> GetSimulationDetail(int partialId)
+        {
+            try
+            {
+                var result = await _service.GetSimulationExamDetailAsync(partialId);
+                return Ok(result);
+            }
+            catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+            catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
+        }
+
+        /// <summary>
+        /// API xem danh sách kết quả Simulation Exam của toàn bộ lớp học.
+        /// </summary>
+        /// <param name="classId">ID lớp học</param>
+        [HttpGet("class/{classId}/simulation-results")]
+        [Authorize(Roles = "Admin, Instructor, SimulationManager")]
+        [ProducesResponseType(typeof(IEnumerable<ClassSimulationResultDto>), StatusCodes.Status200OK)] // <--- Thêm dòng này
+        public async Task<IActionResult> GetClassSimulationResults(int classId)
+        {
+            try
+            {
+                var result = await _service.GetClassSimulationResultsAsync(classId);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        #endregion
     }
 }

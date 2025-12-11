@@ -1110,6 +1110,103 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
 
         #endregion
 
+        #region [NEW] Simulation Exam Details & Class Reports
+
+        public async Task<SimulationExamDetailDto> GetSimulationExamDetailAsync(int partialId)
+        {
+            // 1. Query Partial bao gồm sâu các bảng liên quan: FeSimulations -> Practice, SeTasks -> SimTask
+            var partial = await _uow.FinalExamPartialRepository.GetAllAsQueryable()
+                .Include(p => p.FinalExam).ThenInclude(fe => fe.Enrollment) // Để check info nếu cần
+                .Include(p => p.FeSimulations).ThenInclude(s => s.Practice)
+                .Include(p => p.FeSimulations).ThenInclude(s => s.SeTasks).ThenInclude(t => t.SimTask)
+                .FirstOrDefaultAsync(p => p.Id == partialId);
+
+            if (partial == null) throw new KeyNotFoundException("Partial exam not found.");
+            if (partial.Type != 2) throw new ArgumentException("This is not a Simulation Exam.");
+
+            // 2. Map sang DTO chi tiết
+            return MapToSimulationDetailDto(partial);
+        }
+
+        public async Task<IEnumerable<ClassSimulationResultDto>> GetClassSimulationResultsAsync(int classId)
+        {
+            // 1. Đảm bảo Exam đã được tạo cho cả lớp (Logic cũ)
+            var hasExams = await _uow.FinalExamRepository.GetAllAsQueryable()
+                .AnyAsync(fe => fe.Enrollment.ClassId == classId);
+            if (!hasExams) await AutoCreateFinalExamsForClassAsync(classId);
+
+            // 2. Lấy danh sách FinalExam của lớp, Filter lấy Partial Type = 2 (Simulation)
+            var exams = await _uow.FinalExamRepository.GetAllAsQueryable()
+                .Include(fe => fe.Enrollment).ThenInclude(e => e.Trainee).ThenInclude(t => t.IdNavigation) // Lấy thông tin User
+                .Include(fe => fe.FinalExamPartials)
+                    .ThenInclude(p => p.FeSimulations).ThenInclude(s => s.Practice)
+                .Include(fe => fe.FinalExamPartials)
+                    .ThenInclude(p => p.FeSimulations).ThenInclude(s => s.SeTasks).ThenInclude(t => t.SimTask)
+                .Where(fe => fe.Enrollment.ClassId == classId && fe.Enrollment.IsDeleted != true)
+                .ToListAsync();
+
+            var results = new List<ClassSimulationResultDto>();
+
+            foreach (var exam in exams)
+            {
+                // Tìm partial loại Simulation (Type = 2)
+                var simPartial = exam.FinalExamPartials.FirstOrDefault(p => p.Type == 2);
+                var trainee = exam.Enrollment.Trainee;
+
+                var dto = new ClassSimulationResultDto
+                {
+                    TraineeId = trainee.Id,
+                    TraineeCode = trainee.TraineeCode,
+                    TraineeName = trainee.IdNavigation?.Fullname,
+                    AvatarUrl = trainee.IdNavigation?.AvatarUrl,
+                    SimulationResult = simPartial != null ? MapToSimulationDetailDto(simPartial) : null
+                };
+                results.Add(dto);
+            }
+
+            return results;
+        }
+
+        // Helper Mapping riêng cho Simulation Detail
+        private SimulationExamDetailDto MapToSimulationDetailDto(FinalExamPartial p)
+        {
+            var sim = p.FeSimulations.FirstOrDefault();
+            var baseDto = MapToPartialDto(p, true); // Tận dụng hàm map cũ để lấy fields cơ bản và Tasks
+
+            var detailDto = new SimulationExamDetailDto
+            {
+                Id = baseDto.Id,
+                Type = baseDto.Type,
+                Marks = baseDto.Marks,
+                ExamWeight = baseDto.ExamWeight,
+                Duration = baseDto.Duration,
+                StartTime = baseDto.StartTime,
+                EndTime = baseDto.EndTime,
+                CompleteTime = baseDto.CompleteTime,
+                Status = baseDto.Status,
+                IsPass = baseDto.IsPass,
+                QuizId = baseDto.QuizId,
+                QuizName = baseDto.QuizName,
+                PracticeId = baseDto.PracticeId,
+                PracticeName = baseDto.PracticeName,
+                Tasks = baseDto.Tasks, // List<SeTaskDto> đã được map ở hàm cũ
+
+                // Map thêm Practice Info
+                PracticeInfo = sim?.Practice != null ? new PracticeInfoDetailDto
+                {
+                    Id = sim.Practice.Id,
+                    PracticeName = sim.Practice.PracticeName,
+                    PracticeCode = sim.Practice.PracticeCode,
+                    Description = sim.Practice.PracticeDescription,
+                    DifficultyLevel = sim.Practice.DifficultyLevel
+                } : null
+            };
+
+            return detailDto;
+        }
+
+        #endregion
+
         #region Helpers
 
         private IQueryable<FinalExam> GetFinalExamQuery()
