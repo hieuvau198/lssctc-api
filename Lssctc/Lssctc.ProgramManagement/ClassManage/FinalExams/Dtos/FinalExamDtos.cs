@@ -51,6 +51,28 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Dtos
         public DateTime? StartTime { get; set; }
         public DateTime? EndTime { get; set; }
     }
+    public class SeTaskDto
+    {
+        public int Id { get; set; }
+        public int FeSimulationId { get; set; }
+        public string? TaskCode { get; set; } // From SimTask
+        public string? Name { get; set; }
+        public string? Description { get; set; }
+        public bool? IsPass { get; set; }
+        public DateTime? CompleteTime { get; set; }
+        public int? DurationSecond { get; set; }
+    }
+    public class SubmitSeTaskDto
+    {
+        [Required]
+        public string TaskCode { get; set; } = null!; // Identify by Code
+
+        [Required]
+        public bool IsPass { get; set; }
+
+        public int? DurationSecond { get; set; }
+
+    }
     // --- Final Exam Partial DTOs ---
     public class FinalExamPartialDto
     {
@@ -74,6 +96,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Dtos
 
         // [UPDATE] List of checklist items from Entity
         public List<PeChecklistItemDto>? Checklists { get; set; }
+        public List<SeTaskDto>? Tasks { get; set; }
     }
 
     public class CreateFinalExamPartialDto
@@ -162,6 +185,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Dtos
         [StringLength(1000, ErrorMessage = "Description cannot exceed 1000 characters.")]
         public string? Description { get; set; }
         public DateTime? CompleteTime { get; set; }
+        public List<SubmitSeTaskDto>? Tasks { get; set; }
     }
     // --- Submission DTOs ---
 

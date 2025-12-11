@@ -210,6 +210,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             var partial = await _uow.FinalExamPartialRepository.GetAllAsQueryable()
                .Include(p => p.FeTheories).ThenInclude(t => t.Quiz)
                .Include(p => p.FeSimulations).ThenInclude(s => s.Practice)
+               .Include(p => p.FeSimulations).ThenInclude(s => s.SeTasks).ThenInclude(t => t.SimTask)
                .Include(p => p.PeChecklists) // [ADDED]
                .FirstOrDefaultAsync(p => p.Id == id);
 
@@ -734,29 +735,129 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
 
             return quizContent;
         }
-        public async Task<FinalExamDto> SubmitSeFinalAsync(int partialId, int userId, SubmitSeFinalDto dto)
+        public async Task<SeTaskDto> SubmitSeTaskByCodeAsync(int partialId, string taskCode, int userId, SubmitSeTaskDto dto)
+        {
+            // 1. Security Check
+            var partial = await GetPartialWithSecurityCheckAsync(partialId, userId);
+            if (partial.Type != 2) throw new ArgumentException("This ID is not a Simulation Exam (SE).");
+
+            // 2. Find the SeTask via FeSimulation and SimTask Code
+            // Assuming the relationship: FinalExamPartial -> FeSimulations -> SeTasks -> SimTask
+            var seTask = await _uow.GetDbContext().Set<SeTask>()
+                .Include(t => t.SimTask)
+                .Include(t => t.FeSimulation)
+                .FirstOrDefaultAsync(t => t.FeSimulation.FinalExamPartialId == partialId
+                                       && t.SimTask.TaskCode == taskCode);
+
+            if (seTask == null) throw new KeyNotFoundException($"Task with code '{taskCode}' not found in this exam.");
+            var nowUtc7 = DateTime.UtcNow.AddHours(7);
+            // 3. Update Task
+            seTask.IsPass = dto.IsPass;
+            seTask.DurationSecond = dto.DurationSecond;
+            seTask.CompleteTime = DateTime.UtcNow;
+            if (dto.DurationSecond.HasValue)
+            {
+                seTask.AttemptTime = nowUtc7.AddSeconds(-dto.DurationSecond.Value);
+            }
+            else
+            {
+                seTask.AttemptTime = nowUtc7;
+            }
+            seTask.Status = 1; // Assuming 1 = Submitted/Completed
+
+            // 4. Save
+            // Assuming direct DbSet access or a generic repo available via _uow
+            _uow.GetDbContext().Set<SeTask>().Update(seTask);
+            await _uow.SaveChangesAsync();
+
+            // 5. Return DTO
+            return new SeTaskDto
+            {
+                Id = seTask.Id,
+                FeSimulationId = seTask.FeSimulationId,
+                TaskCode = seTask.SimTask?.TaskCode,
+                Name = seTask.Name ?? seTask.SimTask?.TaskName,
+                Description = seTask.Description,
+                IsPass = seTask.IsPass,
+                CompleteTime = seTask.CompleteTime,
+                DurationSecond = seTask.DurationSecond
+            };
+        }
+        public async Task<FinalExamPartialDto> SubmitSeFinalAsync(int partialId, int userId, SubmitSeFinalDto dto)
         {
             var partial = await GetPartialWithSecurityCheckAsync(partialId, userId);
 
             if (partial.Type != 2) throw new ArgumentException("This ID is not a Simulation Exam (SE).");
-            if (partial.CompleteTime.HasValue) throw new InvalidOperationException("Exam is already complete.");
+            var nowUtc7 = DateTime.UtcNow.AddHours(7);
+            // 1. Optional: Bulk update tasks if provided in DTO
+            if (dto.Tasks != null && dto.Tasks.Any())
+            {
+                var seTasks = await _uow.GetDbContext().Set<SeTask>()
+                    .Include(t => t.SimTask)
+                    .Include(t => t.FeSimulation)
+                    .Where(t => t.FeSimulation.FinalExamPartialId == partialId)
+                    .ToListAsync();
 
-            // 1. Update FinalExamPartial fields based on DTO
-            partial.Marks = dto.Marks;
+                foreach (var taskDto in dto.Tasks)
+                {
+                    var taskEntity = seTasks.FirstOrDefault(t => t.SimTask.TaskCode == taskDto.TaskCode);
+                    if (taskEntity != null)
+                    {
+                        taskEntity.IsPass = taskDto.IsPass;
+                        taskEntity.DurationSecond = taskDto.DurationSecond;
+                        taskEntity.CompleteTime = nowUtc7;
+                        taskEntity.Status = 1;
+                        if (taskDto.DurationSecond.HasValue)
+                        {
+                            taskEntity.AttemptTime = nowUtc7.AddSeconds(-taskDto.DurationSecond.Value);
+                        }
+                        else
+                        {
+                            taskEntity.AttemptTime = nowUtc7;
+                        }
+                    }
+                }
+                await _uow.SaveChangesAsync();
+            }
+
+            // 2. Calculate Score based on SeTasks
+            // Fetch fresh tasks to ensure we have the latest state (from single submits or bulk above)
+            var allTasks = await _uow.GetDbContext().Set<SeTask>()
+                .Where(t => t.FeSimulation.FinalExamPartialId == partialId)
+                .ToListAsync();
+
+            decimal calculatedMarks = 0;
+            if (allTasks.Any())
+            {
+                int totalTasks = allTasks.Count;
+                int passedTasks = allTasks.Count(t => t.IsPass == true);
+
+                // Calculate score on 10-point scale
+                calculatedMarks = totalTasks > 0
+                    ? Math.Round(((decimal)passedTasks / totalTasks) * 10, 2)
+                    : 0;
+            }
+            else
+            {
+                
+                calculatedMarks = (decimal)dto.Marks;
+            }
+
+            // 3. Update FinalExamPartial
+            partial.Marks = calculatedMarks;
             partial.IsPass = dto.IsPass;
             partial.Description = dto.Description;
-            partial.CompleteTime = DateTime.UtcNow;
-            partial.Status = (int)FinalExamPartialStatus.Submitted; 
+            partial.CompleteTime = nowUtc7;
+            partial.Status = (int)FinalExamPartialStatus.Submitted;
 
-            // 2. Save changes to partial entity
             await _uow.FinalExamPartialRepository.UpdateAsync(partial);
             await _uow.SaveChangesAsync();
 
-            // 3. Recalculate Final Exam total score
+            // 4. Recalculate Final Exam total score
             await RecalculateFinalExamScore(partial.FinalExamId);
 
-            // 4. Return updated final exam DTO
-            return await GetFinalExamByIdAsync(partial.FinalExamId);
+            // 5. Return updated partial DTO (with tasks)
+            return await GetFinalExamPartialByIdAsync(partialId);
         }
 
         public async Task<FinalExamDto> SubmitPeAsync(int partialId, SubmitPeDto dto)
@@ -1042,7 +1143,24 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             var theory = p.FeTheories.FirstOrDefault();
             var sim = p.FeSimulations.FirstOrDefault();
             int statusId = p.Status ?? 0;
-
+            List<SeTaskDto>? tasks = null;
+            if (p.Type == 2 && sim != null) // Simulation Type
+            {
+                if (sim.SeTasks != null)
+                {
+                    tasks = sim.SeTasks.Select(t => new SeTaskDto
+                    {
+                        Id = t.Id,
+                        FeSimulationId = t.FeSimulationId,
+                        TaskCode = t.SimTask?.TaskCode, 
+                        Name = t.Name ?? t.SimTask?.TaskName,
+                        Description = t.Description,
+                        IsPass = t.IsPass,
+                        CompleteTime = t.CompleteTime,
+                        DurationSecond = t.DurationSecond
+                    }).ToList();
+                }
+            }
             return new FinalExamPartialDto
             {
                 Id = p.Id,
@@ -1068,7 +1186,8 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                     Name = c.Name,
                     Description = c.Description,
                     IsPass = c.IsPass
-                }).ToList()
+                }).ToList(),
+                Tasks = tasks
             };
         }
         #endregion

@@ -428,6 +428,25 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Controllers
 
         #region Submissions
         /// <summary>
+        /// [ADDED] API submit kết quả từng task của bài thi Mô phỏng (SE) dựa trên Task Code.
+        /// </summary>
+        [HttpPost("submit/se-task/{partialId}")]
+        [Authorize(Roles = "Trainee")]
+        public async Task<IActionResult> SubmitSeTask(int partialId, [FromBody] SubmitSeTaskDto dto)
+        {
+            int userId;
+            try { userId = GetUserIdFromClaims(); }
+            catch (UnauthorizedAccessException) { return Unauthorized(); }
+
+            try
+            {
+                return Ok(await _service.SubmitSeTaskByCodeAsync(partialId, dto.TaskCode, userId, dto));
+            }
+            catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+            catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
+            catch (Exception ex) { return BadRequest(new { message = ex.Message }); }
+        }
+        /// <summary>
         /// API submit kết quả cuối cùng của bài thi Mô phỏng (SE).
         /// Dùng để cập nhật Marks, IsPass, CompleteTime, và Status cho FinalExamPartial.
         /// </summary>

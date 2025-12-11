@@ -269,7 +269,39 @@ namespace Lssctc.ProgramManagement.Practices.Services
             {
                 return new List<TraineePracticeDto>();
             }
+            #region Check Available Sessions
+            
+            var distinctActivityIds = practiceActivityRecords
+                .Where(ar => ar.ActivityId.HasValue)
+                .Select(ar => ar.ActivityId.Value)
+                .Distinct()
+                .ToList();
 
+            var currentTime = DateTime.UtcNow;
+
+            
+            var availableActivityIds = await _uow.ActivitySessionRepository
+                .GetAllAsQueryable()
+                .AsNoTracking()
+                .Where(s => s.ClassId == classId &&
+                            distinctActivityIds.Contains(s.ActivityId) &&
+                            s.IsActive == true &&
+                            (s.StartTime == null || s.StartTime <= currentTime) &&
+                            (s.EndTime == null || s.EndTime >= currentTime))
+                .Select(s => s.ActivityId)
+                .ToListAsync();
+
+            // Filter the records to only those with available sessions
+            var availableSet = new HashSet<int>(availableActivityIds);
+            practiceActivityRecords = practiceActivityRecords
+                .Where(ar => ar.ActivityId.HasValue && availableSet.Contains(ar.ActivityId.Value))
+                .ToList();
+
+            if (!practiceActivityRecords.Any())
+            {
+                return new List<TraineePracticeDto>();
+            }
+            #endregion
             // 3. Get the mapping from ActivityId -> Practice (and include task templates)
             var activityIds = practiceActivityRecords.Select(ar => ar.ActivityId).Distinct();
             var activityPracticeMap = await _uow.ActivityPracticeRepository
