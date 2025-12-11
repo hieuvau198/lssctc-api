@@ -58,6 +58,7 @@ namespace Lssctc.Share.Interfaces
         IGenericRepository<FinalExamPartial> FinalExamPartialRepository { get; }
         IGenericRepository<FeSimulation> FeSimulationRepository { get; }
         IGenericRepository<FeTheory> FeTheoryRepository { get; }
+        IGenericRepository<SeTask> SeTaskRepository { get; }
         IGenericRepository<User> UserRepository { get; }
 
         Task<int> SaveChangesAsync();

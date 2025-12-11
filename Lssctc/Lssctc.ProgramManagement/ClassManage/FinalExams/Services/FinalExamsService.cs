@@ -62,6 +62,45 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
 
         #endregion
 
+        #region [NEW] Auto-Generate Tasks Helper
+
+        /// <summary>
+        /// Hàm đảm bảo các Task của bài thi Simulation (SeTask) được tạo đầy đủ dựa trên Practice đã gán.
+        /// </summary>
+        // Helper function
+        private async Task EnsureSeTasksForSimulationAsync(int feSimulationId, int practiceId)
+        {
+            // [FIX] Dùng _uow.SeTaskRepository thay vì DbContext
+            var exists = await _uow.SeTaskRepository.ExistsAsync(t => t.FeSimulationId == feSimulationId);
+            if (exists) return;
+
+            var practiceTasks = await _uow.PracticeTaskRepository.GetAllAsQueryable()
+                .Include(pt => pt.Task)
+                .Where(pt => pt.PracticeId == practiceId)
+                .ToListAsync();
+
+            if (!practiceTasks.Any()) return;
+
+            foreach (var pt in practiceTasks)
+            {
+                var seTask = new SeTask
+                {
+                    FeSimulationId = feSimulationId,
+                    SimTaskId = pt.TaskId,
+                    Name = pt.Task?.TaskName ?? "Unknown Task",
+                    Description = pt.Task?.TaskDescription,
+                    Status = 0,
+                    IsPass = null,
+                    DurationSecond = 0,
+                    AttemptTime = null
+                };
+                // [FIX] Dùng _uow.SeTaskRepository
+                await _uow.SeTaskRepository.CreateAsync(seTask);
+            }
+            await _uow.SaveChangesAsync();
+        }
+        #endregion
+
         #region Auto Creation
         public async Task AutoCreateFinalExamsForClassAsync(int classId)
         {
@@ -337,7 +376,12 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             }
             else if (typeId == 2 && dto.PracticeId.HasValue)
             {
-                await _uow.FeSimulationRepository.CreateAsync(new FeSimulation { FinalExamPartialId = partial.Id, PracticeId = dto.PracticeId.Value, Name = "Simulation Exam" });
+                var feSim = new FeSimulation { FinalExamPartialId = partial.Id, PracticeId = dto.PracticeId.Value, Name = "Simulation Exam" };
+                await _uow.FeSimulationRepository.CreateAsync(feSim);
+                await _uow.SaveChangesAsync(); // Lưu để lấy ID
+
+                // [UPDATE] Gọi hàm ensure task
+                await EnsureSeTasksForSimulationAsync(feSim.Id, dto.PracticeId.Value);
             }
 
             await _uow.SaveChangesAsync();
@@ -379,7 +423,14 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                 if (typeId == 1 && dto.QuizId.HasValue)
                     await _uow.FeTheoryRepository.CreateAsync(new FeTheory { FinalExamPartialId = partial.Id, QuizId = dto.QuizId.Value, Name = "Theory Exam" });
                 else if (typeId == 2 && dto.PracticeId.HasValue)
-                    await _uow.FeSimulationRepository.CreateAsync(new FeSimulation { FinalExamPartialId = partial.Id, PracticeId = dto.PracticeId.Value, Name = "Simulation Exam" });
+                {
+                    var feSim = new FeSimulation { FinalExamPartialId = partial.Id, PracticeId = dto.PracticeId.Value, Name = "Simulation Exam" };
+                    await _uow.FeSimulationRepository.CreateAsync(feSim);
+                    await _uow.SaveChangesAsync(); // Lưu để lấy ID
+
+                    // [UPDATE] Gọi hàm ensure task
+                    await EnsureSeTasksForSimulationAsync(feSim.Id, dto.PracticeId.Value);
+                }
 
                 updatedExams.Add(await GetFinalExamByIdAsync(exam.Id));
             }
@@ -508,9 +559,24 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
 
             if (dto.PracticeId.HasValue && partial.Type == 2)
             {
-                var sim = partial.FeSimulations.FirstOrDefault();
-                if (sim != null) { sim.PracticeId = dto.PracticeId.Value; await _uow.FeSimulationRepository.UpdateAsync(sim); }
-                else { await _uow.FeSimulationRepository.CreateAsync(new FeSimulation { FinalExamPartialId = id, PracticeId = dto.PracticeId.Value }); }
+                var sim = partial.FeSimulations.FirstOrDefault(); // [FIX] Dùng 'partial', không phải 'p'
+                if (sim != null)
+                {
+                    sim.PracticeId = dto.PracticeId.Value;
+                    await _uow.FeSimulationRepository.UpdateAsync(sim);
+
+                    // [UPDATE] Gọi hàm ensure task với UnitOfWork mới
+                    await EnsureSeTasksForSimulationAsync(sim.Id, dto.PracticeId.Value);
+                }
+                else
+                {
+                    var newSim = new FeSimulation { FinalExamPartialId = id, PracticeId = dto.PracticeId.Value };
+                    await _uow.FeSimulationRepository.CreateAsync(newSim);
+                    await _uow.SaveChangesAsync();
+
+                    // [UPDATE]
+                    await EnsureSeTasksForSimulationAsync(newSim.Id, dto.PracticeId.Value);
+                }
             }
 
             await _uow.FinalExamPartialRepository.UpdateAsync(partial);
@@ -1114,6 +1180,14 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
 
         public async Task<SimulationExamDetailDto> GetSimulationExamDetailAsync(int partialId)
         {
+            var checkSim = await _uow.FeSimulationRepository.GetAllAsQueryable()
+                .FirstOrDefaultAsync(s => s.FinalExamPartialId == partialId);
+
+            if (checkSim != null && checkSim.PracticeId > 0)
+            {
+                await EnsureSeTasksForSimulationAsync(checkSim.Id, checkSim.PracticeId);
+            }
+
             // 1. Query Partial bao gồm sâu các bảng liên quan: FeSimulations -> Practice, SeTasks -> SimTask
             var partial = await _uow.FinalExamPartialRepository.GetAllAsQueryable()
                 .Include(p => p.FinalExam).ThenInclude(fe => fe.Enrollment) // Để check info nếu cần
@@ -1130,14 +1204,31 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
 
         public async Task<IEnumerable<ClassSimulationResultDto>> GetClassSimulationResultsAsync(int classId)
         {
-            // 1. Đảm bảo Exam đã được tạo cho cả lớp (Logic cũ)
+            // 1. Đảm bảo Exam đã được tạo cho cả lớp
             var hasExams = await _uow.FinalExamRepository.GetAllAsQueryable()
                 .AnyAsync(fe => fe.Enrollment.ClassId == classId);
             if (!hasExams) await AutoCreateFinalExamsForClassAsync(classId);
 
-            // 2. Lấy danh sách FinalExam của lớp, Filter lấy Partial Type = 2 (Simulation)
+            // [ADD THIS] Đảm bảo Task tồn tại cho toàn bộ bài thi Simulation trong lớp trước khi lấy báo cáo
+            // Bước này giúp "tự sửa" dữ liệu nếu trước đó Practice được gán nhưng chưa sinh Task
+            var simPartials = await _uow.FinalExamRepository.GetAllAsQueryable()
+                .Where(fe => fe.Enrollment.ClassId == classId && fe.Enrollment.IsDeleted != true)
+                .SelectMany(fe => fe.FinalExamPartials)
+                .Where(p => p.Type == 2)
+                .Select(p => p.FeSimulations.FirstOrDefault())
+                .Where(s => s != null && s.PracticeId > 0)
+                .Select(s => new { s.Id, s.PracticeId }) // Chỉ lấy ID cần thiết để tối ưu query
+                .ToListAsync();
+
+            foreach (var sim in simPartials)
+            {
+                await EnsureSeTasksForSimulationAsync(sim.Id, sim.PracticeId);
+            }
+            // [END ADD]
+
+            // 2. Lấy danh sách FinalExam của lớp (Logic cũ)
             var exams = await _uow.FinalExamRepository.GetAllAsQueryable()
-                .Include(fe => fe.Enrollment).ThenInclude(e => e.Trainee).ThenInclude(t => t.IdNavigation) // Lấy thông tin User
+                .Include(fe => fe.Enrollment).ThenInclude(e => e.Trainee).ThenInclude(t => t.IdNavigation)
                 .Include(fe => fe.FinalExamPartials)
                     .ThenInclude(p => p.FeSimulations).ThenInclude(s => s.Practice)
                 .Include(fe => fe.FinalExamPartials)
@@ -1149,7 +1240,6 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
 
             foreach (var exam in exams)
             {
-                // Tìm partial loại Simulation (Type = 2)
                 var simPartial = exam.FinalExamPartials.FirstOrDefault(p => p.Type == 2);
                 var trainee = exam.Enrollment.Trainee;
 
