@@ -491,6 +491,21 @@ BEGIN TRY
         FOREIGN KEY ([practice_id]) REFERENCES [dbo].[practices]([id])
     );
 
+	CREATE TABLE [dbo].[se_tasks] (
+        [id] INT IDENTITY(1,1) PRIMARY KEY,
+        [fe_simulation_id] INT NOT NULL,
+        [sim_task_id] INT NOT NULL,
+        [is_pass] BIT DEFAULT 0,
+        [status] INT,
+        [name] NVARCHAR(200),
+        [description] NVARCHAR(1000),
+        [attempt_time] DATETIME2(0),
+        [complete_time] DATETIME2(0),
+        [duration_second] INT,
+        FOREIGN KEY ([fe_simulation_id]) REFERENCES [dbo].[fe_simulation]([id]),
+        FOREIGN KEY ([sim_task_id]) REFERENCES [dbo].[sim_tasks]([id])
+    );
+
     -- ========================================
     --  Certificates and progress tracking
     -- ========================================
@@ -563,6 +578,16 @@ BEGIN TRY
         [is_completed] BIT DEFAULT 0,
         [completed_date] DATETIME2(0),
         FOREIGN KEY ([section_record_id]) REFERENCES [dbo].[section_records]([id])
+    );
+
+	CREATE TABLE [dbo].[instructor_feedbacks] (
+        [id] INT IDENTITY(1,1) PRIMARY KEY,
+        [activity_record_id] INT NOT NULL,
+        [instructor_id] INT,
+        [feedback_text] NVARCHAR(1000),
+        [created_date] DATETIME2(0) DEFAULT SYSDATETIME(),
+        FOREIGN KEY ([activity_record_id]) REFERENCES [dbo].[activity_records]([id]),
+        FOREIGN KEY ([instructor_id]) REFERENCES [dbo].[instructors]([id])
     );
 
 
