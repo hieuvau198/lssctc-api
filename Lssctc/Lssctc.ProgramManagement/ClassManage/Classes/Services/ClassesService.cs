@@ -161,8 +161,8 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
 
         public async Task<ClassDto> CreateClassAsync(CreateClassDto dto)
         {
-            if (dto.StartDate < DateTime.UtcNow)
-                throw new InvalidOperationException("Start date cannot be in the past.");
+            if (dto.StartDate < DateTime.UtcNow.AddDays(-30))
+                throw new InvalidOperationException("Start date cannot be more than 30 days in the past.");
 
             if (!dto.EndDate.HasValue || dto.EndDate <= dto.StartDate.AddDays(2))
                 throw new InvalidOperationException("End date must be at least 3 days after the start date.");
@@ -240,8 +240,8 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
             if (existing.Status != (int)ClassStatusEnum.Draft)
                 throw new InvalidOperationException("Only classes in 'Draft' status can be updated.");
 
-            if (dto.StartDate < DateTime.UtcNow)
-                throw new InvalidOperationException("Start date cannot be in the past.");
+            if (dto.StartDate < DateTime.UtcNow.AddDays(-30))
+                throw new InvalidOperationException("Start date cannot be more than 30 days in the past.");
 
             if (!dto.EndDate.HasValue || dto.EndDate <= dto.StartDate.AddDays(2))
                 throw new InvalidOperationException("End date must be at least 3 days after the start date.");
