@@ -1021,6 +1021,10 @@ public partial class LssctcDbContext : DbContext
             entity.Property(e => e.Description)
                 .HasMaxLength(1000)
                 .HasColumnName("description");
+            entity.Property(e => e.DurationSeconds).HasColumnName("duration_seconds");
+            entity.Property(e => e.EndTime)
+                .HasPrecision(0)
+                .HasColumnName("end_time");
             entity.Property(e => e.IsCurrent).HasColumnName("is_current");
             entity.Property(e => e.IsDeleted)
                 .HasDefaultValue(false)
@@ -1034,6 +1038,12 @@ public partial class LssctcDbContext : DbContext
             entity.Property(e => e.Score)
                 .HasColumnType("decimal(5, 2)")
                 .HasColumnName("score");
+            entity.Property(e => e.StartTime)
+                .HasPrecision(0)
+                .HasColumnName("start_time");
+            entity.Property(e => e.TotalMistakes)
+                .HasDefaultValue(0)
+                .HasColumnName("total_mistakes");
 
             entity.HasOne(d => d.ActivityRecord).WithMany(p => p.PracticeAttempts)
                 .HasForeignKey(d => d.ActivityRecordId)
@@ -1057,6 +1067,7 @@ public partial class LssctcDbContext : DbContext
             entity.Property(e => e.IsPass)
                 .HasDefaultValue(false)
                 .HasColumnName("is_pass");
+            entity.Property(e => e.Mistakes).HasColumnName("mistakes");
             entity.Property(e => e.PracticeAttemptId).HasColumnName("practice_attempt_id");
             entity.Property(e => e.Score)
                 .HasColumnType("decimal(5, 2)")

@@ -25,6 +25,14 @@ public partial class PracticeAttempt
 
     public bool IsCurrent { get; set; }
 
+    public int? TotalMistakes { get; set; }
+
+    public DateTime? StartTime { get; set; }
+
+    public DateTime? EndTime { get; set; }
+
+    public int? DurationSeconds { get; set; }
+
     public virtual ActivityRecord ActivityRecord { get; set; } = null!;
 
     public virtual ICollection<PracticeAttemptTask> PracticeAttemptTasks { get; set; } = new List<PracticeAttemptTask>();

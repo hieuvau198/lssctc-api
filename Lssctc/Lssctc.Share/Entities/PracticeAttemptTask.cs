@@ -19,5 +19,7 @@ public partial class PracticeAttemptTask
 
     public bool? IsDeleted { get; set; }
 
+    public int? Mistakes { get; set; }
+
     public virtual PracticeAttempt PracticeAttempt { get; set; } = null!;
 }
