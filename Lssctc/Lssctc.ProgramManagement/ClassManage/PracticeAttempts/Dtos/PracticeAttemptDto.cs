@@ -14,6 +14,14 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Dtos
         public string? Description { get; set; }
         public bool? IsPass { get; set; }
         public bool IsCurrent { get; set; }
+
+        // === ADDED FIELDS ===
+        public int? TotalMistakes { get; set; }
+        public DateTime? StartTime { get; set; }
+        public DateTime? EndTime { get; set; }
+        public int? DurationSeconds { get; set; }
+        // ====================
+
         public List<PracticeAttemptTaskDto> PracticeAttemptTasks { get; set; } = new List<PracticeAttemptTaskDto>();
     }
 
@@ -24,6 +32,11 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Dtos
         public int? TaskId { get; set; }
         public string? TaskCode { get; set; }
         public decimal? Score { get; set; }
+
+        // === ADDED FIELD ===
+        public int? Mistakes { get; set; }
+        // ===================
+
         public string? Description { get; set; }
         public bool? IsPass { get; set; }
     }
