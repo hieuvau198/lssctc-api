@@ -182,6 +182,32 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Controllers
             }
         }
 
+        // UPDATE 3: New Endpoint for Single Task Submission
+        /// <summary>
+        /// Submit or update a specific task for an ongoing practice attempt.
+        /// This keeps the attempt in 'InProgress' status.
+        /// </summary>
+        [HttpPost("submit-task")]
+        [Authorize(Roles = "Trainee, Admin")]
+        public async Task<IActionResult> SubmitTask([FromBody] SubmitPracticeTaskDto submitDto)
+        {
+            try
+            {
+                if (!ModelState.IsValid) return BadRequest(ModelState);
+                var traineeId = GetTraineeIdFromClaims();
+
+                var result = await _practiceAttemptsService.SubmitSinglePracticeTask(traineeId, submitDto);
+                return Ok(result);
+            }
+            catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+            catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error: {ex.Message}");
+                return StatusCode(500, new { message = "An unexpected error occurred.", details = ex.Message });
+            }
+        }
+
         /// <summary>
         /// Create a new practice attempt with tasks
         /// </summary>

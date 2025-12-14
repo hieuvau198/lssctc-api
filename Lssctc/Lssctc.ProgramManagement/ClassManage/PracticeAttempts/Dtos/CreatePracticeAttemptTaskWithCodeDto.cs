@@ -10,6 +10,8 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Dtos
         [Range(0, 100, ErrorMessage = "Score must be between 0 and 100.")]
         public decimal? Score { get; set; }
 
+        public int? Mistakes { get; set; } // Added for Update 2
+
         [StringLength(1000, ErrorMessage = "Description cannot exceed 1000 characters.")]
         public string? Description { get; set; }
 
