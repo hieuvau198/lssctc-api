@@ -183,6 +183,36 @@ namespace Lssctc.ProgramManagement.Activities.Controllers
             }
         }
 
+        [HttpPost("section/{sectionId}/activity/create")]
+        [Authorize(Roles = "Admin, Instructor")]
+        public async Task<ActionResult<ActivityDto>> CreateAndAssignActivityToSection(int sectionId, [FromBody] CreateActivityDto createDto)
+        {
+            if (createDto == null)
+            {
+                return BadRequest(new { Message = "Invalid activity data." });
+            }
+
+            try
+            {
+                var newActivity = await _activitiesService.CreateActivityForSectionAsync(sectionId, createDto);
+
+                // Return 201 Created
+                return CreatedAtAction(nameof(GetActivityById), new { id = newActivity.Id }, newActivity);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { Message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+            catch (Exception)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "An unexpected error occurred." });
+            }
+        }
+
         [HttpDelete("section/{sectionId}/activity/{activityId}")]
         [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> RemoveActivityFromSection(int sectionId, int activityId)

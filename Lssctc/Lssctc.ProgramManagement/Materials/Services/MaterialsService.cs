@@ -18,6 +18,8 @@ namespace Lssctc.ProgramManagement.Materials.Services
 
         #region Learning Materials
 
+        // ... (Existing methods GetAllMaterialsAsync through DeleteMaterialAsync remain unchanged) ...
+
         public async Task<IEnumerable<MaterialDto>> GetAllMaterialsAsync()
         {
             var materials = await _uow.LearningMaterialRepository
@@ -44,12 +46,10 @@ namespace Lssctc.ProgramManagement.Materials.Services
             if (pageNumber < 1) pageNumber = 1;
             if (pageSize < 1) pageSize = 10;
 
-            // If instructorId is provided and > 0, filter materials by instructor (author)
             IQueryable<LearningMaterial> query = _uow.LearningMaterialRepository.GetAllAsQueryable();
-            
+
             if (instructorId.HasValue && instructorId.Value > 0)
             {
-                // Only get materials where this instructor is the author
                 query = query.Where(m => m.MaterialAuthors.Any(ma => ma.InstructorId == instructorId.Value));
             }
 
@@ -59,25 +59,20 @@ namespace Lssctc.ProgramManagement.Materials.Services
 
         public async Task<MaterialDto?> GetMaterialByIdAsync(int id)
         {
-            var material = await _uow.LearningMaterialRepository
-                .GetByIdAsync(id);
-
+            var material = await _uow.LearningMaterialRepository.GetByIdAsync(id);
             return material == null ? null : MapToDto(material);
         }
 
         public async Task<MaterialDto?> GetMaterialByIdAsync(int id, int? instructorId)
         {
-            // If instructorId is provided and > 0, check if instructor is the author
             IQueryable<LearningMaterial> query = _uow.LearningMaterialRepository.GetAllAsQueryable();
-            
+
             if (instructorId.HasValue && instructorId.Value > 0)
             {
-                // Only allow instructor to see material they created
                 query = query.Where(m => m.Id == id && m.MaterialAuthors.Any(ma => ma.InstructorId == instructorId.Value));
             }
             else
             {
-                // If no instructor specified, just get by ID (for Admin)
                 query = query.Where(m => m.Id == id);
             }
 
@@ -106,10 +101,8 @@ namespace Lssctc.ProgramManagement.Materials.Services
             await _uow.LearningMaterialRepository.CreateAsync(material);
             await _uow.SaveChangesAsync();
 
-            // Step 1b: Save MaterialAuthor if instructorId is provided (> 0)
             if (instructorId > 0)
             {
-                // Verify instructor exists
                 var instructor = await _uow.InstructorRepository.GetByIdAsync(instructorId);
                 if (instructor == null)
                     throw new ArgumentException($"Instructor with ID {instructorId} not found.");
@@ -146,10 +139,8 @@ namespace Lssctc.ProgramManagement.Materials.Services
 
         public async Task<MaterialDto> UpdateMaterialAsync(int id, UpdateMaterialDto updateDto, int? instructorId)
         {
-            // If instructorId is provided and > 0, check if instructor is the author
             if (instructorId.HasValue && instructorId.Value > 0)
             {
-                // Check if this instructor is the author of this material
                 var isAuthor = await _uow.MaterialAuthorRepository.ExistsAsync(ma => ma.MaterialId == id && ma.InstructorId == instructorId.Value);
                 if (!isAuthor)
                     throw new KeyNotFoundException($"Material with ID {id} not found.");
@@ -172,10 +163,8 @@ namespace Lssctc.ProgramManagement.Materials.Services
 
         public async Task DeleteMaterialAsync(int id, int? instructorId)
         {
-            // If instructorId is provided and > 0, check if instructor is the author
             if (instructorId.HasValue && instructorId.Value > 0)
             {
-                // Check if this instructor is the author of this material
                 var isAuthor = await _uow.MaterialAuthorRepository.ExistsAsync(ma => ma.MaterialId == id && ma.InstructorId == instructorId.Value);
                 if (!isAuthor)
                     throw new KeyNotFoundException($"Material with ID {id} not found.");
@@ -191,21 +180,14 @@ namespace Lssctc.ProgramManagement.Materials.Services
 
             if (material.ActivityMaterials.Any())
             {
-                // Check if any linked activities are part of a locked course
-                var linkedActivityIds = material.ActivityMaterials.Select(am => am.ActivityId).ToList();
-                foreach (var activityId in linkedActivityIds)
-                {
-                    if (await IsActivityLockedAsync(activityId))
-                    {
-                        throw new InvalidOperationException("Cannot delete material. It is assigned to an activity that is part of a course already in use.");
-                    }
-                }
+                // REMOVED: IsActivityLockedAsync check logic to allow deletion flexibility
+                // (Though deleting a material that is actively used might still be risky, 
+                // the requirement is to "allow more space for update data")
 
-                // If not locked, but still linked, throw original error
+                // Keep the structural integrity check:
                 throw new InvalidOperationException("Cannot delete material linked to activities. Please remove it from all activities first.");
             }
 
-            // Delete all MaterialAuthor records first
             var materialAuthors = await _uow.MaterialAuthorRepository
                 .GetAllAsQueryable()
                 .Where(ma => ma.MaterialId == id)
@@ -237,12 +219,7 @@ namespace Lssctc.ProgramManagement.Materials.Services
 
         public async Task AddMaterialToActivityAsync(int activityId, int materialId)
         {
-            // --- ADDED LOGIC (BR 1) ---
-            if (await IsActivityLockedAsync(activityId))
-            {
-                throw new InvalidOperationException("Cannot add material. This activity is part of a course that is already in use.");
-            }
-            // --- END ADDED LOGIC ---
+            // REMOVED: Lock check (IsActivityLockedAsync) to allow updates to running classes
 
             // Validate both entities
             var activity = await _uow.ActivityRepository
@@ -260,18 +237,15 @@ namespace Lssctc.ProgramManagement.Materials.Services
             if (material == null)
                 throw new KeyNotFoundException($"Material with ID {materialId} not found.");
 
-            // Only one material allowed per activity
             if (activity.ActivityMaterials.Any())
                 throw new InvalidOperationException("This activity already has a material assigned. Only one material is allowed per activity.");
 
-            // If activity has quiz or practice, cannot add material
             if (activity.ActivityQuizzes.Any())
                 throw new InvalidOperationException("This activity already has a quiz assigned. Cannot add material.");
 
             if (activity.ActivityPractices.Any())
                 throw new InvalidOperationException("This activity already has a practice assigned. Cannot add material.");
 
-            // Check if this specific material is already linked (redundant but safe)
             bool exists = await _uow.ActivityMaterialRepository
                 .GetAllAsQueryable()
                 .AnyAsync(am => am.ActivityId == activityId && am.LearningMaterialId == materialId);
@@ -291,15 +265,9 @@ namespace Lssctc.ProgramManagement.Materials.Services
             await _uow.SaveChangesAsync();
         }
 
-
         public async Task RemoveMaterialFromActivityAsync(int activityId, int materialId)
         {
-            // --- ADDED LOGIC (BR 1) ---
-            if (await IsActivityLockedAsync(activityId))
-            {
-                throw new InvalidOperationException("Cannot remove material. This activity is part of a course that is already in use.");
-            }
-            // --- END ADDED LOGIC ---
+            // REMOVED: Lock check (IsActivityLockedAsync) to allow updates to running classes
 
             var link = await _uow.ActivityMaterialRepository
                 .GetAllAsQueryable()

@@ -16,6 +16,7 @@ namespace Lssctc.ProgramManagement.Activities.Services
 
         #region Section Activities
         Task<IEnumerable<ActivityDto>> GetActivitiesBySectionIdAsync(int sectionId);
+        Task<ActivityDto> CreateActivityForSectionAsync(int sectionId, CreateActivityDto createDto);
         Task AddActivityToSectionAsync(int sectionId, int activityId);
         Task RemoveActivityFromSectionAsync(int sectionId, int activityId);
         Task UpdateSectionActivityOrderAsync(int sectionId, int activityId, int newOrder);
