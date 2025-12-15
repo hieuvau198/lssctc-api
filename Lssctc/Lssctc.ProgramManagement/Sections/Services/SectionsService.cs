@@ -77,23 +77,47 @@ namespace Lssctc.ProgramManagement.Sections.Services
                 throw new KeyNotFoundException($"Section with ID {id} not found.");
             }
 
-            // --- ADDED LOGIC (BR 2) ---
-            if (await IsSectionLockedAsync(id))
-            {
-                throw new InvalidOperationException("Cannot update section details. It is part of a course that is already in progress or completed.");
-            }
-            // --- END ADDED LOGIC ---
+            // REMOVED: Lock check (IsSectionLockedAsync) to allow updates to title/description/duration 
+            // even if the section is used in an active class.
 
-            section.SectionTitle = updateDto.SectionTitle!.Trim();
-            section.SectionDescription = string.IsNullOrWhiteSpace(updateDto.SectionDescription) ? null : updateDto.SectionDescription.Trim();
-            section.EstimatedDurationMinutes = updateDto.EstimatedDurationMinutes!.Value;
+            // 1. Validation: Unique Title Check
+            if (updateDto.SectionTitle != null)
+            {
+                // Normalize title (remove leading/trailing whitespace and multiple internal spaces)
+                var normalizedTitle = string.Join(' ', updateDto.SectionTitle.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries));
+
+                // Check for duplicates only if the title has actually changed
+                if (!string.Equals(section.SectionTitle, normalizedTitle, StringComparison.CurrentCultureIgnoreCase))
+                {
+                    var isDuplicate = await _uow.SectionRepository.GetAllAsQueryable()
+                        .AnyAsync(s => s.SectionTitle == normalizedTitle && s.Id != id && s.IsDeleted != true);
+
+                    if (isDuplicate)
+                    {
+                        throw new InvalidOperationException($"Section title '{normalizedTitle}' already exists.");
+                    }
+                    section.SectionTitle = normalizedTitle;
+                }
+            }
+
+            // 2. Update other fields
+            if (updateDto.SectionDescription != null)
+            {
+                section.SectionDescription = string.IsNullOrWhiteSpace(updateDto.SectionDescription)
+                    ? null
+                    : string.Join(' ', updateDto.SectionDescription.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries));
+            }
+
+            if (updateDto.EstimatedDurationMinutes.HasValue)
+            {
+                section.EstimatedDurationMinutes = updateDto.EstimatedDurationMinutes.Value;
+            }
 
             await _uow.SectionRepository.UpdateAsync(section);
             await _uow.SaveChangesAsync();
 
             return MapToDto(section);
         }
-
 
         public async Task DeleteSectionAsync(int id)
         {

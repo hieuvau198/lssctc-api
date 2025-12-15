@@ -161,7 +161,27 @@ namespace Lssctc.ProgramManagement.Courses.Services
                 throw new KeyNotFoundException($"Course with ID {id} not found.");
             }
 
-            course.Name = updateDto.Name ?? course.Name;
+            // 1. Validation: Unique Name Check
+            if (updateDto.Name != null)
+            {
+                // Normalize name
+                var normalizedName = string.Join(' ', updateDto.Name.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries));
+
+                // Only check if the name is changing
+                if (!string.Equals(course.Name, normalizedName, StringComparison.CurrentCultureIgnoreCase))
+                {
+                    var isDuplicate = await _uow.CourseRepository.GetAllAsQueryable()
+                        .AnyAsync(c => c.Name == normalizedName && c.Id != id && c.IsDeleted != true);
+
+                    if (isDuplicate)
+                    {
+                        throw new InvalidOperationException($"Course name '{normalizedName}' already exists.");
+                    }
+                    course.Name = normalizedName;
+                }
+            }
+
+            // 2. Update fields (Allow updates regardless of usage in Programs/Classes)
             course.Description = updateDto.Description ?? course.Description;
             course.CategoryId = updateDto.CategoryId ?? course.CategoryId;
             course.LevelId = updateDto.LevelId ?? course.LevelId;
@@ -173,7 +193,7 @@ namespace Lssctc.ProgramManagement.Courses.Services
             await _uow.CourseRepository.UpdateAsync(course);
             await _uow.SaveChangesAsync();
 
-            // ADDED: Reload the entity *with* navigation properties to return the correct DTO
+            // Reload the entity *with* navigation properties to return the correct DTO
             var updatedCourse = await _uow.CourseRepository.GetAllAsQueryable()
                 .Include(c => c.Category)
                 .Include(c => c.Level)
