@@ -355,6 +355,8 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
         #region ACTIVITY
         public async Task<int> AddQuizToActivity(CreateActivityQuizDto dto)
         {
+            // REMOVED: CheckActivityUsage check (allowing flexibility)
+
             if (dto == null) throw new ValidationException("Body required.");
             var quiz = await _uow.QuizRepository.GetByIdAsync(dto.QuizId) ?? throw new KeyNotFoundException($"Quiz {dto.QuizId} not found.");
             var act = await _uow.ActivityRepository.GetByIdAsync(dto.ActivityId);
@@ -367,6 +369,10 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
             var link = new ActivityQuiz { QuizId = dto.QuizId, ActivityId = dto.ActivityId, Name = quiz.Name ?? "Quiz", Description = quiz.Description };
             await _uow.ActivityQuizRepository.CreateAsync(link);
             await _uow.SaveChangesAsync();
+
+            // RESET LOGIC: Reset records for all trainees in active sections
+            await ResetActivityRecordsAndRecalculateAsync(dto.ActivityId);
+
             return link.Id;
         }
 
@@ -389,7 +395,10 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
 
         public async Task<bool> RemoveQuizFromActivityAsync(int activityId, int quizId)
         {
-            await CheckActivityUsage(activityId);
+            // REMOVED: CheckActivityUsage check (allowing flexibility)
+            // Note: We do NOT reset records on removal, matching Material logic. 
+            // The activity becomes 'empty' but records keep their state until a new quiz is assigned.
+
             var link = await _uow.ActivityQuizRepository.GetAllAsQueryable().FirstOrDefaultAsync(aq => aq.ActivityId == activityId && aq.QuizId == quizId);
             if (link == null) throw new KeyNotFoundException("Link not found.");
 
@@ -400,11 +409,12 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
 
         public async Task<bool> UpdateQuizInActivityAsync(int activityId, UpdateActivityQuizDto dto)
         {
+            // REMOVED: CheckActivityUsage check (allowing flexibility)
+
             var act = await _uow.ActivityRepository.GetByIdAsync(activityId);
             if (act == null || act.IsDeleted == true) throw new KeyNotFoundException($"Activity {activityId} not found.");
             if (act.ActivityType != (int)ActivityType.Quiz) throw new InvalidOperationException("Not a Quiz activity.");
 
-            await CheckActivityUsage(activityId);
             var newQuiz = await _uow.QuizRepository.GetByIdAsync(dto.NewQuizId) ?? throw new KeyNotFoundException($"New Quiz {dto.NewQuizId} not found.");
             var link = await _uow.ActivityQuizRepository.GetAllAsQueryable().FirstOrDefaultAsync(aq => aq.ActivityId == activityId)
                        ?? throw new KeyNotFoundException($"No quiz currently assigned to Activity {activityId}.");
@@ -416,6 +426,10 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
             link.Description = newQuiz.Description;
             await _uow.ActivityQuizRepository.UpdateAsync(link);
             await _uow.SaveChangesAsync();
+
+            // RESET LOGIC: Reset records as content has changed
+            await ResetActivityRecordsAndRecalculateAsync(activityId);
+
             return true;
         }
         #endregion
@@ -468,6 +482,128 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
             var sectionIds = _uow.SectionActivityRepository.GetAllAsQueryable().Where(sa => sa.ActivityId == activityId).Select(sa => sa.SectionId);
             if (await _uow.SectionRecordRepository.GetAllAsQueryable().AnyAsync(sr => sectionIds.Contains(sr.SectionId ?? -1)))
                 throw new InvalidOperationException("Activity is in use by trainees.");
+        }
+
+        private async Task ResetActivityRecordsAndRecalculateAsync(int activityId)
+        {
+            // 1. Fetch all records for this activity in active sections
+            var records = await _uow.ActivityRecordRepository.GetAllAsQueryable()
+                .Where(ar => ar.ActivityId == activityId)
+                .Include(ar => ar.SectionRecord)
+                .ToListAsync();
+
+            if (records.Any())
+            {
+                // 2. Reset Status
+                foreach (var r in records)
+                {
+                    r.IsCompleted = false;
+                    r.Status = 0; // Not Started
+                    r.Score = 0;
+                    r.CompletedDate = null;
+                    await _uow.ActivityRecordRepository.UpdateAsync(r);
+                }
+                await _uow.SaveChangesAsync();
+
+                // 3. Recalculate Progress for unique SectionRecords
+                var recordsToRecalculate = records
+                    .Select(r => new { r.SectionRecordId, r.SectionRecord.LearningProgressId })
+                    .Distinct()
+                    .ToList();
+
+                foreach (var item in recordsToRecalculate)
+                {
+                    await RecalculateSectionAndLearningProgressAsync(item.SectionRecordId, item.LearningProgressId);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Recalculates the progress for a SectionRecord and then triggers recalculation for its parent LearningProgress.
+        /// (Duplicated from ActivitiesService to avoid circular dependency/visibility issues)
+        /// </summary>
+        private async Task RecalculateSectionAndLearningProgressAsync(int sectionRecordId, int learningProgressId)
+        {
+            // ---------------------------------------------------------
+            // 1. RECALCULATE SECTION RECORD
+            // ---------------------------------------------------------
+
+            // A. Read Data (Detached): Use existing repo method to get graph for calculation
+            var sectionRecordData = await _uow.SectionRecordRepository
+                .GetAllAsQueryable()
+                .Include(sr => sr.ActivityRecords)
+                .FirstOrDefaultAsync(sr => sr.Id == sectionRecordId);
+
+            if (sectionRecordData != null)
+            {
+                // B. Perform Calculation in Memory
+                int totalActivities = sectionRecordData.ActivityRecords.Count();
+                int completedActivities = sectionRecordData.ActivityRecords.Count(ar => ar.IsCompleted == true);
+
+                decimal newProgress = 0;
+                bool newIsCompleted = false;
+
+                if (totalActivities == 0)
+                {
+                    newProgress = 100;
+                    newIsCompleted = true;
+                }
+                else
+                {
+                    newProgress = (decimal)completedActivities / totalActivities * 100;
+                    newIsCompleted = completedActivities == totalActivities;
+                }
+
+                // C. Update Entity (Tracked): Fetch the specific entity to update
+                // GetByIdAsync uses FindAsync, which returns a TRACKED entity and usually DOES NOT load children.
+                var sectionRecordToUpdate = await _uow.SectionRecordRepository.GetByIdAsync(sectionRecordId);
+
+                if (sectionRecordToUpdate != null)
+                {
+                    sectionRecordToUpdate.Progress = newProgress;
+                    sectionRecordToUpdate.IsCompleted = newIsCompleted;
+
+                    await _uow.SectionRecordRepository.UpdateAsync(sectionRecordToUpdate);
+                    await _uow.SaveChangesAsync();
+                }
+            }
+
+            // ---------------------------------------------------------
+            // 2. RECALCULATE LEARNING PROGRESS
+            // ---------------------------------------------------------
+
+            var learningProgressData = await _uow.LearningProgressRepository
+                .GetAllAsQueryable()
+                .Include(lp => lp.SectionRecords)
+                .FirstOrDefaultAsync(lp => lp.Id == learningProgressId);
+
+            if (learningProgressData != null)
+            {
+                var totalSectionsInCourse = await _uow.CourseSectionRepository
+                    .GetAllAsQueryable()
+                    .CountAsync(cs => cs.CourseId == learningProgressData.CourseId);
+
+                decimal totalProgressSum = learningProgressData.SectionRecords.Sum(sr => sr.Progress ?? 0);
+                decimal avgProgress = 0;
+
+                if (totalSectionsInCourse > 0)
+                {
+                    avgProgress = totalProgressSum / totalSectionsInCourse;
+                }
+
+                if (avgProgress > 100) avgProgress = 100;
+
+                var learningProgressToUpdate = await _uow.LearningProgressRepository.GetByIdAsync(learningProgressId);
+
+                if (learningProgressToUpdate != null)
+                {
+                    learningProgressToUpdate.ProgressPercentage = avgProgress;
+                    learningProgressToUpdate.LastUpdated = DateTime.UtcNow;
+
+                    await _uow.LearningProgressRepository.UpdateAsync(learningProgressToUpdate);
+                    await _uow.SaveChangesAsync();
+                }
+            }
         }
         #endregion
     }
