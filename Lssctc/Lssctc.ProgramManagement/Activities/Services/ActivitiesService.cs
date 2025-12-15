@@ -356,63 +356,94 @@ namespace Lssctc.ProgramManagement.Activities.Services
         /// </summary>
         private async Task RecalculateSectionAndLearningProgressAsync(int sectionRecordId, int learningProgressId)
         {
-            // 1. Recalculate Section Record
-            var sectionRecord = await _uow.SectionRecordRepository
+            // ---------------------------------------------------------
+            // 1. RECALCULATE SECTION RECORD
+            // ---------------------------------------------------------
+
+            // A. Read Data (Detached): Use existing repo method to get graph for calculation
+            // We use AsNoTracking (via GetAllAsQueryable) to avoid messing with the Context's state
+            var sectionRecordData = await _uow.SectionRecordRepository
                 .GetAllAsQueryable()
                 .Include(sr => sr.ActivityRecords)
                 .FirstOrDefaultAsync(sr => sr.Id == sectionRecordId);
 
-            if (sectionRecord != null)
+            if (sectionRecordData != null)
             {
-                int totalActivities = sectionRecord.ActivityRecords.Count();
-                int completedActivities = sectionRecord.ActivityRecords.Count(ar => ar.IsCompleted == true);
+                // B. Perform Calculation in Memory
+                int totalActivities = sectionRecordData.ActivityRecords.Count();
+                int completedActivities = sectionRecordData.ActivityRecords.Count(ar => ar.IsCompleted == true);
+
+                decimal newProgress = 0;
+                bool newIsCompleted = false;
 
                 if (totalActivities == 0)
                 {
-                    sectionRecord.Progress = 100; // If no activities, section is technically complete
-                    sectionRecord.IsCompleted = true;
+                    newProgress = 100;
+                    newIsCompleted = true;
                 }
                 else
                 {
-                    sectionRecord.Progress = (decimal)completedActivities / totalActivities * 100;
-                    sectionRecord.IsCompleted = completedActivities == totalActivities;
+                    newProgress = (decimal)completedActivities / totalActivities * 100;
+                    newIsCompleted = completedActivities == totalActivities;
                 }
 
-                await _uow.SectionRecordRepository.UpdateAsync(sectionRecord);
-                await _uow.SaveChangesAsync();
+                // C. Update Entity (Tracked): Fetch the specific entity to update
+                // GetByIdAsync uses FindAsync, which returns a TRACKED entity and usually DOES NOT load children.
+                // This prevents the "Identity Conflict" with the ActivityRecords we just created.
+                var sectionRecordToUpdate = await _uow.SectionRecordRepository.GetByIdAsync(sectionRecordId);
+
+                if (sectionRecordToUpdate != null)
+                {
+                    sectionRecordToUpdate.Progress = newProgress;
+                    sectionRecordToUpdate.IsCompleted = newIsCompleted;
+
+                    // UpdateAsync on a tracked entity just marks it modified
+                    await _uow.SectionRecordRepository.UpdateAsync(sectionRecordToUpdate);
+
+                    // Save here to ensure the DB is updated before we calculate LearningProgress
+                    await _uow.SaveChangesAsync();
+                }
             }
 
-            // 2. Recalculate Learning Progress
-            var learningProgress = await _uow.LearningProgressRepository
+            // ---------------------------------------------------------
+            // 2. RECALCULATE LEARNING PROGRESS
+            // ---------------------------------------------------------
+
+            // A. Read Data (Detached)
+            // Since we saved above, this query will retrieve the updated SectionRecord progress from DB
+            var learningProgressData = await _uow.LearningProgressRepository
                 .GetAllAsQueryable()
                 .Include(lp => lp.SectionRecords)
                 .FirstOrDefaultAsync(lp => lp.Id == learningProgressId);
 
-            if (learningProgress != null)
+            if (learningProgressData != null)
             {
-                // We need the TOTAL sections in the course, not just the ones started in SectionRecords
+                // B. Perform Calculation
                 var totalSectionsInCourse = await _uow.CourseSectionRepository
                     .GetAllAsQueryable()
-                    .CountAsync(cs => cs.CourseId == learningProgress.CourseId);
+                    .CountAsync(cs => cs.CourseId == learningProgressData.CourseId);
 
-                decimal totalProgressSum = learningProgress.SectionRecords.Sum(sr => sr.Progress ?? 0);
+                decimal totalProgressSum = learningProgressData.SectionRecords.Sum(sr => sr.Progress ?? 0);
+                decimal avgProgress = 0;
 
-                if (totalSectionsInCourse == 0)
+                if (totalSectionsInCourse > 0)
                 {
-                    learningProgress.ProgressPercentage = 0;
-                }
-                else
-                {
-                    // Average progress across all sections
-                    learningProgress.ProgressPercentage = totalProgressSum / totalSectionsInCourse;
+                    avgProgress = totalProgressSum / totalSectionsInCourse;
                 }
 
-                // Ensure max 100
-                if (learningProgress.ProgressPercentage > 100) learningProgress.ProgressPercentage = 100;
+                if (avgProgress > 100) avgProgress = 100;
 
-                learningProgress.LastUpdated = DateTime.UtcNow;
-                await _uow.LearningProgressRepository.UpdateAsync(learningProgress);
-                await _uow.SaveChangesAsync();
+                // C. Update Entity (Tracked)
+                var learningProgressToUpdate = await _uow.LearningProgressRepository.GetByIdAsync(learningProgressId);
+
+                if (learningProgressToUpdate != null)
+                {
+                    learningProgressToUpdate.ProgressPercentage = avgProgress;
+                    learningProgressToUpdate.LastUpdated = DateTime.UtcNow;
+
+                    await _uow.LearningProgressRepository.UpdateAsync(learningProgressToUpdate);
+                    await _uow.SaveChangesAsync();
+                }
             }
         }
 
