@@ -281,11 +281,28 @@ namespace Lssctc.ProgramManagement.Programs.Services
                 throw new Exception($"Program with ID {id} not found.");
             }
 
+            // 1. Validation: Unique Name Check
             if (updateDto.Name != null)
             {
-                existingProgram.Name = updateDto.Name;
+                // Normalize name (trim and single spaces)
+                var normalizedName = string.Join(' ', updateDto.Name.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries));
+
+                // Only check if the name is actually changing
+                if (!string.Equals(existingProgram.Name, normalizedName, StringComparison.CurrentCultureIgnoreCase))
+                {
+                    var isDuplicate = await _uow.ProgramRepository.GetAllAsQueryable()
+                        .AnyAsync(p => p.Name == normalizedName && p.Id != id && p.IsDeleted != true);
+
+                    if (isDuplicate)
+                    {
+                        throw new ValidationException($"Program name '{normalizedName}' already exists.");
+                    }
+
+                    existingProgram.Name = normalizedName;
+                }
             }
 
+            // 2. Update other fields (Allow updates even if used)
             if (updateDto.Description != null)
             {
                 existingProgram.Description = updateDto.Description;
@@ -298,7 +315,7 @@ namespace Lssctc.ProgramManagement.Programs.Services
 
             await _uow.ProgramRepository.UpdateAsync(existingProgram);
             await _uow.SaveChangesAsync();
-            
+
             // Reload with ProgramCourses to recalculate
             var reloadedProgram = await _uow.ProgramRepository
                 .GetAllAsQueryable()
@@ -306,7 +323,7 @@ namespace Lssctc.ProgramManagement.Programs.Services
                 .Include(p => p.ProgramCourses)
                     .ThenInclude(pc => pc.Course)
                 .FirstOrDefaultAsync();
-            
+
             return MapToDtoWithCalculations(reloadedProgram!);
         }
 
