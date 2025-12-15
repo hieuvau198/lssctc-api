@@ -1,4 +1,5 @@
 ﻿using ExcelDataReader;
+using Lssctc.ProgramManagement.Accounts.Authens.Services;
 using Lssctc.ProgramManagement.Sections.Dtos;
 using Lssctc.Share.Common;
 using Lssctc.Share.Entities;
@@ -12,9 +13,12 @@ namespace Lssctc.ProgramManagement.Sections.Services
     public class SectionsService : ISectionsService
     {
         private readonly IUnitOfWork _uow;
-        public SectionsService(IUnitOfWork uow)
+        private readonly IMailService _mailService;
+
+        public SectionsService(IUnitOfWork uow, IMailService mailService)
         {
             _uow = uow;
+            _mailService = mailService;
         }
 
         #region Sections
@@ -77,12 +81,11 @@ namespace Lssctc.ProgramManagement.Sections.Services
                 throw new KeyNotFoundException($"Section with ID {id} not found.");
             }
 
-            // --- ADDED LOGIC (BR 2) ---
-            if (await IsSectionLockedAsync(id))
+            // Block update ONLY if the Section belongs to a Completed class
+            if (await IsSectionFrozenAsync(id))
             {
-                throw new InvalidOperationException("Cannot update section details. It is part of a course that is already in progress or completed.");
+                throw new InvalidOperationException("Cannot update section details. It is part of a course that is already completed.");
             }
-            // --- END ADDED LOGIC ---
 
             section.SectionTitle = updateDto.SectionTitle!.Trim();
             section.SectionDescription = string.IsNullOrWhiteSpace(updateDto.SectionDescription) ? null : updateDto.SectionDescription.Trim();
@@ -90,6 +93,20 @@ namespace Lssctc.ProgramManagement.Sections.Services
 
             await _uow.SectionRepository.UpdateAsync(section);
             await _uow.SaveChangesAsync();
+
+            // Post-Update: Send email notifications to trainees in Inprogress classes (background)
+            var sectionTitle = section.SectionTitle;
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await SendSectionUpdateNotificationsAsync(id, sectionTitle);
+                }
+                catch
+                {
+                    // Suppress any exceptions to avoid affecting the API response
+                }
+            });
 
             return MapToDto(section);
         }
@@ -456,6 +473,282 @@ namespace Lssctc.ProgramManagement.Sections.Services
                                c.Status.HasValue &&
                                lockedStatuses.Contains(c.Status.Value));
             return isLocked;
+        }
+
+        /// <summary>
+        /// Checks if a section is "frozen" (part of a Completed class).
+        /// Frozen sections cannot be updated at all.
+        /// </summary>
+        private async Task<bool> IsSectionFrozenAsync(int sectionId)
+        {
+            // Find all CourseIDs this Section is linked to
+            var courseIds = await _uow.CourseSectionRepository
+                .GetAllAsQueryable()
+                .Where(cs => cs.SectionId == sectionId)
+                .Select(cs => cs.CourseId)
+                .Distinct()
+                .ToListAsync();
+
+            if (!courseIds.Any())
+            {
+                return false; // Section isn't used by any course, so it's not frozen.
+            }
+
+            // Check if ANY of those courses are linked to a Completed class
+            bool isFrozen = await _uow.ClassRepository
+                .GetAllAsQueryable()
+                .AnyAsync(c => courseIds.Contains(c.ProgramCourse.CourseId) &&
+                               c.Status.HasValue &&
+                               c.Status.Value == (int)ClassStatusEnum.Completed);
+            return isFrozen;
+        }
+
+        /// <summary>
+        /// Sends email notifications to all trainees enrolled in Inprogress classes 
+        /// that use the updated section.
+        /// </summary>
+        private async Task SendSectionUpdateNotificationsAsync(int sectionId, string sectionTitle)
+        {
+            // Find all CourseIDs this Section is linked to
+            var courseIds = await _uow.CourseSectionRepository
+                .GetAllAsQueryable()
+                .Where(cs => cs.SectionId == sectionId)
+                .Select(cs => cs.CourseId)
+                .Distinct()
+                .ToListAsync();
+
+            if (!courseIds.Any())
+            {
+                return; // No courses use this section
+            }
+
+            // Find all Inprogress classes that use these courses
+            var inprogressClassIds = await _uow.ClassRepository
+                .GetAllAsQueryable()
+                .Where(c => courseIds.Contains(c.ProgramCourse.CourseId) &&
+                            c.Status.HasValue &&
+                            c.Status.Value == (int)ClassStatusEnum.Inprogress)
+                .Select(c => c.Id)
+                .ToListAsync();
+
+            if (!inprogressClassIds.Any())
+            {
+                return; // No active classes use this section
+            }
+
+            // Find all trainees enrolled in these Inprogress classes with Inprogress enrollment status
+            var traineeInfos = await _uow.EnrollmentRepository
+                .GetAllAsQueryable()
+                .Where(e => inprogressClassIds.Contains(e.ClassId) &&
+                            e.Status == (int)EnrollmentStatusEnum.Inprogress)
+                .Include(e => e.Trainee)
+                    .ThenInclude(t => t.IdNavigation)
+                .Include(e => e.Class)
+                .Select(e => new
+                {
+                    TraineeFullname = e.Trainee.IdNavigation.Fullname ?? "Student",
+                    TraineeEmail = e.Trainee.IdNavigation.Email,
+                    ClassName = e.Class.Name
+                })
+                .Distinct()
+                .ToListAsync();
+
+            // Send emails to each trainee
+            foreach (var trainee in traineeInfos)
+            {
+                if (string.IsNullOrWhiteSpace(trainee.TraineeEmail))
+                {
+                    continue; // Skip if no email
+                }
+
+                try
+                {
+                    string emailSubject = $"📚 Course Content Updated - {sectionTitle}";
+                    string emailBody = GenerateSectionUpdateEmailBody(
+                        trainee.TraineeFullname,
+                        sectionTitle,
+                        trainee.ClassName);
+
+                    await _mailService.SendEmailAsync(trainee.TraineeEmail, emailSubject, emailBody);
+                }
+                catch
+                {
+                    // Silently ignore individual email failures
+                }
+            }
+        }
+
+        /// <summary>
+        /// Generates the HTML email body for section update notifications.
+        /// </summary>
+        private static string GenerateSectionUpdateEmailBody(string traineeFullname, string sectionTitle, string className)
+        {
+            return $@"
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <style>
+        body {{ 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            line-height: 1.6; 
+            color: #333; 
+            margin: 0; 
+            padding: 0; 
+            background-color: #f4f4f4; 
+        }}
+        .email-container {{ 
+            max-width: 600px; 
+            margin: 20px auto; 
+            background-color: #ffffff; 
+            border-radius: 10px; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1); 
+            overflow: hidden; 
+        }}
+        .email-header {{ 
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); 
+            color: #ffffff; 
+            padding: 30px 20px; 
+            text-align: center; 
+        }}
+        .email-header h1 {{ 
+            margin: 0; 
+            font-size: 24px; 
+            font-weight: 600; 
+        }}
+        .email-header .icon {{ 
+            font-size: 48px; 
+            margin-bottom: 10px; 
+        }}
+        .email-body {{ 
+            padding: 30px; 
+        }}
+        .greeting {{ 
+            font-size: 18px; 
+            font-weight: 500; 
+            color: #333; 
+            margin-bottom: 20px; 
+        }}
+        .message {{ 
+            font-size: 16px; 
+            color: #555; 
+            margin-bottom: 25px; 
+            line-height: 1.8; 
+        }}
+        .update-info {{ 
+            background-color: #f8f9fa; 
+            border-left: 4px solid #4CAF50; 
+            padding: 20px; 
+            margin: 20px 0; 
+            border-radius: 5px; 
+        }}
+        .update-info-title {{ 
+            font-size: 18px; 
+            font-weight: 600; 
+            color: #4CAF50; 
+            margin-bottom: 15px; 
+        }}
+        .info-row {{ 
+            padding: 8px 0; 
+            border-bottom: 1px solid #e0e0e0; 
+        }}
+        .info-row:last-child {{ 
+            border-bottom: none; 
+        }}
+        .info-label {{ 
+            font-weight: 600; 
+            color: #666; 
+        }}
+        .info-value {{ 
+            color: #333; 
+            font-weight: 500; 
+        }}
+        .cta-button {{ 
+            display: inline-block; 
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); 
+            color: #ffffff; 
+            padding: 14px 30px; 
+            text-decoration: none; 
+            border-radius: 5px; 
+            font-weight: 600; 
+            font-size: 16px; 
+            margin: 20px 0; 
+            text-align: center; 
+        }}
+        .footer {{ 
+            background-color: #f8f9fa; 
+            padding: 20px; 
+            text-align: center; 
+            font-size: 14px; 
+            color: #666; 
+        }}
+        .footer-note {{ 
+            margin-top: 15px; 
+            font-size: 12px; 
+            color: #999; 
+        }}
+        .highlight {{ 
+            color: #4CAF50; 
+            font-weight: 600; 
+        }}
+    </style>
+</head>
+<body>
+    <div class='email-container'>
+        <div class='email-header'>
+            <div class='icon'>📚</div>
+            <h1>Course Content Updated</h1>
+        </div>
+        
+        <div class='email-body'>
+            <div class='greeting'>
+                Dear <span class='highlight'>{traineeFullname}</span>,
+            </div>
+            
+            <div class='message'>
+                We would like to inform you that the course content you are currently studying has been updated. Please review the changes to stay up-to-date with the latest learning materials.
+            </div>
+            
+            <div class='update-info'>
+                <div class='update-info-title'>📋 Update Details</div>
+                <div class='info-row'>
+                    <span class='info-label'>Updated Section:</span>
+                    <span class='info-value'>{sectionTitle}</span>
+                </div>
+                <div class='info-row'>
+                    <span class='info-label'>Class:</span>
+                    <span class='info-value'>{className}</span>
+                </div>
+                <div class='info-row'>
+                    <span class='info-label'>Update Time:</span>
+                    <span class='info-value'>{DateTime.UtcNow:dd/MM/yyyy HH:mm} UTC</span>
+                </div>
+            </div>
+            
+            <div style='text-align: center;'>
+                <a href='#' class='cta-button'>View Updated Content</a>
+            </div>
+            
+            <div class='message' style='margin-top: 20px;'>
+                If you have any questions about the updated content, please contact your instructor.
+            </div>
+            
+            <div class='message' style='margin-top: 20px;'>
+                Best regards,<br>
+                <strong>LSSCTC Training Management Team</strong>
+            </div>
+        </div>
+        
+        <div class='footer'>
+            <p>© 2024 LSSCTC Training Center. All rights reserved.</p>
+            <p class='footer-note'>
+                This is an automated message. Please do not reply directly to this email.
+            </p>
+        </div>
+    </div>
+</body>
+</html>";
         }
 
         #endregion

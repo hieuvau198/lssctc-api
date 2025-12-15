@@ -1,5 +1,6 @@
 ﻿// File: Lssctc.ProgramManagement/Activities/Services/ActivitySessionService.cs
 using Lssctc.ProgramManagement.Activities.Dtos;
+using Lssctc.ProgramManagement.Accounts.Authens.Services;
 using Lssctc.Share.Entities;
 using Lssctc.Share.Enums;
 using Lssctc.Share.Interfaces;
@@ -11,10 +12,12 @@ namespace Lssctc.ProgramManagement.Activities.Services
     public class ActivitySessionService : IActivitySessionService
     {
         private readonly IUnitOfWork _uow;
+        private readonly IMailService _mailService;
 
-        public ActivitySessionService(IUnitOfWork uow)
+        public ActivitySessionService(IUnitOfWork uow, IMailService mailService)
         {
             _uow = uow;
+            _mailService = mailService;
         }
 
         // --- CORE LOGIC: Create Sessions on Class Start (Task 1) ---
@@ -166,6 +169,7 @@ namespace Lssctc.ProgramManagement.Activities.Services
             var existing = await _uow.ActivitySessionRepository
                                      .GetAllAsQueryable()
                                      .Include(s => s.Activity)
+                                     .Include(s => s.Class)
                                      .FirstOrDefaultAsync(s => s.Id == sessionId);
 
             if (existing == null)
@@ -177,6 +181,73 @@ namespace Lssctc.ProgramManagement.Activities.Services
 
             await _uow.ActivitySessionRepository.UpdateAsync(existing);
             await _uow.SaveChangesAsync();
+
+            // Post-Update: Send email notifications to trainees in Inprogress classes (background)
+            var classId = existing.ClassId;
+            var activityTitle = existing.Activity?.ActivityTitle ?? "Hoạt động";
+            var startTime = dto.StartTime;
+            var endTime = dto.EndTime;
+
+            // Fetch class status separately to ensure we have it
+            var targetClass = await _uow.ClassRepository
+                .GetAllAsQueryable()
+                .AsNoTracking()
+                .Where(c => c.Id == classId)
+                .Select(c => new { c.Status, c.Name })
+                .FirstOrDefaultAsync();
+
+            var classStatus = targetClass?.Status;
+            var className = targetClass?.Name ?? "Lớp học";
+
+            // DEBUG: Log class status
+            Console.WriteLine($"[ActivitySession Update] ClassId: {classId}, ClassStatus: {classStatus}, Expected: {(int)ClassStatusEnum.Inprogress}");
+
+            // Only send emails if class status is Inprogress (ID 3)
+            if (classStatus == (int)ClassStatusEnum.Inprogress)
+            {
+                Console.WriteLine($"[ActivitySession Update] Class is Inprogress, fetching trainees...");
+                
+                // IMPORTANT: Fetch trainee data BEFORE Task.Run to avoid DbContext disposal issues
+                var traineeInfos = await _uow.EnrollmentRepository
+                    .GetAllAsQueryable()
+                    .AsNoTracking()
+                    .Where(e => e.ClassId == classId &&
+                                (e.Status == (int)EnrollmentStatusEnum.Inprogress || 
+                                 e.Status == (int)EnrollmentStatusEnum.Enrolled))
+                    .Include(e => e.Trainee)
+                        .ThenInclude(t => t.IdNavigation)
+                    .Select(e => new TraineeEmailInfo
+                    {
+                        TraineeFullname = e.Trainee.IdNavigation.Fullname ?? "Học viên",
+                        TraineeEmail = e.Trainee.IdNavigation.Email
+                    })
+                    .Distinct()
+                    .ToListAsync();
+
+                Console.WriteLine($"[ActivitySession Update] Found {traineeInfos.Count} trainees to notify");
+
+                if (traineeInfos.Any())
+                {
+                    // Now run email sending in background with pre-fetched data
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            Console.WriteLine($"[ActivitySession Update] Starting email sending task...");
+                            await SendEmailsToTraineesAsync(traineeInfos, activityTitle, className, startTime, endTime);
+                            Console.WriteLine($"[ActivitySession Update] Email sending task completed.");
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"[ActivitySession Update] Email sending failed: {ex.Message}");
+                        }
+                    });
+                }
+            }
+            else
+            {
+                Console.WriteLine($"[ActivitySession Update] Class is NOT Inprogress (status: {classStatus}), skipping email.");
+            }
 
             var updated = await GetSessionQuery().FirstAsync(s => s.Id == existing.Id);
             return MapToDto(updated);
@@ -236,5 +307,279 @@ namespace Lssctc.ProgramManagement.Activities.Services
                 EndTime = s.EndTime
             };
         }
+
+        #region --- EMAIL NOTIFICATION HELPERS ---
+
+        /// <summary>
+        /// Helper class to hold trainee email information
+        /// </summary>
+        private class TraineeEmailInfo
+        {
+            public string TraineeFullname { get; set; } = "Học viên";
+            public string? TraineeEmail { get; set; }
+        }
+
+        /// <summary>
+        /// Sends emails to pre-fetched list of trainees (runs in background)
+        /// </summary>
+        private async Task SendEmailsToTraineesAsync(List<TraineeEmailInfo> traineeInfos, string activityTitle, string className, DateTime? startTime, DateTime? endTime)
+        {
+            // Convert times to Vietnam timezone (UTC+7)
+            var vietnamTimeZone = TimeSpan.FromHours(7);
+            string startTimeFormatted = startTime.HasValue
+                ? (startTime.Value.Kind == DateTimeKind.Utc 
+                    ? startTime.Value.Add(vietnamTimeZone) 
+                    : startTime.Value).ToString("dd/MM/yyyy HH:mm")
+                : "Chưa xác định";
+            string endTimeFormatted = endTime.HasValue
+                ? (endTime.Value.Kind == DateTimeKind.Utc 
+                    ? endTime.Value.Add(vietnamTimeZone) 
+                    : endTime.Value).ToString("dd/MM/yyyy HH:mm")
+                : "Chưa xác định";
+
+            // Send emails to each trainee
+            foreach (var trainee in traineeInfos)
+            {
+                if (string.IsNullOrWhiteSpace(trainee.TraineeEmail))
+                {
+                    Console.WriteLine($"[Email] Trainee '{trainee.TraineeFullname}' has no email, skipping.");
+                    continue;
+                }
+
+                try
+                {
+                    Console.WriteLine($"[Email] Sending email to: {trainee.TraineeEmail}");
+                    
+                    string emailSubject = $"📅 Cập nhật Lịch trình/Hoạt động - {activityTitle}";
+                    string emailBody = GenerateActivitySessionUpdateEmailBody(
+                        trainee.TraineeFullname,
+                        activityTitle,
+                        className,
+                        startTimeFormatted,
+                        endTimeFormatted);
+
+                    await _mailService.SendEmailAsync(trainee.TraineeEmail, emailSubject, emailBody);
+                    Console.WriteLine($"[Email] Successfully sent to: {trainee.TraineeEmail}");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[Email] Failed to send to {trainee.TraineeEmail}: {ex.Message}");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Sends email notifications to all trainees enrolled in the specified class
+        /// when an activity session is updated.
+        /// </summary>
+        private async Task SendActivitySessionUpdateNotificationsAsync(int classId, string activityTitle, string className, DateTime? startTime, DateTime? endTime)
+        {
+            Console.WriteLine($"[Email] Fetching trainees for classId: {classId}");
+            
+            // Find all trainees enrolled in this class with Inprogress or Enrolled enrollment status
+            var traineeInfos = await _uow.EnrollmentRepository
+                .GetAllAsQueryable()
+                .Where(e => e.ClassId == classId &&
+                            (e.Status == (int)EnrollmentStatusEnum.Inprogress || 
+                             e.Status == (int)EnrollmentStatusEnum.Enrolled))
+                .Include(e => e.Trainee)
+                    .ThenInclude(t => t.IdNavigation)
+                .Select(e => new TraineeEmailInfo
+                {
+                    TraineeFullname = e.Trainee.IdNavigation.Fullname ?? "Học viên",
+                    TraineeEmail = e.Trainee.IdNavigation.Email
+                })
+                .Distinct()
+                .ToListAsync();
+
+            Console.WriteLine($"[Email] Found {traineeInfos.Count} trainees to notify");
+
+            if (!traineeInfos.Any())
+            {
+                Console.WriteLine($"[Email] No trainees to notify, returning.");
+                return;
+            }
+
+            await SendEmailsToTraineesAsync(traineeInfos, activityTitle, className, startTime, endTime);
+        }
+
+        /// <summary>
+        /// Generates the HTML email body for activity session update notifications (Vietnamese).
+        /// </summary>
+        private static string GenerateActivitySessionUpdateEmailBody(string traineeFullname, string activityTitle, string className, string startTime, string endTime)
+        {
+            return $@"
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <style>
+        body {{ 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            line-height: 1.6; 
+            color: #333; 
+            margin: 0; 
+            padding: 0; 
+            background-color: #f4f4f4; 
+        }}
+        .email-container {{ 
+            max-width: 600px; 
+            margin: 20px auto; 
+            background-color: #ffffff; 
+            border-radius: 10px; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1); 
+            overflow: hidden; 
+        }}
+        .email-header {{ 
+            background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%); 
+            color: #ffffff; 
+            padding: 30px 20px; 
+            text-align: center; 
+        }}
+        .email-header h1 {{ 
+            margin: 0; 
+            font-size: 24px; 
+            font-weight: 600; 
+        }}
+        .email-header .icon {{ 
+            font-size: 48px; 
+            margin-bottom: 10px; 
+        }}
+        .email-body {{ 
+            padding: 30px; 
+        }}
+        .greeting {{ 
+            font-size: 18px; 
+            font-weight: 500; 
+            color: #333; 
+            margin-bottom: 20px; 
+        }}
+        .message {{ 
+            font-size: 16px; 
+            color: #555; 
+            margin-bottom: 25px; 
+            line-height: 1.8; 
+        }}
+        .update-info {{ 
+            background-color: #fff3e0; 
+            border-left: 4px solid #FF9800; 
+            padding: 20px; 
+            margin: 20px 0; 
+            border-radius: 5px; 
+        }}
+        .update-info-title {{ 
+            font-size: 18px; 
+            font-weight: 600; 
+            color: #E65100; 
+            margin-bottom: 15px; 
+        }}
+        .info-row {{ 
+            padding: 8px 0; 
+            border-bottom: 1px solid #ffe0b2; 
+        }}
+        .info-row:last-child {{ 
+            border-bottom: none; 
+        }}
+        .info-label {{ 
+            font-weight: 600; 
+            color: #666; 
+        }}
+        .info-value {{ 
+            color: #333; 
+            font-weight: 500; 
+        }}
+        .cta-button {{ 
+            display: inline-block; 
+            background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%); 
+            color: #ffffff; 
+            padding: 14px 30px; 
+            text-decoration: none; 
+            border-radius: 5px; 
+            font-weight: 600; 
+            font-size: 16px; 
+            margin: 20px 0; 
+            text-align: center; 
+        }}
+        .footer {{ 
+            background-color: #f8f9fa; 
+            padding: 20px; 
+            text-align: center; 
+            font-size: 14px; 
+            color: #666; 
+        }}
+        .footer-note {{ 
+            margin-top: 15px; 
+            font-size: 12px; 
+            color: #999; 
+        }}
+        .highlight {{ 
+            color: #E65100; 
+            font-weight: 600; 
+        }}
+    </style>
+</head>
+<body>
+    <div class='email-container'>
+        <div class='email-header'>
+            <div class='icon'>📅</div>
+            <h1>Cập nhật Lịch trình/Hoạt động</h1>
+        </div>
+        
+        <div class='email-body'>
+            <div class='greeting'>
+                Xin chào <span class='highlight'>{traineeFullname}</span>,
+            </div>
+            
+            <div class='message'>
+                Hoạt động/Lịch trình trong lớp học <strong>{className}</strong> của bạn vừa được cập nhật. Vui lòng kiểm tra lại thông tin chi tiết bên dưới.
+            </div>
+            
+            <div class='update-info'>
+                <div class='update-info-title'>📋 Chi tiết cập nhật</div>
+                <div class='info-row'>
+                    <span class='info-label'>Hoạt động:</span>
+                    <span class='info-value'>{activityTitle}</span>
+                </div>
+                <div class='info-row'>
+                    <span class='info-label'>Lớp học:</span>
+                    <span class='info-value'>{className}</span>
+                </div>
+                <div class='info-row'>
+                    <span class='info-label'>Thời gian bắt đầu:</span>
+                    <span class='info-value'>{startTime}</span>
+                </div>
+                <div class='info-row'>
+                    <span class='info-label'>Thời gian kết thúc:</span>
+                    <span class='info-value'>{endTime}</span>
+                </div>
+            </div>
+            
+            <div style='text-align: center;'>
+                <a href='#' class='cta-button'>Xem chi tiết</a>
+            </div>
+            
+            <div class='message' style='margin-top: 20px;'>
+                Nếu bạn có bất kỳ câu hỏi nào về lịch trình cập nhật, vui lòng liên hệ với giảng viên của bạn.
+            </div>
+            
+            <div class='message' style='margin-top: 20px;'>
+                Trân trọng,<br>
+                <strong>Đội ngũ Quản lý Đào tạo LSSCTC</strong>
+            </div>
+        </div>
+        
+        <div class='footer'>
+            <p>© 2024 Trung tâm Đào tạo LSSCTC. Đã đăng ký bản quyền.</p>
+            <p class='footer-note'>
+                Đây là tin nhắn tự động. Vui lòng không trả lời trực tiếp email này.
+            </p>
+        </div>
+    </div>
+</body>
+</html>";
+        }
+
+        #endregion
     }
 }
