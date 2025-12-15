@@ -194,21 +194,12 @@ namespace Lssctc.ProgramManagement.Activities.Services
 
         public async Task<IEnumerable<ActivitySessionDto>> GetActivitySessionsByClassIdAsync(int classId)
         {
+            await CreateSessionsOnClassStartAsync(classId);
+
             var sessions = await GetSessionQuery()
                 .Where(s => s.ClassId == classId)
                 .OrderBy(s => s.Activity.ActivityTitle)
                 .ToListAsync();
-
-            // Auto-heal: If no sessions exist, try to create them (useful for classes created before this feature)
-            if (!sessions.Any())
-            {
-                await CreateSessionsOnClassStartAsync(classId);
-                // Refetch
-                sessions = await GetSessionQuery()
-                    .Where(s => s.ClassId == classId)
-                    .OrderBy(s => s.Activity.ActivityTitle)
-                    .ToListAsync();
-            }
 
             return sessions.Select(MapToDto);
         }

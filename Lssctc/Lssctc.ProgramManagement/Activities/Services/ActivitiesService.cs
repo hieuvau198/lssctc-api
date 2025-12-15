@@ -9,10 +9,13 @@ namespace Lssctc.ProgramManagement.Activities.Services
 {
     public class ActivitiesService : IActivitiesService
     {
-        private IUnitOfWork _uow;
-        public ActivitiesService(IUnitOfWork uow)
+        private readonly IUnitOfWork _uow;
+        private readonly IActivitySessionService _activitySessionService; // Added Service
+
+        public ActivitiesService(IUnitOfWork uow, IActivitySessionService activitySessionService)
         {
             _uow = uow;
+            _activitySessionService = activitySessionService;
         }
 
         #region Activities
@@ -77,8 +80,6 @@ namespace Lssctc.ProgramManagement.Activities.Services
                 throw new KeyNotFoundException($"Activity with ID {id} not found.");
             }
 
-            // REMOVED: Lock check (IsActivityLockedAsync) to allow updates at any time.
-
             // 1. Validation: Unique Title Check
             if (updateDto.ActivityTitle != null)
             {
@@ -131,10 +132,6 @@ namespace Lssctc.ProgramManagement.Activities.Services
                 throw new KeyNotFoundException($"Activity with ID {id} not found.");
             }
 
-            // REMOVED: IsActivityLockedAsync check. 
-            // The constraint below is sufficient: if it's in a section, you can't delete it.
-            // User must remove it from the section first (using RemoveActivityFromSectionAsync which now handles the "hard delete" of records).
-
             if (activity.SectionActivities != null && activity.SectionActivities.Any())
             {
                 throw new InvalidOperationException("Cannot delete activity associated with sections. Please remove it from all sections first.");
@@ -162,8 +159,6 @@ namespace Lssctc.ProgramManagement.Activities.Services
 
         public async Task AddActivityToSectionAsync(int sectionId, int activityId)
         {
-            // REMOVED: Lock check (IsSectionLockedAsync)
-
             var section = await _uow.SectionRepository.GetByIdAsync(sectionId);
             if (section == null)
                 throw new KeyNotFoundException($"Section with ID {sectionId} not found.");
@@ -199,32 +194,42 @@ namespace Lssctc.ProgramManagement.Activities.Services
                 .GetAllAsQueryable()
                 .Where(sr => sr.SectionId == sectionId)
                 .Include(sr => sr.LearningProgress)
+                    .ThenInclude(lp => lp.Enrollment) // Need Enrollment to get ClassId
                 .ToListAsync();
 
             if (affectedSectionRecords.Any())
             {
+                // A. Create Activity Records
                 foreach (var sectionRecord in affectedSectionRecords)
                 {
-                    // Create a new ActivityRecord for this trainee
                     var newActivityRecord = new ActivityRecord
                     {
                         SectionRecordId = sectionRecord.Id,
                         ActivityId = activityId,
                         ActivityType = activity.ActivityType,
                         IsCompleted = false,
-                        Status = 0, // 0 = Not Started
+                        Status = 0,
                         Score = 0,
                         CompletedDate = null
                     };
 
                     await _uow.ActivityRecordRepository.CreateAsync(newActivityRecord);
-
-                    // We need to save here to ensure the ActivityRecord exists before recalculating 
-                    // (though Recalculate usually fetches from DB, so yes, save first)
                 }
                 await _uow.SaveChangesAsync();
 
-                // 3. Recalculate Progress for all affected records
+                // B. Create Activity Sessions for Affected Classes (FIX)
+                var affectedClassIds = affectedSectionRecords
+                    .Select(sr => sr.LearningProgress.Enrollment.ClassId)
+                    .Distinct()
+                    .ToList();
+
+                foreach (var classId in affectedClassIds)
+                {
+                    // This service method checks internally if a session already exists before creating
+                    await _activitySessionService.CreateSessionsOnClassStartAsync(classId);
+                }
+
+                // C. Recalculate Progress
                 foreach (var sectionRecord in affectedSectionRecords)
                 {
                     await RecalculateSectionAndLearningProgressAsync(sectionRecord.Id, sectionRecord.LearningProgressId);
@@ -234,20 +239,14 @@ namespace Lssctc.ProgramManagement.Activities.Services
 
         public async Task<ActivityDto> CreateActivityForSectionAsync(int sectionId, CreateActivityDto createDto)
         {
-            // 1. Validation for Section existence check is handled in AddActivityToSectionAsync, 
-            // but we can check early if needed. However, since we are creating the activity first,
-            // we should probably check section first to avoid orphan activity creation if section is invalid.
-
             var section = await _uow.SectionRepository.GetByIdAsync(sectionId);
             if (section == null)
                 throw new KeyNotFoundException($"Section with ID {sectionId} not found.");
 
             // 2. Create the Activity
-            // We reuse the existing logic which handles trimming and enum parsing
             var activityDto = await CreateActivityAsync(createDto);
 
-            // 3. Assign to Section
-            // This method contains the logic to propagate changes to active classes (ActivityRecords, etc.)
+            // 3. Assign to Section (This now handles Session creation)
             await AddActivityToSectionAsync(sectionId, activityDto.Id);
 
             return activityDto;
@@ -255,8 +254,6 @@ namespace Lssctc.ProgramManagement.Activities.Services
 
         public async Task RemoveActivityFromSectionAsync(int sectionId, int activityId)
         {
-            // REMOVED: Lock check (IsSectionLockedAsync)
-
             var sectionActivity = await _uow.SectionActivityRepository
                 .GetAllAsQueryable()
                 .Where(sa => sa.SectionId == sectionId && sa.ActivityId == activityId)
@@ -284,34 +281,31 @@ namespace Lssctc.ProgramManagement.Activities.Services
 
                 if (activityRecordsToDelete.Any())
                 {
-                    // Clean up children (PracticeAttempts, QuizAttempts, etc.)
-                    // EF Core Cascade Delete is preferred, but manual cleanup ensures safety
                     var arIds = activityRecordsToDelete.Select(ar => ar.Id).ToList();
 
-                    // Example: Delete PracticeAttempts linked to these ActivityRecords
+                    // Cleanup children
                     await _uow.PracticeAttemptRepository
                         .GetAllAsQueryable()
                         .Where(pa => arIds.Contains(pa.ActivityRecordId))
                         .ExecuteDeleteAsync();
 
-                    // Example: Delete QuizAttempts
                     await _uow.QuizAttemptRepository
                         .GetAllAsQueryable()
                         .Where(qa => arIds.Contains(qa.ActivityRecordId))
                         .ExecuteDeleteAsync();
 
-                    // Delete the ActivityRecords themselves
+                    // Delete the ActivityRecords
                     await _uow.ActivityRecordRepository
                         .GetAllAsQueryable()
                         .Where(ar => arIds.Contains(ar.Id))
                         .ExecuteDeleteAsync();
                 }
 
-                // 2. Remove from SectionActivity (The Template)
+                // 2. Remove from SectionActivity
                 await _uow.SectionActivityRepository.DeleteAsync(sectionActivity);
                 await _uow.SaveChangesAsync();
 
-                // 3. Recalculate Progress for affected records (after deletion)
+                // 3. Recalculate Progress
                 foreach (var sectionRecord in affectedSectionRecords)
                 {
                     await RecalculateSectionAndLearningProgressAsync(sectionRecord.Id, sectionRecord.LearningProgressId);
@@ -319,7 +313,6 @@ namespace Lssctc.ProgramManagement.Activities.Services
             }
             else
             {
-                // If no active classes, just remove the template link
                 await _uow.SectionActivityRepository.DeleteAsync(sectionActivity);
                 await _uow.SaveChangesAsync();
             }
@@ -327,8 +320,6 @@ namespace Lssctc.ProgramManagement.Activities.Services
 
         public async Task UpdateSectionActivityOrderAsync(int sectionId, int activityId, int newOrder)
         {
-            // REMOVED: Lock check (IsSectionLockedAsync) to allow reordering at any time
-
             var current = await _uow.SectionActivityRepository
                 .GetAllAsQueryable()
                 .Where(sa => sa.SectionId == sectionId && sa.ActivityId == activityId)
@@ -349,19 +340,10 @@ namespace Lssctc.ProgramManagement.Activities.Services
 
         #endregion
 
-        #region Progress Calculation Logic (New)
-
-        /// <summary>
-        /// Recalculates the progress for a SectionRecord and then triggers recalculation for its parent LearningProgress.
-        /// </summary>
+        #region Progress Calculation Logic
         private async Task RecalculateSectionAndLearningProgressAsync(int sectionRecordId, int learningProgressId)
         {
-            // ---------------------------------------------------------
-            // 1. RECALCULATE SECTION RECORD
-            // ---------------------------------------------------------
-
-            // A. Read Data (Detached): Use existing repo method to get graph for calculation
-            // We use AsNoTracking (via GetAllAsQueryable) to avoid messing with the Context's state
+            // 1. Recalculate Section Record
             var sectionRecordData = await _uow.SectionRecordRepository
                 .GetAllAsQueryable()
                 .Include(sr => sr.ActivityRecords)
@@ -369,7 +351,6 @@ namespace Lssctc.ProgramManagement.Activities.Services
 
             if (sectionRecordData != null)
             {
-                // B. Perform Calculation in Memory
                 int totalActivities = sectionRecordData.ActivityRecords.Count();
                 int completedActivities = sectionRecordData.ActivityRecords.Count(ar => ar.IsCompleted == true);
 
@@ -387,30 +368,17 @@ namespace Lssctc.ProgramManagement.Activities.Services
                     newIsCompleted = completedActivities == totalActivities;
                 }
 
-                // C. Update Entity (Tracked): Fetch the specific entity to update
-                // GetByIdAsync uses FindAsync, which returns a TRACKED entity and usually DOES NOT load children.
-                // This prevents the "Identity Conflict" with the ActivityRecords we just created.
                 var sectionRecordToUpdate = await _uow.SectionRecordRepository.GetByIdAsync(sectionRecordId);
-
                 if (sectionRecordToUpdate != null)
                 {
                     sectionRecordToUpdate.Progress = newProgress;
                     sectionRecordToUpdate.IsCompleted = newIsCompleted;
-
-                    // UpdateAsync on a tracked entity just marks it modified
                     await _uow.SectionRecordRepository.UpdateAsync(sectionRecordToUpdate);
-
-                    // Save here to ensure the DB is updated before we calculate LearningProgress
                     await _uow.SaveChangesAsync();
                 }
             }
 
-            // ---------------------------------------------------------
-            // 2. RECALCULATE LEARNING PROGRESS
-            // ---------------------------------------------------------
-
-            // A. Read Data (Detached)
-            // Since we saved above, this query will retrieve the updated SectionRecord progress from DB
+            // 2. Recalculate Learning Progress
             var learningProgressData = await _uow.LearningProgressRepository
                 .GetAllAsQueryable()
                 .Include(lp => lp.SectionRecords)
@@ -418,7 +386,6 @@ namespace Lssctc.ProgramManagement.Activities.Services
 
             if (learningProgressData != null)
             {
-                // B. Perform Calculation
                 var totalSectionsInCourse = await _uow.CourseSectionRepository
                     .GetAllAsQueryable()
                     .CountAsync(cs => cs.CourseId == learningProgressData.CourseId);
@@ -433,20 +400,16 @@ namespace Lssctc.ProgramManagement.Activities.Services
 
                 if (avgProgress > 100) avgProgress = 100;
 
-                // C. Update Entity (Tracked)
                 var learningProgressToUpdate = await _uow.LearningProgressRepository.GetByIdAsync(learningProgressId);
-
                 if (learningProgressToUpdate != null)
                 {
                     learningProgressToUpdate.ProgressPercentage = avgProgress;
                     learningProgressToUpdate.LastUpdated = DateTime.UtcNow;
-
                     await _uow.LearningProgressRepository.UpdateAsync(learningProgressToUpdate);
                     await _uow.SaveChangesAsync();
                 }
             }
         }
-
         #endregion
 
         #region Order Logic Handling
