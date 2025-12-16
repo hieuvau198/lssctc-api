@@ -18,5 +18,8 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Dtos
         public DateTime StartDate { get; set; }
         [Required(ErrorMessage = "End date is required.")]
         public DateTime? EndDate { get; set; }
+
+        [Url(ErrorMessage = "Background Image URL must be a valid URL.")]
+        public string? BackgroundImageUrl { get; set; }
     }
 }

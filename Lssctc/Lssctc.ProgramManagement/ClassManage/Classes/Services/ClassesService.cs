@@ -67,17 +67,15 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
                 .Include(c => c.ClassCode)
                 .AsQueryable();
 
-            // 1. Status Filtering (String-based)
+            // 1. Status Filtering
             if (!string.IsNullOrWhiteSpace(status))
             {
-                // Try to parse the status string to ClassStatusEnum (case-insensitive)
                 if (Enum.TryParse<ClassStatusEnum>(status, ignoreCase: true, out var parsedStatus))
                 {
                     query = query.Where(c => c.Status == (int)parsedStatus);
                 }
                 else
                 {
-                    // If parsing fails, return empty result (invalid status)
                     return new PagedResult<ClassDto>
                     {
                         Items = new List<ClassDto>(),
@@ -102,36 +100,31 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
             // 3. Sorting Logic
             if (!string.IsNullOrWhiteSpace(sortBy))
             {
-                // Scenario A: Explicit Sort by StartDate or EndDate
                 var direction = sortDirection?.ToLower() ?? "asc";
-                
+
                 if (sortBy.ToLower() == "startdate")
                 {
-                    query = direction == "desc" 
-                        ? query.OrderByDescending(c => c.StartDate) 
+                    query = direction == "desc"
+                        ? query.OrderByDescending(c => c.StartDate)
                         : query.OrderBy(c => c.StartDate);
                 }
                 else if (sortBy.ToLower() == "enddate")
                 {
-                    query = direction == "desc" 
-                        ? query.OrderByDescending(c => c.EndDate) 
+                    query = direction == "desc"
+                        ? query.OrderByDescending(c => c.EndDate)
                         : query.OrderBy(c => c.EndDate);
                 }
             }
             else if (!string.IsNullOrWhiteSpace(searchTerm))
             {
-                // Scenario B: Search Relevance Sort (when searchTerm provided but no explicit sortBy)
                 var searchLower = searchTerm.ToLower();
                 query = query.OrderByDescending(c =>
-                    // Priority 1: Match in Name or ClassCode
-                    (c.Name.ToLower().Contains(searchLower) || 
+                    (c.Name.ToLower().Contains(searchLower) ||
                      (c.ClassCode != null && c.ClassCode.Name.ToLower().Contains(searchLower))) ? 1 : 0
                 ).ThenByDescending(c =>
-                    // Priority 2: Match in Description
                     (c.Description != null && c.Description.ToLower().Contains(searchLower)) ? 1 : 0
                 );
             }
-            // Scenario C: Default sorting (keep existing order if no sorting specified)
 
             // 4. Apply Pagination
             var pagedEntities = await query.ToPagedResultAsync(pageNumber, pageSize);
@@ -170,7 +163,6 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
             if (string.IsNullOrWhiteSpace(dto.ClassCode))
                 throw new ArgumentException("Class code is required.");
 
-            // Check for existing class code (case-insensitive)
             var existingClassCode = await _uow.ClassCodeRepository
                 .GetAllAsQueryable()
                 .FirstOrDefaultAsync(cc => cc.Name.ToLower() == dto.ClassCode.Trim().ToLower());
@@ -178,7 +170,6 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
             if (existingClassCode != null)
                 throw new InvalidOperationException($"Class code '{existingClassCode.Name}' already exists.");
 
-            // Find the matching ProgramCourse by ProgramId and CourseId
             var programCourse = await _uow.ProgramCourseRepository
                 .GetAllAsQueryable()
                 .FirstOrDefaultAsync(pc => pc.ProgramId == dto.ProgramId && pc.CourseId == dto.CourseId);
@@ -186,7 +177,6 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
             if (programCourse == null)
                 throw new KeyNotFoundException("No matching ProgramCourse found for the given ProgramId and CourseId.");
 
-            // Create the ClassCode
             var classCodeEntity = new ClassCode
             {
                 Name = dto.ClassCode.Trim()
@@ -194,7 +184,6 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
             await _uow.ClassCodeRepository.CreateAsync(classCodeEntity);
             await _uow.SaveChangesAsync();
 
-            // Create the new Class
             var newClass = new Class
             {
                 Name = dto.Name.Trim(),
@@ -204,13 +193,13 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
                 Description = dto.Description?.Trim() ?? string.Empty,
                 StartDate = dto.StartDate,
                 EndDate = dto.EndDate,
-                Status = (int)ClassStatusEnum.Draft
+                Status = (int)ClassStatusEnum.Draft,
+                BackgroundImageUrl = dto.BackgroundImageUrl ?? "https://templates.framework-y.com/lightwire/images/wide-1.jpg"
             };
 
             await _uow.ClassRepository.CreateAsync(newClass);
             await _uow.SaveChangesAsync();
 
-            // Reload the class with navigation properties for proper DTO mapping
             var createdClass = await _uow.ClassRepository
                 .GetAllAsQueryable()
                 .Include(c => c.ProgramCourse)
@@ -218,10 +207,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
                 .Include(c => c.ClassCode)
                 .FirstOrDefaultAsync(c => c.Id == newClass.Id);
 
-            if (createdClass == null)
-                throw new InvalidOperationException("Failed to retrieve created class.");
-
-            return MapToDto(createdClass);
+            return MapToDto(createdClass!);
         }
 
         public async Task<ClassDto> UpdateClassAsync(int id, UpdateClassDto dto)
@@ -232,8 +218,8 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
                 .Include(c => c.ProgramCourse)
                     .ThenInclude(pc => pc.Course)
                 .Include(c => c.ClassCode)
-                .FirstOrDefaultAsync()
-                ;
+                .FirstOrDefaultAsync();
+
             if (existing == null)
                 throw new KeyNotFoundException($"Class with ID {id} not found.");
 
@@ -251,6 +237,11 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
             existing.Description = dto.Description?.Trim() ?? existing.Description;
             existing.StartDate = dto.StartDate;
             existing.EndDate = dto.EndDate;
+
+            if (dto.BackgroundImageUrl != null)
+            {
+                existing.BackgroundImageUrl = dto.BackgroundImageUrl;
+            }
 
             await _uow.ClassRepository.UpdateAsync(existing);
             await _uow.SaveChangesAsync();
@@ -738,7 +729,8 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
                 StartDate = c.StartDate,
                 EndDate = c.EndDate,
                 Status = classStatus,
-                DurationHours = c.ProgramCourse.Course?.DurationHours
+                DurationHours = c.ProgramCourse.Course?.DurationHours,
+                BackgroundImageUrl = c.BackgroundImageUrl
             };
         }
 
