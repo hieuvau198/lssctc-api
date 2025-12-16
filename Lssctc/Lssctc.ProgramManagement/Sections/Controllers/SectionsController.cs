@@ -57,6 +57,30 @@ namespace Lssctc.ProgramManagement.Sections.Controllers
             }
         }
 
+        [HttpPost("course/{courseId}")]
+        [Authorize(Roles = "Admin, Instructor")]
+        [ProducesResponseType(StatusCodes.Status201Created)]
+        public async Task<ActionResult<SectionDto>> CreateSectionForCourse(int courseId, [FromBody] CreateSectionDto createDto)
+        {
+            try
+            {
+                var section = await _sectionsService.CreateSectionForCourseAsync(courseId, createDto);
+                return CreatedAtAction(nameof(GetSectionById), new { id = section.Id }, section);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { Message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+            catch (Exception)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "An unexpected error occurred." });
+            }
+        }
+
         [HttpPut("{id}")]
         [Authorize(Roles = "Admin, Instructor")]
         public async Task<ActionResult<SectionDto>> UpdateSection(int id, [FromBody] UpdateSectionDto updateDto)

@@ -68,6 +68,43 @@ namespace Lssctc.ProgramManagement.Sections.Services
             return MapToDto(section);
         }
 
+        public async Task<SectionDto> CreateSectionForCourseAsync(int courseId, CreateSectionDto createDto)
+        {
+            if (await IsCourseLockedAsync(courseId))
+            {
+                throw new InvalidOperationException("Cannot create and add sections to this course. It is already in use by an active class.");
+            }
+            var course = await _uow.CourseRepository.GetByIdAsync(courseId);
+            if (course == null || course.IsDeleted == true)
+            {
+                throw new KeyNotFoundException($"Course with ID {courseId} not found.");
+            }
+            var section = new Section
+            {
+                SectionTitle = createDto.SectionTitle!.Trim(),
+                SectionDescription = string.IsNullOrWhiteSpace(createDto.SectionDescription) ? null : createDto.SectionDescription.Trim(),
+                EstimatedDurationMinutes = createDto.EstimatedDurationMinutes!.Value,
+                IsDeleted = false
+            };
+            await _uow.SectionRepository.CreateAsync(section);
+            await _uow.SaveChangesAsync();
+            var maxOrder = await _uow.CourseSectionRepository
+                .GetAllAsQueryable()
+                .Where(cs => cs.CourseId == courseId)
+                .MaxAsync(cs => (int?)cs.SectionOrder) ?? 0;
+            var courseSection = new CourseSection
+            {
+                CourseId = courseId,
+                SectionId = section.Id,
+                SectionOrder = maxOrder + 1
+            };
+
+            await _uow.CourseSectionRepository.CreateAsync(courseSection);
+            await _uow.SaveChangesAsync();
+
+            return MapToDto(section);
+        }
+
 
         public async Task<SectionDto> UpdateSectionAsync(int id, UpdateSectionDto updateDto)
         {
