@@ -111,6 +111,7 @@ BEGIN TRY
         [is_active] BIT DEFAULT 1,
         [is_deleted] BIT DEFAULT 0,
         [image_url] NVARCHAR(1000),
+		[background_image_url] NVARCHAR(256),
         [duration_hours] INT,
         [course_code_id] INT,
 		[created_at] DATETIME2(0) NOT NULL DEFAULT SYSDATETIME(),
@@ -129,6 +130,7 @@ BEGIN TRY
         [duration_hours] INT,
         [total_courses] INT,
         [image_url] NVARCHAR(1000),
+		[background_image_url] NVARCHAR(256),
 		[created_at] DATETIME2(0) NOT NULL DEFAULT SYSDATETIME(),
         [updated_at] DATETIME2(0) NOT NULL DEFAULT SYSDATETIME()
     );	

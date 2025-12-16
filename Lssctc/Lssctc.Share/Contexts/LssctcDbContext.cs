@@ -492,6 +492,9 @@ public partial class LssctcDbContext : DbContext
             entity.ToTable("courses");
 
             entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.BackgroundImageUrl)
+                .HasMaxLength(256)
+                .HasColumnName("background_image_url");
             entity.Property(e => e.CategoryId).HasColumnName("category_id");
             entity.Property(e => e.CourseCodeId).HasColumnName("course_code_id");
             entity.Property(e => e.CreatedAt)
@@ -1748,6 +1751,9 @@ public partial class LssctcDbContext : DbContext
             entity.HasIndex(e => e.Name, "UQ__training__72E12F1B91F47C6B").IsUnique();
 
             entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.BackgroundImageUrl)
+                .HasMaxLength(256)
+                .HasColumnName("background_image_url");
             entity.Property(e => e.CreatedAt)
                 .HasPrecision(0)
                 .HasDefaultValueSql("(sysdatetime())")

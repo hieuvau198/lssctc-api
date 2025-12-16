@@ -31,6 +31,8 @@ public partial class Course
 
     public DateTime UpdatedAt { get; set; }
 
+    public string? BackgroundImageUrl { get; set; }
+
     public virtual CourseCategory? Category { get; set; }
 
     public virtual ICollection<CourseCertificate> CourseCertificates { get; set; } = new List<CourseCertificate>();

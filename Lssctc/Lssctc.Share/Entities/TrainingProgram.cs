@@ -25,5 +25,7 @@ public partial class TrainingProgram
 
     public DateTime UpdatedAt { get; set; }
 
+    public string? BackgroundImageUrl { get; set; }
+
     public virtual ICollection<ProgramCourse> ProgramCourses { get; set; } = new List<ProgramCourse>();
 }
