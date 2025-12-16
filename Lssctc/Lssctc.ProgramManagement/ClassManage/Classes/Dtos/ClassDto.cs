@@ -13,5 +13,6 @@
         public DateTime StartDate { get; set; }
         public DateTime? EndDate { get; set; }
         public int? DurationHours { get; set; }
+        public string? BackgroundImageUrl { get; set; }
     }
 }

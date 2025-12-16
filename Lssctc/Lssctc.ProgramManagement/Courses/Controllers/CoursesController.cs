@@ -51,6 +51,21 @@ namespace Lssctc.ProgramManagement.Courses.Controllers
             }
         }
 
+        [HttpGet("available")]
+        [ProducesResponseType(typeof(IEnumerable<CourseDto>), StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetAvailableCourses()
+        {
+            try
+            {
+                var courses = await _coursesService.GetAvailableCoursesAsync();
+                return Ok(courses);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An internal server error occurred: {ex.Message}");
+            }
+        }
+
         [HttpGet("{id}")]
         public async Task<IActionResult> GetCourseById(int id)
         {
@@ -138,6 +153,26 @@ namespace Lssctc.ProgramManagement.Courses.Controllers
                 if (courses == null || !courses.Any())
                 {
                     return NotFound($"No courses found for program ID {programId}.");
+                }
+                return Ok(courses);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An internal server error occurred: {ex.Message}");
+            }
+        }
+
+        [HttpGet("program/{programId}/available")]
+        [ProducesResponseType(typeof(IEnumerable<CourseDto>), StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetAvailableCoursesByProgramId(int programId)
+        {
+            try
+            {
+                var courses = await _coursesService.GetAvailableCoursesByProgramIdAsync(programId);
+
+                if (courses == null || !courses.Any())
+                {
+                    return NotFound($"No available courses found for program ID {programId}.");
                 }
                 return Ok(courses);
             }

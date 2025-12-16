@@ -5,13 +5,19 @@ namespace Lssctc.ProgramManagement.Programs.Dtos
     public class ProgramDto
     {
         public int? Id { get; set; }
-        public string? Name { get; set; }   
+        public string? Name { get; set; }
         public string? Description { get; set; }
         public bool? IsActive { get; set; }
         public int? DurationHours { get; set; }
         public int? TotalCourses { get; set; }
         public string? ImageUrl { get; set; }
+
+        // Added fields
+        public DateTime CreatedAt { get; set; }
+        public DateTime UpdatedAt { get; set; }
+        public string? BackgroundImageUrl { get; set; }
     }
+
     public class CreateProgramDto
     {
         [Required(ErrorMessage = "Program name is required.")]
@@ -23,6 +29,10 @@ namespace Lssctc.ProgramManagement.Programs.Dtos
 
         [Url(ErrorMessage = "Image URL must be a valid URL.")]
         public string? ImageUrl { get; set; } = "https://www-assets.liebherr.com/media/bu-media/lhbu-lwe/images/subhome/liebherr-ltm-1920x1920-1_w736.jpg";
+
+        // Added Background Image with default
+        [Url(ErrorMessage = "Background Image URL must be a valid URL.")]
+        public string? BackgroundImageUrl { get; set; } = "https://templates.framework-y.com/lightwire/images/wide-1.jpg";
     }
 
     public class UpdateProgramDto
@@ -35,5 +45,9 @@ namespace Lssctc.ProgramManagement.Programs.Dtos
 
         [Url(ErrorMessage = "Image URL must be a valid URL.")]
         public string? ImageUrl { get; set; }
+
+        // Added Background Image
+        [Url(ErrorMessage = "Background Image URL must be a valid URL.")]
+        public string? BackgroundImageUrl { get; set; }
     }
 }
