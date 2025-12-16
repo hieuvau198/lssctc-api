@@ -113,6 +113,8 @@ BEGIN TRY
         [image_url] NVARCHAR(1000),
         [duration_hours] INT,
         [course_code_id] INT,
+		[created_at] DATETIME2(0) NOT NULL DEFAULT SYSDATETIME(),
+        [updated_at] DATETIME2(0) NOT NULL DEFAULT SYSDATETIME(),
         FOREIGN KEY ([category_id]) REFERENCES [dbo].[course_categories]([id]),
         FOREIGN KEY ([level_id]) REFERENCES [dbo].[course_levels]([id]),
         FOREIGN KEY ([course_code_id]) REFERENCES [dbo].[course_codes]([id])
@@ -126,7 +128,9 @@ BEGIN TRY
         [is_active] BIT DEFAULT 1,
         [duration_hours] INT,
         [total_courses] INT,
-        [image_url] NVARCHAR(1000)
+        [image_url] NVARCHAR(1000),
+		[created_at] DATETIME2(0) NOT NULL DEFAULT SYSDATETIME(),
+        [updated_at] DATETIME2(0) NOT NULL DEFAULT SYSDATETIME()
     );	
 
     CREATE TABLE [dbo].[program_courses] (
@@ -347,6 +351,17 @@ BEGIN TRY
         FOREIGN KEY ([brand_model_id]) REFERENCES [dbo].[brand_models]([id])
     );
 
+	CREATE TABLE [dbo].[sim_settings] (
+        [id] INT IDENTITY(1,1) PRIMARY KEY,
+        [name] NVARCHAR(100) NOT NULL,
+        [description] NVARCHAR(1000),
+        [image_url] NVARCHAR(1000),
+        [is_active] BIT DEFAULT 1,
+        [created_date] DATETIME2(0) NOT NULL DEFAULT SYSDATETIME(),
+        [is_deleted] BIT DEFAULT 0,
+        [setting_code] VARCHAR(50) DEFAULT 'SETTING_UNKNOWN',
+    );
+
 
     -- ========================================
     --  Classes and enrollments
@@ -363,6 +378,7 @@ BEGIN TRY
         [start_date] DATETIME2(0) NOT NULL DEFAULT SYSDATETIME(),
         [end_date] DATETIME2(0),
         [capacity] INT,
+		[background_image_url] NVARCHAR(256),
         [program_course_id] INT NOT NULL,
         [class_code_id] INT,
         [description] NVARCHAR(1000) NOT NULL,

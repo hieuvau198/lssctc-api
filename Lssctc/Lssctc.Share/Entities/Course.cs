@@ -27,6 +27,10 @@ public partial class Course
 
     public int? CourseCodeId { get; set; }
 
+    public DateTime CreatedAt { get; set; }
+
+    public DateTime UpdatedAt { get; set; }
+
     public virtual CourseCategory? Category { get; set; }
 
     public virtual ICollection<CourseCertificate> CourseCertificates { get; set; } = new List<CourseCertificate>();

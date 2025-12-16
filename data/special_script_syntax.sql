@@ -70,8 +70,8 @@ ADD [pdf_url] NVARCHAR(1000)
 update [final_exams]
 set [exam_code] = 'LSSCTC_FE_565'
 
-alter table [final_exam_partials]
-add [status] INT
+alter table [classes]
+add [background_image_url] NVARCHAR(256)
 
 INSERT INTO [dbo].[course_certificates] ([course_id], [certificate_id], [passing_score], [is_active])
 VALUES (2, 1, 5.0, 1);

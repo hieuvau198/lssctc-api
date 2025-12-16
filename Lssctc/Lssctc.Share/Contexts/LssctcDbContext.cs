@@ -110,6 +110,8 @@ public partial class LssctcDbContext : DbContext
 
     public virtual DbSet<SectionRecord> SectionRecords { get; set; }
 
+    public virtual DbSet<SimSetting> SimSettings { get; set; }
+
     public virtual DbSet<SimTask> SimTasks { get; set; }
 
     public virtual DbSet<SimulationComponent> SimulationComponents { get; set; }
@@ -412,6 +414,9 @@ public partial class LssctcDbContext : DbContext
             entity.ToTable("classes");
 
             entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.BackgroundImageUrl)
+                .HasMaxLength(256)
+                .HasColumnName("background_image_url");
             entity.Property(e => e.Capacity).HasColumnName("capacity");
             entity.Property(e => e.ClassCodeId).HasColumnName("class_code_id");
             entity.Property(e => e.Description)
@@ -489,6 +494,10 @@ public partial class LssctcDbContext : DbContext
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.CategoryId).HasColumnName("category_id");
             entity.Property(e => e.CourseCodeId).HasColumnName("course_code_id");
+            entity.Property(e => e.CreatedAt)
+                .HasPrecision(0)
+                .HasDefaultValueSql("(sysdatetime())")
+                .HasColumnName("created_at");
             entity.Property(e => e.Description)
                 .HasMaxLength(1000)
                 .HasColumnName("description");
@@ -509,6 +518,10 @@ public partial class LssctcDbContext : DbContext
             entity.Property(e => e.Price)
                 .HasColumnType("decimal(10, 2)")
                 .HasColumnName("price");
+            entity.Property(e => e.UpdatedAt)
+                .HasPrecision(0)
+                .HasDefaultValueSql("(sysdatetime())")
+                .HasColumnName("updated_at");
 
             entity.HasOne(d => d.Category).WithMany(p => p.Courses)
                 .HasForeignKey(d => d.CategoryId)
@@ -1467,6 +1480,39 @@ public partial class LssctcDbContext : DbContext
                 .HasConstraintName("FK__section_r__learn__4F87BD05");
         });
 
+        modelBuilder.Entity<SimSetting>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__sim_sett__3213E83F7D1BDE8E");
+
+            entity.ToTable("sim_settings");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.CreatedDate)
+                .HasPrecision(0)
+                .HasDefaultValueSql("(sysdatetime())")
+                .HasColumnName("created_date");
+            entity.Property(e => e.Description)
+                .HasMaxLength(1000)
+                .HasColumnName("description");
+            entity.Property(e => e.ImageUrl)
+                .HasMaxLength(1000)
+                .HasColumnName("image_url");
+            entity.Property(e => e.IsActive)
+                .HasDefaultValue(true)
+                .HasColumnName("is_active");
+            entity.Property(e => e.IsDeleted)
+                .HasDefaultValue(false)
+                .HasColumnName("is_deleted");
+            entity.Property(e => e.Name)
+                .HasMaxLength(100)
+                .HasColumnName("name");
+            entity.Property(e => e.SettingCode)
+                .HasMaxLength(50)
+                .IsUnicode(false)
+                .HasDefaultValue("SETTING_UNKNOWN")
+                .HasColumnName("setting_code");
+        });
+
         modelBuilder.Entity<SimTask>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("PK__sim_task__3213E83F391099E1");
@@ -1702,6 +1748,10 @@ public partial class LssctcDbContext : DbContext
             entity.HasIndex(e => e.Name, "UQ__training__72E12F1B91F47C6B").IsUnique();
 
             entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.CreatedAt)
+                .HasPrecision(0)
+                .HasDefaultValueSql("(sysdatetime())")
+                .HasColumnName("created_at");
             entity.Property(e => e.Description)
                 .HasMaxLength(1000)
                 .HasColumnName("description");
@@ -1719,6 +1769,10 @@ public partial class LssctcDbContext : DbContext
                 .HasMaxLength(100)
                 .HasColumnName("name");
             entity.Property(e => e.TotalCourses).HasColumnName("total_courses");
+            entity.Property(e => e.UpdatedAt)
+                .HasPrecision(0)
+                .HasDefaultValueSql("(sysdatetime())")
+                .HasColumnName("updated_at");
         });
 
         modelBuilder.Entity<User>(entity =>

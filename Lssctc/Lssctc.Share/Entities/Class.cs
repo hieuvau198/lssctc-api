@@ -23,6 +23,8 @@ public partial class Class
 
     public int? Status { get; set; }
 
+    public string? BackgroundImageUrl { get; set; }
+
     public virtual ICollection<ActivitySession> ActivitySessions { get; set; } = new List<ActivitySession>();
 
     public virtual ClassCode? ClassCode { get; set; }
