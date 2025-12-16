@@ -7,12 +7,17 @@ namespace Lssctc.ProgramManagement.Courses.Dtos
         public int Id { get; set; }
         public string Name { get; set; } = null!;
         public string? Description { get; set; }
-        public string? Category { get; set; } // Was int? CategoryId
-        public string? Level { get; set; }    // Was int? LevelId
+        public string? Category { get; set; }
+        public string? Level { get; set; }
         public decimal? Price { get; set; }
         public int? DurationHours { get; set; }
         public string? ImageUrl { get; set; }
         public bool IsActive { get; set; }
+
+        // Added fields
+        public DateTime CreatedAt { get; set; }
+        public DateTime UpdatedAt { get; set; }
+        public string? BackgroundImageUrl { get; set; }
     }
 
     public class CreateCourseDto
@@ -42,6 +47,10 @@ namespace Lssctc.ProgramManagement.Courses.Dtos
 
         [Url(ErrorMessage = "Image URL must be a valid URL.")]
         public string? ImageUrl { get; set; } = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS2sUcEWdSaINXf8E4hmy7obh3B1w0-l_T8Tw&s";
+
+        // Added Background Image with default
+        [Url(ErrorMessage = "Background Image URL must be a valid URL.")]
+        public string? BackgroundImageUrl { get; set; } = "https://templates.framework-y.com/lightwire/images/wide-1.jpg";
     }
 
     public class UpdateCourseDto
@@ -68,5 +77,9 @@ namespace Lssctc.ProgramManagement.Courses.Dtos
         public string? ImageUrl { get; set; }
 
         public bool? IsActive { get; set; }
+
+        // Added Background Image
+        [Url(ErrorMessage = "Background Image URL must be a valid URL.")]
+        public string? BackgroundImageUrl { get; set; }
     }
 }

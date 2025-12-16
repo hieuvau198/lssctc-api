@@ -176,7 +176,7 @@ namespace Lssctc.ProgramManagement.Programs.Services
 
             return programs.Select(MapToDtoWithCalculations);
         }
-        
+
         public async Task<PagedResult<ProgramDto>> GetProgramsAsync(int pageNumber, int pageSize, string? searchTerm = null)
         {
             if (pageNumber < 1) pageNumber = 1;
@@ -194,13 +194,14 @@ namespace Lssctc.ProgramManagement.Programs.Services
             if (!string.IsNullOrWhiteSpace(searchTerm))
             {
                 var normalizedSearchTerm = searchTerm.Trim();
-                query = query.Where(p => 
-                    p.Name.Contains(normalizedSearchTerm) || 
+                query = query.Where(p =>
+                    p.Name.Contains(normalizedSearchTerm) ||
                     (p.Description != null && p.Description.Contains(normalizedSearchTerm))
                 );
             }
 
             // Project to DTO
+            // UPDATED: Added CreatedAt, UpdatedAt, BackgroundImageUrl
             var projectedQuery = query.Select(p => new ProgramDto
             {
                 Id = p.Id,
@@ -208,17 +209,18 @@ namespace Lssctc.ProgramManagement.Programs.Services
                 Description = p.Description,
                 IsActive = p.IsActive,
                 ImageUrl = p.ImageUrl,
-                // Calculate TotalCourses: count the number of ProgramCourses
+                CreatedAt = p.CreatedAt,
+                UpdatedAt = p.UpdatedAt,
+                BackgroundImageUrl = p.BackgroundImageUrl,
+                // Calculate TotalCourses
                 TotalCourses = p.ProgramCourses.Count(),
-                // Calculate DurationHours: sum of DurationHours from related Courses
+                // Calculate DurationHours
                 DurationHours = p.ProgramCourses
                     .Where(pc => pc.Course != null && pc.Course.DurationHours.HasValue)
                     .Sum(pc => pc.Course.DurationHours!.Value)
             });
 
-            // Apply prioritization if searchTerm is provided
-            // Priority 1: Programs where Name contains searchTerm
-            // Priority 2: Programs where only Description contains searchTerm
+            // Apply ordering
             if (!string.IsNullOrWhiteSpace(searchTerm))
             {
                 var normalizedSearchTerm = searchTerm.Trim();
@@ -227,8 +229,8 @@ namespace Lssctc.ProgramManagement.Programs.Services
             }
             else
             {
-                // Default ordering when no search term
-                projectedQuery = projectedQuery.OrderBy(p => p.Name);
+                // UPDATED: Default sort as Create Date Descending (Newest first)
+                projectedQuery = projectedQuery.OrderByDescending(p => p.CreatedAt);
             }
 
             var pagedResult = await projectedQuery.ToPagedResultAsync(pageNumber, pageSize);
@@ -272,6 +274,8 @@ namespace Lssctc.ProgramManagement.Programs.Services
                 Name = createDto.Name!,
                 Description = createDto.Description,
                 ImageUrl = createDto.ImageUrl,
+                // UPDATED: Map BackgroundImageUrl with fallback default
+                BackgroundImageUrl = createDto.BackgroundImageUrl ?? "https://templates.framework-y.com/lightwire/images/wide-1.jpg",
                 IsActive = true,
                 TotalCourses = 0,
                 DurationHours = 0,
@@ -319,11 +323,12 @@ namespace Lssctc.ProgramManagement.Programs.Services
             {
                 existingProgram.Description = updateDto.Description;
             }
-
             if (updateDto.ImageUrl != null)
             {
                 existingProgram.ImageUrl = updateDto.ImageUrl;
             }
+            if (updateDto.BackgroundImageUrl != null)
+                existingProgram.BackgroundImageUrl = updateDto.BackgroundImageUrl;
 
             await _uow.ProgramRepository.UpdateAsync(existingProgram);
             await _uow.SaveChangesAsync();
@@ -812,7 +817,6 @@ namespace Lssctc.ProgramManagement.Programs.Services
 
         #region Private Mapping Methods
 
-        // Old mapper - only retrieves values from entity (no calculations)
         private static ProgramDto MapToDto(TrainingProgram program)
         {
             return new ProgramDto
@@ -823,17 +827,16 @@ namespace Lssctc.ProgramManagement.Programs.Services
                 IsActive = program.IsActive,
                 DurationHours = program.DurationHours,
                 TotalCourses = program.TotalCourses,
-                ImageUrl = program.ImageUrl
+                ImageUrl = program.ImageUrl,
+                CreatedAt = program.CreatedAt,
+                UpdatedAt = program.UpdatedAt,
+                BackgroundImageUrl = program.BackgroundImageUrl
             };
         }
 
-        // New mapper - calculates TotalCourses and DurationHours from ProgramCourses
         private static ProgramDto MapToDtoWithCalculations(TrainingProgram program)
         {
-            // Calculate TotalCourses
             int totalCourses = program.ProgramCourses?.Count() ?? 0;
-
-            // Calculate DurationHours: sum of DurationHours from related Courses
             int durationHours = program.ProgramCourses?
                 .Where(pc => pc.Course != null && pc.Course.DurationHours.HasValue)
                 .Sum(pc => pc.Course.DurationHours!.Value) ?? 0;
@@ -846,7 +849,10 @@ namespace Lssctc.ProgramManagement.Programs.Services
                 IsActive = program.IsActive,
                 DurationHours = durationHours,
                 TotalCourses = totalCourses,
-                ImageUrl = program.ImageUrl
+                ImageUrl = program.ImageUrl,
+                CreatedAt = program.CreatedAt,
+                UpdatedAt = program.UpdatedAt,
+                BackgroundImageUrl = program.BackgroundImageUrl
             };
         }
 

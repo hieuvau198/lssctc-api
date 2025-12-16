@@ -64,7 +64,10 @@ namespace Lssctc.ProgramManagement.Courses.Services
                 Price = c.Price,
                 DurationHours = c.DurationHours,
                 ImageUrl = c.ImageUrl,
-                IsActive = c.IsActive ?? false
+                IsActive = c.IsActive ?? false,
+                CreatedAt = c.CreatedAt,
+                UpdatedAt = c.UpdatedAt,
+                BackgroundImageUrl = c.BackgroundImageUrl
             });
 
             // Apply sorting logic
@@ -89,9 +92,6 @@ namespace Lssctc.ProgramManagement.Courses.Services
                 // Scenario B: Search relevance sorting (no specific sort selected)
                 var normalizedSearchTerm = searchTerm.Trim();
 
-                // Priority 1: Name matches
-                // Priority 2: Category or Level matches
-                // Priority 3: Description matches
                 projectedQuery = projectedQuery
                     .OrderByDescending(c => c.Name!.Contains(normalizedSearchTerm))
                     .ThenByDescending(c =>
@@ -104,7 +104,7 @@ namespace Lssctc.ProgramManagement.Courses.Services
             else
             {
                 // Scenario C: No search term and no sort - default ordering
-                projectedQuery = projectedQuery.OrderBy(c => c.Name);
+                projectedQuery = projectedQuery.OrderByDescending(c => c.CreatedAt);
             }
 
             var pagedResult = await projectedQuery.ToPagedResultAsync(pageNumber, pageSize);
@@ -146,6 +146,7 @@ namespace Lssctc.ProgramManagement.Courses.Services
                 Price = createDto.Price,
                 DurationHours = createDto.DurationHours,
                 ImageUrl = createDto.ImageUrl,
+                BackgroundImageUrl = createDto.BackgroundImageUrl ?? "https://templates.framework-y.com/lightwire/images/wide-1.jpg",
                 IsActive = true,
                 IsDeleted = false
             };
@@ -153,14 +154,12 @@ namespace Lssctc.ProgramManagement.Courses.Services
             await _uow.CourseRepository.CreateAsync(course);
             await _uow.SaveChangesAsync();
 
-            // ADDED: Reload the new course with its navigation properties
-            // to ensure Category.Name and Level.Name are available for MapToDto
             var newCourse = await _uow.CourseRepository.GetAllAsQueryable()
                 .Include(c => c.Category)
                 .Include(c => c.Level)
                 .FirstOrDefaultAsync(c => c.Id == course.Id);
 
-            return MapToDto(newCourse!); // Map the reloaded entity
+            return MapToDto(newCourse!);
         }
 
         public async Task<CourseDto> UpdateCourseAsync(int id, UpdateCourseDto updateDto)
@@ -200,6 +199,7 @@ namespace Lssctc.ProgramManagement.Courses.Services
             course.DurationHours = updateDto.DurationHours ?? course.DurationHours;
             course.ImageUrl = updateDto.ImageUrl ?? course.ImageUrl;
             course.IsActive = updateDto.IsActive ?? course.IsActive;
+            course.BackgroundImageUrl = updateDto.BackgroundImageUrl ?? course.BackgroundImageUrl;
 
             await _uow.CourseRepository.UpdateAsync(course);
             await _uow.SaveChangesAsync();
@@ -423,7 +423,6 @@ namespace Lssctc.ProgramManagement.Courses.Services
 
         #region Mapping
 
-        // --- CHANGED ---
         private static CourseDto MapToDto(Course c)
         {
             return new CourseDto
@@ -431,16 +430,17 @@ namespace Lssctc.ProgramManagement.Courses.Services
                 Id = c.Id,
                 Name = c.Name,
                 Description = c.Description,
-                // Use the navigation property's Name, with a null check
                 Category = c.Category?.Name,
                 Level = c.Level?.Name,
                 Price = c.Price,
                 DurationHours = c.DurationHours,
                 ImageUrl = c.ImageUrl,
-                IsActive = c.IsActive ?? false
+                IsActive = c.IsActive ?? false,
+                CreatedAt = c.CreatedAt,
+                UpdatedAt = c.UpdatedAt,
+                BackgroundImageUrl = c.BackgroundImageUrl
             };
         }
-        // --- END CHANGE ---
 
         private static CourseCategoryDto MapToDto(CourseCategory c)
         {
