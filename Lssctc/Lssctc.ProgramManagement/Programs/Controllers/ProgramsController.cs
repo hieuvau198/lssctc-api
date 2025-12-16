@@ -93,6 +93,22 @@ namespace Lssctc.ProgramManagement.Programs.Controllers
             }
         }
 
+        [HttpGet("available")]
+        [ProducesResponseType(typeof(IEnumerable<ProgramDto>), 200)]
+        [ProducesResponseType(500)]
+        public async Task<IActionResult> GetAvailablePrograms()
+        {
+            try
+            {
+                var programs = await _programsService.GetAvailableProgramsAsync();
+                return Ok(programs);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An internal server error occurred: {ex.Message}");
+            }
+        }
+
         [HttpGet("{id}")]
         [ProducesResponseType(typeof(ProgramDto), 200)]
         [ProducesResponseType(404)]

@@ -111,6 +111,17 @@ namespace Lssctc.ProgramManagement.Courses.Services
             return pagedResult;
         }
 
+        public async Task<IEnumerable<CourseDto>> GetAvailableCoursesAsync()
+        {
+            var courses = await _uow.CourseRepository
+                .GetAllAsQueryable()
+                .Where(c => c.IsDeleted != true && c.IsActive == true)
+                .Include(c => c.Category)
+                .Include(c => c.Level)
+                .ToListAsync();
+
+            return courses.Select(MapToDto);
+        }
         public async Task<CourseDto?> GetCourseByIdAsync(int id)
         {
             var course = await _uow.CourseRepository
@@ -233,7 +244,6 @@ namespace Lssctc.ProgramManagement.Courses.Services
             var programCourses = await _uow.ProgramCourseRepository
                 .GetAllAsQueryable()
                 .Where(pc => pc.ProgramId == programId)
-                // ADDED: ThenInclude to get the Course's Category and Level
                 .Include(pc => pc.Course)
                     .ThenInclude(c => c!.Category)
                 .Include(pc => pc.Course)
@@ -243,6 +253,26 @@ namespace Lssctc.ProgramManagement.Courses.Services
             var courses = programCourses
                 .Where(pc => pc.Course != null && pc.Course.IsDeleted != true)
                 .Select(pc => MapToDto(pc.Course!));
+            return courses;
+        }
+
+        public async Task<IEnumerable<CourseDto>> GetAvailableCoursesByProgramIdAsync(int programId)
+        {
+            var programCourses = await _uow.ProgramCourseRepository
+                .GetAllAsQueryable()
+                .Where(pc => pc.ProgramId == programId)
+                .Include(pc => pc.Course)
+                    .ThenInclude(c => c!.Category)
+                .Include(pc => pc.Course)
+                    .ThenInclude(c => c!.Level)
+                .ToListAsync();
+
+            var courses = programCourses
+                .Where(pc => pc.Course != null
+                             && pc.Course.IsDeleted != true
+                             && pc.Course.IsActive == true)
+                .Select(pc => MapToDto(pc.Course!));
+
             return courses;
         }
 

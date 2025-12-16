@@ -236,6 +236,18 @@ namespace Lssctc.ProgramManagement.Programs.Services
             return pagedResult;
         }
 
+        public async Task<IEnumerable<ProgramDto>> GetAvailableProgramsAsync()
+        {
+            var programs = await _uow.ProgramRepository
+                .GetAllAsQueryable()
+                // Filter by IsDeleted false/null AND IsActive true
+                .Where(p => p.IsDeleted != true && p.IsActive == true)
+                .Include(p => p.ProgramCourses)
+                    .ThenInclude(pc => pc.Course)
+                .ToListAsync();
+
+            return programs.Select(MapToDtoWithCalculations);
+        }
         public async Task<ProgramDto?> GetProgramByIdAsync(int id)
         {
             var program = await _uow.ProgramRepository

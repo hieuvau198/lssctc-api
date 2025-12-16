@@ -8,6 +8,8 @@ namespace Lssctc.ProgramManagement.Courses.Services
         #region Courses
         Task<IEnumerable<CourseDto>> GetAllCoursesAsync();
         Task<PagedResult<CourseDto>> GetCoursesAsync(int pageNumber, int pageSize, string? searchTerm = null, string? sortBy = null, string? sortDirection = null);
+        Task<IEnumerable<CourseDto>> GetAvailableCoursesAsync();
+        Task<IEnumerable<CourseDto>> GetAvailableCoursesByProgramIdAsync(int programId);
         Task<CourseDto?> GetCourseByIdAsync(int id);
         Task<CourseDto> CreateCourseAsync(CreateCourseDto createDto);
         Task<CourseDto> UpdateCourseAsync(int id, UpdateCourseDto updateDto);
