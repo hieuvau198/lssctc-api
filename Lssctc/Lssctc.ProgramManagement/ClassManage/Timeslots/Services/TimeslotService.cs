@@ -19,11 +19,8 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Services
             _uow = uow;
         }
 
-        // --- Instructor APIs ---
-        // Thêm vào class TimeslotService
         public async Task CreateAttendanceForClassAsync(int classId)
         {
-            // 1. Get all Timeslots for the class
             var timeslots = await _uow.TimeslotRepository
                 .GetAllAsQueryable()
                 .Where(t => t.ClassId == classId && t.IsDeleted == false)
@@ -32,7 +29,6 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Services
 
             if (!timeslots.Any()) return;
 
-            // 2. Get all valid Enrollments (Enrolled or Inprogress)
             var validStatuses = new[] { (int)EnrollmentStatusEnum.Enrolled, (int)EnrollmentStatusEnum.Inprogress };
             var enrollments = await _uow.EnrollmentRepository
                 .GetAllAsQueryable()
@@ -42,7 +38,6 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Services
 
             if (!enrollments.Any()) return;
 
-            // 3. Find existing attendance records to prevent duplicates
             var existingAttendances = await _uow.AttendanceRepository
                 .GetAllAsQueryable()
                 .Where(a => timeslots.Contains(a.TimeslotId) && enrollments.Contains(a.EnrollmentId))
@@ -51,7 +46,6 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Services
 
             var existingMap = existingAttendances.ToDictionary(a => (a.TimeslotId, a.EnrollmentId));
 
-            // 4. Create new Attendance records if they don't exist
             foreach (var timeslotId in timeslots)
             {
                 foreach (var enrollmentId in enrollments)
@@ -63,7 +57,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Services
                             EnrollmentId = enrollmentId,
                             TimeslotId = timeslotId,
                             Name = $"Attendance for Timeslot {timeslotId}",
-                            Status = (int)AttendanceStatusEnum.NotStarted, // Default status
+                            Status = (int)AttendanceStatusEnum.NotStarted,
                             IsActive = true,
                             IsDeleted = false
                         };
@@ -73,12 +67,14 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Services
             }
             await _uow.SaveChangesAsync();
         }
+
         public async Task<TimeslotDto> CreateTimeslotAsync(CreateTimeslotDto dto, int creatorId)
         {
-            // 1. Validate Timeslot Duration
-            ValidateTimeslotDuration(dto.StartTime, dto.EndTime.Value);
+            var startTime = dto.StartTime.AddHours(7);
+            var endTime = dto.EndTime.AddHours(7);
 
-            // 2. Validate Class existence and status
+            ValidateTimeslotDuration(startTime, endTime);
+
             var targetClass = await _uow.ClassRepository
                 .GetAllAsQueryable()
                 .FirstOrDefaultAsync(c => c.Id == dto.ClassId);
@@ -89,7 +85,6 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Services
             if (targetClass.Status == (int)ClassStatusEnum.Completed || targetClass.Status == (int)ClassStatusEnum.Cancelled)
                 throw new InvalidOperationException("Cannot create timeslots for completed or cancelled classes.");
 
-            // 3. Validate Creator/Instructor Authorization
             var creatorUser = await _uow.UserRepository.GetByIdAsync(creatorId);
             if (creatorUser?.Role == (int)UserRoleEnum.Instructor)
             {
@@ -100,20 +95,17 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Services
                     throw new UnauthorizedAccessException($"Instructor {creatorId} is not assigned to class {dto.ClassId}.");
             }
 
-            // --- [UPDATED] Check Class Conflict (No overlapping slots in the same class) ---
             var isClassConflict = await _uow.TimeslotRepository.GetAllAsQueryable()
                 .AnyAsync(t => t.ClassId == dto.ClassId
                             && t.IsDeleted == false
-                            && t.StartTime < dto.EndTime.Value
-                            && t.EndTime > dto.StartTime);
+                            && t.StartTime < endTime
+                            && t.EndTime > startTime);
 
             if (isClassConflict)
             {
                 throw new InvalidOperationException("This time overlaps with another existing timeslot in this class.");
             }
 
-            // --- Check Instructor Conflict (Existing Logic) ---
-            // Check if ANY instructor is assigned to this class
             var currentInstructorAssignment = await _uow.ClassInstructorRepository
                 .GetAllAsQueryable()
                 .FirstOrDefaultAsync(ci => ci.ClassId == dto.ClassId);
@@ -122,19 +114,15 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Services
             {
                 var instructorId = currentInstructorAssignment.InstructorId;
 
-                // Check against timeslots in OTHER classes assigned to this instructor
                 var hasConflict = await _uow.TimeslotRepository
                     .GetAllAsQueryable()
                     .Include(t => t.Class)
                     .ThenInclude(c => c.ClassInstructors)
                     .AnyAsync(t =>
                         t.IsDeleted == false &&
-                        // Timeslot belongs to a DIFFERENT class
                         t.ClassId != dto.ClassId &&
-                        // That different class is assigned to the SAME instructor
                         t.Class.ClassInstructors.Any(ci => ci.InstructorId == instructorId) &&
-                        // And the time overlaps
-                        t.StartTime < dto.EndTime.Value && t.EndTime > dto.StartTime
+                        t.StartTime < endTime && t.EndTime > startTime
                     );
 
                 if (hasConflict)
@@ -142,7 +130,6 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Services
                     throw new InvalidOperationException("The assigned instructor has a schedule conflict with this new timeslot in another class.");
                 }
             }
-            // --------------------------------------------
 
             var newTimeslot = new Timeslot
             {
@@ -151,8 +138,8 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Services
                 LocationDetail = dto.LocationDetail!.Trim(),
                 LocationBuilding = dto.LocationBuilding!.Trim(),
                 LocationRoom = dto.LocationRoom!.Trim(),
-                StartTime = dto.StartTime,
-                EndTime = dto.EndTime.Value,
+                StartTime = startTime,
+                EndTime = endTime,
                 Status = (int)TimeslotStatusEnum.NotStarted,
                 IsDeleted = false
             };
@@ -169,22 +156,23 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Services
             var createdList = new List<TimeslotDto>();
             foreach (var createDto in dto.Timeslots)
             {
-                // Re-use single creation logic to ensure all validations are run
                 var createdTimeslot = await CreateTimeslotAsync(createDto, creatorId);
                 createdList.Add(createdTimeslot);
             }
             return createdList;
         }
+
         public async Task<TimeslotDto> UpdateTimeslotAsync(int timeslotId, UpdateTimeslotDto dto, int updaterId)
         {
-            // 1. Validate Timeslot Duration (Issue 4)
-            ValidateTimeslotDuration(dto.StartTime, dto.EndTime.Value);
+            var startTime = dto.StartTime.AddHours(7);
+            var endTime = dto.EndTime.Value.AddHours(7);
+
+            ValidateTimeslotDuration(startTime, endTime);
 
             var existing = await _uow.TimeslotRepository.GetByIdAsync(timeslotId);
             if (existing == null || existing.IsDeleted == true)
                 throw new KeyNotFoundException($"Timeslot with ID {timeslotId} not found.");
 
-            // 2. Validate Updater Authorization (Allow Admin to bypass this check)
             var updaterUser = await _uow.UserRepository.GetByIdAsync(updaterId);
             if (updaterUser?.Role == (int)UserRoleEnum.Instructor)
             {
@@ -195,13 +183,12 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Services
                     throw new UnauthorizedAccessException($"Instructor {updaterId} is not authorized to update timeslot in class {existing.ClassId}.");
             }
 
-            // --- [UPDATED] Check Class Conflict (No overlapping slots in the same class) ---
             var isClassConflict = await _uow.TimeslotRepository.GetAllAsQueryable()
                 .AnyAsync(t => t.ClassId == existing.ClassId
-                            && t.Id != timeslotId // Exclude current timeslot
+                            && t.Id != timeslotId
                             && t.IsDeleted == false
-                            && t.StartTime < dto.EndTime.Value
-                            && t.EndTime > dto.StartTime);
+                            && t.StartTime < endTime
+                            && t.EndTime > startTime);
 
             if (isClassConflict)
             {
@@ -216,16 +203,15 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Services
             {
                 var instructorId = currentInstructorAssignment.InstructorId;
 
-                // Check against timeslots in OTHER classes
                 var hasConflict = await _uow.TimeslotRepository
                     .GetAllAsQueryable()
                     .Include(t => t.Class)
                     .ThenInclude(c => c.ClassInstructors)
                     .AnyAsync(t =>
                         t.IsDeleted == false &&
-                        t.ClassId != existing.ClassId && // Ensure we look at other classes
+                        t.ClassId != existing.ClassId &&
                         t.Class.ClassInstructors.Any(ci => ci.InstructorId == instructorId) &&
-                        t.StartTime < dto.EndTime.Value && t.EndTime > dto.StartTime
+                        t.StartTime < endTime && t.EndTime > startTime
                     );
 
                 if (hasConflict)
@@ -234,13 +220,12 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Services
                 }
             }
 
-            // 3. Apply updates (all fields from DTO are required and validated at DTO level)
             existing.Name = dto.Name!.Trim();
             existing.LocationDetail = dto.LocationDetail!.Trim();
             existing.LocationBuilding = dto.LocationBuilding!.Trim();
             existing.LocationRoom = dto.LocationRoom!.Trim();
-            existing.StartTime = dto.StartTime;
-            existing.EndTime = dto.EndTime.Value;
+            existing.StartTime = startTime;
+            existing.EndTime = endTime;
             existing.Status = dto.Status ?? existing.Status;
 
             await _uow.TimeslotRepository.UpdateAsync(existing);
@@ -249,9 +234,9 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Services
             var updated = await GetTimeslotQuery().FirstAsync(t => t.Id == existing.Id);
             return MapToDto(updated);
         }
+
         public async Task<IEnumerable<ImportTimeslotRecordDto>> ImportTimeslotsAsync(int classId, IFormFile file, int creatorId)
         {
-            // 1. Validate Class existence and status
             var targetClass = await _uow.ClassRepository
                 .GetAllAsQueryable()
                 .FirstOrDefaultAsync(c => c.Id == classId);
@@ -262,7 +247,6 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Services
             if (targetClass.Status == (int)ClassStatusEnum.Completed || targetClass.Status == (int)ClassStatusEnum.Cancelled)
                 throw new InvalidOperationException("Cannot import timeslots for completed or cancelled classes.");
 
-            // 2. Validate Creator/Instructor Authorization (Allow Admin to bypass this check)
             var creatorUser = await _uow.UserRepository.GetByIdAsync(creatorId);
             if (creatorUser?.Role == (int)UserRoleEnum.Instructor)
             {
@@ -296,26 +280,37 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Services
 
                     try
                     {
-                        // Safely read and trim values (assuming structure: Name, LocDetail, LocBuilding, LocRoom, StartTime, EndTime)
                         record.Name = row[0]?.ToString()?.Trim();
                         record.LocationDetail = row[1]?.ToString()?.Trim();
                         record.LocationBuilding = row[2]?.ToString()?.Trim();
                         record.LocationRoom = row[3]?.ToString()?.Trim();
 
-                        string startTimeStr = row[4]?.ToString()?.Trim() ?? "";
-                        string endTimeStr = row[5]?.ToString()?.Trim() ?? "";
+                        DateTime startTime;
+                        if (row[4] is DateTime dtStart)
+                        {
+                            startTime = dtStart;
+                        }
+                        else if (!DateTime.TryParse(row[4]?.ToString(), out startTime))
+                        {
+                            throw new ArgumentException("Invalid Start Time format (Column E).");
+                        }
 
-                        // Basic Validation for required fields
-                        if (string.IsNullOrWhiteSpace(record.Name) && string.IsNullOrWhiteSpace(startTimeStr)) continue; // Skip empty rows
+                        DateTime endTime;
+                        if (row[5] is DateTime dtEnd)
+                        {
+                            endTime = dtEnd;
+                        }
+                        else if (!DateTime.TryParse(row[5]?.ToString(), out endTime))
+                        {
+                            throw new ArgumentException("Invalid End Time format (Column F).");
+                        }
+
                         if (string.IsNullOrWhiteSpace(record.Name)) throw new ArgumentException("Name is required (Column A).");
-                        if (!DateTime.TryParse(startTimeStr, out var startTime)) throw new ArgumentException("Invalid Start Time format (Column E).");
-                        if (!DateTime.TryParse(endTimeStr, out var endTime)) throw new ArgumentException("Invalid End Time format (Column F).");
                         if (string.IsNullOrWhiteSpace(record.LocationDetail)) throw new ArgumentException("Location Detail is required (Column B).");
 
                         record.StartTime = startTime;
                         record.EndTime = endTime;
 
-                        // Apply Duration Validation (Issue 4)
                         ValidateTimeslotDuration(startTime, endTime);
 
                         var newTimeslot = new Timeslot
@@ -342,7 +337,6 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Services
                 }
             }
 
-            // Save valid records to DB
             if (timeslotsToCreate.Any())
             {
                 foreach (var timeslot in timeslotsToCreate)
@@ -354,13 +348,11 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Services
 
             return resultRecords;
         }
+
         public async Task<IEnumerable<TimeslotDto>> GetTimeslotsByClassAndInstructorAsync(int classId, int instructorId)
         {
-            // [FIX] Check user role first. Only enforce assignment check for Instructors.
             var user = await _uow.UserRepository.GetByIdAsync(instructorId);
 
-            // If the user is an Instructor, they MUST be assigned to the class.
-            // If the user is Admin (or other authorized roles), we skip this check.
             if (user != null && user.Role == (int)UserRoleEnum.Instructor)
             {
                 var isAssigned = await _uow.ClassInstructorRepository.ExistsAsync(ci =>
@@ -408,13 +400,11 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Services
             if (timeslot == null)
                 throw new KeyNotFoundException($"Timeslot with ID {timeslotId} not found.");
 
-            // 1. Verify instructor permission
             var isAssigned = await _uow.ClassInstructorRepository.ExistsAsync(ci =>
                 ci.ClassId == timeslot.ClassId && ci.InstructorId == instructorId);
             if (!isAssigned)
                 throw new UnauthorizedAccessException($"Instructor {instructorId} is not assigned to class {timeslot.ClassId}.");
 
-            // 2. Get all enrollments (trainees) in the class that are 'Enrolled' or 'Inprogress'
             var validEnrollmentStatuses = new[] { (int)EnrollmentStatusEnum.Enrolled, (int)EnrollmentStatusEnum.Inprogress };
             var traineesInClass = await _uow.EnrollmentRepository
                 .GetAllAsQueryable()
@@ -433,7 +423,6 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Services
 
             if (!traineesInClass.Any())
             {
-                // Return empty list of trainees
                 return new TimeslotAttendanceDto
                 {
                     TimeslotId = timeslot.Id,
@@ -446,14 +435,12 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Services
                 };
             }
 
-            // 3. Get existing attendance records for this timeslot
             var existingAttendance = await _uow.AttendanceRepository
                 .GetAllAsQueryable()
                 .AsNoTracking()
                 .Where(a => a.TimeslotId == timeslotId)
                 .ToDictionaryAsync(a => a.EnrollmentId);
 
-            // 4. Map to DTO
             var traineeAttendanceList = traineesInClass.Select(t =>
             {
                 existingAttendance.TryGetValue(t.Id, out var attendance);
@@ -469,8 +456,6 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Services
                     TraineeCode = t.TraineeCode,
                     AvatarUrl = t.AvatarUrl,
                     AttendanceStatus = status,
-
-                    // [ADDED] Map the description to the Note field
                     Note = attendance?.Description
                 };
             }).ToList();
@@ -493,13 +478,11 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Services
             if (timeslot == null)
                 throw new KeyNotFoundException($"Timeslot with ID {timeslotId} not found.");
 
-            // 1. Verify instructor permission
             var isAssigned = await _uow.ClassInstructorRepository.ExistsAsync(ci =>
                 ci.ClassId == timeslot.ClassId && ci.InstructorId == instructorId);
             if (!isAssigned)
                 throw new UnauthorizedAccessException($"Instructor {instructorId} is not assigned to class {timeslot.ClassId}.");
 
-            // 2. Validate all submitted enrollment IDs belong to this class
             var submittedEnrollmentIds = dto.AttendanceRecords.Select(r => r.EnrollmentId).ToHashSet();
             var validEnrollmentIds = await _uow.EnrollmentRepository
                 .GetAllAsQueryable()
@@ -510,7 +493,6 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Services
             if (validEnrollmentIds.Count != submittedEnrollmentIds.Count)
                 throw new ArgumentException("One or more submitted enrollment IDs are invalid or do not belong to this class.");
 
-            // 3. Process submissions
             var existingAttendance = await _uow.AttendanceRepository
                 .GetAllAsQueryable()
                 .Where(a => a.TimeslotId == timeslotId && submittedEnrollmentIds.Contains(a.EnrollmentId))
@@ -520,18 +502,14 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Services
 
             foreach (var record in dto.AttendanceRecords)
             {
-                // Check if an Attendance record already exists
                 if (existingMap.TryGetValue(record.EnrollmentId, out var attendance))
                 {
-                    // Update existing record
                     attendance.Status = record.Status;
                     attendance.Description = record.Note;
-                    // This attaches the 'attendance' entity to the Context
                     await _uow.AttendanceRepository.UpdateAsync(attendance);
                 }
                 else
                 {
-                    // Create new Attendance record
                     var newAttendance = new Attendance
                     {
                         EnrollmentId = record.EnrollmentId,
@@ -546,27 +524,17 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Services
                 }
             }
 
-            // 4. Update Timeslot Status if necessary (e.g., if it's the first submission, set to Ongoing)
             if (timeslot.Status < (int)TimeslotStatusEnum.Ongoing)
             {
                 timeslot.Status = (int)TimeslotStatusEnum.Ongoing;
-
-                // [FIX] Break the graph to prevent "already being tracked" error.
-                // We nullify the navigation property so UpdateAsync(timeslot) 
-                // doesn't try to attach the duplicate Attendance entities we loaded earlier.
                 timeslot.Attendances = null;
-                timeslot.Class = null; // Good practice to detach Class as well to be safe
-
+                timeslot.Class = null;
                 await _uow.TimeslotRepository.UpdateAsync(timeslot);
             }
 
             await _uow.SaveChangesAsync();
-
-            // 5. Return the updated list for verification
             return await GetAttendanceListForTimeslotAsync(timeslotId, instructorId);
         }
-
-        // --- Trainee APIs ---
 
         public async Task<IEnumerable<TimeslotDto>> GetTimeslotsByClassAndTraineeAsync(int classId, int traineeId)
         {
@@ -612,7 +580,6 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Services
 
         public async Task<IEnumerable<TraineeAttendanceRecordDto>> GetTraineeAttendanceHistoryAsync(int classId, int traineeId)
         {
-            // 1. Check Enrollment
             var enrollment = await _uow.EnrollmentRepository.GetAllAsQueryable()
                 .AsNoTracking()
                 .FirstOrDefaultAsync(e => e.ClassId == classId && e.TraineeId == traineeId && e.IsDeleted != true);
@@ -620,7 +587,6 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Services
             if (enrollment == null)
                 throw new UnauthorizedAccessException($"Trainee {traineeId} is not enrolled in class {classId}.");
 
-            // 2. Get all Timeslots for the Class
             var timeslots = await GetTimeslotQuery()
                 .Where(t => t.ClassId == classId)
                 .OrderBy(t => t.StartTime)
@@ -628,7 +594,6 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Services
 
             if (!timeslots.Any()) return Enumerable.Empty<TraineeAttendanceRecordDto>();
 
-            // 3. Get existing Attendance records for this Enrollment
             var attendances = await _uow.AttendanceRepository.GetAllAsQueryable()
                 .AsNoTracking()
                 .Where(a => a.EnrollmentId == enrollment.Id && a.IsDeleted != true)
@@ -636,7 +601,6 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Services
 
             var attendanceMap = attendances.ToDictionary(a => a.TimeslotId);
 
-            // 4. Map to DTO
             var result = timeslots.Select(t =>
             {
                 attendanceMap.TryGetValue(t.Id, out var att);
@@ -651,8 +615,6 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Services
                 }
                 else
                 {
-                    // Optional: If timeslot is completed/cancelled but no attendance record exists, logic can be handled here.
-                    // For now, default to "NotStarted" or implies Absent if strictly required.
                     if (t.Status == (int)TimeslotStatusEnum.Cancelled) status = "Cancelled";
                 }
 
@@ -671,22 +633,15 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Services
             return result;
         }
 
-
         #region helper
 
         private static DateTime GetStartOfWeek(DateTime dateInWeek)
         {
-            // Normalize to date only (keep time as 00:00:00)
-            var date = dateInWeek.Date;
-
-            // DayOfWeek.Monday is 1, DayOfWeek.Sunday is 0 (in C# default enum)
-            // Calculate offset from Monday. 
-            // C# DayOfWeek starts from Sunday (0), Monday (1), ..., Saturday (6)
+            var date = dateInWeek.AddHours(7).Date;
             int diff = (7 + (date.DayOfWeek - DayOfWeek.Monday)) % 7;
-
-            // Return the Monday of the week
             return date.AddDays(-1 * diff);
         }
+
         private static void ValidateTimeslotDuration(DateTime startTime, DateTime endTime)
         {
             var duration = endTime - startTime;
@@ -697,6 +652,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Services
             if (duration.TotalHours > 12)
                 throw new ArgumentException($"Timeslot duration ({duration.TotalHours:F0} hours) cannot be longer than 12 hours.");
         }
+
         private IQueryable<Timeslot> GetTimeslotQuery()
         {
             return _uow.TimeslotRepository
@@ -709,7 +665,6 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Services
 
         private TimeslotDto MapToDto(Timeslot t)
         {
-            // Use local method to parse enum from integer value
             string status = t.Status.HasValue
                 ? Enum.GetName(typeof(TimeslotStatusEnum), t.Status.Value) ?? "NotStarted"
                 : "NotStarted";

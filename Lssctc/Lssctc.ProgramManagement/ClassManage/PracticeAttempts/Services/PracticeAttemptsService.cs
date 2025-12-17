@@ -22,7 +22,6 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
             _sessionService = sessionService;
         }
 
-        // --- GET METHODS (Unchanged) ---
         public async Task<IEnumerable<PracticeAttemptDto>> GetPracticeAttempts(int traineeId, int activityRecordId)
         {
             var activityRecord = await _uow.ActivityRecordRepository.GetAllAsQueryable()
@@ -110,34 +109,28 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
             return new PagedResult<PracticeAttemptDto> { Items = dtos, TotalCount = paged.TotalCount, Page = paged.Page, PageSize = paged.PageSize };
         }
 
-        // --- CREATE / SUBMIT METHODS ---
-
         public async Task<PracticeAttemptDto> CreatePracticeAttempt(int traineeId, CreatePracticeAttemptDto createDto)
         {
             return await CreatePracticeAttemptByCode(traineeId, new CreatePracticeAttemptWithCodeDto
             {
                 ClassId = createDto.ClassId,
-                ActivityRecordId = 0 // Placeholder
+                ActivityRecordId = 0
             });
         }
 
-        // === FIXED METHOD: Uses ActivityRecordId directly ===
         public async Task<PracticeAttemptDto> CreatePracticeAttemptByCode(int traineeId, CreatePracticeAttemptWithCodeDto createDto)
         {
             if (traineeId <= 0) throw new ArgumentException("Invalid TraineeId.");
             if (createDto.ActivityRecordId <= 0) throw new ArgumentException("ActivityRecordId is required.");
 
-            // 1. Validate Activity Record & Access
             var activityRecord = await _uow.ActivityRecordRepository.GetByIdAsync(createDto.ActivityRecordId);
             if (activityRecord == null) throw new KeyNotFoundException("ActivityRecord not found.");
 
-            // Validate Session Access
             if (activityRecord.ActivityId.HasValue)
             {
                 await _sessionService.CheckActivityAccess(createDto.ClassId, activityRecord.ActivityId.Value);
             }
 
-            // 2. Get Practice Template
             var practiceTemplate = await _uow.PracticeRepository.GetAllAsQueryable().AsNoTracking()
                 .Include(p => p.PracticeTasks).ThenInclude(pt => pt.Task)
                 .FirstOrDefaultAsync(p => p.PracticeCode == createDto.PracticeCode);
@@ -148,14 +141,12 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
                 .Where(pt => pt.Task?.TaskCode != null)
                 .ToDictionary(pt => pt.Task!.TaskCode!, pt => pt.TaskId);
 
-            // Calculate Scoring Basics
             int totalPracticeTasks = practiceTemplate.PracticeTasks.Count;
 
             var templateTaskIds = practiceTemplate.PracticeTasks.Select(pt => pt.TaskId).ToHashSet();
             var passedTaskIds = new HashSet<int>();
             var tasksToSave = new List<PracticeAttemptTask>();
 
-            // 3. Process Tasks & Scores
             if (createDto.PracticeAttemptTasks != null)
             {
                 foreach (var taskDto in createDto.PracticeAttemptTasks)
@@ -164,8 +155,6 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
 
                     if (taskDto.IsPass == true) passedTaskIds.Add(taskId);
 
-                    // --- NEW SCORING LOGIC ---
-                    // Ignore taskDto.Score, use strictly calculated score
                     decimal taskScore = CalculateTaskScore(totalPracticeTasks, taskDto.Mistakes ?? 0);
 
                     tasksToSave.Add(new PracticeAttemptTask
@@ -181,28 +170,23 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
             }
 
             bool allPass = templateTaskIds.SetEquals(passedTaskIds);
-
-            // --- NEW SCORING LOGIC FOR PRACTICE TOTAL ---
-            // Sum of all individual task scores
             decimal practiceScore = tasksToSave.Sum(t => t.Score ?? 0);
 
-            // 4. Archive old attempts
             var oldAttempts = await _uow.PracticeAttemptRepository.GetAllAsQueryable()
                 .Where(pa => pa.ActivityRecordId == createDto.ActivityRecordId && pa.IsCurrent)
                 .ToListAsync();
             foreach (var old in oldAttempts) { old.IsCurrent = false; await _uow.PracticeAttemptRepository.UpdateAsync(old); }
 
-            // 5. Create New Attempt
             var attempt = new PracticeAttempt
             {
                 ActivityRecordId = createDto.ActivityRecordId,
                 PracticeId = practiceTemplate.Id,
                 Score = practiceScore,
                 TotalMistakes = createDto.TotalMistakes,
-                StartTime = createDto.StartTime,
-                EndTime = createDto.EndTime,
+                StartTime = createDto.StartTime?.AddHours(-7),
+                EndTime = createDto.EndTime?.AddHours(-7),
                 DurationSeconds = createDto.DurationSeconds,
-                AttemptDate = DateTime.Now,
+                AttemptDate = DateTime.UtcNow.AddHours(7),
                 AttemptStatus = (int)ActivityRecordStatusEnum.Completed,
                 Description = createDto.Description,
                 IsPass = allPass,
@@ -220,7 +204,6 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
             }
             await _uow.SaveChangesAsync();
 
-            // 6. Update Progress
             await _progressHelper.UpdateActivityRecordProgressAsync(traineeId, activityRecord.Id);
             var fullRecord = await _uow.ActivityRecordRepository.GetByIdAsync(activityRecord.Id);
             if (fullRecord != null)
@@ -231,13 +214,11 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
             return (await GetPracticeAttemptById(attempt.Id))!;
         }
 
-        // === NEW METHOD: Single Task Submission ===
         public async Task<PracticeAttemptDto> SubmitSinglePracticeTask(int traineeId, SubmitPracticeTaskDto submitDto)
         {
             var activityRecord = await _uow.ActivityRecordRepository.GetByIdAsync(submitDto.ActivityRecordId);
             if (activityRecord == null) throw new KeyNotFoundException("ActivityRecord not found.");
 
-            // Find current or create new
             var attempt = await _uow.PracticeAttemptRepository.GetAllAsQueryable()
                 .Include(pa => pa.PracticeAttemptTasks)
                 .FirstOrDefaultAsync(pa => pa.ActivityRecordId == submitDto.ActivityRecordId && pa.IsCurrent);
@@ -253,7 +234,7 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
                 {
                     ActivityRecordId = submitDto.ActivityRecordId,
                     PracticeId = practiceId,
-                    AttemptDate = DateTime.Now,
+                    AttemptDate = DateTime.UtcNow.AddHours(7),
                     AttemptStatus = (int)ActivityRecordStatusEnum.InProgress,
                     IsCurrent = true,
                     IsDeleted = false,
@@ -270,7 +251,6 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
             var taskDef = practice?.PracticeTasks.FirstOrDefault(pt => pt.Task?.TaskCode == submitDto.TaskCode);
             if (taskDef == null) throw new ArgumentException($"Invalid TaskCode: {submitDto.TaskCode}");
 
-            // --- NEW SCORING LOGIC ---
             int totalPracticeTasks = practice?.PracticeTasks.Count ?? 0;
             decimal taskScore = CalculateTaskScore(totalPracticeTasks, submitDto.Mistakes ?? 0);
 
@@ -295,41 +275,27 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
                     Description = submitDto.Description,
                     IsDeleted = false
                 };
-                // Add to collection so we can calculate total sum correctly below
                 attempt.PracticeAttemptTasks.Add(newTask);
                 await _uow.PracticeAttemptTaskRepository.CreateAsync(newTask);
             }
 
-            attempt.AttemptDate = DateTime.Now;
-
-            // Recalculate Total Score for the Practice Attempt
-            // Sum all existing tasks + the one we just updated/added
+            attempt.AttemptDate = DateTime.UtcNow.AddHours(7);
             attempt.Score = attempt.PracticeAttemptTasks.Sum(t => t.Score);
 
             await _uow.SaveChangesAsync();
-
-            // Update Progress
             await _progressHelper.UpdateActivityRecordProgressAsync(traineeId, activityRecord.Id);
 
             return (await GetPracticeAttemptById(attempt.Id))!;
         }
 
-        // --- HELPER METHOD FOR SCORE CALCULATION ---
         private decimal CalculateTaskScore(int totalTasksCount, int mistakes)
         {
             if (totalTasksCount <= 0) return 0;
-
-            // 1. Max Score for a single task = 10 / Total Tasks
             decimal maxScorePerTask = 10m / (decimal)totalTasksCount;
-
-            // 2. Penalty = 0.5 per mistake
             decimal penalty = mistakes * 0.5m;
-
-            // 3. Final Calculation (cannot go below 0)
             return Math.Max(0, maxScorePerTask - penalty);
         }
 
-        // --- MAPPER ---
         private async Task<List<PracticeAttemptDto>> MapToDtosWithFullTaskContextAsync(IEnumerable<PracticeAttempt> attempts)
         {
             var attemptList = attempts.ToList();

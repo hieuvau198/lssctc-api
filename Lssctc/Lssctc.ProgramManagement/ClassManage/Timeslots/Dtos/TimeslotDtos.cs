@@ -30,7 +30,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Dtos
         public DateTime StartTime { get; set; }
 
         [Required(ErrorMessage = "End time is required.")]
-        public DateTime? EndTime { get; set; }
+        public DateTime EndTime { get; set; }
 
         [Required(ErrorMessage = "Location detail is required.")]
         [StringLength(1000, MinimumLength = 1, ErrorMessage = "Location detail cannot be empty.")]
