@@ -38,6 +38,13 @@ namespace Lssctc.ProgramManagement.Certificates.Controllers
             return Ok(result);
         }
 
+        [HttpGet("class/{classId}")]
+        public async Task<IActionResult> GetByClassId(int classId)
+        {
+            var result = await _service.GetTraineeCertificatesByClassIdAsync(classId);
+            return Ok(result);
+        }
+
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] CreateTraineeCertificateDto dto)
         {

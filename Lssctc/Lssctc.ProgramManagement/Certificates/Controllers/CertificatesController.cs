@@ -22,11 +22,59 @@ namespace Lssctc.ProgramManagement.Certificates.Controllers
             return Ok(await _service.GetAllTemplatesAsync());
         }
 
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetById(int id)
+        {
+            var result = await _service.GetTemplateByIdAsync(id);
+            if (result == null) return NotFound();
+            return Ok(result);
+        }
+
+        [HttpGet("course/{courseId}")]
+        public async Task<IActionResult> GetByCourseId(int courseId)
+        {
+            var result = await _service.GetCertificateByCourseIdAsync(courseId);
+            if (result == null) return NotFound("No active certificate assigned to this course.");
+            return Ok(result);
+        }
+
+        [HttpGet("class/{classId}")]
+        public async Task<IActionResult> GetByClassId(int classId)
+        {
+            var result = await _service.GetCertificateByClassIdAsync(classId);
+            if (result == null) return NotFound("No active certificate found for the course associated with this class.");
+            return Ok(result);
+        }
+
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] CreateCertificateTemplateDto dto)
         {
             var result = await _service.CreateTemplateAsync(dto);
-            return CreatedAtAction(nameof(GetAll), new { id = result.Id }, result);
+            return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
+        }
+
+        [HttpPut("{id}")]
+        public async Task<IActionResult> Update(int id, [FromBody] CreateCertificateTemplateDto dto)
+        {
+            var result = await _service.UpdateTemplateAsync(id, dto);
+            if (result == null) return NotFound();
+            return Ok(result);
+        }
+
+        [HttpPost("courses/{courseId}/assign/{certificateId}")]
+        public async Task<IActionResult> AssignToCourse(int courseId, int certificateId)
+        {
+            var result = await _service.AssignCertificateToCourseAsync(courseId, certificateId);
+            if (!result) return BadRequest("Failed to assign certificate. Verify Course ID and Certificate ID.");
+            return Ok(new { Message = "Certificate assigned successfully." });
+        }
+
+        [HttpPost("courses/{courseId}/auto-assign")]
+        public async Task<IActionResult> AutoAssignToCourse(int courseId)
+        {
+            var result = await _service.AutoAssignCertificateToCourseAsync(courseId);
+            if (!result) return BadRequest("Failed to auto-assign certificate. Ensure at least one active certificate template exists.");
+            return Ok(new { Message = "Default certificate assigned successfully." });
         }
 
         [HttpDelete("{id}")]
