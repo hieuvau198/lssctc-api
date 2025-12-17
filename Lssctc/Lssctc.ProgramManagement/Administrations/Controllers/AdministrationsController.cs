@@ -10,10 +10,12 @@ namespace Lssctc.ProgramManagement.Administrations.Controllers
     public class AdministrationsController : ControllerBase
     {
         private readonly IClassCustomizeService _classCustomizeService;
+        private readonly ClassCompleteService _classCompleteService;
 
-        public AdministrationsController(IClassCustomizeService classCustomizeService)
+        public AdministrationsController(IClassCustomizeService classCustomizeService, ClassCompleteService classCompleteService)
         {
             _classCustomizeService = classCustomizeService;
+            _classCompleteService = classCompleteService;
         }
 
         /// <summary>
@@ -26,6 +28,19 @@ namespace Lssctc.ProgramManagement.Administrations.Controllers
         public async Task<IActionResult> DeleteClassCompletely(int id)
         {
             await _classCustomizeService.DeleteClassCompletelyAsync(id);
+            return NoContent();
+        }
+
+        /// <summary>
+        /// Force completes a class. 
+        /// Auto-fills attendance, learning progress, passes final exams, sets class status to Completed, and generates certificates/emails.
+        /// </summary>
+        /// <param name="id">The Class ID to complete</param>
+        /// <returns>No Content</returns>
+        [HttpPost("classes/{id}/auto-complete")]
+        public async Task<IActionResult> AutoCompleteClass(int id)
+        {
+            await _classCompleteService.AutoCompleteClass(id);
             return NoContent();
         }
     }

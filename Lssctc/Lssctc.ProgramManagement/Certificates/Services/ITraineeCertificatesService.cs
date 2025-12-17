@@ -11,5 +11,7 @@ namespace Lssctc.ProgramManagement.Certificates.Services
         Task<TraineeCertificateResponseDto> GetByCodeAsync(string code);
         Task<TraineeCertificateResponseDto> CreateCertificateAsync(CreateTraineeCertificateDto dto);
         Task<bool> DeleteCertificateAsync(int id);
+
+        Task CreateTraineeCertificatesForCompleteClass(int classId);
     }
 }
