@@ -7,14 +7,8 @@ using Lssctc.Share.Enums;
 using Microsoft.EntityFrameworkCore;
 using PuppeteerSharp;
 using PuppeteerSharp.Media;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Net.Http;
 using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace Lssctc.ProgramManagement.Certificates.Services
 {
@@ -99,7 +93,6 @@ namespace Lssctc.ProgramManagement.Certificates.Services
 
         public async Task<TraineeCertificateResponseDto> CreateCertificateAsync(CreateTraineeCertificateDto dto)
         {
-            // 1. Fetch Data
             var enrollment = await _context.Enrollments
                 .Include(e => e.Trainee).ThenInclude(t => t.IdNavigation)
                 .Include(e => e.Class).ThenInclude(c => c.ProgramCourse).ThenInclude(pc => pc.Course)
@@ -112,19 +105,16 @@ namespace Lssctc.ProgramManagement.Certificates.Services
             if (enrollment == null || courseCert == null)
                 throw new Exception("Enrollment or Course Certificate Configuration not found");
 
-            // 2. Prepare HTML
             string htmlContent = PrepareHtmlContent(courseCert.Certificate.TemplateHtml, enrollment);
 
-            // 3. Generate PDF and Upload
             string pdfUrl = await GeneratePdfAndUploadAsync(htmlContent, enrollment.Trainee.TraineeCode);
 
-            // 4. Save to DB
             var newCert = new TraineeCertificate
             {
                 EnrollmentId = dto.EnrollmentId,
                 CourseCertificateId = dto.CourseCertificateId,
                 CertificateCode = GenerateCertificateCode(),
-                IssuedDate = DateTime.Now,
+                IssuedDate = DateTime.UtcNow.AddHours(7),
                 PdfUrl = pdfUrl
             };
 
@@ -134,20 +124,14 @@ namespace Lssctc.ProgramManagement.Certificates.Services
             return await GetByIdAsync(newCert.Id);
         }
 
-        /// <summary>
-        /// Scans a COMPLETED class for COMPLETED enrollments that passed the final exam.
-        /// Generates certificates and sends emails.
-        /// </summary>
         public async Task CreateTraineeCertificatesForCompleteClass(int classId)
         {
-            // 1. Verify Class Status is Completed
             var classEntity = await _context.Classes
                 .Include(c => c.ProgramCourse).ThenInclude(pc => pc.Course)
                 .FirstOrDefaultAsync(c => c.Id == classId);
 
             if (classEntity == null) throw new Exception("Class not found.");
 
-            // Strict check: Only run if class is explicitly Completed
             if (classEntity.Status != (int)ClassStatusEnum.Completed)
             {
                 return;
@@ -156,16 +140,14 @@ namespace Lssctc.ProgramManagement.Certificates.Services
             int courseId = classEntity.ProgramCourse.CourseId;
             string courseName = classEntity.ProgramCourse.Course.Name;
 
-            // 2. Get Course Certificate Config
             var courseCert = await _context.CourseCertificates
                 .Include(cc => cc.Certificate)
                 .FirstOrDefaultAsync(cc => cc.CourseId == courseId && cc.IsActive == true);
 
             if (courseCert == null)
             {
-                // Fallback: Use first active certificate in system
                 var defaultCert = await _context.Certificates.FirstOrDefaultAsync(c => c.IsActive == true);
-                if (defaultCert == null) return; // No templates available
+                if (defaultCert == null) return;
 
                 courseCert = new CourseCertificate
                 {
@@ -179,44 +161,34 @@ namespace Lssctc.ProgramManagement.Certificates.Services
                 courseCert.Certificate = defaultCert;
             }
 
-            // 3. Find Eligible Enrollments
-            // Conditions: 
-            // - ClassId matches
-            // - Enrollment Status is COMPLETED
-            // - Has Passed Final Exam
-            // - Does NOT have a certificate for this course yet
             var eligibleEnrollments = await _context.Enrollments
                 .Include(e => e.Trainee).ThenInclude(t => t.IdNavigation)
                 .Include(e => e.Class).ThenInclude(c => c.ProgramCourse).ThenInclude(pc => pc.Course)
                 .Include(e => e.FinalExams)
                 .Include(e => e.TraineeCertificates)
                 .Where(e => e.ClassId == classId
-                            && e.Status == (int)EnrollmentStatusEnum.Completed // Explicit Enrollment Status Check
+                            && e.Status == (int)EnrollmentStatusEnum.Completed
                             && e.FinalExams.Any(fe => fe.IsPass == true)
                             && !e.TraineeCertificates.Any(tc => tc.CourseCertificate.CourseId == courseId))
                 .ToListAsync();
 
-            // 4. Generate & Send
             foreach (var enrollment in eligibleEnrollments)
             {
                 try
                 {
-                    // Generate PDF
                     string htmlContent = PrepareHtmlContent(courseCert.Certificate.TemplateHtml, enrollment);
                     string pdfUrl = await GeneratePdfAndUploadAsync(htmlContent, enrollment.Trainee.TraineeCode);
 
-                    // Save Record
                     var newCert = new TraineeCertificate
                     {
                         EnrollmentId = enrollment.Id,
                         CourseCertificateId = courseCert.Id,
                         CertificateCode = GenerateCertificateCode(),
-                        IssuedDate = DateTime.Now,
+                        IssuedDate = DateTime.UtcNow.AddHours(7),
                         PdfUrl = pdfUrl
                     };
                     _context.TraineeCertificates.Add(newCert);
 
-                    // Send Email
                     var userEmail = enrollment.Trainee.IdNavigation.Email;
                     if (!string.IsNullOrEmpty(userEmail))
                     {
@@ -262,14 +234,12 @@ namespace Lssctc.ProgramManagement.Certificates.Services
             };
         }
 
-        // --- Helper Methods to reduce code duplication ---
-
         private string PrepareHtmlContent(string templateHtml, Enrollment enrollment)
         {
             string htmlContent = templateHtml ?? "<h1>No Template Found</h1>";
             htmlContent = htmlContent.Replace("{{TraineeName}}", enrollment.Trainee.IdNavigation.Fullname);
             htmlContent = htmlContent.Replace("{{CourseName}}", enrollment.Class.ProgramCourse.Course.Name);
-            htmlContent = htmlContent.Replace("{{IssuedDate}}", DateTime.Now.ToString("dd MMM yyyy"));
+            htmlContent = htmlContent.Replace("{{IssuedDate}}", DateTime.UtcNow.AddHours(7).ToString("dd MMM yyyy"));
             return htmlContent;
         }
 
@@ -280,7 +250,6 @@ namespace Lssctc.ProgramManagement.Certificates.Services
 
         private async Task<string> GeneratePdfAndUploadAsync(string htmlContent, string traineeCode)
         {
-            // Using PDFBolt API as per primary implementation
             string apiKey = _configuration["PdfBoltApiKey"];
 
             if (string.IsNullOrEmpty(apiKey))
@@ -326,7 +295,6 @@ namespace Lssctc.ProgramManagement.Certificates.Services
 
         public async Task<TraineeCertificateResponseDto> PuppeCreateCertificateAsync(CreateTraineeCertificateDto dto)
         {
-            // Legacy/Alternative implementation kept as is
             var enrollment = await _context.Enrollments
                .Include(e => e.Trainee).ThenInclude(t => t.IdNavigation)
                .Include(e => e.Class).ThenInclude(c => c.ProgramCourse).ThenInclude(pc => pc.Course)
@@ -341,7 +309,6 @@ namespace Lssctc.ProgramManagement.Certificates.Services
 
             string htmlContent = PrepareHtmlContent(courseCert.Certificate.TemplateHtml, enrollment);
 
-            // Puppeteer Logic
             var browserFetcherOptions = new BrowserFetcherOptions { Path = Path.GetTempPath() };
             var browserFetcher = new BrowserFetcher(browserFetcherOptions);
             var installedBrowser = await browserFetcher.DownloadAsync();
@@ -372,7 +339,7 @@ namespace Lssctc.ProgramManagement.Certificates.Services
                 EnrollmentId = dto.EnrollmentId,
                 CourseCertificateId = dto.CourseCertificateId,
                 CertificateCode = GenerateCertificateCode(),
-                IssuedDate = DateTime.Now,
+                IssuedDate = DateTime.UtcNow.AddHours(7),
                 PdfUrl = pdfUrl
             };
 
