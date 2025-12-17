@@ -12,13 +12,13 @@ namespace Lssctc.ProgramManagement.ClassManage.QuizAttempts.Services
     {
         private readonly IUnitOfWork _uow;
         private readonly ProgressHelper _progressHelper;
-        private readonly IActivitySessionService _sessionService; 
+        private readonly IActivitySessionService _sessionService;
 
-        public QuizAttemptsService(IUnitOfWork uow, IActivitySessionService sessionService) // ADDED injection
+        public QuizAttemptsService(IUnitOfWork uow, IActivitySessionService sessionService)
         {
             _uow = uow;
             _progressHelper = new ProgressHelper(uow);
-            _sessionService = sessionService; 
+            _sessionService = sessionService;
         }
 
         #region Gets
@@ -112,6 +112,7 @@ namespace Lssctc.ProgramManagement.ClassManage.QuizAttempts.Services
                 throw new UnauthorizedAccessException("You are not authorized to submit this attempt.");
             if (activityRecord.ActivityType != (int)ActivityType.Quiz)
                 throw new InvalidOperationException("This activity is not a quiz.");
+
             await _sessionService.CheckActivityAccess(
                 activityRecord.SectionRecord.LearningProgress.Enrollment.ClassId,
                 activityRecord.ActivityId.Value);
@@ -154,7 +155,7 @@ namespace Lssctc.ProgramManagement.ClassManage.QuizAttempts.Services
                 ActivityRecordId = dto.ActivityRecordId,
                 QuizId = quizTemplate.Id,
                 Name = $"{quizTemplate.Name} - Attempt {attemptOrder}",
-                QuizAttemptDate = DateTime.UtcNow,
+                QuizAttemptDate = DateTime.UtcNow.AddHours(7),
                 Status = (int)QuizAttemptStatusEnum.Submitted,
                 AttemptOrder = attemptOrder,
                 IsCurrent = true,
@@ -179,7 +180,6 @@ namespace Lssctc.ProgramManagement.ClassManage.QuizAttempts.Services
 
                 var newAttemptQuestion = new QuizAttemptQuestion
                 {
-                    // QuizAttempt = newAttempt, // <--- REMOVE THIS LINE
                     QuestionId = questionTemplate.Id,
                     QuestionScore = questionTemplate.QuestionScore,
                     IsMultipleAnswers = questionTemplate.IsMultipleAnswers,
@@ -206,7 +206,6 @@ namespace Lssctc.ProgramManagement.ClassManage.QuizAttempts.Services
 
                     newAttemptQuestion.QuizAttemptAnswers.Add(new QuizAttemptAnswer
                     {
-                        // QuizAttemptQuestion = newAttemptQuestion, // <--- REMOVE THIS LINE
                         QuizOptionId = selectedOptionId,
                         IsCorrect = isThisAnswerCorrect,
                         Name = optionTemplate.Name,
