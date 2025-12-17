@@ -360,8 +360,9 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                 Type = typeId,
                 ExamWeight = dto.ExamWeight,
                 Duration = dto.Duration,
-                StartTime = dto.StartTime,
-                EndTime = dto.EndTime,
+                // [FIX] Convert Client Input (Vietnam Time) to UTC
+                StartTime = dto.StartTime.HasValue ? dto.StartTime.Value.AddHours(-7) : null,
+                EndTime = dto.EndTime.HasValue ? dto.EndTime.Value.AddHours(-7) : null,
                 Marks = 0,
                 IsPass = null,
                 Status = (int)FinalExamPartialStatus.NotYet
@@ -410,8 +411,9 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                     Type = typeId,
                     ExamWeight = dto.ExamWeight,
                     Duration = dto.Duration,
-                    StartTime = dto.StartTime,
-                    EndTime = dto.EndTime,
+                    // [FIX] Convert Client Input (Vietnam Time) to UTC
+                    StartTime = dto.StartTime.HasValue ? dto.StartTime.Value.AddHours(-7) : null,
+                    EndTime = dto.EndTime.HasValue ? dto.EndTime.Value.AddHours(-7) : null,
                     Marks = 0,
                     IsPass = null,
                     Status = (int)FinalExamPartialStatus.NotYet
@@ -479,8 +481,10 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                 // Update basic config
                 if (dto.ExamWeight.HasValue) p.ExamWeight = dto.ExamWeight;
                 if (dto.Duration.HasValue) p.Duration = dto.Duration;
-                if (dto.StartTime.HasValue) p.StartTime = dto.StartTime;
-                if (dto.EndTime.HasValue) p.EndTime = dto.EndTime;
+
+                // [FIX] Convert Client Input (Vietnam Time) to UTC
+                if (dto.StartTime.HasValue) p.StartTime = dto.StartTime.Value.AddHours(-7);
+                if (dto.EndTime.HasValue) p.EndTime = dto.EndTime.Value.AddHours(-7);
 
                 // Update Links (Theory/Simulation)
                 if (typeId == 1 && dto.QuizId.HasValue)
@@ -500,19 +504,8 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                 else if (typeId == 3 && dto.ChecklistConfig != null)
                 {
                     // 1. Remove old checklists (Resetting template)
-                    // Assuming _uow exposes a repository for PeChecklist or a generic repository method
-                    // If generic repo is not directly exposed as property, we iterate and delete.
-                    // Assuming _uow.PeChecklistRepository exists based on pattern, or using GenericRepository<PeChecklist>
-                    // If your UoW doesn't have specific repo, use: _uow.GetRepository<PeChecklist>().DeleteRangeAsync(p.PeChecklists);
-
-                    // For safety in this snippet, assuming standard specific repo or access via context
-                    // Accessing via property assuming it was added to UoW
                     foreach (var oldChecklist in p.PeChecklists.ToList())
                     {
-                        // Using a generic way if specific repo not known, but usually:
-                        // await _uow.PeChecklistRepository.DeleteAsync(oldChecklist); 
-                        // Or context.PeChecklists.Remove(oldChecklist);
-                        // Let's assume a Repository exists on UoW or use DbContext directly if UoW exposes it.
                         _uow.GetDbContext().Set<PeChecklist>().Remove(oldChecklist);
                     }
 
@@ -546,8 +539,11 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
 
             if (dto.ExamWeight.HasValue) partial.ExamWeight = dto.ExamWeight;
             if (dto.Duration.HasValue) partial.Duration = dto.Duration;
-            if (dto.StartTime.HasValue) partial.StartTime = dto.StartTime;
-            if (dto.EndTime.HasValue) partial.EndTime = dto.EndTime;
+
+            // [FIX] Convert Client Input (Vietnam Time) to UTC
+            if (dto.StartTime.HasValue) partial.StartTime = dto.StartTime.Value.AddHours(-7);
+            if (dto.EndTime.HasValue) partial.EndTime = dto.EndTime.Value.AddHours(-7);
+
             if (!string.IsNullOrEmpty(dto.Description)) partial.Description = dto.Description;
 
             if (dto.QuizId.HasValue && partial.Type == 1)

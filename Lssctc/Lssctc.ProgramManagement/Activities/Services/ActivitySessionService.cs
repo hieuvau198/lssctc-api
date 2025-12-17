@@ -153,8 +153,9 @@ namespace Lssctc.ProgramManagement.Activities.Services
                 ClassId = dto.ClassId,
                 ActivityId = dto.ActivityId,
                 IsActive = dto.IsActive,
-                StartTime = dto.StartTime,
-                EndTime = dto.EndTime
+                // [FIX] Convert Client Input (Vietnam Time) to UTC
+                StartTime = dto.StartTime.HasValue ? dto.StartTime.Value.AddHours(-7) : null,
+                EndTime = dto.EndTime.HasValue ? dto.EndTime.Value.AddHours(-7) : null
             };
 
             await _uow.ActivitySessionRepository.CreateAsync(newSession);
@@ -176,8 +177,9 @@ namespace Lssctc.ProgramManagement.Activities.Services
                 throw new KeyNotFoundException($"Activity Session with ID {sessionId} not found.");
 
             existing.IsActive = dto.IsActive;
-            existing.StartTime = dto.StartTime;
-            existing.EndTime = dto.EndTime;
+            // [FIX] Convert Client Input (Vietnam Time) to UTC
+            existing.StartTime = dto.StartTime.HasValue ? dto.StartTime.Value.AddHours(-7) : null;
+            existing.EndTime = dto.EndTime.HasValue ? dto.EndTime.Value.AddHours(-7) : null;
 
             await _uow.ActivitySessionRepository.UpdateAsync(existing);
             await _uow.SaveChangesAsync();
@@ -185,6 +187,8 @@ namespace Lssctc.ProgramManagement.Activities.Services
             // Post-Update: Send email notifications to trainees in Inprogress classes (background)
             var classId = existing.ClassId;
             var activityTitle = existing.Activity?.ActivityTitle ?? "Hoạt động";
+
+            // Note: Keep using dto.StartTime/EndTime (Vietnam Time) for email display as the email template expects user-friendly time
             var startTime = dto.StartTime;
             var endTime = dto.EndTime;
 
@@ -206,13 +210,13 @@ namespace Lssctc.ProgramManagement.Activities.Services
             if (classStatus == (int)ClassStatusEnum.Inprogress)
             {
                 Console.WriteLine($"[ActivitySession Update] Class is Inprogress, fetching trainees...");
-                
+
                 // IMPORTANT: Fetch trainee data BEFORE Task.Run to avoid DbContext disposal issues
                 var traineeInfos = await _uow.EnrollmentRepository
                     .GetAllAsQueryable()
                     .AsNoTracking()
                     .Where(e => e.ClassId == classId &&
-                                (e.Status == (int)EnrollmentStatusEnum.Inprogress || 
+                                (e.Status == (int)EnrollmentStatusEnum.Inprogress ||
                                  e.Status == (int)EnrollmentStatusEnum.Enrolled))
                     .Include(e => e.Trainee)
                         .ThenInclude(t => t.IdNavigation)
