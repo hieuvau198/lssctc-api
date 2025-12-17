@@ -201,6 +201,7 @@ builder.Services.AddScoped<IActivitySessionService, ActivitySessionService>();
 builder.Services.AddScoped<IFinalExamsService, FinalExamsService>();
 
 builder.Services.AddScoped<IClassCustomizeService, ClassCustomizeService>();
+builder.Services.AddScoped<IClassCompleteService, ClassCompleteService>();
 #endregion
 
 #region CORS

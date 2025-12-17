@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace Lssctc.ProgramManagement.ClassManage.Helpers
 {
-    public class ClassCompleteService
+    public class ClassCompleteService : IClassCompleteService
     {
         private readonly LssctcDbContext _context;
         private readonly ITraineeCertificatesService _certificateService;

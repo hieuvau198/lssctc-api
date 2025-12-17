@@ -1,6 +1,7 @@
 ﻿using Lssctc.ProgramManagement.Certificates.Dtos;
 using Lssctc.ProgramManagement.Certificates.Services;
 using Microsoft.AspNetCore.Mvc;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace Lssctc.ProgramManagement.Certificates.Controllers
@@ -17,12 +18,14 @@ namespace Lssctc.ProgramManagement.Certificates.Controllers
         }
 
         [HttpGet]
+        [ProducesResponseType(typeof(IEnumerable<TraineeCertificateResponseDto>), 200)]
         public async Task<IActionResult> GetAll()
         {
             return Ok(await _service.GetAllAsync());
         }
 
         [HttpGet("{id}")]
+        [ProducesResponseType(typeof(TraineeCertificateResponseDto), 200)]
         public async Task<IActionResult> GetById(int id)
         {
             var result = await _service.GetByIdAsync(id);
@@ -31,6 +34,7 @@ namespace Lssctc.ProgramManagement.Certificates.Controllers
         }
 
         [HttpGet("code/{code}")]
+        [ProducesResponseType(typeof(TraineeCertificateResponseDto), 200)]
         public async Task<IActionResult> GetByCode(string code)
         {
             var result = await _service.GetByCodeAsync(code);
@@ -39,6 +43,7 @@ namespace Lssctc.ProgramManagement.Certificates.Controllers
         }
 
         [HttpGet("class/{classId}")]
+        [ProducesResponseType(typeof(IEnumerable<TraineeCertificateResponseDto>), 200)]
         public async Task<IActionResult> GetByClassId(int classId)
         {
             var result = await _service.GetTraineeCertificatesByClassIdAsync(classId);
@@ -46,6 +51,7 @@ namespace Lssctc.ProgramManagement.Certificates.Controllers
         }
 
         [HttpPost]
+        [ProducesResponseType(typeof(TraineeCertificateResponseDto), 201)]
         public async Task<IActionResult> Create([FromBody] CreateTraineeCertificateDto dto)
         {
             try

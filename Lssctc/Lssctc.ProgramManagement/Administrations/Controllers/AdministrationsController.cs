@@ -10,20 +10,19 @@ namespace Lssctc.ProgramManagement.Administrations.Controllers
     public class AdministrationsController : ControllerBase
     {
         private readonly IClassCustomizeService _classCustomizeService;
-        private readonly ClassCompleteService _classCompleteService;
+        private readonly IClassCompleteService _classCompleteService; // Updated to Interface
 
-        public AdministrationsController(IClassCustomizeService classCustomizeService, ClassCompleteService classCompleteService)
+        public AdministrationsController(
+            IClassCustomizeService classCustomizeService,
+            IClassCompleteService classCompleteService) // Updated to Interface
         {
             _classCustomizeService = classCustomizeService;
             _classCompleteService = classCompleteService;
         }
 
         /// <summary>
-        /// Hard deletes a class and all its related data (enrollments, records, exams, etc.).
-        /// This action is irreversible.
+        /// Hard deletes a class and all its related data.
         /// </summary>
-        /// <param name="id">The Class ID to delete</param>
-        /// <returns>No Content</returns>
         [HttpDelete("classes/{id}/hard-delete")]
         public async Task<IActionResult> DeleteClassCompletely(int id)
         {
@@ -33,10 +32,7 @@ namespace Lssctc.ProgramManagement.Administrations.Controllers
 
         /// <summary>
         /// Force completes a class. 
-        /// Auto-fills attendance, learning progress, passes final exams, sets class status to Completed, and generates certificates/emails.
         /// </summary>
-        /// <param name="id">The Class ID to complete</param>
-        /// <returns>No Content</returns>
         [HttpPost("classes/{id}/auto-complete")]
         public async Task<IActionResult> AutoCompleteClass(int id)
         {

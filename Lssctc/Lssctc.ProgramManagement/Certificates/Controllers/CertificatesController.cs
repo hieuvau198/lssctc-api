@@ -1,6 +1,7 @@
 ﻿using Lssctc.ProgramManagement.Certificates.Dtos;
 using Lssctc.ProgramManagement.Certificates.Services;
 using Microsoft.AspNetCore.Mvc;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace Lssctc.ProgramManagement.Certificates.Controllers
@@ -17,12 +18,14 @@ namespace Lssctc.ProgramManagement.Certificates.Controllers
         }
 
         [HttpGet]
+        [ProducesResponseType(typeof(IEnumerable<CertificateTemplateDto>), 200)]
         public async Task<IActionResult> GetAll()
         {
             return Ok(await _service.GetAllTemplatesAsync());
         }
 
         [HttpGet("{id}")]
+        [ProducesResponseType(typeof(CertificateTemplateDto), 200)]
         public async Task<IActionResult> GetById(int id)
         {
             var result = await _service.GetTemplateByIdAsync(id);
@@ -31,6 +34,7 @@ namespace Lssctc.ProgramManagement.Certificates.Controllers
         }
 
         [HttpGet("course/{courseId}")]
+        [ProducesResponseType(typeof(CertificateTemplateDto), 200)]
         public async Task<IActionResult> GetByCourseId(int courseId)
         {
             var result = await _service.GetCertificateByCourseIdAsync(courseId);
@@ -39,6 +43,7 @@ namespace Lssctc.ProgramManagement.Certificates.Controllers
         }
 
         [HttpGet("class/{classId}")]
+        [ProducesResponseType(typeof(CertificateTemplateDto), 200)]
         public async Task<IActionResult> GetByClassId(int classId)
         {
             var result = await _service.GetCertificateByClassIdAsync(classId);
@@ -47,6 +52,7 @@ namespace Lssctc.ProgramManagement.Certificates.Controllers
         }
 
         [HttpPost]
+        [ProducesResponseType(typeof(CertificateTemplateDto), 201)]
         public async Task<IActionResult> Create([FromBody] CreateCertificateTemplateDto dto)
         {
             var result = await _service.CreateTemplateAsync(dto);
@@ -54,6 +60,7 @@ namespace Lssctc.ProgramManagement.Certificates.Controllers
         }
 
         [HttpPut("{id}")]
+        [ProducesResponseType(typeof(CertificateTemplateDto), 200)]
         public async Task<IActionResult> Update(int id, [FromBody] CreateCertificateTemplateDto dto)
         {
             var result = await _service.UpdateTemplateAsync(id, dto);
@@ -62,6 +69,7 @@ namespace Lssctc.ProgramManagement.Certificates.Controllers
         }
 
         [HttpPost("courses/{courseId}/assign/{certificateId}")]
+        [ProducesResponseType(typeof(object), 200)]
         public async Task<IActionResult> AssignToCourse(int courseId, int certificateId)
         {
             var result = await _service.AssignCertificateToCourseAsync(courseId, certificateId);
@@ -70,6 +78,7 @@ namespace Lssctc.ProgramManagement.Certificates.Controllers
         }
 
         [HttpPost("courses/{courseId}/auto-assign")]
+        [ProducesResponseType(typeof(object), 200)]
         public async Task<IActionResult> AutoAssignToCourse(int courseId)
         {
             var result = await _service.AutoAssignCertificateToCourseAsync(courseId);
