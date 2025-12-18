@@ -64,6 +64,8 @@ namespace Lssctc.Share.Implements
         private IGenericRepository<FeTheory>? _feTheoryRepository;
         private IGenericRepository<SeTask>? _seTaskRepository;
         private IGenericRepository<User>? _userRepository;
+        private IGenericRepository<FinalExamTemplate>? _finalExamTemplateRepository;
+        private IGenericRepository<FinalExamPartialsTemplate>? _finalExamPartialsTemplateRepository;
 
         public UnitOfWork(LssctcDbContext context)
         {
@@ -225,6 +227,11 @@ namespace Lssctc.Share.Implements
             _activitySessionRepository ??= new GenericRepository<ActivitySession>(_context);
         public IGenericRepository<User> UserRepository =>
             _userRepository ??= new GenericRepository<User>(_context);
+        public IGenericRepository<FinalExamTemplate> FinalExamTemplateRepository =>
+            _finalExamTemplateRepository ??= new GenericRepository<FinalExamTemplate>(_context);
+
+        public IGenericRepository<FinalExamPartialsTemplate> FinalExamPartialsTemplateRepository =>
+            _finalExamPartialsTemplateRepository ??= new GenericRepository<FinalExamPartialsTemplate>(_context);
 
         public async Task<int> SaveChangesAsync()
         {

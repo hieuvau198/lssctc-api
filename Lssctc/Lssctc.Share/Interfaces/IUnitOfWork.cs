@@ -58,6 +58,8 @@ namespace Lssctc.Share.Interfaces
         IGenericRepository<FinalExamPartial> FinalExamPartialRepository { get; }
         IGenericRepository<FeSimulation> FeSimulationRepository { get; }
         IGenericRepository<FeTheory> FeTheoryRepository { get; }
+        IGenericRepository<FinalExamTemplate> FinalExamTemplateRepository { get; }
+        IGenericRepository<FinalExamPartialsTemplate> FinalExamPartialsTemplateRepository { get; }
         IGenericRepository<SeTask> SeTaskRepository { get; }
         IGenericRepository<User> UserRepository { get; }
 

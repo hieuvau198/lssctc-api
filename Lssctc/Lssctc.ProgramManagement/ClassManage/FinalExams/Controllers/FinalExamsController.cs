@@ -14,15 +14,18 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Controllers
         private readonly IFinalExamsService _finalExamsService;
         private readonly IFinalExamPartialService _partialService;
         private readonly IFinalExamSeService _seService;
+        private readonly IFETemplateService _templateService;
 
         public FinalExamsController(
             IFinalExamsService finalExamsService,
             IFinalExamPartialService partialService,
-            IFinalExamSeService seService)
+            IFinalExamSeService seService,
+            IFETemplateService templateService)
         {
             _finalExamsService = finalExamsService;
             _partialService = partialService;
             _seService = seService;
+            _templateService = templateService;
         }
 
         private int GetUserIdFromClaims()
@@ -167,6 +170,39 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Controllers
             }
             catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
             catch (Exception ex) { return StatusCode(500, new { message = ex.Message }); }
+        }
+
+        #endregion
+
+        #region Final Exam Templates (New)
+
+        [HttpGet("class/{classId}/templates")]
+        [Authorize(Roles = "Admin, Instructor")]
+        public async Task<IActionResult> GetExamTemplates(int classId)
+        {
+            try
+            {
+                var result = await _templateService.GetTemplatesByClassIdAsync(classId);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = ex.Message });
+            }
+        }
+
+        [HttpPost("class/{classId}/reset")]
+        public async Task<IActionResult> ResetClassFinalExam(int classId)
+        {
+            try
+            {
+                await _templateService.ResetFinalExamAsync(classId);
+                return Ok(new { message = "Class final exams reset successfully (templates created/defaults applied)." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = ex.Message });
+            }
         }
 
         #endregion
