@@ -200,6 +200,8 @@ builder.Services.AddScoped<IProgramImportService, ProgramImportService>();
 builder.Services.AddScoped<ITimeslotService, TimeslotService>();
 builder.Services.AddScoped<IActivitySessionService, ActivitySessionService>();
 builder.Services.AddScoped<IFinalExamsService, FinalExamsService>();
+builder.Services.AddScoped<IFinalExamPartialService, FinalExamPartialService>();
+builder.Services.AddScoped<IFinalExamSeService, FinalExamSeService>();
 
 builder.Services.AddScoped<IClassCustomizeService, ClassCustomizeService>();
 builder.Services.AddScoped<IClassCompleteService, ClassCompleteService>();
