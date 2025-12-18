@@ -1,17 +1,11 @@
 ﻿using Lssctc.ProgramManagement.ClassManage.Enrollments.Dtos;
 using Lssctc.Share.Common;
+using Lssctc.Share.Entities;
 
 namespace Lssctc.ProgramManagement.ClassManage.Enrollments.Services
 {
     public interface IEnrollmentsService
     {
-        /*
-        BR: trainee can enroll in a class only if the class status is 'Open', then enrollment auto have status Pending
-        BR: trainee can withdraw from a class only if class status is 'Draft' or 'Open', then enrollment status become 'Cancelled'
-        BR: instructor can add trainee to a class only if class status is 'Draft' or 'Open', then enrollment auto have status 'Enrolled'
-        BR: instructor can remove trainee from a class only if class status is 'Draft' or 'Open', then enrollment status become 'Cancelled'
-         */
-
         #region Trainee Enrollments
         Task<EnrollmentDto> EnrollInClassAsync(int traineeId, CreateEnrollmentDto dto);
         Task WithdrawFromClassAsync(int traineeId, int classId);
@@ -27,8 +21,8 @@ namespace Lssctc.ProgramManagement.ClassManage.Enrollments.Services
         Task<EnrollmentDto> RejectEnrollmentAsync(int enrollmentId);
         Task<EnrollmentDto> AddTraineeToClassAsync(InstructorAddTraineeDto dto);
         Task RemoveTraineeFromClassAsync(int enrollmentId);
+        Task UpdateEnrollmentAsync(Enrollment enrollment);
+        Task UpdateEnrollmentsAsync(IEnumerable<Enrollment> enrollments);
         #endregion
-
-        // After enrollment service, class service have logic that when class is started, all enrollment will change status to Inprogress
     }
 }

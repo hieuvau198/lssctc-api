@@ -304,6 +304,27 @@ namespace Lssctc.ProgramManagement.ClassManage.Enrollments.Services
 
         #endregion
 
+        #region Internal Methods
+        public async Task UpdateEnrollmentAsync(Enrollment enrollment)
+        {
+            if (enrollment == null) throw new ArgumentNullException(nameof(enrollment));
+
+            await _uow.EnrollmentRepository.UpdateAsync(enrollment);
+            await _uow.SaveChangesAsync();
+        }
+
+        public async Task UpdateEnrollmentsAsync(IEnumerable<Enrollment> enrollments)
+        {
+            if (enrollments == null || !enrollments.Any()) return;
+
+            foreach (var enrollment in enrollments)
+            {
+                await _uow.EnrollmentRepository.UpdateAsync(enrollment);
+            }
+            await _uow.SaveChangesAsync();
+        }
+        #endregion
+
         #region Mappping & Helpers
 
         private IQueryable<Enrollment> GetEnrollmentQuery()
