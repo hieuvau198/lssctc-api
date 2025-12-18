@@ -128,11 +128,9 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
         {
             int typeId = ParseExamType(dto.Type);
 
-            // --- Validation 1: Check Class Existence ---
             var classExists = await _uow.ClassRepository.ExistsAsync(c => c.Id == dto.ClassId);
             if (!classExists) throw new KeyNotFoundException($"Class with ID {dto.ClassId} not found.");
 
-            // --- Validation 2: Check TE/SE Links Existence ---
             if (typeId == 1 && dto.QuizId.HasValue)
             {
                 var quizExists = await _uow.QuizRepository.ExistsAsync(q => q.Id == dto.QuizId.Value);
@@ -144,8 +142,6 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                 if (!practiceExists) throw new KeyNotFoundException($"Practice/Simulation with ID {dto.PracticeId.Value} not found for Simulation Exam configuration.");
             }
 
-            // --- Validation 3: Check PE Checklist Configuration (MANDATORY) ---
-            // [UPDATED] Check strictly ensures checklist is present and not empty for PE
             if (typeId == 3 && (dto.ChecklistConfig == null || !dto.ChecklistConfig.Any()))
             {
                 throw new ArgumentException("Checklist configuration cannot be empty when updating Practical Exam (PE).");
@@ -155,7 +151,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                 .Where(p => p.FinalExam.Enrollment.ClassId == dto.ClassId && p.Type == typeId)
                 .Include(p => p.FeTheories)
                 .Include(p => p.FeSimulations)
-                .Include(p => p.PeChecklists) // Include current checklists to remove them
+                .Include(p => p.PeChecklists)
                 .ToListAsync();
 
             if (!partials.Any())
@@ -163,14 +159,12 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
 
             foreach (var p in partials)
             {
-                // Update basic config
                 if (dto.ExamWeight.HasValue) p.ExamWeight = dto.ExamWeight;
                 if (dto.Duration.HasValue) p.Duration = dto.Duration;
 
                 if (dto.StartTime.HasValue) p.StartTime = dto.StartTime.Value.AddHours(-7);
                 if (dto.EndTime.HasValue) p.EndTime = dto.EndTime.Value.AddHours(-7);
 
-                // Update Links (Theory/Simulation)
                 if (typeId == 1 && dto.QuizId.HasValue)
                 {
                     var theory = p.FeTheories.FirstOrDefault();
@@ -184,11 +178,8 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                     else { await _uow.FeSimulationRepository.CreateAsync(new FeSimulation { FinalExamPartialId = p.Id, PracticeId = dto.PracticeId.Value }); }
                 }
 
-                // [UPDATED] Practical Exam (PE) Checklist Entity Update
-                // Logic strictly executes because of the validation above
                 else if (typeId == 3 && dto.ChecklistConfig != null)
                 {
-                    // 1. Remove old checklists (Resetting template)
                     if (p.PeChecklists != null)
                     {
                         foreach (var oldChecklist in p.PeChecklists.ToList())
@@ -197,7 +188,6 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                         }
                     }
 
-                    // 2. Add new checklists from config
                     foreach (var item in dto.ChecklistConfig)
                     {
                         var newChecklist = new PeChecklist
@@ -205,7 +195,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                             FinalExamPartialId = p.Id,
                             Name = item.Name,
                             Description = item.Description,
-                            IsPass = null // Reset status
+                            IsPass = null
                         };
                         _uow.GetDbContext().Set<PeChecklist>().Add(newChecklist);
                     }
@@ -317,6 +307,14 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
 
             if (partial.Type != 1) throw new ArgumentException("This ID is not a Theory Exam.");
 
+            var learningProgress = await _uow.LearningProgressRepository.GetAllAsQueryable()
+                .FirstOrDefaultAsync(lp => lp.EnrollmentId == partial.FinalExam.EnrollmentId);
+
+            if (learningProgress == null || learningProgress.Status != (int)LearningProgressStatusEnum.Completed)
+            {
+                throw new InvalidOperationException("Learning progress must be completed before taking the Theory Exam.");
+            }
+
             var feTheory = partial.FeTheories.FirstOrDefault();
             if (feTheory == null || feTheory.QuizId == 0) throw new KeyNotFoundException("Quiz content not assigned.");
 
@@ -356,6 +354,14 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
 
             if (partial.Type != 1)
                 throw new ArgumentException("This ID is not a Theory Exam.");
+
+            var learningProgress = await _uow.LearningProgressRepository.GetAllAsQueryable()
+                .FirstOrDefaultAsync(lp => lp.EnrollmentId == partial.FinalExam.EnrollmentId);
+
+            if (learningProgress == null || learningProgress.Status != (int)LearningProgressStatusEnum.Completed)
+            {
+                throw new InvalidOperationException("Learning progress must be completed before submitting the Theory Exam.");
+            }
 
             var feTheory = partial.FeTheories.FirstOrDefault();
             if (feTheory == null || feTheory.QuizId == 0)
