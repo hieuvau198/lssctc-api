@@ -1,56 +1,12 @@
 
 
--- Drop Database
-
-ALTER DATABASE [lssctc-db] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
-DROP DATABASE [lssctc-db];
-
--- 1. Drop all Foreign Key Constraints
-DECLARE @sql NVARCHAR(MAX) = N'';
-
-SELECT @sql += N'
-ALTER TABLE ' + QUOTENAME(s.name) + '.' + QUOTENAME(t.name) 
-    + ' DROP CONSTRAINT ' + QUOTENAME(fk.name) + ';'
-FROM sys.foreign_keys AS fk
-INNER JOIN sys.tables AS t ON fk.parent_object_id = t.object_id
-INNER JOIN sys.schemas AS s ON t.schema_id = s.schema_id;
-
-EXEC sp_executesql @sql;
-
--- 2. Drop all Tables
-SET @sql = N'';
-
-SELECT @sql += N'
-DROP TABLE ' + QUOTENAME(s.name) + '.' + QUOTENAME(t.name) + ';'
-FROM sys.tables AS t
-INNER JOIN sys.schemas AS s ON t.schema_id = s.schema_id;
-
-EXEC sp_executesql @sql;
-
-
-
-
 
 DROP TABLE [dbo].[simulation_component_types];
-DROP TABLE [dbo].[practice_step_types];
-
-
 
 
 ALTER TABLE [dbo].[course_sections]
 ADD [section_order] INT NOT NULL DEFAULT 0;
 
-
-ALTER TABLE [dbo].[section_records]
-ADD [duration_minutes] INT NULL 
-    CONSTRAINT DF_section_records_duration_minutes DEFAULT 20;
-
-
-alter table practices
-add [practice_code] nvarchar null default 'NO PRACTICE CODE ASSIGNED'
-
-ALTER TABLE practices
-ALTER COLUMN practice_code VARCHAR(50);
 
 SELECT COLUMN_NAME, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH
 FROM INFORMATION_SCHEMA.COLUMNS
@@ -64,14 +20,72 @@ ALTER TABLE practices
 ADD CONSTRAINT DF_practices_practice_code
 DEFAULT('NO PRACTICE CODE ASSIGNED') FOR practice_code;
 
-ALTER TABLE [trainee_certificates]
-ADD [pdf_url] NVARCHAR(1000)
-
 update [final_exams]
 set [exam_code] = 'LSSCTC_FE_565'
 
-alter table [training_programs]
-add [background_image_url] NVARCHAR(256)
 
 INSERT INTO [dbo].[course_certificates] ([course_id], [certificate_id], [passing_score], [is_active])
 VALUES (2, 1, 5.0, 1);
+
+
+
+BEGIN TRY
+    BEGIN TRANSACTION;
+
+    -- 1. Delete quiz_attempt_answers
+    DELETE qaa
+    FROM dbo.quiz_attempt_answers qaa
+    INNER JOIN dbo.quiz_attempt_questions qaq
+        ON qaa.quiz_attempt_question_id = qaq.id
+    INNER JOIN dbo.quiz_attempts qa
+        ON qaq.quiz_attempt_id = qa.id
+    WHERE qa.max_score <> 10
+      AND qa.is_current = 0;
+
+    -- 2. Delete quiz_attempt_questions
+    DELETE qaq
+    FROM dbo.quiz_attempt_questions qaq
+    INNER JOIN dbo.quiz_attempts qa
+        ON qaq.quiz_attempt_id = qa.id
+    WHERE qa.max_score <> 10
+      AND qa.is_current = 0;
+
+    -- 3. Delete quiz_attempts
+    DELETE qa
+    FROM dbo.quiz_attempts qa
+    WHERE qa.max_score <> 10
+      AND qa.is_current = 0;
+
+    COMMIT TRANSACTION;
+END TRY
+BEGIN CATCH
+    ROLLBACK TRANSACTION;
+
+    DECLARE @ErrorMessage NVARCHAR(4000) = ERROR_MESSAGE();
+    RAISERROR (@ErrorMessage, 16, 1);
+END CATCH;
+
+
+BEGIN TRY
+    BEGIN TRANSACTION;
+
+    -- 1. Delete practice_attempt_tasks
+    DELETE pat
+    FROM dbo.practice_attempt_tasks pat
+    INNER JOIN dbo.practice_attempts pa
+        ON pat.practice_attempt_id = pa.id
+    WHERE pa.is_current = 0;
+
+    -- 2. Delete practice_attempts
+    DELETE pa
+    FROM dbo.practice_attempts pa
+    WHERE pa.is_current = 0;
+
+    COMMIT TRANSACTION;
+END TRY
+BEGIN CATCH
+    ROLLBACK TRANSACTION;
+
+    DECLARE @ErrorMessage NVARCHAR(4000) = ERROR_MESSAGE();
+    RAISERROR (@ErrorMessage, 16, 1);
+END CATCH;

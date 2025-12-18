@@ -649,6 +649,7 @@ BEGIN TRY
         [status] INT NOT NULL DEFAULT 1,
         [attempt_order] INT,
         [is_pass] BIT,
+		[is_current] BIT,
         FOREIGN KEY ([activity_record_id]) REFERENCES [dbo].[activity_records]([id])
     );
 
