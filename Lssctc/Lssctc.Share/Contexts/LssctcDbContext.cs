@@ -743,6 +743,9 @@ public partial class LssctcDbContext : DbContext
             entity.Property(e => e.IsPass)
                 .HasDefaultValue(false)
                 .HasColumnName("is_pass");
+            entity.Property(e => e.Status)
+                .HasDefaultValue(1)
+                .HasColumnName("status");
             entity.Property(e => e.TotalMarks)
                 .HasColumnType("decimal(5, 2)")
                 .HasColumnName("total_marks");
