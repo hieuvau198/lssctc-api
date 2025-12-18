@@ -11,6 +11,7 @@ namespace Lssctc.Share.Enums
         NotYet = 1,
         Submitted = 2,
         Completed = 3,
-        Cancelled = 4
+        Cancelled = 4,
+        Open = 5
     }
 }
