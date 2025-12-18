@@ -13,7 +13,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Dtos
         public DateTime? CompleteTime { get; set; }
 
         public string? ExamCode { get; set; }
-        public string? Status { get; set; } // [ADDED] Status Name
+        public string? Status { get; set; }
 
         public List<FinalExamPartialDto> Partials { get; set; } = new List<FinalExamPartialDto>();
     }
@@ -28,7 +28,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Dtos
     {
         public bool? IsPass { get; set; }
         public decimal? TotalMarks { get; set; }
-        public int? Status { get; set; } // [ADDED] Allow status update
+        public int? Status { get; set; }
     }
 
     public class PracticeDto

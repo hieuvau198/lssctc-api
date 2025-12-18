@@ -46,9 +46,9 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                     await _uow.SaveChangesAsync();
                 }
 
-                await EnsurePartialExists(finalExam.Id, 1, defaultTime);
-                await EnsurePartialExists(finalExam.Id, 2, defaultTime);
-                await EnsurePartialExists(finalExam.Id, 3, defaultTime);
+                await EnsurePartialExists(finalExam.Id, 1, defaultTime); // Theory
+                await EnsurePartialExists(finalExam.Id, 2, defaultTime); // Simulation
+                await EnsurePartialExists(finalExam.Id, 3, defaultTime); // Practical
             }
             await _uow.SaveChangesAsync();
         }
@@ -58,12 +58,21 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             var exists = await _uow.FinalExamPartialRepository.ExistsAsync(p => p.FinalExamId == finalExamId && p.Type == type);
             if (!exists)
             {
+                // [UPDATE] Default weights: TE=30%, SE=20%, PE=50%
+                decimal defaultWeight = 0;
+                switch (type)
+                {
+                    case 1: defaultWeight = 30; break; // Theory
+                    case 2: defaultWeight = 20; break; // Simulation
+                    case 3: defaultWeight = 50; break; // Practical
+                }
+
                 var partial = new FinalExamPartial
                 {
                     FinalExamId = finalExamId,
                     Type = type,
                     Marks = 0,
-                    ExamWeight = 0,
+                    ExamWeight = defaultWeight,
                     Duration = 60,
                     StartTime = defaultTime,
                     EndTime = defaultTime.AddMinutes(60),
@@ -199,6 +208,58 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                 await _uow.FinalExamRepository.UpdateAsync(finalExam);
                 await _uow.SaveChangesAsync();
             }
+        }
+
+        public async Task UpdateClassExamWeightsAsync(int classId, UpdateClassWeightsDto dto)
+        {
+            // Validate Total Sum (using a small epsilon for floating point comparison safety)
+            if (Math.Abs((dto.TheoryWeight + dto.SimulationWeight + dto.PracticalWeight) - 1.0m) > 0.0001m)
+            {
+                throw new InvalidOperationException("The sum of weights must be exactly 1.0 (100%).");
+            }
+
+            // Get all final exams for the class with their partials
+            var exams = await _uow.FinalExamRepository.GetAllAsQueryable()
+                .Include(fe => fe.FinalExamPartials)
+                .Where(fe => fe.Enrollment.ClassId == classId)
+                .ToListAsync();
+
+            if (!exams.Any())
+            {
+                // Optionally auto-create exams if none exist, or just return
+                await AutoCreateFinalExamsForClassAsync(classId);
+                // Re-fetch
+                exams = await _uow.FinalExamRepository.GetAllAsQueryable()
+                    .Include(fe => fe.FinalExamPartials)
+                    .Where(fe => fe.Enrollment.ClassId == classId)
+                    .ToListAsync();
+            }
+
+            foreach (var exam in exams)
+            {
+                foreach (var partial in exam.FinalExamPartials)
+                {
+                    // Map Type ID to Weight: 1=Theory, 2=Simulation, 3=Practical
+                    // Convert 0-1 range to 0-100 range for storage
+                    switch (partial.Type)
+                    {
+                        case 1:
+                            partial.ExamWeight = dto.TheoryWeight * 100;
+                            break;
+                        case 2:
+                            partial.ExamWeight = dto.SimulationWeight * 100;
+                            break;
+                        case 3:
+                            partial.ExamWeight = dto.PracticalWeight * 100;
+                            break;
+                    }
+                }
+
+                // Recalculate scores with new weights
+                await RecalculateFinalExamScoreInternal(exam);
+            }
+
+            await _uow.SaveChangesAsync();
         }
 
         private async Task RecalculateFinalExamScoreInternal(FinalExam finalExam)

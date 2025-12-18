@@ -151,6 +151,24 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Controllers
             catch (Exception ex) { return StatusCode(500, new { message = ex.Message }); }
         }
 
+        [HttpPut("class/{classId}/weights")]
+        [Authorize(Roles = "Admin, Instructor")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> UpdateClassWeights(int classId, [FromBody] UpdateClassWeightsDto dto)
+        {
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+
+            try
+            {
+                await _finalExamsService.UpdateClassExamWeightsAsync(classId, dto);
+                return Ok(new { message = "Class exam weights updated successfully." });
+            }
+            catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
+            catch (Exception ex) { return StatusCode(500, new { message = ex.Message }); }
+        }
+
         #endregion
 
         #region Trainee View

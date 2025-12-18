@@ -15,5 +15,6 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
         Task<string> GenerateExamCodeAsync(int finalExamId);
         Task FinishFinalExamAsync(int classId);
         Task RecalculateFinalExamScore(int finalExamId);
+        Task UpdateClassExamWeightsAsync(int classId, UpdateClassWeightsDto dto);
     }
 }
