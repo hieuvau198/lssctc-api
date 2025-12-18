@@ -7,7 +7,7 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
     {
         Task<IEnumerable<PracticeAttemptDto>> GetPracticeAttempts(int traineeId, int activityRecordId);
         Task<PracticeAttemptDto?> GetLatestPracticeAttempt(int traineeId, int activityRecordId);
-        Task<IEnumerable<PracticeAttemptDto>> GetPracticeAttemptsByPractice(int traineeId, int practiceId);
+        // Removed GetPracticeAttemptsByPractice as it is replaced by GetPracticeAttempts for activity record logic
         Task<PracticeAttemptDto?> GetPracticeAttemptById(int practiceAttemptId);
         Task<PagedResult<PracticeAttemptDto>> GetPracticeAttemptsPaged(int traineeId, int activityRecordId, int pageNumber, int pageSize);
         Task<PagedResult<PracticeAttemptDto>> GetPracticeAttemptsByPracticePaged(int traineeId, int practiceId, int pageNumber, int pageSize);

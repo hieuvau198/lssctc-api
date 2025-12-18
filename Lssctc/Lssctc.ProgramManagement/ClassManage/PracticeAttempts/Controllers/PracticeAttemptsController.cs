@@ -107,19 +107,20 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Controllers
         // --- REFACTORED METHODS START ---
 
         /// <summary>
-        /// Get all practice attempts for the current logged-in trainee by practice ID.
+        /// Get all practice attempts for the current logged-in trainee by activity record ID.
         /// Trainee ID is retrieved from the token.
         /// </summary>
-        /// <param name="practiceId">Practice ID</param>
-        /// <returns>List of all practice attempts for the specific practice</returns>
-        [HttpGet("by-practice/me")]
+        /// <param name="activityRecordId">Activity Record ID</param>
+        /// <returns>List of all practice attempts for the specific activity record</returns>
+        [HttpGet("by-activity-record/me")]
         [Authorize(Roles = "Trainee")]
-        public async Task<IActionResult> GetMyPracticeAttemptsByPractice([FromQuery] int practiceId)
+        public async Task<IActionResult> GetMyPracticeAttemptsByActivityRecord([FromQuery] int activityRecordId)
         {
             try
             {
                 var traineeId = GetTraineeIdFromClaims();
-                var result = await _practiceAttemptsService.GetPracticeAttemptsByPractice(traineeId, practiceId);
+                // Reuse the existing service method that filters by ActivityRecordId
+                var result = await _practiceAttemptsService.GetPracticeAttempts(traineeId, activityRecordId);
                 return Ok(result);
             }
             catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
@@ -133,19 +134,20 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Controllers
         }
 
         /// <summary>
-        /// Get all practice attempts for a specific trainee by practice ID.
+        /// Get all practice attempts for a specific trainee by activity record ID.
         /// Accessible only by Instructors and Admins.
         /// </summary>
         /// <param name="traineeId">Trainee ID</param>
-        /// <param name="practiceId">Practice ID</param>
-        /// <returns>List of all practice attempts for the specific practice</returns>
-        [HttpGet("by-practice/trainee")]
+        /// <param name="activityRecordId">Activity Record ID</param>
+        /// <returns>List of all practice attempts for the specific activity record</returns>
+        [HttpGet("by-activity-record/trainee")]
         [Authorize(Roles = "Instructor, Admin")]
-        public async Task<IActionResult> GetPracticeAttemptsByPracticeForInstructor([FromQuery] int traineeId, [FromQuery] int practiceId)
+        public async Task<IActionResult> GetPracticeAttemptsByActivityRecordForInstructor([FromQuery] int traineeId, [FromQuery] int activityRecordId)
         {
             try
             {
-                var result = await _practiceAttemptsService.GetPracticeAttemptsByPractice(traineeId, practiceId);
+                // Reuse the existing service method that filters by ActivityRecordId
+                var result = await _practiceAttemptsService.GetPracticeAttempts(traineeId, activityRecordId);
                 return Ok(result);
             }
             catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }

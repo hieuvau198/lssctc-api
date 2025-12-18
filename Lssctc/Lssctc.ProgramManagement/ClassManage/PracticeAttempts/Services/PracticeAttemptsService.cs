@@ -51,22 +51,7 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
             return (await MapToDtosWithFullTaskContextAsync(new[] { attempt })).FirstOrDefault();
         }
 
-        public async Task<IEnumerable<PracticeAttemptDto>> GetPracticeAttemptsByPractice(int traineeId, int practiceId)
-        {
-            var activityRecordIds = await _uow.ActivityRecordRepository.GetAllAsQueryable()
-               .Include(ar => ar.SectionRecord.LearningProgress.Enrollment)
-               .Where(ar => ar.SectionRecord.LearningProgress.Enrollment.TraineeId == traineeId)
-               .Select(ar => ar.Id).ToListAsync();
-
-            if (!activityRecordIds.Any()) return Enumerable.Empty<PracticeAttemptDto>();
-
-            var attempts = await _uow.PracticeAttemptRepository.GetAllAsQueryable().AsNoTracking()
-                .Include(pa => pa.PracticeAttemptTasks)
-                .Where(pa => activityRecordIds.Contains(pa.ActivityRecordId) && pa.PracticeId == practiceId && (pa.IsDeleted == false || pa.IsDeleted == null))
-                .OrderByDescending(pa => pa.AttemptDate).ToListAsync();
-
-            return await MapToDtosWithFullTaskContextAsync(attempts);
-        }
+        // REMOVED: GetPracticeAttemptsByPractice method has been removed as per requirement change.
 
         public async Task<PracticeAttemptDto?> GetPracticeAttemptById(int practiceAttemptId)
         {
