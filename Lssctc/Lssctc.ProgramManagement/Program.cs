@@ -165,6 +165,7 @@ builder.Services.AddScoped<IQuizService, QuizService>();
 builder.Services.AddScoped<IQuizValidator, QuizValidator>();
 builder.Services.AddScoped<IQuizExcelProcessor, QuizExcelProcessor>();
 builder.Services.AddScoped<IPracticesService, PracticesService>();
+builder.Services.AddScoped<ITraineePracticesService, TraineePracticesService>();
 builder.Services.AddScoped<ITasksService, TasksService>();
 
 builder.Services.AddScoped<IClassesService, ClassesService>();
