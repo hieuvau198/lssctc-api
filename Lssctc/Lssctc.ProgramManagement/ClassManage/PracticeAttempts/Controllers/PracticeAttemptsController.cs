@@ -38,11 +38,11 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Controllers
             }
             catch (UnauthorizedAccessException ex) { return Unauthorized(new { message = ex.Message }); }
             catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
-            catch (Exception ex) 
-            { 
+            catch (Exception ex)
+            {
                 Console.WriteLine($"Error: {ex.Message}");
                 Console.WriteLine($"StackTrace: {ex.StackTrace}");
-                return StatusCode(500, new { message = "An unexpected error occurred.", details = ex.Message }); 
+                return StatusCode(500, new { message = "An unexpected error occurred.", details = ex.Message });
             }
         }
 
@@ -57,9 +57,9 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Controllers
         [HttpGet("attempts/paged")]
         [Authorize(Roles = "Trainee, Admin")]
         public async Task<IActionResult> GetPracticeAttemptsPaged(
-            [FromQuery] int traineeId, 
-            [FromQuery] int activityRecordId, 
-            [FromQuery] int pageNumber = 1, 
+            [FromQuery] int traineeId,
+            [FromQuery] int activityRecordId,
+            [FromQuery] int pageNumber = 1,
             [FromQuery] int pageSize = 10)
         {
             try
@@ -69,11 +69,11 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Controllers
             }
             catch (UnauthorizedAccessException ex) { return Unauthorized(new { message = ex.Message }); }
             catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
-            catch (Exception ex) 
-            { 
+            catch (Exception ex)
+            {
                 Console.WriteLine($"Error: {ex.Message}");
                 Console.WriteLine($"StackTrace: {ex.StackTrace}");
-                return StatusCode(500, new { message = "An unexpected error occurred.", details = ex.Message }); 
+                return StatusCode(500, new { message = "An unexpected error occurred.", details = ex.Message });
             }
         }
 
@@ -96,23 +96,52 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Controllers
             }
             catch (UnauthorizedAccessException ex) { return Unauthorized(new { message = ex.Message }); }
             catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
-            catch (Exception ex) 
-            { 
+            catch (Exception ex)
+            {
                 Console.WriteLine($"Error: {ex.Message}");
                 Console.WriteLine($"StackTrace: {ex.StackTrace}");
-                return StatusCode(500, new { message = "An unexpected error occurred.", details = ex.Message }); 
+                return StatusCode(500, new { message = "An unexpected error occurred.", details = ex.Message });
+            }
+        }
+
+        // --- REFACTORED METHODS START ---
+
+        /// <summary>
+        /// Get all practice attempts for the current logged-in trainee by practice ID.
+        /// Trainee ID is retrieved from the token.
+        /// </summary>
+        /// <param name="practiceId">Practice ID</param>
+        /// <returns>List of all practice attempts for the specific practice</returns>
+        [HttpGet("by-practice/me")]
+        [Authorize(Roles = "Trainee")]
+        public async Task<IActionResult> GetMyPracticeAttemptsByPractice([FromQuery] int practiceId)
+        {
+            try
+            {
+                var traineeId = GetTraineeIdFromClaims();
+                var result = await _practiceAttemptsService.GetPracticeAttemptsByPractice(traineeId, practiceId);
+                return Ok(result);
+            }
+            catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+            catch (UnauthorizedAccessException ex) { return Unauthorized(new { message = ex.Message }); }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error: {ex.Message}");
+                Console.WriteLine($"StackTrace: {ex.StackTrace}");
+                return StatusCode(500, new { message = "An unexpected error occurred.", details = ex.Message });
             }
         }
 
         /// <summary>
-        /// Get all practice attempts for a trainee by practice ID
+        /// Get all practice attempts for a specific trainee by practice ID.
+        /// Accessible only by Instructors and Admins.
         /// </summary>
         /// <param name="traineeId">Trainee ID</param>
         /// <param name="practiceId">Practice ID</param>
         /// <returns>List of all practice attempts for the specific practice</returns>
-        [HttpGet("by-practice")]
-        [Authorize(Roles = "Trainee, Admin")]
-        public async Task<IActionResult> GetPracticeAttemptsByPractice([FromQuery] int traineeId, [FromQuery] int practiceId)
+        [HttpGet("by-practice/trainee")]
+        [Authorize(Roles = "Instructor, Admin")]
+        public async Task<IActionResult> GetPracticeAttemptsByPracticeForInstructor([FromQuery] int traineeId, [FromQuery] int practiceId)
         {
             try
             {
@@ -120,13 +149,15 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Controllers
                 return Ok(result);
             }
             catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
-            catch (Exception ex) 
-            { 
+            catch (Exception ex)
+            {
                 Console.WriteLine($"Error: {ex.Message}");
                 Console.WriteLine($"StackTrace: {ex.StackTrace}");
-                return StatusCode(500, new { message = "An unexpected error occurred.", details = ex.Message }); 
+                return StatusCode(500, new { message = "An unexpected error occurred.", details = ex.Message });
             }
         }
+
+        // --- REFACTORED METHODS END ---
 
         /// <summary>
         /// Get practice attempts with pagination for a trainee by practice ID
@@ -139,9 +170,9 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Controllers
         [HttpGet("by-practice/paged")]
         [Authorize(Roles = "Trainee, Admin")]
         public async Task<IActionResult> GetPracticeAttemptsByPracticePaged(
-            [FromQuery] int traineeId, 
-            [FromQuery] int practiceId, 
-            [FromQuery] int pageNumber = 1, 
+            [FromQuery] int traineeId,
+            [FromQuery] int practiceId,
+            [FromQuery] int pageNumber = 1,
             [FromQuery] int pageSize = 10)
         {
             try
@@ -150,11 +181,11 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Controllers
                 return Ok(result);
             }
             catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
-            catch (Exception ex) 
-            { 
+            catch (Exception ex)
+            {
                 Console.WriteLine($"Error: {ex.Message}");
                 Console.WriteLine($"StackTrace: {ex.StackTrace}");
-                return StatusCode(500, new { message = "An unexpected error occurred.", details = ex.Message }); 
+                return StatusCode(500, new { message = "An unexpected error occurred.", details = ex.Message });
             }
         }
 
@@ -174,11 +205,11 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Controllers
                     return NotFound(new { message = "Practice attempt not found." });
                 return Ok(result);
             }
-            catch (Exception ex) 
-            { 
+            catch (Exception ex)
+            {
                 Console.WriteLine($"Error: {ex.Message}");
                 Console.WriteLine($"StackTrace: {ex.StackTrace}");
-                return StatusCode(500, new { message = "An unexpected error occurred.", details = ex.Message }); 
+                return StatusCode(500, new { message = "An unexpected error occurred.", details = ex.Message });
             }
         }
 
