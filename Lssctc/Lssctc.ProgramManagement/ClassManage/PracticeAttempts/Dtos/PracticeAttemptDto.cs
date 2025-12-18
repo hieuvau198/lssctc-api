@@ -31,12 +31,9 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Dtos
         public int PracticeAttemptId { get; set; }
         public int? TaskId { get; set; }
         public string? TaskCode { get; set; }
+        public string? TaskName { get; set; }
         public decimal? Score { get; set; }
-
-        // === ADDED FIELD ===
         public int? Mistakes { get; set; }
-        // ===================
-
         public string? Description { get; set; }
         public bool? IsPass { get; set; }
     }

@@ -2,7 +2,6 @@
 
 namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Dtos
 {
-    // --- Final Exam DTOs ---
     public class FinalExamDto
     {
         public int Id { get; set; }
@@ -14,6 +13,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Dtos
         public DateTime? CompleteTime { get; set; }
 
         public string? ExamCode { get; set; }
+        public string? Status { get; set; } // [ADDED] Status Name
 
         public List<FinalExamPartialDto> Partials { get; set; } = new List<FinalExamPartialDto>();
     }
@@ -28,6 +28,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Dtos
     {
         public bool? IsPass { get; set; }
         public decimal? TotalMarks { get; set; }
+        public int? Status { get; set; } // [ADDED] Allow status update
     }
 
     public class PracticeDto
@@ -197,10 +198,10 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Dtos
     public class QuizAnswerSubmissionDto
     {
         public int QuestionId { get; set; }
-        
+
         // Backward compatibility: single choice (optional)
         public int? OptionId { get; set; }
-        
+
         // New: multiple choice support (optional)
         public List<int>? OptionIds { get; set; }
     }

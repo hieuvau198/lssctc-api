@@ -4,10 +4,8 @@ using Lssctc.Share.Entities;
 using Lssctc.Share.Enums;
 using Lssctc.Share.Interfaces;
 using Microsoft.EntityFrameworkCore;
-using Newtonsoft.Json;
-using System;
-using System.Linq;
-using System.Threading;
+
+
 
 namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
 {
@@ -58,6 +56,19 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
         private string GetFinalExamPartialStatusName(int statusId)
         {
             return statusId switch { 0 => "NotYet", 1 => "Submitted", 2 => "Approved", _ => "Unknown" };
+        }
+
+        // [ADDED] Final Exam Status Name Helper
+        private string GetFinalExamStatusName(int statusId)
+        {
+            return statusId switch
+            {
+                1 => "NotYet",
+                2 => "Submitted",
+                3 => "Completed",
+                4 => "Cancelled",
+                _ => "Unknown"
+            };
         }
 
         #endregion
@@ -128,7 +139,8 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                         EnrollmentId = enrollment.Id,
                         IsPass = null,
                         TotalMarks = 0,
-                        CompleteTime = null
+                        CompleteTime = null,
+                        Status = (int)FinalExamStatusEnum.NotYet // [ADDED] Default Status
                     };
                     await _uow.FinalExamRepository.CreateAsync(finalExam);
                     await _uow.SaveChangesAsync(); // Save to generate Id
@@ -176,7 +188,8 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             var entity = new FinalExam
             {
                 EnrollmentId = dto.EnrollmentId,
-                TotalMarks = 0
+                TotalMarks = 0,
+                Status = (int)FinalExamStatusEnum.NotYet // [ADDED] Default
             };
             await _uow.FinalExamRepository.CreateAsync(entity);
             await _uow.SaveChangesAsync();
@@ -190,6 +203,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
 
             if (dto.IsPass.HasValue) entity.IsPass = dto.IsPass;
             if (dto.TotalMarks.HasValue) entity.TotalMarks = dto.TotalMarks;
+            if (dto.Status.HasValue) entity.Status = dto.Status.Value; // [ADDED] Update Status
 
             await _uow.FinalExamRepository.UpdateAsync(entity);
             await _uow.SaveChangesAsync();
@@ -607,7 +621,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                 .Include(p => p.FeSimulations).ThenInclude(s => s.Practice)
                 .Where(p => p.FinalExam.Enrollment.ClassId == classId &&
                             p.FinalExam.Enrollment.TraineeId == userId &&
-                            p.Type == 2) 
+                            p.Type == 2)
                 .ToListAsync();
 
             var practiceDtos = new List<SePracticeListDto>();
@@ -901,7 +915,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             }
             else
             {
-                
+
                 calculatedMarks = (decimal)dto.Marks;
             }
 
@@ -1000,27 +1014,27 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
 
             // 4. Prepare lookup structures for grading
             var questionsById = quiz.Questions.ToDictionary(q => q.Id);
-            
+
             // Map questionId -> Set of correct optionIds
             var correctOptionIdsByQuestion = new Dictionary<int, HashSet<int>>();
-            
+
             // Map questionId -> question score
             var questionScoreByQuestion = new Dictionary<int, decimal>();
-            
+
             foreach (var question in quiz.Questions)
             {
                 var correctOptionIds = question.Options
                     .Where(o => o.IsCorrect)
                     .Select(o => o.Id)
                     .ToHashSet();
-                
+
                 correctOptionIdsByQuestion[question.Id] = correctOptionIds;
                 questionScoreByQuestion[question.Id] = question.QuestionScore ?? 0m;
             }
 
             // Calculate total possible score from quiz (fallback: sum question scores if TotalScore is null)
             decimal totalPossible = quiz.TotalScore ?? quiz.Questions.Sum(q => q.QuestionScore ?? 0m);
-            
+
             if (totalPossible == 0)
             {
                 // Edge case: no score defined, treat as 10
@@ -1045,7 +1059,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
 
                     // Normalize answer: use OptionIds if provided, otherwise convert OptionId to list
                     HashSet<int> studentAnswerIds;
-                    
+
                     if (answer.OptionIds != null && answer.OptionIds.Any())
                     {
                         // Multiple choice answer provided
@@ -1075,28 +1089,28 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             }
 
             // 6. Normalize score to 0-10 scale
-            decimal marks = totalPossible > 0 
-                ? Math.Round((totalObtained / totalPossible) * 10m, 2) 
+            decimal marks = totalPossible > 0
+                ? Math.Round((totalObtained / totalPossible) * 10m, 2)
                 : 0m;
 
             // 7. Determine IsPass based on quiz PassScoreCriteria
             // Assumption: quiz.PassScoreCriteria is stored as a value on 0-10 scale (matching our normalized marks)
             // If PassScoreCriteria is stored as percentage (0-100), adjust accordingly
             bool isPass;
-            
+
             if (quiz.PassScoreCriteria.HasValue)
             {
                 // PassScoreCriteria interpretation:
                 // If it's >= 10, assume it's percentage (0-100) and convert to 0-10
                 // Otherwise, use directly as threshold on 0-10 scale
                 decimal passThreshold = quiz.PassScoreCriteria.Value;
-                
+
                 if (passThreshold > 10m)
                 {
                     // Stored as percentage (0-100), convert to 0-10
                     passThreshold = (passThreshold / 10m);
                 }
-                
+
                 isPass = marks >= passThreshold;
             }
             else
@@ -1167,6 +1181,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                 finalExam.FinalExamPartials.All(p => p.Status == (int)FinalExamPartialStatus.Approved || p.Status == (int)FinalExamPartialStatus.Submitted))
             {
                 finalExam.CompleteTime = DateTime.UtcNow;
+                finalExam.Status = (int)FinalExamStatusEnum.Completed; // [ADDED] Update Status to Completed
             }
         }
 
@@ -1317,6 +1332,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                 TotalMarks = entity.TotalMarks,
                 CompleteTime = entity.CompleteTime,
                 ExamCode = isInstructor ? entity.ExamCode : null,
+                Status = GetFinalExamStatusName(entity.Status), // [ADDED] Map Status
                 Partials = entity.FinalExamPartials?.Select(p => MapToPartialDto(p, isInstructor)).ToList() ?? new List<FinalExamPartialDto>()
             };
         }
@@ -1335,7 +1351,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                     {
                         Id = t.Id,
                         FeSimulationId = t.FeSimulationId,
-                        TaskCode = t.SimTask?.TaskCode, 
+                        TaskCode = t.SimTask?.TaskCode,
                         Name = t.Name ?? t.SimTask?.TaskName,
                         Description = t.Description,
                         IsPass = t.IsPass,

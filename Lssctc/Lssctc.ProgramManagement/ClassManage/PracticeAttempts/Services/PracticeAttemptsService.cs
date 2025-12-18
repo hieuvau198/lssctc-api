@@ -326,6 +326,7 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
                     {
                         var taskId = templateTask.TaskId;
                         var taskCode = templateTask.Task?.TaskCode;
+                        var taskName = templateTask.Task?.TaskName; // [ADDED] Get Name
 
                         if (existingTasksMap.TryGetValue(taskId, out var recordedTask))
                         {
@@ -335,6 +336,7 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
                                 PracticeAttemptId = recordedTask.PracticeAttemptId,
                                 TaskId = taskId,
                                 TaskCode = taskCode,
+                                TaskName = taskName, // [ADDED] Map Name
                                 Score = recordedTask.Score,
                                 Mistakes = recordedTask.Mistakes,
                                 Description = recordedTask.Description,
@@ -349,6 +351,7 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
                                 PracticeAttemptId = pa.Id,
                                 TaskId = taskId,
                                 TaskCode = taskCode,
+                                TaskName = taskName, // [ADDED] Map Name
                                 Score = 0,
                                 Description = "Not Attempted",
                                 IsPass = false
@@ -366,7 +369,8 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
                         Score = pat.Score,
                         Mistakes = pat.Mistakes,
                         Description = pat.Description,
-                        IsPass = pat.IsPass
+                        IsPass = pat.IsPass,
+                        // Task Name isn't easily available here without loading Practice/Tasks, keeping null or need additional query if required
                     }).ToList();
                 }
                 dtos.Add(dto);
