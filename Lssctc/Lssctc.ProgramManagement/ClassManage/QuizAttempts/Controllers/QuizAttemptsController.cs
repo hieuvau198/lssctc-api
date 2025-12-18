@@ -91,6 +91,21 @@ namespace Lssctc.ProgramManagement.ClassManage.QuizAttempts.Controllers
             catch (Exception) { return StatusCode(500, new { message = "An unexpected error occurred." }); }
         }
 
+        [HttpGet("trainee/{traineeId}/activity-record/{activityRecordId}")]
+        [Authorize(Roles = "Admin, Instructor")]
+        public async Task<IActionResult> GetTraineeQuizAttempts(int traineeId, int activityRecordId)
+        {
+            try
+            {
+                // Reusing the existing service method which takes traineeId as a parameter
+                var result = await _quizAttemptsService.GetQuizAttemptsAsync(traineeId, activityRecordId);
+                return Ok(result);
+            }
+            catch (UnauthorizedAccessException ex) { return Unauthorized(new { message = ex.Message }); }
+            catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+            catch (Exception) { return StatusCode(500, new { message = "An unexpected error occurred." }); }
+        }
+
         #endregion
 
         private int GetUserIdFromClaims()
