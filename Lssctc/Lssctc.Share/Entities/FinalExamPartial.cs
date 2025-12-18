@@ -29,6 +29,8 @@ public partial class FinalExamPartial
 
     public int? Status { get; set; }
 
+    public int TotalScore { get; set; }
+
     public virtual ICollection<FeSimulation> FeSimulations { get; set; } = new List<FeSimulation>();
 
     public virtual ICollection<FeTheory> FeTheories { get; set; } = new List<FeTheory>();

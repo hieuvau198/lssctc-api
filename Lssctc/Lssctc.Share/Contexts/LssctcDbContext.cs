@@ -64,6 +64,10 @@ public partial class LssctcDbContext : DbContext
 
     public virtual DbSet<FinalExamPartial> FinalExamPartials { get; set; }
 
+    public virtual DbSet<FinalExamPartialsTemplate> FinalExamPartialsTemplates { get; set; }
+
+    public virtual DbSet<FinalExamTemplate> FinalExamTemplates { get; set; }
+
     public virtual DbSet<Instructor> Instructors { get; set; }
 
     public virtual DbSet<InstructorFeedback> InstructorFeedbacks { get; set; }
@@ -788,12 +792,52 @@ public partial class LssctcDbContext : DbContext
                 .HasPrecision(0)
                 .HasColumnName("start_time");
             entity.Property(e => e.Status).HasColumnName("status");
+            entity.Property(e => e.TotalScore)
+                .HasDefaultValue(10)
+                .HasColumnName("total_score");
             entity.Property(e => e.Type).HasColumnName("type");
 
             entity.HasOne(d => d.FinalExam).WithMany(p => p.FinalExamPartials)
                 .HasForeignKey(d => d.FinalExamId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK__final_exa__final__2374309D");
+        });
+
+        modelBuilder.Entity<FinalExamPartialsTemplate>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__final_ex__3213E83F97053949");
+
+            entity.ToTable("final_exam_partials_templates");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.FinalExamTemplateId).HasColumnName("final_exam_template_id");
+            entity.Property(e => e.Type).HasColumnName("type");
+            entity.Property(e => e.Weight)
+                .HasColumnType("decimal(5, 2)")
+                .HasColumnName("weight");
+
+            entity.HasOne(d => d.FinalExamTemplate).WithMany(p => p.FinalExamPartialsTemplates)
+                .HasForeignKey(d => d.FinalExamTemplateId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_fe_partials_templates_exam_template");
+        });
+
+        modelBuilder.Entity<FinalExamTemplate>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__final_ex__3213E83F7361632A");
+
+            entity.ToTable("final_exam_templates");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.ClassId).HasColumnName("class_id");
+            entity.Property(e => e.Status)
+                .HasDefaultValue(1)
+                .HasColumnName("status");
+
+            entity.HasOne(d => d.Class).WithMany(p => p.FinalExamTemplates)
+                .HasForeignKey(d => d.ClassId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_final_exam_templates_classes");
         });
 
         modelBuilder.Entity<Instructor>(entity =>
