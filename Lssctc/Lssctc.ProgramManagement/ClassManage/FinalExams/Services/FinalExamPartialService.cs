@@ -463,11 +463,21 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
         public async Task<FinalExamDto> SubmitPeAsync(int partialId, SubmitPeDto dto)
         {
             var partial = await _uow.FinalExamPartialRepository.GetAllAsQueryable()
+                .Include(p => p.FinalExam) // Include FinalExam to access EnrollmentId
                 .Include(p => p.PeChecklists)
                 .FirstOrDefaultAsync(p => p.Id == partialId);
 
             if (partial == null) throw new KeyNotFoundException("Partial not found.");
             if (partial.Type != 3) throw new ArgumentException("Not a Practical Exam.");
+
+            // Check if Learning Progress is completed
+            var learningProgress = await _uow.LearningProgressRepository.GetAllAsQueryable()
+                .FirstOrDefaultAsync(lp => lp.EnrollmentId == partial.FinalExam.EnrollmentId);
+
+            if (learningProgress == null || learningProgress.Status != (int)LearningProgressStatusEnum.Completed)
+            {
+                throw new InvalidOperationException("Learning progress must be completed before submitting the Practical Exam.");
+            }
 
             int passCount = 0;
             int totalCount = partial.PeChecklists.Count;
