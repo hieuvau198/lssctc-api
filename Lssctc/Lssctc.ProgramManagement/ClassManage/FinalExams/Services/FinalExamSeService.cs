@@ -247,10 +247,6 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
 
             await _finalExamsService.RecalculateFinalExamScore(partial.FinalExamId);
 
-            return await _finalExamsService.GetFinalExamByIdAsync(partialId).ContinueWith(t => new FinalExamPartialDto()); // Logic adjust needed if we want partial DTO, but original called GetFinalExamPartialByIdAsync. I'll call local method.
-            // Original code: return await GetFinalExamPartialByIdAsync(partialId);
-            // Since this method is now in another service (PartialService), we can't easily call it without adding PartialService dependency (circular).
-            // But we can map it here.
             return MapToPartialDto(partial, false);
         }
 
@@ -352,6 +348,15 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
 
             if (partial == null) throw new KeyNotFoundException("Partial exam not found.");
             if (partial.FinalExam.Enrollment.TraineeId != userId) throw new UnauthorizedAccessException("This exam does not belong to the current user.");
+
+            var learningProgress = await _uow.LearningProgressRepository.GetAllAsQueryable()
+                .FirstOrDefaultAsync(lp => lp.EnrollmentId == partial.FinalExam.EnrollmentId);
+
+            if (learningProgress == null || learningProgress.Status != (int)LearningProgressStatusEnum.Completed)
+            {
+                throw new InvalidOperationException("Learning progress must be completed before taking the Simulation Exam.");
+            }
+
             return partial;
         }
 
