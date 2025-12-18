@@ -128,9 +128,11 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
         {
             int typeId = ParseExamType(dto.Type);
 
+            // --- Validation 1: Check Class Existence ---
             var classExists = await _uow.ClassRepository.ExistsAsync(c => c.Id == dto.ClassId);
             if (!classExists) throw new KeyNotFoundException($"Class with ID {dto.ClassId} not found.");
 
+            // --- Validation 2: Check TE/SE Links Existence ---
             if (typeId == 1 && dto.QuizId.HasValue)
             {
                 var quizExists = await _uow.QuizRepository.ExistsAsync(q => q.Id == dto.QuizId.Value);
@@ -142,16 +144,18 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                 if (!practiceExists) throw new KeyNotFoundException($"Practice/Simulation with ID {dto.PracticeId.Value} not found for Simulation Exam configuration.");
             }
 
+            // --- Validation 3: Check PE Checklist Configuration (MANDATORY) ---
+            // [UPDATED] Check strictly ensures checklist is present and not empty for PE
             if (typeId == 3 && (dto.ChecklistConfig == null || !dto.ChecklistConfig.Any()))
             {
-                throw new ArgumentException("PE checklist configuration is required when updating Practical Exam type.");
+                throw new ArgumentException("Checklist configuration cannot be empty when updating Practical Exam (PE).");
             }
 
             var partials = await _uow.FinalExamPartialRepository.GetAllAsQueryable()
                 .Where(p => p.FinalExam.Enrollment.ClassId == dto.ClassId && p.Type == typeId)
                 .Include(p => p.FeTheories)
                 .Include(p => p.FeSimulations)
-                .Include(p => p.PeChecklists)
+                .Include(p => p.PeChecklists) // Include current checklists to remove them
                 .ToListAsync();
 
             if (!partials.Any())
@@ -159,12 +163,14 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
 
             foreach (var p in partials)
             {
+                // Update basic config
                 if (dto.ExamWeight.HasValue) p.ExamWeight = dto.ExamWeight;
                 if (dto.Duration.HasValue) p.Duration = dto.Duration;
 
                 if (dto.StartTime.HasValue) p.StartTime = dto.StartTime.Value.AddHours(-7);
                 if (dto.EndTime.HasValue) p.EndTime = dto.EndTime.Value.AddHours(-7);
 
+                // Update Links (Theory/Simulation)
                 if (typeId == 1 && dto.QuizId.HasValue)
                 {
                     var theory = p.FeTheories.FirstOrDefault();
@@ -177,13 +183,21 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                     if (sim != null) { sim.PracticeId = dto.PracticeId.Value; await _uow.FeSimulationRepository.UpdateAsync(sim); }
                     else { await _uow.FeSimulationRepository.CreateAsync(new FeSimulation { FinalExamPartialId = p.Id, PracticeId = dto.PracticeId.Value }); }
                 }
+
+                // [UPDATED] Practical Exam (PE) Checklist Entity Update
+                // Logic strictly executes because of the validation above
                 else if (typeId == 3 && dto.ChecklistConfig != null)
                 {
-                    foreach (var oldChecklist in p.PeChecklists.ToList())
+                    // 1. Remove old checklists (Resetting template)
+                    if (p.PeChecklists != null)
                     {
-                        _uow.GetDbContext().Set<PeChecklist>().Remove(oldChecklist);
+                        foreach (var oldChecklist in p.PeChecklists.ToList())
+                        {
+                            _uow.GetDbContext().Set<PeChecklist>().Remove(oldChecklist);
+                        }
                     }
 
+                    // 2. Add new checklists from config
                     foreach (var item in dto.ChecklistConfig)
                     {
                         var newChecklist = new PeChecklist
@@ -191,7 +205,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                             FinalExamPartialId = p.Id,
                             Name = item.Name,
                             Description = item.Description,
-                            IsPass = null
+                            IsPass = null // Reset status
                         };
                         _uow.GetDbContext().Set<PeChecklist>().Add(newChecklist);
                     }

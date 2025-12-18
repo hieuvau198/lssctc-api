@@ -37,19 +37,30 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Controllers
             throw new UnauthorizedAccessException("User ID claim is missing or invalid.");
         }
 
+        #region FinalExam (Admin/Instructor)
+
         [HttpPost]
         [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> CreateFinalExam([FromBody] CreateFinalExamDto dto)
         {
-            var result = await _finalExamsService.CreateFinalExamAsync(dto);
-            return CreatedAtAction(nameof(GetFinalExam), new { id = result.Id }, result);
+            try
+            {
+                var result = await _finalExamsService.CreateFinalExamAsync(dto);
+                return CreatedAtAction(nameof(GetFinalExam), new { id = result.Id }, result);
+            }
+            catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
+            catch (Exception ex) { return StatusCode(500, new { message = ex.Message }); }
         }
 
         [HttpGet("{id}")]
         public async Task<IActionResult> GetFinalExam(int id)
         {
-            try { return Ok(await _finalExamsService.GetFinalExamByIdAsync(id)); }
+            try
+            {
+                return Ok(await _finalExamsService.GetFinalExamByIdAsync(id));
+            }
             catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+            catch (Exception ex) { return StatusCode(500, new { message = ex.Message }); }
         }
 
         [HttpGet("partial/{partialId}")]
@@ -61,38 +72,57 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Controllers
                 return Ok(await _partialService.GetFinalExamPartialByIdAsync(partialId));
             }
             catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+            catch (Exception ex) { return StatusCode(500, new { message = ex.Message }); }
         }
 
         [HttpGet("class/{classId}")]
         [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> GetByClassForInstructor(int classId)
         {
-            var result = await _finalExamsService.GetFinalExamsByClassAsync(classId);
-            return Ok(result);
+            try
+            {
+                var result = await _finalExamsService.GetFinalExamsByClassAsync(classId);
+                return Ok(result);
+            }
+            catch (Exception ex) { return StatusCode(500, new { message = ex.Message }); }
         }
 
         [HttpPut("{id}")]
         [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> UpdateFinalExam(int id, [FromBody] UpdateFinalExamDto dto)
         {
-            try { return Ok(await _finalExamsService.UpdateFinalExamAsync(id, dto)); }
+            try
+            {
+                return Ok(await _finalExamsService.UpdateFinalExamAsync(id, dto));
+            }
             catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+            catch (Exception ex) { return StatusCode(500, new { message = ex.Message }); }
         }
 
         [HttpGet("class/{classId}/config")]
         [Authorize]
         public async Task<IActionResult> GetClassExamConfig(int classId)
         {
-            var result = await _partialService.GetClassExamConfigAsync(classId);
-            return Ok(result);
+            try
+            {
+                var result = await _partialService.GetClassExamConfigAsync(classId);
+                return Ok(result);
+            }
+            catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+            catch (Exception ex) { return StatusCode(500, new { message = ex.Message }); }
         }
 
         [HttpDelete("{id}")]
         [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> DeleteFinalExam(int id)
         {
-            await _finalExamsService.DeleteFinalExamAsync(id);
-            return NoContent();
+            try
+            {
+                await _finalExamsService.DeleteFinalExamAsync(id);
+                return NoContent();
+            }
+            catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+            catch (Exception ex) { return StatusCode(500, new { message = ex.Message }); }
         }
 
         [HttpPost("{id}/generate-code")]
@@ -105,15 +135,25 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Controllers
                 return Ok(new { examCode = code });
             }
             catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+            catch (Exception ex) { return StatusCode(500, new { message = ex.Message }); }
         }
 
         [HttpPost("class/{classId}/finish")]
         [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> FinishClassExam(int classId)
         {
-            await _finalExamsService.FinishFinalExamAsync(classId);
-            return Ok(new { message = "Class exams finalized." });
+            try
+            {
+                await _finalExamsService.FinishFinalExamAsync(classId);
+                return Ok(new { message = "Class exams finalized." });
+            }
+            catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+            catch (Exception ex) { return StatusCode(500, new { message = ex.Message }); }
         }
+
+        #endregion
+
+        #region Trainee View
 
         [HttpGet("my-history")]
         [Authorize(Roles = "Trainee")]
@@ -125,10 +165,8 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Controllers
                 var result = await _finalExamsService.GetFinalExamsByTraineeAsync(userId);
                 return Ok(result);
             }
-            catch (UnauthorizedAccessException)
-            {
-                return Unauthorized();
-            }
+            catch (UnauthorizedAccessException ex) { return Unauthorized(new { message = ex.Message }); }
+            catch (Exception ex) { return StatusCode(500, new { message = ex.Message }); }
         }
 
         [HttpGet("class/{classId}/my-exam")]
@@ -142,139 +180,121 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Controllers
                 if (result == null) return NotFound(new { message = "Exam not found for this class." });
                 return Ok(result);
             }
-            catch (UnauthorizedAccessException)
-            {
-                return Unauthorized();
-            }
+            catch (UnauthorizedAccessException ex) { return Unauthorized(new { message = ex.Message }); }
+            catch (Exception ex) { return StatusCode(500, new { message = ex.Message }); }
         }
 
         [HttpGet("class/{classId}/my-final-se-practices")]
         [Authorize(Roles = "Trainee")]
         public async Task<IActionResult> GetMySimulationExamPractices(int classId)
         {
-            int userId;
-            try { userId = GetUserIdFromClaims(); }
-            catch (UnauthorizedAccessException) { return Unauthorized(); }
-
             try
             {
+                var userId = GetUserIdFromClaims();
                 var result = await _seService.GetMySimulationExamPartialsByClassAsync(classId, userId);
                 return Ok(result);
             }
             catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
-            catch (UnauthorizedAccessException) { return Forbid(); }
+            catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
+            catch (Exception ex) { return StatusCode(500, new { message = ex.Message }); }
         }
 
         [HttpPost("partial/{partialId}/validate-se-code")]
         [Authorize(Roles = "Trainee")]
         public async Task<IActionResult> ValidateSeCodeAndStartSe(int partialId, [FromBody] ValidateExamCodeDto dto)
         {
-            int userId;
-            try { userId = GetUserIdFromClaims(); }
-            catch (UnauthorizedAccessException) { return Unauthorized(); }
-
             try
             {
+                var userId = GetUserIdFromClaims();
                 var result = await _seService.ValidateSeCodeAndStartSimulationExamAsync(partialId, dto.ExamCode, userId);
                 return Ok(result);
             }
             catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
-            catch (UnauthorizedAccessException) { return Unauthorized(new { message = "Invalid Exam Code or Exam does not belong to user." }); }
-            catch (Exception ex) { return BadRequest(new { message = ex.Message }); }
+            catch (UnauthorizedAccessException ex) { return Unauthorized(new { message = ex.Message }); }
+            catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
+            catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
+            catch (Exception ex) { return StatusCode(500, new { message = ex.Message }); }
         }
 
         [HttpGet("partial/{partialId}/my-detail")]
         [Authorize(Roles = "Trainee")]
         public async Task<IActionResult> GetMyPartialDetail(int partialId)
         {
-            int userId;
             try
             {
-                userId = GetUserIdFromClaims();
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return Unauthorized();
-            }
-
-            try
-            {
+                var userId = GetUserIdFromClaims();
                 var result = await _partialService.GetFinalExamPartialByIdForTraineeAsync(partialId, userId);
                 return Ok(result);
             }
             catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
-            catch (UnauthorizedAccessException) { return Forbid(); }
+            catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
+            catch (Exception ex) { return StatusCode(500, new { message = ex.Message }); }
         }
 
         [HttpPost("partial/{partialId}/start-te")]
         [Authorize(Roles = "Trainee")]
         public async Task<IActionResult> StartTe(int partialId, [FromBody] GetTeQuizRequestDto request)
         {
-            int userId;
             try
             {
-                userId = GetUserIdFromClaims();
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return Unauthorized();
-            }
-
-            try
-            {
+                var userId = GetUserIdFromClaims();
                 var quizContent = await _partialService.GetTeQuizContentAsync(partialId, request.ExamCode, userId);
                 return Ok(quizContent);
             }
-            catch (UnauthorizedAccessException) { return Unauthorized(new { message = "Invalid Exam Code or Exam does not belong to user." }); }
+            catch (UnauthorizedAccessException ex) { return Unauthorized(new { message = ex.Message }); }
             catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
             catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
+            catch (Exception ex) { return StatusCode(500, new { message = ex.Message }); }
         }
 
         [HttpPost("partial/{partialId}/start-se")]
         [Authorize(Roles = "Trainee")]
         public async Task<IActionResult> StartSe(int partialId)
         {
-            int userId;
             try
             {
-                userId = GetUserIdFromClaims();
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return Unauthorized();
-            }
-
-            try
-            {
+                var userId = GetUserIdFromClaims();
                 var result = await _seService.StartSimulationExamAsync(partialId, userId);
                 return Ok(result);
             }
-            catch (Exception ex) { return BadRequest(new { message = ex.Message }); }
+            catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+            catch (UnauthorizedAccessException ex) { return Unauthorized(new { message = ex.Message }); }
+            catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
+            catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
+            catch (Exception ex) { return StatusCode(500, new { message = ex.Message }); }
         }
 
         [HttpGet("partial/{partialId}/my-pe-submission")]
         [Authorize(Roles = "Trainee")]
         public async Task<IActionResult> GetMyPeSubmission(int partialId)
         {
-            int userId;
-            try { userId = GetUserIdFromClaims(); }
-            catch (UnauthorizedAccessException) { return Unauthorized(); }
-
             try
             {
+                var userId = GetUserIdFromClaims();
                 var checklist = await _partialService.GetPeSubmissionChecklistForTraineeAsync(partialId, userId);
                 return Ok(checklist);
             }
             catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
-            catch (UnauthorizedAccessException) { return Forbid(); }
-            catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
+            catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
+            catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
+            catch (Exception ex) { return StatusCode(500, new { message = ex.Message }); }
         }
+
+        #endregion
+
+        #region Partials Config
 
         [HttpPost("partial")]
         [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> CreatePartial([FromBody] CreateFinalExamPartialDto dto)
         {
-            return Ok(await _partialService.CreateFinalExamPartialAsync(dto));
+            try
+            {
+                return Ok(await _partialService.CreateFinalExamPartialAsync(dto));
+            }
+            catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+            catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
+            catch (Exception ex) { return StatusCode(500, new { message = ex.Message }); }
         }
 
         [HttpPost("class-partial")]
@@ -286,143 +306,145 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Controllers
                 var result = await _partialService.CreatePartialsForClassAsync(dto);
                 return Ok(new { message = $"Successfully added {dto.Type} exam to {result.Count()} students.", data = result });
             }
-            catch (Exception ex) { return BadRequest(new { message = ex.Message }); }
+            catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+            catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
+            catch (Exception ex) { return StatusCode(500, new { message = ex.Message }); }
         }
 
         [HttpPut("class-partial-config")]
         [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> UpdateClassPartialConfig([FromBody] UpdateClassPartialConfigDto dto)
         {
-            await _partialService.UpdatePartialsConfigForClassAsync(dto);
-            return Ok(new { message = "Updated partial configuration and checklist templates for the class." });
+            try
+            {
+                await _partialService.UpdatePartialsConfigForClassAsync(dto);
+                return Ok(new { message = "Updated partial configuration and checklist templates for the class." });
+            }
+            catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+            catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
+            catch (Exception ex) { return StatusCode(500, new { message = ex.Message }); }
         }
 
         [HttpPut("partial/{id}")]
         [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> UpdatePartial(int id, [FromBody] UpdateFinalExamPartialDto dto)
         {
-            try { return Ok(await _partialService.UpdateFinalExamPartialAsync(id, dto)); }
+            try
+            {
+                return Ok(await _partialService.UpdateFinalExamPartialAsync(id, dto));
+            }
             catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+            catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
+            catch (Exception ex) { return StatusCode(500, new { message = ex.Message }); }
         }
 
         [HttpDelete("partial/{id}")]
         [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> DeletePartial(int id)
         {
-            await _partialService.DeleteFinalExamPartialAsync(id);
-            return NoContent();
+            try
+            {
+                await _partialService.DeleteFinalExamPartialAsync(id);
+                return NoContent();
+            }
+            catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+            catch (Exception ex) { return StatusCode(500, new { message = ex.Message }); }
         }
 
         [HttpPost("partial/{id}/allow-retake")]
         [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> AllowRetake(int id, [FromBody] AllowRetakeDto dto)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+            if (!ModelState.IsValid) return BadRequest(ModelState);
 
             try
             {
                 var result = await _partialService.AllowPartialRetakeAsync(id, dto.Note);
                 return Ok(result);
             }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new { message = ex.Message });
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = ex.Message });
-            }
+            catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+            catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
+            catch (Exception ex) { return StatusCode(500, new { message = ex.Message }); }
         }
+
+        #endregion
+
+        #region Submissions
 
         [HttpPost("submit/se-task/{partialId}")]
         [Authorize(Roles = "Trainee")]
         public async Task<IActionResult> SubmitSeTask(int partialId, [FromBody] SubmitSeTaskDto dto)
         {
-            int userId;
-            try { userId = GetUserIdFromClaims(); }
-            catch (UnauthorizedAccessException) { return Unauthorized(); }
-
             try
             {
+                var userId = GetUserIdFromClaims();
                 return Ok(await _seService.SubmitSeTaskByCodeAsync(partialId, dto.TaskCode, userId, dto));
             }
+            catch (UnauthorizedAccessException ex) { return Unauthorized(new { message = ex.Message }); }
             catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
             catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
-            catch (Exception ex) { return BadRequest(new { message = ex.Message }); }
+            catch (Exception ex) { return StatusCode(500, new { message = ex.Message }); }
         }
 
         [HttpPost("submit/se-final/{partialId}")]
         [Authorize(Roles = "Trainee")]
         public async Task<IActionResult> SubmitSeFinal(int partialId, [FromBody] SubmitSeFinalDto dto)
         {
-            int userId;
-            try { userId = GetUserIdFromClaims(); }
-            catch (UnauthorizedAccessException) { return Unauthorized(); }
-
-            try { return Ok(await _seService.SubmitSeFinalAsync(partialId, userId, dto)); }
-            catch (Exception ex) { return BadRequest(new { message = ex.Message }); }
+            try
+            {
+                var userId = GetUserIdFromClaims();
+                return Ok(await _seService.SubmitSeFinalAsync(partialId, userId, dto));
+            }
+            catch (UnauthorizedAccessException ex) { return Unauthorized(new { message = ex.Message }); }
+            catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+            catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
+            catch (Exception ex) { return StatusCode(500, new { message = ex.Message }); }
         }
 
         [HttpPost("submit/pe/{partialId}")]
         [Authorize(Roles = "Admin, Instructor")]
         public async Task<IActionResult> SubmitPe(int partialId, [FromBody] SubmitPeDto dto)
         {
-            try { return Ok(await _partialService.SubmitPeAsync(partialId, dto)); }
-            catch (Exception ex) { return BadRequest(new { message = ex.Message }); }
+            try
+            {
+                return Ok(await _partialService.SubmitPeAsync(partialId, dto));
+            }
+            catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+            catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
+            catch (Exception ex) { return StatusCode(500, new { message = ex.Message }); }
         }
 
         [HttpPost("submit/te/{partialId}")]
         [Authorize(Roles = "Trainee")]
         public async Task<IActionResult> SubmitTe(int partialId, [FromBody] SubmitTeDto dto)
         {
-            int userId;
             try
             {
-                userId = GetUserIdFromClaims();
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return Unauthorized(new { message = "User ID not found in token." });
-            }
-
-            try
-            {
+                var userId = GetUserIdFromClaims();
                 var result = await _partialService.SubmitTeAsync(partialId, userId, dto);
                 return Ok(result);
             }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new { message = ex.Message });
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return Forbid();
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = "An error occurred while processing the submission.", detail = ex.Message });
-            }
+            catch (UnauthorizedAccessException) { return Forbid(); }
+            catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+            catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
+            catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
+            catch (Exception ex) { return StatusCode(500, new { message = "An error occurred.", detail = ex.Message }); }
         }
 
         [HttpPost("submit/se/{partialId}")]
         public async Task<IActionResult> SubmitSe(int partialId, [FromBody] SubmitSeDto dto)
         {
-            try { return Ok(await _seService.SubmitSeAsync(partialId, dto)); }
-            catch (Exception ex) { return BadRequest(new { message = ex.Message }); }
+            try
+            {
+                return Ok(await _seService.SubmitSeAsync(partialId, dto));
+            }
+            catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+            catch (Exception ex) { return StatusCode(500, new { message = ex.Message }); }
         }
+
+        #endregion
+
+        #region Simulation Exam Tracking
 
         [HttpGet("simulation-detail/{partialId}")]
         [Authorize]
@@ -437,6 +459,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Controllers
             }
             catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
             catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
+            catch (Exception ex) { return StatusCode(500, new { message = ex.Message }); }
         }
 
         [HttpGet("class/{classId}/simulation-results")]
@@ -449,10 +472,9 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Controllers
                 var result = await _seService.GetClassSimulationResultsAsync(classId);
                 return Ok(result);
             }
-            catch (Exception ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
+            catch (Exception ex) { return StatusCode(500, new { message = ex.Message }); }
         }
+
+        #endregion
     }
 }
