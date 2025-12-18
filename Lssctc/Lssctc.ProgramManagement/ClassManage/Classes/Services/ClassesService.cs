@@ -1,6 +1,8 @@
 ﻿using Lssctc.ProgramManagement.Accounts.Authens.Services;
 using Lssctc.ProgramManagement.Activities.Services;
+using Lssctc.ProgramManagement.Certificates.Services;
 using Lssctc.ProgramManagement.ClassManage.Classes.Dtos;
+using Lssctc.ProgramManagement.ClassManage.Enrollments.Services;
 using Lssctc.ProgramManagement.ClassManage.FinalExams.Services;
 using Lssctc.ProgramManagement.ClassManage.Helpers;
 using Lssctc.ProgramManagement.ClassManage.Timeslots.Services;
@@ -22,6 +24,8 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
         private readonly ITimeslotService _timeslotService;
         private readonly IActivitySessionService _activitySessionService;
         private readonly IFinalExamsService _finalExamsService;
+        private readonly IEnrollmentsService _enrollmentsService;
+        private readonly ITraineeCertificatesService _traineeCertificatesService;
 
         private const int VietnamTimeZoneOffset = 7;
 
@@ -30,12 +34,16 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
             IMailService mailService,
             ITimeslotService timeslotService,
             IActivitySessionService activitySessionService,
-            IFinalExamsService finalExamsService)
+            IFinalExamsService finalExamsService,
+            IEnrollmentsService enrollmentsService,
+            ITraineeCertificatesService traineeCertificatesService)
         {
             _uow = uow;
             _timeslotService = timeslotService;
             _activitySessionService = activitySessionService;
             _finalExamsService = finalExamsService;
+            _enrollmentsService = enrollmentsService;
+            _traineeCertificatesService = traineeCertificatesService;
 
             // Instantiate Handlers
             _handler = new ClassManageHandler(uow);
@@ -82,7 +90,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
                 );
             }
 
-            // Sorting logic omitted for brevity, identical to previous version but shorter
+            // Sorting logic
             if (!string.IsNullOrWhiteSpace(sortBy))
             {
                 bool isDesc = sortDirection?.ToLower() == "desc";
@@ -229,13 +237,86 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
 
         public async Task CompleteClassAsync(int id)
         {
-            var existing = await _uow.ClassRepository.GetByIdAsync(id);
-            if (existing == null) throw new KeyNotFoundException($"Class with ID {id} not found.");
-            if (existing.Status != (int)ClassStatusEnum.Inprogress) throw new InvalidOperationException("Only 'Inprogress' classes can be completed.");
+            // 1. Validate Class
+            var existingClass = await _uow.ClassRepository.GetByIdAsync(id);
+            if (existingClass == null)
+                throw new KeyNotFoundException($"Class with ID {id} not found.");
+            if (existingClass.Status != (int)ClassStatusEnum.Inprogress)
+                throw new InvalidOperationException("Only 'Inprogress' classes can be completed.");
 
-            existing.Status = (int)ClassStatusEnum.Completed;
-            await _uow.ClassRepository.UpdateAsync(existing);
+            // 2. Validate Final Exams Status
+            // Get all final exams for this class via enrollments
+            var finalExams = await _uow.FinalExamRepository.GetAllAsQueryable()
+                .Include(fe => fe.Enrollment)
+                .Where(fe => fe.Enrollment.ClassId == id)
+                .ToListAsync();
+
+            bool allExamsResolved = finalExams.All(fe =>
+                fe.Status == (int)FinalExamStatusEnum.Completed ||
+                fe.Status == (int)FinalExamStatusEnum.Cancelled);
+
+            if (!allExamsResolved)
+                throw new InvalidOperationException("Cannot complete class. All Final Exams must be either Completed or Cancelled.");
+
+            // 3. Update Enrollments
+            var enrollments = await _uow.EnrollmentRepository.GetAllAsQueryable()
+                .Where(e => e.ClassId == id)
+                .Include(e => e.FinalExams)
+                .ToListAsync();
+
+            var enrollmentsToUpdate = new List<Enrollment>();
+
+            foreach (var enrollment in enrollments)
+            {
+                // Status Inprogress -> Check Exam Result
+                if (enrollment.Status == (int)EnrollmentStatusEnum.Inprogress)
+                {
+                    // Find the relevant final exam (assuming the latest one if multiple exist)
+                    var finalExam = enrollment.FinalExams
+                        .OrderByDescending(fe => fe.Id)
+                        .FirstOrDefault();
+
+                    if (finalExam != null && finalExam.IsPass == true)
+                    {
+                        enrollment.Status = (int)EnrollmentStatusEnum.Completed;
+                    }
+                    else
+                    {
+                        // If IsPass is false OR null, or no exam found, they fail
+                        enrollment.Status = (int)EnrollmentStatusEnum.Failed;
+                    }
+                    enrollmentsToUpdate.Add(enrollment);
+                }
+                // Ignored Statuses
+                else if (enrollment.Status == (int)EnrollmentStatusEnum.Cancelled ||
+                         enrollment.Status == (int)EnrollmentStatusEnum.Rejected ||
+                         enrollment.Status == (int)EnrollmentStatusEnum.Completed ||
+                         enrollment.Status == (int)EnrollmentStatusEnum.Failed)
+                {
+                    // Unchanged
+                    continue;
+                }
+                // Other Statuses (e.g. Pending, Enrolled) -> Cancelled
+                else
+                {
+                    enrollment.Status = (int)EnrollmentStatusEnum.Cancelled;
+                    enrollmentsToUpdate.Add(enrollment);
+                }
+            }
+
+            // Batch update enrollments using EnrollmentService
+            if (enrollmentsToUpdate.Any())
+            {
+                await _enrollmentsService.UpdateEnrollmentsAsync(enrollmentsToUpdate);
+            }
+
+            // 4. Update Class Status
+            existingClass.Status = (int)ClassStatusEnum.Completed;
+            await _uow.ClassRepository.UpdateAsync(existingClass);
             await _uow.SaveChangesAsync();
+
+            // 5. Generate Certificates
+            await _traineeCertificatesService.CreateTraineeCertificatesForCompleteClass(id);
         }
 
         public async Task CancelClassAsync(int id)
