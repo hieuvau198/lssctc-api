@@ -141,28 +141,8 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                 await _uow.FinalExamTemplateRepository.UpdateAsync(template);
             }
 
-            // 2. Conclude and Calculate Student Exams
-            var exams = await _uow.FinalExamRepository.GetAllAsQueryable()
-                .Include(fe => fe.FinalExamPartials)
-                .Where(fe => fe.Enrollment.ClassId == classId)
-                .ToListAsync();
-
-            foreach (var exam in exams)
-            {
-                // Calculate scores based on current partials
-                RecalculateFinalExamScoreInternal(exam);
-
-                // Force status to Completed as the class exam is being finished by instructor
-                exam.Status = (int)FinalExamStatusEnum.Completed;
-
-                if (!exam.CompleteTime.HasValue)
-                {
-                    exam.CompleteTime = DateTime.UtcNow;
-                }
-
-                await _uow.FinalExamRepository.UpdateAsync(exam);
-            }
-            await _uow.SaveChangesAsync();
+            // 2. Call Helper to Calculate and Finalize Exams
+            await FEHelper.CalculateFinalExamResultAsync(_uow, classId);
         }
 
         public async Task RecalculateFinalExamScore(int finalExamId)
