@@ -66,27 +66,10 @@ namespace Lssctc.ProgramManagement.ClassManage.Helpers
         public async Task AutoCompleteLearningProgress(int classId)
         {
             // 1. Fetch Class and Course Structure
-            var classInfo = await _context.Classes
-                .Include(c => c.ProgramCourse)
-                    .ThenInclude(pc => pc.Course)
-                        .ThenInclude(co => co.CourseSections)
-                            .ThenInclude(cs => cs.Section)
-                                .ThenInclude(s => s.SectionActivities)
-                                    .ThenInclude(sa => sa.Activity)
-                                        .ThenInclude(a => a.ActivityQuizzes) // To get QuizId
-             .Include(c => c.ProgramCourse)
-                    .ThenInclude(pc => pc.Course)
-                        .ThenInclude(co => co.CourseSections)
-                            .ThenInclude(cs => cs.Section)
-                                .ThenInclude(s => s.SectionActivities)
-                                    .ThenInclude(sa => sa.Activity)
-                                        .ThenInclude(a => a.ActivityPractices) // To get PracticeId
-                .FirstOrDefaultAsync(c => c.Id == classId);
-
-            if (classInfo == null) return;
+            var classInfo = await GetClassWithCourseStructureAsync(classId);
+            if (classInfo == null || classInfo.ProgramCourse?.Course == null) return;
 
             var course = classInfo.ProgramCourse.Course;
-            if (course == null) return;
 
             // 2. Fetch Enrollments with existing progress data
             var enrollments = await _context.Enrollments
@@ -104,150 +87,196 @@ namespace Lssctc.ProgramManagement.ClassManage.Helpers
             // 3. Process Each Enrollment
             foreach (var enrollment in enrollments)
             {
-                // A. Get or Create LearningProgress
-                var progress = enrollment.LearningProgresses.FirstOrDefault(lp => lp.CourseId == course.Id);
-                if (progress == null)
-                {
-                    progress = new LearningProgress
-                    {
-                        EnrollmentId = enrollment.Id,
-                        CourseId = course.Id,
-                        StartDate = classInfo.StartDate,
-                        Name = $"Progress for {course.Name}",
-                        Description = "Auto-generated progress"
-                    };
-                    _context.LearningProgresses.Add(progress);
-                }
-
-                // Update Progress Stats
-                progress.Status = (int)LearningProgressStatusEnum.Completed;
-                progress.ProgressPercentage = 100;
-                progress.TheoryScore = 100; // Default max score
-                progress.PracticalScore = 100; // Default max score
-                progress.FinalScore = 100;
-                progress.LastUpdated = DateTime.Now;
-
-                // B. Iterate through Course Sections
-                // Sort by ID or Order if available to keep consistency, though not strictly required for logic
-                foreach (var courseSection in course.CourseSections)
-                {
-                    var section = courseSection.Section;
-                    if (section == null) continue;
-
-                    // Get or Create SectionRecord
-                    var sectionRecord = progress.SectionRecords.FirstOrDefault(sr => sr.SectionId == section.Id);
-                    if (sectionRecord == null)
-                    {
-                        sectionRecord = new SectionRecord
-                        {
-                            LearningProgress = progress, // Ensure link if progress is new
-                            LearningProgressId = progress.Id,
-                            SectionId = section.Id,
-                            SectionName = section.SectionTitle,
-                            DurationMinutes = section.EstimatedDurationMinutes
-                        };
-                        // Add to collection if it's a tracked entity, or context will handle it via navigation
-                        if (progress.Id != 0) _context.SectionRecords.Add(sectionRecord);
-                        else progress.SectionRecords.Add(sectionRecord);
-                    }
-
-                    // Update Section Stats
-                    sectionRecord.IsCompleted = true;
-                    sectionRecord.IsTraineeAttended = true;
-                    sectionRecord.Progress = 100;
-
-                    // C. Iterate through Activities
-                    foreach (var sectionActivity in section.SectionActivities)
-                    {
-                        var activity = sectionActivity.Activity;
-                        if (activity == null) continue;
-
-                        // Get or Create ActivityRecord
-                        var activityRecord = sectionRecord.ActivityRecords.FirstOrDefault(ar => ar.ActivityId == activity.Id);
-                        if (activityRecord == null)
-                        {
-                            activityRecord = new ActivityRecord
-                            {
-                                SectionRecord = sectionRecord,
-                                SectionRecordId = sectionRecord.Id,
-                                ActivityId = activity.Id,
-                                ActivityType = activity.ActivityType
-                            };
-                            if (sectionRecord.Id != 0) _context.ActivityRecords.Add(activityRecord);
-                            else sectionRecord.ActivityRecords.Add(activityRecord);
-                        }
-
-                        // Update Activity Stats
-                        activityRecord.Status = (int)ActivityRecordStatusEnum.Completed;
-                        activityRecord.IsCompleted = true;
-                        activityRecord.Score = 100;
-                        activityRecord.CompletedDate = DateTime.Now;
-
-                        // D. Handle Quiz Attempts (Type 2)
-                        if (activity.ActivityType == (int)ActivityType.Quiz)
-                        {
-                            // Find linked Quiz
-                            var activityQuiz = activity.ActivityQuizzes.FirstOrDefault();
-                            int? quizId = activityQuiz?.QuizId;
-
-                            // Check if an attempt exists (current one)
-                            var quizAttempt = activityRecord.QuizAttempts.FirstOrDefault(qa => qa.IsCurrent);
-                            if (quizAttempt == null)
-                            {
-                                quizAttempt = new QuizAttempt
-                                {
-                                    ActivityRecord = activityRecord,
-                                    ActivityRecordId = activityRecord.Id,
-                                    QuizId = quizId, // Can be null if configuration is missing
-                                    Name = activity.ActivityTitle + " - Auto Attempt",
-                                    QuizAttemptDate = DateTime.Now,
-                                    IsCurrent = true,
-                                    AttemptOrder = 1
-                                };
-                                if (activityRecord.Id != 0) _context.QuizAttempts.Add(quizAttempt);
-                                else activityRecord.QuizAttempts.Add(quizAttempt);
-                            }
-
-                            // Update Attempt Stats
-                            quizAttempt.Status = (int)QuizAttemptStatusEnum.Submitted;
-                            quizAttempt.IsPass = true;
-                            quizAttempt.AttemptScore = 10; // Default max assumption
-                            quizAttempt.MaxScore = 10;
-                        }
-
-                        // E. Handle Practice Attempts (Type 3)
-                        else if (activity.ActivityType == (int)ActivityType.Practice)
-                        {
-                            // Find linked Practice
-                            var activityPractice = activity.ActivityPractices.FirstOrDefault();
-                            int? practiceId = activityPractice?.PracticeId;
-
-                            var practiceAttempt = activityRecord.PracticeAttempts.FirstOrDefault(pa => pa.IsCurrent);
-                            if (practiceAttempt == null)
-                            {
-                                practiceAttempt = new PracticeAttempt
-                                {
-                                    ActivityRecord = activityRecord,
-                                    ActivityRecordId = activityRecord.Id,
-                                    PracticeId = practiceId,
-                                    AttemptDate = DateTime.Now,
-                                    IsCurrent = true,
-                                    Description = "Auto-generated practice attempt"
-                                };
-                                if (activityRecord.Id != 0) _context.PracticeAttempts.Add(practiceAttempt);
-                                else activityRecord.PracticeAttempts.Add(practiceAttempt);
-                            }
-
-                            // Update Attempt Stats
-                            practiceAttempt.AttemptStatus = (int)ActivityRecordStatusEnum.Completed; // Re-using existing status enum logic
-                            practiceAttempt.IsPass = true;
-                            practiceAttempt.Score = 100;
-                        }
-                    }
-                }
+                ProcessEnrollmentProgress(enrollment, course, classInfo.StartDate);
             }
 
             await _context.SaveChangesAsync();
+        }
+
+        public async Task AutoCompleteLearningProgressForEnrollment(int enrollmentId)
+        {
+            // 1. Fetch Enrollment to get ClassId
+            var enrollment = await _context.Enrollments
+                .Include(e => e.LearningProgresses)
+                    .ThenInclude(lp => lp.SectionRecords)
+                        .ThenInclude(sr => sr.ActivityRecords)
+                            .ThenInclude(ar => ar.QuizAttempts)
+                .Include(e => e.LearningProgresses)
+                    .ThenInclude(lp => lp.SectionRecords)
+                        .ThenInclude(sr => sr.ActivityRecords)
+                            .ThenInclude(ar => ar.PracticeAttempts)
+                .FirstOrDefaultAsync(e => e.Id == enrollmentId);
+
+            if (enrollment == null) throw new Exception("Enrollment not found");
+
+            // 2. Fetch Class and Course Structure
+            var classInfo = await GetClassWithCourseStructureAsync(enrollment.ClassId);
+            if (classInfo == null || classInfo.ProgramCourse?.Course == null) return;
+
+            var course = classInfo.ProgramCourse.Course;
+
+            // 3. Process Single Enrollment
+            ProcessEnrollmentProgress(enrollment, course, classInfo.StartDate);
+
+            await _context.SaveChangesAsync();
+        }
+
+        private async Task<Class?> GetClassWithCourseStructureAsync(int classId)
+        {
+            return await _context.Classes
+                .Include(c => c.ProgramCourse)
+                    .ThenInclude(pc => pc.Course)
+                        .ThenInclude(co => co.CourseSections)
+                            .ThenInclude(cs => cs.Section)
+                                .ThenInclude(s => s.SectionActivities)
+                                    .ThenInclude(sa => sa.Activity)
+                                        .ThenInclude(a => a.ActivityQuizzes) // To get QuizId
+             .Include(c => c.ProgramCourse)
+                    .ThenInclude(pc => pc.Course)
+                        .ThenInclude(co => co.CourseSections)
+                            .ThenInclude(cs => cs.Section)
+                                .ThenInclude(s => s.SectionActivities)
+                                    .ThenInclude(sa => sa.Activity)
+                                        .ThenInclude(a => a.ActivityPractices) // To get PracticeId
+                .FirstOrDefaultAsync(c => c.Id == classId);
+        }
+
+        private void ProcessEnrollmentProgress(Enrollment enrollment, Course course, DateTime? startDate)
+        {
+            // A. Get or Create LearningProgress
+            var progress = enrollment.LearningProgresses.FirstOrDefault(lp => lp.CourseId == course.Id);
+            if (progress == null)
+            {
+                progress = new LearningProgress
+                {
+                    EnrollmentId = enrollment.Id,
+                    CourseId = course.Id,
+                    StartDate = startDate ?? DateTime.UtcNow,
+                    Name = $"Progress for {course.Name}",
+                    Description = "Auto-generated progress"
+                };
+                _context.LearningProgresses.Add(progress);
+            }
+
+            // Update Progress Stats
+            progress.Status = (int)LearningProgressStatusEnum.Completed;
+            progress.ProgressPercentage = 10;
+            progress.TheoryScore = 10; // Default max score
+            progress.PracticalScore = 10; // Default max score
+            progress.FinalScore = 10;
+            progress.LastUpdated = DateTime.Now;
+
+            // B. Iterate through Course Sections
+            foreach (var courseSection in course.CourseSections)
+            {
+                var section = courseSection.Section;
+                if (section == null) continue;
+
+                // Get or Create SectionRecord
+                var sectionRecord = progress.SectionRecords.FirstOrDefault(sr => sr.SectionId == section.Id);
+                if (sectionRecord == null)
+                {
+                    sectionRecord = new SectionRecord
+                    {
+                        LearningProgress = progress,
+                        LearningProgressId = progress.Id,
+                        SectionId = section.Id,
+                        SectionName = section.SectionTitle,
+                        DurationMinutes = section.EstimatedDurationMinutes
+                    };
+                    if (progress.Id != 0) _context.SectionRecords.Add(sectionRecord);
+                    else progress.SectionRecords.Add(sectionRecord);
+                }
+
+                // Update Section Stats
+                sectionRecord.IsCompleted = true;
+                sectionRecord.IsTraineeAttended = true;
+                sectionRecord.Progress = 100;
+
+                // C. Iterate through Activities
+                foreach (var sectionActivity in section.SectionActivities)
+                {
+                    var activity = sectionActivity.Activity;
+                    if (activity == null) continue;
+
+                    // Get or Create ActivityRecord
+                    var activityRecord = sectionRecord.ActivityRecords.FirstOrDefault(ar => ar.ActivityId == activity.Id);
+                    if (activityRecord == null)
+                    {
+                        activityRecord = new ActivityRecord
+                        {
+                            SectionRecord = sectionRecord,
+                            SectionRecordId = sectionRecord.Id,
+                            ActivityId = activity.Id,
+                            ActivityType = activity.ActivityType
+                        };
+                        if (sectionRecord.Id != 0) _context.ActivityRecords.Add(activityRecord);
+                        else sectionRecord.ActivityRecords.Add(activityRecord);
+                    }
+
+                    // Update Activity Stats
+                    activityRecord.Status = (int)ActivityRecordStatusEnum.Completed;
+                    activityRecord.IsCompleted = true;
+                    activityRecord.Score = 100;
+                    activityRecord.CompletedDate = DateTime.Now;
+
+                    // D. Handle Quiz Attempts (Type 2)
+                    if (activity.ActivityType == (int)ActivityType.Quiz)
+                    {
+                        var activityQuiz = activity.ActivityQuizzes.FirstOrDefault();
+                        int? quizId = activityQuiz?.QuizId;
+
+                        var quizAttempt = activityRecord.QuizAttempts.FirstOrDefault(qa => qa.IsCurrent);
+                        if (quizAttempt == null)
+                        {
+                            quizAttempt = new QuizAttempt
+                            {
+                                ActivityRecord = activityRecord,
+                                ActivityRecordId = activityRecord.Id,
+                                QuizId = quizId,
+                                Name = activity.ActivityTitle + " - Auto Attempt",
+                                QuizAttemptDate = DateTime.Now,
+                                IsCurrent = true,
+                                AttemptOrder = 1
+                            };
+                            if (activityRecord.Id != 0) _context.QuizAttempts.Add(quizAttempt);
+                            else activityRecord.QuizAttempts.Add(quizAttempt);
+                        }
+
+                        quizAttempt.Status = (int)QuizAttemptStatusEnum.Submitted;
+                        quizAttempt.IsPass = true;
+                        quizAttempt.AttemptScore = 10;
+                        quizAttempt.MaxScore = 10;
+                    }
+
+                    // E. Handle Practice Attempts (Type 3)
+                    else if (activity.ActivityType == (int)ActivityType.Practice)
+                    {
+                        var activityPractice = activity.ActivityPractices.FirstOrDefault();
+                        int? practiceId = activityPractice?.PracticeId;
+
+                        var practiceAttempt = activityRecord.PracticeAttempts.FirstOrDefault(pa => pa.IsCurrent);
+                        if (practiceAttempt == null)
+                        {
+                            practiceAttempt = new PracticeAttempt
+                            {
+                                ActivityRecord = activityRecord,
+                                ActivityRecordId = activityRecord.Id,
+                                PracticeId = practiceId,
+                                AttemptDate = DateTime.Now,
+                                IsCurrent = true,
+                                Description = "Auto-generated practice attempt"
+                            };
+                            if (activityRecord.Id != 0) _context.PracticeAttempts.Add(practiceAttempt);
+                            else activityRecord.PracticeAttempts.Add(practiceAttempt);
+                        }
+
+                        practiceAttempt.AttemptStatus = (int)ActivityRecordStatusEnum.Completed;
+                        practiceAttempt.IsPass = true;
+                        practiceAttempt.Score = 100;
+                    }
+                }
+            }
         }
 
         /// <summary>
@@ -257,48 +286,77 @@ namespace Lssctc.ProgramManagement.ClassManage.Helpers
         /// <param name="classId">The ID of the class.</param>
         public async Task AutoCompleteAttendance(int classId)
         {
-            // 1. Fetch Timeslots and Enrollments
+            // 1. Fetch Timeslots
             var timeslots = await _context.Timeslots
                 .Where(t => t.ClassId == classId && t.IsDeleted != true)
                 .ToListAsync();
 
             if (!timeslots.Any()) return;
 
+            // Update Timeslot Status first
+            foreach (var ts in timeslots)
+            {
+                ts.Status = (int)TimeslotStatusEnum.Completed;
+            }
+
             var enrollments = await _context.Enrollments
                 .Include(e => e.Attendances)
                 .Where(e => e.ClassId == classId && e.IsDeleted != true)
                 .ToListAsync();
 
-            // 2. Iterate Timeslots
-            foreach (var timeslot in timeslots)
+            // 2. Process Enrollments
+            foreach (var enrollment in enrollments)
             {
-                // Update Timeslot Status
-                timeslot.Status = (int)TimeslotStatusEnum.Completed;
-
-                // 3. Iterate Enrollments for Attendance
-                foreach (var enrollment in enrollments)
-                {
-                    var attendance = enrollment.Attendances.FirstOrDefault(a => a.TimeslotId == timeslot.Id);
-
-                    if (attendance == null)
-                    {
-                        attendance = new Attendance
-                        {
-                            EnrollmentId = enrollment.Id,
-                            TimeslotId = timeslot.Id,
-                            Name = "Auto Attendance",
-                            IsActive = true,
-                            IsDeleted = false
-                        };
-                        _context.Attendances.Add(attendance);
-                    }
-
-                    // Mark as Present
-                    attendance.Status = (int)AttendanceStatusEnum.Present;
-                }
+                ProcessEnrollmentAttendance(enrollment, timeslots);
             }
 
             await _context.SaveChangesAsync();
+        }
+
+        public async Task AutoCompleteAttendanceForEnrollment(int enrollmentId)
+        {
+            // 1. Fetch Enrollment
+            var enrollment = await _context.Enrollments
+                .Include(e => e.Attendances)
+                .FirstOrDefaultAsync(e => e.Id == enrollmentId);
+
+            if (enrollment == null) throw new Exception("Enrollment not found");
+
+            // 2. Fetch Timeslots for that class
+            var timeslots = await _context.Timeslots
+                .Where(t => t.ClassId == enrollment.ClassId && t.IsDeleted != true)
+                .ToListAsync();
+
+            if (!timeslots.Any()) return;
+
+            // 3. Process Single Enrollment
+            ProcessEnrollmentAttendance(enrollment, timeslots);
+
+            await _context.SaveChangesAsync();
+        }
+
+        private void ProcessEnrollmentAttendance(Enrollment enrollment, System.Collections.Generic.List<Timeslot> timeslots)
+        {
+            foreach (var timeslot in timeslots)
+            {
+                var attendance = enrollment.Attendances.FirstOrDefault(a => a.TimeslotId == timeslot.Id);
+
+                if (attendance == null)
+                {
+                    attendance = new Attendance
+                    {
+                        EnrollmentId = enrollment.Id,
+                        TimeslotId = timeslot.Id,
+                        Name = "Auto Attendance",
+                        IsActive = true,
+                        IsDeleted = false
+                    };
+                    _context.Attendances.Add(attendance);
+                }
+
+                // Mark as Present
+                attendance.Status = (int)AttendanceStatusEnum.Present;
+            }
         }
 
         /// <summary>
@@ -317,46 +375,65 @@ namespace Lssctc.ProgramManagement.ClassManage.Helpers
 
             foreach (var enrollment in enrollments)
             {
-                // 1. Get or Create Final Exam
-                var finalExam = enrollment.FinalExams.FirstOrDefault();
-                if (finalExam == null)
-                {
-                    finalExam = new FinalExam
-                    {
-                        EnrollmentId = enrollment.Id,
-                        ExamCode = "AUTO-" + Guid.NewGuid().ToString().Substring(0, 6).ToUpper(),
-                        TotalMarks = 0 // Will be updated
-                    };
-                    _context.FinalExams.Add(finalExam);
-                }
-
-                // 2. Mark Final Exam as Passed
-                finalExam.IsPass = true;
-                finalExam.TotalMarks = 100; // Assuming 100 scale
-                finalExam.CompleteTime = DateTime.Now;
-
-                // 3. Handle Partials (SE, TE, PE)
-                // We iterate existing partials. If the course logic created them, we approve them.
-                foreach (var partial in finalExam.FinalExamPartials)
-                {
-                    partial.IsPass = true;
-                    partial.Status = (int)FinalExamPartialStatus.Approved;
-                    partial.Marks = 100; // Assuming 100 scale or max weight
-                    partial.CompleteTime = DateTime.Now;
-
-                    // Pass all checklist items for Practical Exams
-                    foreach (var checklist in partial.PeChecklists)
-                    {
-                        checklist.IsPass = true;
-                    }
-                }
-
-                // 4. Complete the Enrollment
-                // This ensures the Certificate Service picks it up
-                enrollment.Status = (int)EnrollmentStatusEnum.Completed;
+                ProcessEnrollmentFinalExam(enrollment);
             }
 
             await _context.SaveChangesAsync();
+        }
+
+        public async Task AutoCompleteFinalExamForEnrollment(int enrollmentId)
+        {
+            var enrollment = await _context.Enrollments
+                .Include(e => e.FinalExams)
+                    .ThenInclude(fe => fe.FinalExamPartials)
+                        .ThenInclude(fep => fep.PeChecklists)
+                .FirstOrDefaultAsync(e => e.Id == enrollmentId);
+
+            if (enrollment == null) throw new Exception("Enrollment not found");
+
+            ProcessEnrollmentFinalExam(enrollment);
+
+            await _context.SaveChangesAsync();
+        }
+
+        private void ProcessEnrollmentFinalExam(Enrollment enrollment)
+        {
+            // 1. Get or Create Final Exam
+            var finalExam = enrollment.FinalExams.FirstOrDefault();
+            if (finalExam == null)
+            {
+                finalExam = new FinalExam
+                {
+                    EnrollmentId = enrollment.Id,
+                    ExamCode = "AUTO-" + Guid.NewGuid().ToString().Substring(0, 6).ToUpper(),
+                    TotalMarks = 0 // Will be updated
+                };
+                _context.FinalExams.Add(finalExam);
+            }
+
+            // 2. Mark Final Exam as Passed
+            finalExam.IsPass = true;
+            finalExam.TotalMarks = 100; // Assuming 100 scale
+            finalExam.CompleteTime = DateTime.Now;
+            finalExam.Status = (int)FinalExamStatusEnum.Completed;
+
+            // 3. Handle Partials (SE, TE, PE)
+            foreach (var partial in finalExam.FinalExamPartials)
+            {
+                partial.IsPass = true;
+                partial.Status = (int)FinalExamPartialStatus.Approved;
+                partial.Marks = 100;
+                partial.CompleteTime = DateTime.Now;
+
+                // Pass all checklist items for Practical Exams
+                foreach (var checklist in partial.PeChecklists)
+                {
+                    checklist.IsPass = true;
+                }
+            }
+
+            // 4. Complete the Enrollment
+            enrollment.Status = (int)EnrollmentStatusEnum.Completed;
         }
     }
 }
