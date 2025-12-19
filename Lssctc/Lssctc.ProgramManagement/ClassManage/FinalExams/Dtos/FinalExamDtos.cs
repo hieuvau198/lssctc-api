@@ -236,6 +236,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Dtos
     public class ClassExamConfigDto
     {
         public int ClassId { get; set; }
+        public string Status { get; set; } = "Unknown"; // [UPDATED] Return status as string
         public List<FinalExamPartialConfigDto> PartialConfigs { get; set; } = new List<FinalExamPartialConfigDto>();
     }
 

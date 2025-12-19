@@ -161,8 +161,8 @@ namespace Lssctc.ProgramManagement.ClassManage.Helpers
             // Update Progress Stats
             progress.Status = (int)LearningProgressStatusEnum.Completed;
             progress.ProgressPercentage = 10;
-            progress.TheoryScore = 10; // Default max score
-            progress.PracticalScore = 10; // Default max score
+            progress.TheoryScore = 10;
+            progress.PracticalScore = 10;
             progress.FinalScore = 10;
             progress.LastUpdated = DateTime.Now;
 
@@ -217,7 +217,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Helpers
                     // Update Activity Stats
                     activityRecord.Status = (int)ActivityRecordStatusEnum.Completed;
                     activityRecord.IsCompleted = true;
-                    activityRecord.Score = 100;
+                    activityRecord.Score = 10;
                     activityRecord.CompletedDate = DateTime.Now;
 
                     // D. Handle Quiz Attempts (Type 2)
@@ -273,7 +273,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Helpers
 
                         practiceAttempt.AttemptStatus = (int)ActivityRecordStatusEnum.Completed;
                         practiceAttempt.IsPass = true;
-                        practiceAttempt.Score = 100;
+                        practiceAttempt.Score = 10;
                     }
                 }
             }
@@ -370,12 +370,16 @@ namespace Lssctc.ProgramManagement.ClassManage.Helpers
                 .Include(e => e.FinalExams)
                     .ThenInclude(fe => fe.FinalExamPartials)
                         .ThenInclude(fep => fep.PeChecklists)
+                .Include(e => e.FinalExams) // Include Simulation Structure
+                    .ThenInclude(fe => fe.FinalExamPartials)
+                        .ThenInclude(fep => fep.FeSimulations)
+                            .ThenInclude(s => s.SeTasks)
                 .Where(e => e.ClassId == classId && e.IsDeleted != true)
                 .ToListAsync();
 
             foreach (var enrollment in enrollments)
             {
-                ProcessEnrollmentFinalExam(enrollment);
+                await ProcessEnrollmentFinalExam(enrollment);
             }
 
             await _context.SaveChangesAsync();
@@ -387,16 +391,20 @@ namespace Lssctc.ProgramManagement.ClassManage.Helpers
                 .Include(e => e.FinalExams)
                     .ThenInclude(fe => fe.FinalExamPartials)
                         .ThenInclude(fep => fep.PeChecklists)
+                .Include(e => e.FinalExams) // Include Simulation Structure
+                    .ThenInclude(fe => fe.FinalExamPartials)
+                        .ThenInclude(fep => fep.FeSimulations)
+                            .ThenInclude(s => s.SeTasks)
                 .FirstOrDefaultAsync(e => e.Id == enrollmentId);
 
             if (enrollment == null) throw new Exception("Enrollment not found");
 
-            ProcessEnrollmentFinalExam(enrollment);
+            await ProcessEnrollmentFinalExam(enrollment);
 
             await _context.SaveChangesAsync();
         }
 
-        private void ProcessEnrollmentFinalExam(Enrollment enrollment)
+        private async Task ProcessEnrollmentFinalExam(Enrollment enrollment)
         {
             // 1. Get or Create Final Exam
             var finalExam = enrollment.FinalExams.FirstOrDefault();
@@ -413,7 +421,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Helpers
 
             // 2. Mark Final Exam as Passed
             finalExam.IsPass = true;
-            finalExam.TotalMarks = 100; // Assuming 100 scale
+            finalExam.TotalMarks = 10;
             finalExam.CompleteTime = DateTime.Now;
             finalExam.Status = (int)FinalExamStatusEnum.Completed;
 
@@ -422,8 +430,45 @@ namespace Lssctc.ProgramManagement.ClassManage.Helpers
             {
                 partial.IsPass = true;
                 partial.Status = (int)FinalExamPartialStatus.Approved;
-                partial.Marks = 100;
+                partial.Marks = 10;
                 partial.CompleteTime = DateTime.Now;
+
+                // [NEW] Handle Simulation Exams (SE) - Create & Pass SeTasks
+                if (partial.Type == (int)FinalExamPartialType.Simulation)
+                {
+                    var feSim = partial.FeSimulations.FirstOrDefault();
+                    if (feSim != null)
+                    {
+                        // Fetch all practice tasks defined for this simulation's practice
+                        var practiceTasks = await _context.PracticeTasks
+                            .Include(pt => pt.Task)
+                            .Where(pt => pt.PracticeId == feSim.PracticeId)
+                            .ToListAsync();
+
+                        foreach (var pt in practiceTasks)
+                        {
+                            // Check if student already has a record for this task
+                            var seTask = feSim.SeTasks.FirstOrDefault(t => t.SimTaskId == pt.TaskId);
+                            if (seTask == null)
+                            {
+                                seTask = new SeTask
+                                {
+                                    FeSimulationId = feSim.Id,
+                                    SimTaskId = pt.TaskId,
+                                    Name = pt.Task?.TaskName ?? "Auto Task",
+                                    Description = pt.Task?.TaskDescription
+                                };
+                                _context.SeTasks.Add(seTask);
+                            }
+
+                            // Mark task as passed
+                            seTask.IsPass = true;
+                            seTask.Status = 1; // 1 = Completed
+                            seTask.CompleteTime = DateTime.Now;
+                            seTask.DurationSecond = 60; // Mock duration
+                        }
+                    }
+                }
 
                 // Pass all checklist items for Practical Exams
                 foreach (var checklist in partial.PeChecklists)

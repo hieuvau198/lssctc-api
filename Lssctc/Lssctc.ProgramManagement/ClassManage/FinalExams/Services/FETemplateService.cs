@@ -192,6 +192,8 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             // We iterate through possible types (1, 2, 3) or the template definition
             if (template != null)
             {
+                configDto.Status = GetFinalExamStatusName(template.Status); // [UPDATED] Map status to string
+
                 foreach (var tempPartial in template.PartialTemplates)
                 {
                     // Find corresponding partial in example exam
@@ -219,7 +221,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                         Duration = p?.Duration,
                         StartTime = p?.StartTime,
                         EndTime = p?.EndTime,
-                        ExamCode = p?.ExamCode, // [ADDED]
+                        ExamCode = p?.ExamCode,
                         QuizId = theory?.QuizId,
                         QuizName = theory?.Quiz?.Name,
                         PracticeId = sim?.PracticeId,
@@ -276,7 +278,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             // 3. Update All Student Partials
             var partials = await _uow.FinalExamPartialRepository.GetAllAsQueryable()
                 .Where(p => p.FinalExam.Enrollment.ClassId == dto.ClassId && p.Type == typeId)
-                .Include(p => p.FinalExam) // Needed for recalculation context if needed, or ID
+                // .Include(p => p.FinalExam) <-- REMOVED: Causes tracking conflicts during recalculation
                 .Include(p => p.FeTheories)
                 .Include(p => p.FeSimulations)
                 .Include(p => p.PeChecklists)
@@ -287,7 +289,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                 await ResetFinalExamAsync(dto.ClassId);
                 partials = await _uow.FinalExamPartialRepository.GetAllAsQueryable()
                     .Where(p => p.FinalExam.Enrollment.ClassId == dto.ClassId && p.Type == typeId)
-                    .Include(p => p.FinalExam)
+                    // .Include(p => p.FinalExam) <-- REMOVED here as well
                     .Include(p => p.FeTheories)
                     .Include(p => p.FeSimulations)
                     .Include(p => p.PeChecklists)
@@ -453,6 +455,9 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
 
         private async Task RecalculateScoresForExams(IEnumerable<int> examIds)
         {
+            // Clear tracker to prevent conflict with implicitly attached FinalExams from previous steps
+            _uow.GetDbContext().ChangeTracker.Clear();
+
             var exams = await _uow.FinalExamRepository.GetAllAsQueryable()
                 .Include(fe => fe.FinalExamPartials)
                 .Where(fe => examIds.Contains(fe.Id))
@@ -518,6 +523,19 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             3 => "Practical",
             _ => "Unknown"
         };
+
+        // [ADDED] Helper for Status Mapping
+        private string GetFinalExamStatusName(int statusId)
+        {
+            return statusId switch
+            {
+                1 => "NotYet",
+                2 => "Submitted",
+                3 => "Completed",
+                4 => "Cancelled",
+                _ => "Unknown"
+            };
+        }
 
         private async Task EnsureSeTasksForSimulationAsync(int feSimulationId, int practiceId)
         {
