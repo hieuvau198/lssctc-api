@@ -105,8 +105,8 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             if (partial.Type != 2) throw new ArgumentException("This ID is not a Simulation Exam (SE).");
             if (partial.CompleteTime.HasValue) throw new InvalidOperationException("Exam is already complete.");
 
-            if (string.IsNullOrEmpty(partial.FinalExam.ExamCode) ||
-                !partial.FinalExam.ExamCode.Equals(examCode, StringComparison.OrdinalIgnoreCase))
+            if (string.IsNullOrEmpty(partial.ExamCode) ||
+                !partial.ExamCode.Equals(examCode, StringComparison.OrdinalIgnoreCase))
             {
                 throw new UnauthorizedAccessException("Invalid Exam Code.");
             }
