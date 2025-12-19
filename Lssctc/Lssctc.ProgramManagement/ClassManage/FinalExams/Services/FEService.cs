@@ -190,7 +190,6 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             finalExam.TotalMarks = total;
             finalExam.IsPass = finalExam.TotalMarks >= 5;
 
-            // Auto-complete logic (used during individual updates, not necessarily during class finish)
             if (finalExam.FinalExamPartials.Any() &&
                 finalExam.FinalExamPartials.All(p => p.Status == (int)FinalExamPartialStatus.Approved || p.Status == (int)FinalExamPartialStatus.Submitted))
             {
@@ -260,6 +259,9 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                 CompleteTime = p.CompleteTime,
                 Status = GetFinalExamPartialStatusName(statusId),
                 IsPass = p.IsPass,
+
+                ExamCode = isInstructor ? p.ExamCode : null, // [ADDED]
+
                 QuizId = isInstructor ? theory?.QuizId : null,
                 QuizName = isInstructor ? theory?.Quiz?.Name : null,
                 PracticeId = sim?.PracticeId,
@@ -267,7 +269,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                 Checklists = p.PeChecklists?.Select(c => new PeChecklistItemDto
                 {
                     Id = c.Id,
-                    Name = c.Name ?? "Unassigned",
+                    Name = c.Name,
                     Description = c.Description,
                     IsPass = c.IsPass
                 }).ToList(),

@@ -100,10 +100,12 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             var classInfo = await _uow.ClassRepository.GetByIdAsync(classId);
             var defaultTime = classInfo?.EndDate ?? DateTime.UtcNow.AddMonths(1);
 
+            // Fetch all existing partial codes to ensure uniqueness when creating new ones
             var existingCodes = await _uow.FinalExamPartialRepository.GetAllAsQueryable()
                 .Select(p => p.ExamCode)
                 .Where(c => c != null)
                 .ToListAsync();
+            // Use a local HashSet to track codes including newly generated ones in this session
             var codesSet = new HashSet<string>(existingCodes!);
 
             var enrollments = await _uow.EnrollmentRepository.GetAllAsQueryable()
@@ -129,14 +131,16 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                     await _uow.SaveChangesAsync();
                 }
 
+                // Ensure Partials match the Template
                 foreach (var partTemplate in template.FinalExamPartialsTemplates)
                 {
                     var existingPartial = finalExam.FinalExamPartials.FirstOrDefault(p => p.Type == partTemplate.Type);
 
                     if (existingPartial == null)
                     {
+                        // Generate a unique code
                         var newCode = FEHelper.GenerateExamCode(codesSet);
-                        codesSet.Add(newCode); 
+                        codesSet.Add(newCode); // Add to local exclusion set
 
                         var newPartial = new FinalExamPartial
                         {
@@ -215,6 +219,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                         Duration = p?.Duration,
                         StartTime = p?.StartTime,
                         EndTime = p?.EndTime,
+                        ExamCode = p?.ExamCode, // [ADDED]
                         QuizId = theory?.QuizId,
                         QuizName = theory?.Quiz?.Name,
                         PracticeId = sim?.PracticeId,
@@ -233,7 +238,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                         Type = GetTypeName(p.Type ?? 0),
                         ExamWeight = p.ExamWeight,
                         Duration = p.Duration,
-                        // ... mapping
+                        ExamCode = p.ExamCode
                     });
                 }
             }
