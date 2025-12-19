@@ -242,42 +242,6 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Controllers
         }
 
         /// <summary>
-        /// Create a new practice attempt with tasks
-        /// </summary>
-        /// <param name="createDto">Practice attempt data with trainee ID, class ID, practice ID, score, and tasks</param>
-        /// <returns>Created practice attempt with ID</returns>
-        [HttpPost]
-        [Authorize(Roles = "Trainee, Admin")]
-        [ProducesResponseType(typeof(PracticeAttemptDto), StatusCodes.Status201Created)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> CreatePracticeAttempt([FromBody] CreatePracticeAttemptDto createDto)
-        {
-            try
-            {
-                if (!ModelState.IsValid)
-                    return BadRequest(ModelState);
-
-                // --- ADDED/MODIFIED LINES ---
-                var traineeId = GetTraineeIdFromClaims(); // Get ID from token
-                var result = await _practiceAttemptsService.CreatePracticeAttempt(traineeId, createDto); // Pass ID to service
-                                                                                                         // --- END OF CHANGES ---
-
-                return CreatedAtAction(nameof(GetPracticeAttemptById), new { id = result.Id }, result);
-            }
-            catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
-            catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error: {ex.Message}");
-                Console.WriteLine($"StackTrace: {ex.StackTrace}");
-                return StatusCode(500, new { message = "An unexpected error occurred.", details = ex.Message });
-            }
-        }
-
-        /// <summary>
         /// Create a new practice attempt using Practice and Task codes
         /// </summary>
         /// <param name="createDto">Practice attempt data with practice/task codes</param>

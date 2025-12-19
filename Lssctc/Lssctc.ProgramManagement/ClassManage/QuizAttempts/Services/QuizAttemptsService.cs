@@ -139,6 +139,14 @@ namespace Lssctc.ProgramManagement.ClassManage.QuizAttempts.Services
                 .Where(qa => qa.ActivityRecordId == dto.ActivityRecordId)
                 .ToListAsync();
 
+            // Validate Max Attempts
+            // Assuming MaxAttempts > 0 indicates a limit. If 0, it might mean unlimited depending on your logic.
+            // Adjust condition 'quizTemplate.MaxAttempts > 0' if 0 implies no attempts allowed.
+            if (quizTemplate.MaxAttempts > 0 && oldAttempts.Count >= quizTemplate.MaxAttempts)
+            {
+                throw new InvalidOperationException($"You have reached the maximum number of attempts ({quizTemplate.MaxAttempts}) allowed for this quiz.");
+            }
+
             int attemptOrder = 1;
             if (oldAttempts.Any())
             {
