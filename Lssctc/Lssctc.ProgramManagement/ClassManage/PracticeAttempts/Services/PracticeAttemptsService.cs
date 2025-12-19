@@ -51,8 +51,6 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
             return (await MapToDtosWithFullTaskContextAsync(new[] { attempt })).FirstOrDefault();
         }
 
-        // REMOVED: GetPracticeAttemptsByPractice method has been removed as per requirement change.
-
         public async Task<PracticeAttemptDto?> GetPracticeAttemptById(int practiceAttemptId)
         {
             var attempt = await _uow.PracticeAttemptRepository.GetAllAsQueryable().AsNoTracking()
@@ -94,15 +92,6 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
             return new PagedResult<PracticeAttemptDto> { Items = dtos, TotalCount = paged.TotalCount, Page = paged.Page, PageSize = paged.PageSize };
         }
 
-        public async Task<PracticeAttemptDto> CreatePracticeAttempt(int traineeId, CreatePracticeAttemptDto createDto)
-        {
-            return await CreatePracticeAttemptByCode(traineeId, new CreatePracticeAttemptWithCodeDto
-            {
-                ClassId = createDto.ClassId,
-                ActivityRecordId = 0
-            });
-        }
-
         public async Task<PracticeAttemptDto> CreatePracticeAttemptByCode(int traineeId, CreatePracticeAttemptWithCodeDto createDto)
         {
             if (traineeId <= 0) throw new ArgumentException("Invalid TraineeId.");
@@ -121,6 +110,19 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
                 .FirstOrDefaultAsync(p => p.PracticeCode == createDto.PracticeCode);
 
             if (practiceTemplate == null) throw new KeyNotFoundException($"Practice '{createDto.PracticeCode}' not found.");
+
+            // --- Validate Max Attempts ---
+            if (practiceTemplate.MaxAttempts.HasValue && practiceTemplate.MaxAttempts.Value > 0)
+            {
+                var existingAttemptsCount = await _uow.PracticeAttemptRepository.GetAllAsQueryable()
+                    .CountAsync(pa => pa.ActivityRecordId == createDto.ActivityRecordId);
+
+                if (existingAttemptsCount >= practiceTemplate.MaxAttempts.Value)
+                {
+                    throw new InvalidOperationException($"You have reached the maximum number of attempts ({practiceTemplate.MaxAttempts}) allowed for this practice.");
+                }
+            }
+            // -----------------------------
 
             var taskCodeMap = practiceTemplate.PracticeTasks
                 .Where(pt => pt.Task?.TaskCode != null)
@@ -214,6 +216,24 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
                      .Where(ap => ap.ActivityId == activityRecord.ActivityId).Select(ap => ap.PracticeId).FirstOrDefaultAsync();
 
                 if (practiceId == 0) throw new InvalidOperationException("Practice not found for this activity.");
+
+                // --- Validate Max Attempts ---
+                var practiceInfo = await _uow.PracticeRepository.GetAllAsQueryable()
+                    .Where(p => p.Id == practiceId)
+                    .Select(p => new { p.MaxAttempts })
+                    .FirstOrDefaultAsync();
+
+                if (practiceInfo?.MaxAttempts > 0)
+                {
+                    var existingAttemptsCount = await _uow.PracticeAttemptRepository.GetAllAsQueryable()
+                        .CountAsync(pa => pa.ActivityRecordId == submitDto.ActivityRecordId);
+
+                    if (existingAttemptsCount >= practiceInfo.MaxAttempts)
+                    {
+                        throw new InvalidOperationException($"You have reached the maximum number of attempts ({practiceInfo.MaxAttempts}) allowed for this practice.");
+                    }
+                }
+                // -----------------------------
 
                 attempt = new PracticeAttempt
                 {
@@ -326,7 +346,7 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
                     {
                         var taskId = templateTask.TaskId;
                         var taskCode = templateTask.Task?.TaskCode;
-                        var taskName = templateTask.Task?.TaskName; // [ADDED] Get Name
+                        var taskName = templateTask.Task?.TaskName;
 
                         if (existingTasksMap.TryGetValue(taskId, out var recordedTask))
                         {
@@ -336,7 +356,7 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
                                 PracticeAttemptId = recordedTask.PracticeAttemptId,
                                 TaskId = taskId,
                                 TaskCode = taskCode,
-                                TaskName = taskName, // [ADDED] Map Name
+                                TaskName = taskName,
                                 Score = recordedTask.Score,
                                 Mistakes = recordedTask.Mistakes,
                                 Description = recordedTask.Description,
@@ -351,7 +371,7 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
                                 PracticeAttemptId = pa.Id,
                                 TaskId = taskId,
                                 TaskCode = taskCode,
-                                TaskName = taskName, // [ADDED] Map Name
+                                TaskName = taskName,
                                 Score = 0,
                                 Description = "Not Attempted",
                                 IsPass = false
@@ -370,7 +390,6 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
                         Mistakes = pat.Mistakes,
                         Description = pat.Description,
                         IsPass = pat.IsPass,
-                        // Task Name isn't easily available here without loading Practice/Tasks, keeping null or need additional query if required
                     }).ToList();
                 }
                 dtos.Add(dto);
