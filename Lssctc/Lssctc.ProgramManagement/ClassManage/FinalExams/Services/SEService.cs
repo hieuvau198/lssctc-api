@@ -245,6 +245,9 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             await _uow.FinalExamPartialRepository.UpdateAsync(partial);
             await _uow.SaveChangesAsync();
 
+            // Auto generate new code after submission
+            await _finalExamsService.GenerateExamCodeAsync(partialId);
+
             await _finalExamsService.RecalculateFinalExamScore(partial.FinalExamId);
 
             return MapToPartialDto(partial, false);
@@ -262,6 +265,10 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
 
             await _uow.FinalExamPartialRepository.UpdateAsync(partial);
             await _uow.SaveChangesAsync();
+
+            // Auto generate new code after submission
+            await _finalExamsService.GenerateExamCodeAsync(partialId);
+
             await _finalExamsService.RecalculateFinalExamScore(partial.FinalExamId);
             return await _finalExamsService.GetFinalExamByIdAsync(partial.FinalExamId);
         }

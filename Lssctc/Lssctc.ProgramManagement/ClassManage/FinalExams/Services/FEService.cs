@@ -110,21 +110,21 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             }
         }
 
-        public async Task<string> GenerateExamCodeAsync(int finalExamId)
+        public async Task<string> GenerateExamCodeAsync(int fePartialId)
         {
-            var entity = await _uow.FinalExamRepository.GetByIdAsync(finalExamId);
-            if (entity == null) throw new KeyNotFoundException("Final Exam not found.");
+            var entity = await _uow.FinalExamPartialRepository.GetByIdAsync(fePartialId);
+            if (entity == null) throw new KeyNotFoundException("Final Exam Partial not found.");
 
             // Fetch existing codes to ensure uniqueness
-            var existingCodes = await _uow.FinalExamRepository.GetAllAsQueryable()
-                .Select(fe => fe.ExamCode)
+            var existingCodes = await _uow.FinalExamPartialRepository.GetAllAsQueryable()
+                .Select(p => p.ExamCode)
                 .Where(code => code != null)
                 .ToListAsync();
 
             string code = FEHelper.GenerateExamCode(existingCodes!);
             entity.ExamCode = code;
 
-            await _uow.FinalExamRepository.UpdateAsync(entity);
+            await _uow.FinalExamPartialRepository.UpdateAsync(entity);
             await _uow.SaveChangesAsync();
             return code;
         }
