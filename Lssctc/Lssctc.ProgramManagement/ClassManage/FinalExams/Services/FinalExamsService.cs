@@ -10,78 +10,19 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
     public class FinalExamsService : IFinalExamsService
     {
         private readonly IUnitOfWork _uow;
+        private readonly IFETemplateService _feTemplateService;
 
-        public FinalExamsService(IUnitOfWork uow)
+        public FinalExamsService(IUnitOfWork uow, IFETemplateService feTemplateService)
         {
             _uow = uow;
+            _feTemplateService = feTemplateService;
         }
 
         public async Task AutoCreateFinalExamsForClassAsync(int classId)
         {
-            var classInfo = await _uow.ClassRepository.GetByIdAsync(classId);
-            if (classInfo == null) return;
-
-            var defaultTime = classInfo.EndDate ?? classInfo.StartDate.AddMonths(1);
-
-            var enrollments = await _uow.EnrollmentRepository.GetAllAsQueryable()
-                .Where(e => e.ClassId == classId && e.IsDeleted != true)
-                .ToListAsync();
-
-            foreach (var enrollment in enrollments)
-            {
-                var finalExam = await _uow.FinalExamRepository.GetAllAsQueryable()
-                    .FirstOrDefaultAsync(fe => fe.EnrollmentId == enrollment.Id);
-
-                if (finalExam == null)
-                {
-                    finalExam = new FinalExam
-                    {
-                        EnrollmentId = enrollment.Id,
-                        IsPass = null,
-                        TotalMarks = 0,
-                        CompleteTime = null,
-                        Status = (int)FinalExamStatusEnum.NotYet
-                    };
-                    await _uow.FinalExamRepository.CreateAsync(finalExam);
-                    await _uow.SaveChangesAsync();
-                }
-
-                await EnsurePartialExists(finalExam.Id, 1, defaultTime); // Theory
-                await EnsurePartialExists(finalExam.Id, 2, defaultTime); // Simulation
-                await EnsurePartialExists(finalExam.Id, 3, defaultTime); // Practical
-            }
-            await _uow.SaveChangesAsync();
+            await _feTemplateService.ResetFinalExamAsync(classId);
         }
-
-        private async Task EnsurePartialExists(int finalExamId, int type, DateTime defaultTime)
-        {
-            var exists = await _uow.FinalExamPartialRepository.ExistsAsync(p => p.FinalExamId == finalExamId && p.Type == type);
-            if (!exists)
-            {
-                // [UPDATE] Default weights: TE=30%, SE=20%, PE=50%
-                decimal defaultWeight = 0;
-                switch (type)
-                {
-                    case 1: defaultWeight = 30; break; // Theory
-                    case 2: defaultWeight = 20; break; // Simulation
-                    case 3: defaultWeight = 50; break; // Practical
-                }
-
-                var partial = new FinalExamPartial
-                {
-                    FinalExamId = finalExamId,
-                    Type = type,
-                    Marks = 0,
-                    ExamWeight = defaultWeight,
-                    Duration = 60,
-                    StartTime = defaultTime,
-                    EndTime = defaultTime.AddMinutes(60),
-                    Status = (int)FinalExamPartialStatus.NotYet
-                };
-                await _uow.FinalExamPartialRepository.CreateAsync(partial);
-            }
-        }
-
+        
         public async Task<FinalExamDto> CreateFinalExamAsync(CreateFinalExamDto dto)
         {
             var exists = await _uow.FinalExamRepository.ExistsAsync(fe => fe.EnrollmentId == dto.EnrollmentId);

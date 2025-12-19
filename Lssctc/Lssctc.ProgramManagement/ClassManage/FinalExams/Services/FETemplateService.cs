@@ -3,6 +3,10 @@ using Lssctc.Share.Entities;
 using Lssctc.Share.Enums;
 using Lssctc.Share.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
 {
@@ -15,19 +19,20 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             _uow = uow;
         }
 
-        public async Task<IEnumerable<FinalExamTemplateDto>> GetTemplatesByClassIdAsync(int classId)
+        public async Task<FinalExamTemplateDto?> GetTemplatesByClassIdAsync(int classId)
         {
-            var templates = await _uow.FinalExamTemplateRepository.GetAllAsQueryable()
+            var template = await _uow.FinalExamTemplateRepository.GetAllAsQueryable()
                 .Include(t => t.FinalExamPartialsTemplates)
-                .Where(t => t.ClassId == classId)
-                .ToListAsync();
+                .FirstOrDefaultAsync(t => t.ClassId == classId);
 
-            return templates.Select(t => new FinalExamTemplateDto
+            if (template == null) return null;
+
+            return new FinalExamTemplateDto
             {
-                Id = t.Id,
-                ClassId = t.ClassId,
-                Status = t.Status,
-                PartialTemplates = t.FinalExamPartialsTemplates.Select(pt => new FinalExamPartialsTemplateDto
+                Id = template.Id,
+                ClassId = template.ClassId,
+                Status = template.Status,
+                PartialTemplates = template.FinalExamPartialsTemplates.Select(pt => new FinalExamPartialsTemplateDto
                 {
                     Id = pt.Id,
                     FinalExamTemplateId = pt.FinalExamTemplateId,
@@ -35,40 +40,62 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                     TypeName = GetTypeName(pt.Type),
                     Weight = pt.Weight
                 }).ToList()
-            });
+            };
         }
 
-        public async Task ResetFinalExamAsync(int classId)
+        public async Task CreateTemplateAsync(int classId)
         {
-            // --- 1. Ensure Final Exam Template Exists ---
-            var template = await _uow.FinalExamTemplateRepository.GetAllAsQueryable()
-                .Include(t => t.FinalExamPartialsTemplates)
-                .FirstOrDefaultAsync(t => t.ClassId == classId);
+            var exists = await _uow.FinalExamTemplateRepository.ExistsAsync(t => t.ClassId == classId);
+            if (exists) return;
 
-            if (template == null)
+            var template = new FinalExamTemplate
             {
-                template = new FinalExamTemplate
-                {
-                    ClassId = classId,
-                    Status = 1 // Active
-                };
-                await _uow.FinalExamTemplateRepository.CreateAsync(template);
-                await _uow.SaveChangesAsync(); // Save to get Id
-            }
+                ClassId = classId,
+                Status = 1 // Active
+            };
+            await _uow.FinalExamTemplateRepository.CreateAsync(template);
+            await _uow.SaveChangesAsync();
 
-            // --- 2. Ensure Template Partials Exist (Default Weights) ---
+            // Default Weights
             await EnsureTemplatePartialExists(template, 1, 30); // Theory
             await EnsureTemplatePartialExists(template, 2, 20); // Simulation
             await EnsureTemplatePartialExists(template, 3, 50); // Practical
 
             await _uow.SaveChangesAsync();
+        }
 
-            // Refresh template with partials
-            template = await _uow.FinalExamTemplateRepository.GetAllAsQueryable()
+        public async Task UpdateTemplatePartialAsync(int classId, int type, decimal weight)
+        {
+            var template = await _uow.FinalExamTemplateRepository.GetAllAsQueryable()
+                .Include(t => t.FinalExamPartialsTemplates)
+                .FirstOrDefaultAsync(t => t.ClassId == classId);
+
+            if (template == null) throw new KeyNotFoundException($"Final Exam Template for class {classId} not found.");
+
+            var partialTemplate = template.FinalExamPartialsTemplates.FirstOrDefault(p => p.Type == type);
+            if (partialTemplate != null)
+            {
+                partialTemplate.Weight = weight;
+                await _uow.FinalExamPartialsTemplateRepository.UpdateAsync(partialTemplate);
+            }
+            else
+            {
+                // If for some reason it doesn't exist, create it
+                await EnsureTemplatePartialExists(template, type, weight);
+            }
+            await _uow.SaveChangesAsync();
+        }
+
+        public async Task ResetFinalExamAsync(int classId)
+        {
+            // --- 1. Ensure Final Exam Template Exists ---
+            await CreateTemplateAsync(classId);
+
+            var template = await _uow.FinalExamTemplateRepository.GetAllAsQueryable()
                 .Include(t => t.FinalExamPartialsTemplates)
                 .FirstAsync(t => t.ClassId == classId);
 
-            // --- 3. Ensure Student Final Exams & Partials Exist (Reset Logic) ---
+            // --- 2. Ensure Student Final Exams & Partials Exist (Reset Logic) ---
             var classInfo = await _uow.ClassRepository.GetByIdAsync(classId);
             var defaultTime = classInfo?.EndDate ?? DateTime.UtcNow.AddMonths(1);
 
@@ -98,8 +125,9 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                 // Ensure Partials match the Template
                 foreach (var partTemplate in template.FinalExamPartialsTemplates)
                 {
-                    var exists = finalExam.FinalExamPartials.Any(p => p.Type == partTemplate.Type);
-                    if (!exists)
+                    var existingPartial = finalExam.FinalExamPartials.FirstOrDefault(p => p.Type == partTemplate.Type);
+
+                    if (existingPartial == null)
                     {
                         var newPartial = new FinalExamPartial
                         {
@@ -113,6 +141,15 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                             Status = (int)FinalExamPartialStatus.NotYet
                         };
                         await _uow.FinalExamPartialRepository.CreateAsync(newPartial);
+                    }
+                    else
+                    {
+                        // Sync weight from template if resetting/checking
+                        if (existingPartial.ExamWeight != partTemplate.Weight)
+                        {
+                            existingPartial.ExamWeight = partTemplate.Weight;
+                            await _uow.FinalExamPartialRepository.UpdateAsync(existingPartial);
+                        }
                     }
                 }
             }
@@ -129,10 +166,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                     Type = type,
                     Weight = weight
                 };
-                // Since we are using Generic Repository, we add via the repo
                 await _uow.FinalExamPartialsTemplateRepository.CreateAsync(partialTemplate);
-
-                // Add to local list to prevent re-adding in same transaction loop if needed
                 template.FinalExamPartialsTemplates.Add(partialTemplate);
             }
         }

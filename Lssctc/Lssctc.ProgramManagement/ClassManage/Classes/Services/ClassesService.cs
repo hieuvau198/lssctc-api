@@ -156,6 +156,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
 
             await _uow.ClassRepository.CreateAsync(newClass);
             await _uow.SaveChangesAsync();
+            await _finalExamsService.AutoCreateFinalExamsForClassAsync(newClass.Id);
 
             return (await GetClassByIdAsync(newClass.Id))!;
         }
