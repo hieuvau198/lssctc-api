@@ -354,9 +354,32 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
 
             // 1. Update Template
             await CreateTemplateAsync(classId);
-            await UpdateTemplatePartialAsync(classId, 1, dto.TheoryWeight * 100);
-            await UpdateTemplatePartialAsync(classId, 2, dto.SimulationWeight * 100);
-            await UpdateTemplatePartialAsync(classId, 3, dto.PracticalWeight * 100);
+
+            // Fetch the template (this will be a DETACHED instance because repository is NoTracking)
+            var template = await _uow.FinalExamTemplateRepository.GetAllAsQueryable()
+                .Include(t => t.FinalExamPartialsTemplates)
+                .FirstOrDefaultAsync(t => t.ClassId == classId);
+
+            if (template == null) throw new KeyNotFoundException($"Final Exam Template for class {classId} not found.");
+
+            // Check if there is already a tracked instance (e.g., if CreateTemplateAsync just created it)
+            // If we try to attach 'template' while 'trackedTemplate' exists, EF will throw.
+            var trackedTemplate = _uow.GetDbContext().ChangeTracker.Entries<FinalExamTemplate>()
+                                    .FirstOrDefault(e => e.Entity.Id == template.Id)?.Entity;
+
+            var targetTemplate = trackedTemplate ?? template;
+
+            // Update weights in memory
+            UpdateOrAddPartial(targetTemplate, 1, dto.TheoryWeight * 100);
+            UpdateOrAddPartial(targetTemplate, 2, dto.SimulationWeight * 100);
+            UpdateOrAddPartial(targetTemplate, 3, dto.PracticalWeight * 100);
+
+            // If it wasn't tracked, we need to attach/update it.
+            if (trackedTemplate == null)
+            {
+                await _uow.FinalExamTemplateRepository.UpdateAsync(targetTemplate);
+            }
+            // If it WAS tracked, changes are detected automatically by SaveChanges, no need to call Update.
 
             // 2. Update Students
             var exams = await _uow.FinalExamRepository.GetAllAsQueryable()
@@ -386,9 +409,29 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                 }
 
                 await RecalculateFinalExamScoreInternal(exam);
+                // Ensure the modified exam is marked for update in the context
+                await _uow.FinalExamRepository.UpdateAsync(exam);
             }
 
             await _uow.SaveChangesAsync();
+        }
+
+        private void UpdateOrAddPartial(FinalExamTemplate template, int type, decimal weight)
+        {
+            var partial = template.FinalExamPartialsTemplates.FirstOrDefault(p => p.Type == type);
+            if (partial != null)
+            {
+                partial.Weight = weight;
+            }
+            else
+            {
+                template.FinalExamPartialsTemplates.Add(new FinalExamPartialsTemplate
+                {
+                    FinalExamTemplateId = template.Id,
+                    Type = type,
+                    Weight = weight
+                });
+            }
         }
 
         // --- Helpers ---
@@ -403,6 +446,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             foreach (var exam in exams)
             {
                 await RecalculateFinalExamScoreInternal(exam);
+                await _uow.FinalExamRepository.UpdateAsync(exam); // Ensure explicit update for NoTracking repo
             }
             await _uow.SaveChangesAsync();
         }
