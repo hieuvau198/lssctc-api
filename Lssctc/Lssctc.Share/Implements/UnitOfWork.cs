@@ -62,6 +62,7 @@ namespace Lssctc.Share.Implements
         private IGenericRepository<FinalExamPartial>? _finalExamPartialRepository;
         private IGenericRepository<FeSimulation>? _feSimulationRepository;
         private IGenericRepository<FeTheory>? _feTheoryRepository;
+        private IGenericRepository<PeChecklist>? _peChecklistRepository;
         private IGenericRepository<SeTask>? _seTaskRepository;
         private IGenericRepository<User>? _userRepository;
         private IGenericRepository<FinalExamTemplate>? _finalExamTemplateRepository;
@@ -221,6 +222,8 @@ namespace Lssctc.Share.Implements
             _feSimulationRepository ??= new GenericRepository<FeSimulation>(_context);
         public IGenericRepository<FeTheory> FeTheoryRepository =>
             _feTheoryRepository ??= new GenericRepository<FeTheory>(_context);
+        public IGenericRepository<PeChecklist> PeChecklistRepository =>
+            _peChecklistRepository ??= new GenericRepository<PeChecklist>(_context);
         public IGenericRepository<SeTask> SeTaskRepository =>
             _seTaskRepository ??= new GenericRepository<SeTask>(_context);
         public IGenericRepository<ActivitySession> ActivitySessionRepository =>
