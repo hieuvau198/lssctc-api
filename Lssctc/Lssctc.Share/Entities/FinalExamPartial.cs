@@ -31,6 +31,8 @@ public partial class FinalExamPartial
 
     public int TotalScore { get; set; }
 
+    public string? ExamCode { get; set; }
+
     public virtual ICollection<FeSimulation> FeSimulations { get; set; } = new List<FeSimulation>();
 
     public virtual ICollection<FeTheory> FeTheories { get; set; } = new List<FeTheory>();

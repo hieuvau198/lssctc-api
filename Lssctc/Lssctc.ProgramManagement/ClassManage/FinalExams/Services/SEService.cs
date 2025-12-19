@@ -7,12 +7,12 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
 {
-    public class FinalExamSeService : IFinalExamSeService
+    public class SEService : ISEService
     {
         private readonly IUnitOfWork _uow;
-        private readonly IFinalExamsService _finalExamsService;
+        private readonly IFEService _finalExamsService;
 
-        public FinalExamSeService(IUnitOfWork uow, IFinalExamsService finalExamsService)
+        public SEService(IUnitOfWork uow, IFEService finalExamsService)
         {
             _uow = uow;
             _finalExamsService = finalExamsService;
@@ -105,8 +105,8 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             if (partial.Type != 2) throw new ArgumentException("This ID is not a Simulation Exam (SE).");
             if (partial.CompleteTime.HasValue) throw new InvalidOperationException("Exam is already complete.");
 
-            if (string.IsNullOrEmpty(partial.FinalExam.ExamCode) ||
-                !partial.FinalExam.ExamCode.Equals(examCode, StringComparison.OrdinalIgnoreCase))
+            if (string.IsNullOrEmpty(partial.ExamCode) ||
+                !partial.ExamCode.Equals(examCode, StringComparison.OrdinalIgnoreCase))
             {
                 throw new UnauthorizedAccessException("Invalid Exam Code.");
             }
@@ -245,6 +245,9 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             await _uow.FinalExamPartialRepository.UpdateAsync(partial);
             await _uow.SaveChangesAsync();
 
+            // Auto generate new code after submission
+            await _finalExamsService.GenerateExamCodeAsync(partialId);
+
             await _finalExamsService.RecalculateFinalExamScore(partial.FinalExamId);
 
             return MapToPartialDto(partial, false);
@@ -262,6 +265,10 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
 
             await _uow.FinalExamPartialRepository.UpdateAsync(partial);
             await _uow.SaveChangesAsync();
+
+            // Auto generate new code after submission
+            await _finalExamsService.GenerateExamCodeAsync(partialId);
+
             await _finalExamsService.RecalculateFinalExamScore(partial.FinalExamId);
             return await _finalExamsService.GetFinalExamByIdAsync(partial.FinalExamId);
         }

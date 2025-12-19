@@ -2,7 +2,7 @@
 
 namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
 {
-    public interface IFinalExamSeService
+    public interface ISEService
     {
         Task EnsureSeTasksForSimulationAsync(int feSimulationId, int practiceId);
         Task<IEnumerable<SePracticeListDto>> GetMySimulationExamPartialsByClassAsync(int classId, int userId);

@@ -23,5 +23,20 @@ namespace Lssctc.ProgramManagement.ClassManage.Helpers
         /// Auto completes the final exam for all enrollments in the class.
         /// </summary>
         Task AutoCompleteFinalExam(int classId);
+
+        /// <summary>
+        /// Auto completes the learning progress for a specific enrollment.
+        /// </summary>
+        Task AutoCompleteLearningProgressForEnrollment(int enrollmentId);
+
+        /// <summary>
+        /// Auto completes attendance for a specific enrollment.
+        /// </summary>
+        Task AutoCompleteAttendanceForEnrollment(int enrollmentId);
+
+        /// <summary>
+        /// Auto completes the final exam for a specific enrollment.
+        /// </summary>
+        Task AutoCompleteFinalExamForEnrollment(int enrollmentId);
     }
 }

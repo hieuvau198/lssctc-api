@@ -777,6 +777,10 @@ public partial class LssctcDbContext : DbContext
             entity.Property(e => e.EndTime)
                 .HasPrecision(0)
                 .HasColumnName("end_time");
+            entity.Property(e => e.ExamCode)
+                .HasMaxLength(20)
+                .HasDefaultValue("UNASSIGNED")
+                .HasColumnName("exam_code");
             entity.Property(e => e.ExamWeight)
                 .HasDefaultValue(0m)
                 .HasColumnType("decimal(5, 2)")

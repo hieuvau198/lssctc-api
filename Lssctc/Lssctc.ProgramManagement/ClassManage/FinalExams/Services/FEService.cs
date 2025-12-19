@@ -1,5 +1,6 @@
 ﻿using Lssctc.ProgramManagement.ClassManage.FinalExams.Dtos;
 using Lssctc.ProgramManagement.ClassManage.FinalExams.Services;
+using Lssctc.ProgramManagement.ClassManage.Helpers;
 using Lssctc.Share.Entities;
 using Lssctc.Share.Enums;
 using Lssctc.Share.Interfaces;
@@ -7,12 +8,12 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
 {
-    public class FinalExamsService : IFinalExamsService
+    public class FEService : IFEService
     {
         private readonly IUnitOfWork _uow;
         private readonly IFETemplateService _feTemplateService;
 
-        public FinalExamsService(IUnitOfWork uow, IFETemplateService feTemplateService)
+        public FEService(IUnitOfWork uow, IFETemplateService feTemplateService)
         {
             _uow = uow;
             _feTemplateService = feTemplateService;
@@ -22,7 +23,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
         {
             await _feTemplateService.ResetFinalExamAsync(classId);
         }
-        
+
         public async Task<FinalExamDto> CreateFinalExamAsync(CreateFinalExamDto dto)
         {
             var exists = await _uow.FinalExamRepository.ExistsAsync(fe => fe.EnrollmentId == dto.EnrollmentId);
@@ -109,21 +110,38 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             }
         }
 
-        public async Task<string> GenerateExamCodeAsync(int finalExamId)
+        public async Task<string> GenerateExamCodeAsync(int fePartialId)
         {
-            var entity = await _uow.FinalExamRepository.GetByIdAsync(finalExamId);
-            if (entity == null) throw new KeyNotFoundException("Final Exam not found.");
+            var entity = await _uow.FinalExamPartialRepository.GetByIdAsync(fePartialId);
+            if (entity == null) throw new KeyNotFoundException("Final Exam Partial not found.");
 
-            string code = Guid.NewGuid().ToString().Substring(0, 6).ToUpper();
+            // Fetch existing codes to ensure uniqueness
+            var existingCodes = await _uow.FinalExamPartialRepository.GetAllAsQueryable()
+                .Select(p => p.ExamCode)
+                .Where(code => code != null)
+                .ToListAsync();
+
+            string code = FEHelper.GenerateExamCode(existingCodes!);
             entity.ExamCode = code;
 
-            await _uow.FinalExamRepository.UpdateAsync(entity);
+            await _uow.FinalExamPartialRepository.UpdateAsync(entity);
             await _uow.SaveChangesAsync();
             return code;
         }
 
         public async Task FinishFinalExamAsync(int classId)
         {
+            // 1. Update Final Exam Template Status to Completed
+            var template = await _uow.FinalExamTemplateRepository.GetAllAsQueryable()
+                .FirstOrDefaultAsync(t => t.ClassId == classId);
+
+            if (template != null)
+            {
+                template.Status = (int)FinalExamStatusEnum.Completed;
+                await _uow.FinalExamTemplateRepository.UpdateAsync(template);
+            }
+
+            // 2. Conclude and Calculate Student Exams
             var exams = await _uow.FinalExamRepository.GetAllAsQueryable()
                 .Include(fe => fe.FinalExamPartials)
                 .Where(fe => fe.Enrollment.ClassId == classId)
@@ -131,7 +149,18 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
 
             foreach (var exam in exams)
             {
+                // Calculate scores based on current partials
                 RecalculateFinalExamScoreInternal(exam);
+
+                // Force status to Completed as the class exam is being finished by instructor
+                exam.Status = (int)FinalExamStatusEnum.Completed;
+
+                if (!exam.CompleteTime.HasValue)
+                {
+                    exam.CompleteTime = DateTime.UtcNow;
+                }
+
+                await _uow.FinalExamRepository.UpdateAsync(exam);
             }
             await _uow.SaveChangesAsync();
         }
@@ -230,6 +259,9 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                 CompleteTime = p.CompleteTime,
                 Status = GetFinalExamPartialStatusName(statusId),
                 IsPass = p.IsPass,
+
+                ExamCode = isInstructor ? p.ExamCode : null, // [ADDED]
+
                 QuizId = isInstructor ? theory?.QuizId : null,
                 QuizName = isInstructor ? theory?.Quiz?.Name : null,
                 PracticeId = sim?.PracticeId,

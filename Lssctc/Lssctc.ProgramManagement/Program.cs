@@ -199,9 +199,9 @@ builder.Services.AddScoped<IProgramImportService, ProgramImportService>();
 
 builder.Services.AddScoped<ITimeslotService, TimeslotService>();
 builder.Services.AddScoped<IActivitySessionService, ActivitySessionService>();
-builder.Services.AddScoped<IFinalExamsService, FinalExamsService>();
+builder.Services.AddScoped<IFEService, FEService>();
 builder.Services.AddScoped<IFEPartialService, FEPartialService>();
-builder.Services.AddScoped<IFinalExamSeService, FinalExamSeService>();
+builder.Services.AddScoped<ISEService, SEService>();
 builder.Services.AddScoped<IFETemplateService, FETemplateService>();
 
 builder.Services.AddScoped<IClassCustomizeService, ClassCustomizeService>();

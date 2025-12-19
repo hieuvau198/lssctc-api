@@ -2,7 +2,7 @@
 
 namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
 {
-    public interface IFinalExamsService
+    public interface IFEService
     {
         Task AutoCreateFinalExamsForClassAsync(int classId);
         Task<FinalExamDto> CreateFinalExamAsync(CreateFinalExamDto dto);
@@ -12,7 +12,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
         Task<FinalExamDto?> GetMyFinalExamByClassAsync(int classId, int userId);
         Task<IEnumerable<FinalExamDto>> GetFinalExamsByTraineeAsync(int traineeId);
         Task DeleteFinalExamAsync(int id);
-        Task<string> GenerateExamCodeAsync(int finalExamId);
+        Task<string> GenerateExamCodeAsync(int fePartialId);
         Task FinishFinalExamAsync(int classId);
         Task RecalculateFinalExamScore(int finalExamId);
     }

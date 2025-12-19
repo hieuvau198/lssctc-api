@@ -1,4 +1,5 @@
 ﻿using Lssctc.ProgramManagement.ClassManage.FinalExams.Dtos;
+using Lssctc.ProgramManagement.ClassManage.Helpers;
 using Lssctc.Share.Entities;
 using Lssctc.Share.Enums;
 using Lssctc.Share.Interfaces;
@@ -99,6 +100,14 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             var classInfo = await _uow.ClassRepository.GetByIdAsync(classId);
             var defaultTime = classInfo?.EndDate ?? DateTime.UtcNow.AddMonths(1);
 
+            // Fetch all existing partial codes to ensure uniqueness when creating new ones
+            var existingCodes = await _uow.FinalExamPartialRepository.GetAllAsQueryable()
+                .Select(p => p.ExamCode)
+                .Where(c => c != null)
+                .ToListAsync();
+            // Use a local HashSet to track codes including newly generated ones in this session
+            var codesSet = new HashSet<string>(existingCodes!);
+
             var enrollments = await _uow.EnrollmentRepository.GetAllAsQueryable()
                 .Where(e => e.ClassId == classId && e.IsDeleted != true)
                 .ToListAsync();
@@ -129,6 +138,10 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
 
                     if (existingPartial == null)
                     {
+                        // Generate a unique code
+                        var newCode = FEHelper.GenerateExamCode(codesSet);
+                        codesSet.Add(newCode); // Add to local exclusion set
+
                         var newPartial = new FinalExamPartial
                         {
                             FinalExamId = finalExam.Id,
@@ -138,7 +151,8 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                             Duration = 60,
                             StartTime = defaultTime,
                             EndTime = defaultTime.AddMinutes(60),
-                            Status = (int)FinalExamPartialStatus.NotYet
+                            Status = (int)FinalExamPartialStatus.NotYet,
+                            ExamCode = newCode
                         };
                         await _uow.FinalExamPartialRepository.CreateAsync(newPartial);
                     }
@@ -205,6 +219,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                         Duration = p?.Duration,
                         StartTime = p?.StartTime,
                         EndTime = p?.EndTime,
+                        ExamCode = p?.ExamCode, // [ADDED]
                         QuizId = theory?.QuizId,
                         QuizName = theory?.Quiz?.Name,
                         PracticeId = sim?.PracticeId,
@@ -223,7 +238,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                         Type = GetTypeName(p.Type ?? 0),
                         ExamWeight = p.ExamWeight,
                         Duration = p.Duration,
-                        // ... mapping
+                        ExamCode = p.ExamCode
                     });
                 }
             }

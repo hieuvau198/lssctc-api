@@ -4,14 +4,12 @@
 DROP TABLE [dbo].[simulation_component_types];
 
 
-ALTER TABLE [dbo].[course_sections]
-ADD [section_order] INT NOT NULL DEFAULT 0;
+ALTER TABLE [final_exam_partials]
+ADD [exam_code] NVARCHAR(20) DEFAULT 'UNASSIGNED'
 
+UPDATE dbo.final_exam_partials
+SET exam_code = UPPER(LEFT(REPLACE(CONVERT(NVARCHAR(36), NEWID()), '-', ''), 8));
 
-SELECT COLUMN_NAME, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH
-FROM INFORMATION_SCHEMA.COLUMNS
-WHERE TABLE_NAME = 'practices'
-  AND COLUMN_NAME = 'practice_code';
 
   ALTER TABLE practices
 DROP CONSTRAINT DF__practices__pract__03FB8544;
@@ -21,11 +19,21 @@ ADD CONSTRAINT DF_practices_practice_code
 DEFAULT('NO PRACTICE CODE ASSIGNED') FOR practice_code;
 
 update [final_exams]
-set [exam_code] = 'LSSCTC_FE_565'
+set [total_marks] = 10
+where [total_marks] = 100
 
 
 INSERT INTO [dbo].[course_certificates] ([course_id], [certificate_id], [passing_score], [is_active])
 VALUES (2, 1, 5.0, 1);
+
+DELETE qaq
+FROM dbo.quiz_attempt_questions qaq
+JOIN dbo.quiz_attempts qa2
+    ON qaq.quiz_attempt_id = qa2.id
+WHERE qa2.max_score <> 10
+   OR qa2.max_score IS NULL;
+
+
 
 
 
