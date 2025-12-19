@@ -9,5 +9,9 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
         Task CreateTemplateAsync(int classId);
         Task UpdateTemplatePartialAsync(int classId, int type, decimal weight);
         Task ResetFinalExamAsync(int classId);
+
+        Task<ClassExamConfigDto> GetClassExamConfigAsync(int classId);
+        Task UpdatePartialsConfigForClassAsync(UpdateClassPartialConfigDto dto);
+        Task UpdateClassExamWeightsAsync(int classId, UpdateClassWeightsDto dto);
     }
 }

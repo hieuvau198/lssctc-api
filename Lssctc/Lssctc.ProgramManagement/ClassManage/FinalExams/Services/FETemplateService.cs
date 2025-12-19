@@ -156,6 +156,276 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             await _uow.SaveChangesAsync();
         }
 
+        public async Task<ClassExamConfigDto> GetClassExamConfigAsync(int classId)
+        {
+            // Ensure template exists to get authoritative weights
+            var template = await GetTemplatesByClassIdAsync(classId);
+            if (template == null)
+            {
+                await CreateTemplateAsync(classId);
+                template = await GetTemplatesByClassIdAsync(classId);
+            }
+
+            // Get one example exam to retrieve assigned Quizzes/Practices (which are currently stored on the instance)
+            var exampleExam = await _uow.FinalExamRepository.GetAllAsQueryable()
+                .Include(fe => fe.FinalExamPartials).ThenInclude(p => p.FeTheories).ThenInclude(t => t.Quiz)
+                .Include(fe => fe.FinalExamPartials).ThenInclude(p => p.FeSimulations).ThenInclude(s => s.Practice)
+                .Include(fe => fe.FinalExamPartials).ThenInclude(p => p.PeChecklists)
+                .FirstOrDefaultAsync(fe => fe.Enrollment.ClassId == classId && fe.Enrollment.IsDeleted != true);
+
+            var configDto = new ClassExamConfigDto { ClassId = classId };
+
+            // We iterate through possible types (1, 2, 3) or the template definition
+            if (template != null)
+            {
+                foreach (var tempPartial in template.PartialTemplates)
+                {
+                    // Find corresponding partial in example exam
+                    var p = exampleExam?.FinalExamPartials.FirstOrDefault(ep => ep.Type == tempPartial.Type);
+
+                    var theory = p?.FeTheories.FirstOrDefault();
+                    var sim = p?.FeSimulations.FirstOrDefault();
+
+                    List<PeChecklistItemDto>? checklist = null;
+                    if (tempPartial.Type == 3 && p?.PeChecklists != null)
+                    {
+                        checklist = p.PeChecklists.Select(c => new PeChecklistItemDto
+                        {
+                            Id = c.Id,
+                            Name = c.Name ?? "Unassigned",
+                            Description = c.Description,
+                            IsPass = c.IsPass
+                        }).ToList();
+                    }
+
+                    configDto.PartialConfigs.Add(new FinalExamPartialConfigDto
+                    {
+                        Type = GetTypeName(tempPartial.Type),
+                        ExamWeight = tempPartial.Weight, // Use Template Weight
+                        Duration = p?.Duration,
+                        StartTime = p?.StartTime,
+                        EndTime = p?.EndTime,
+                        QuizId = theory?.QuizId,
+                        QuizName = theory?.Quiz?.Name,
+                        PracticeId = sim?.PracticeId,
+                        PracticeName = sim?.Practice?.PracticeName,
+                        Checklist = checklist
+                    });
+                }
+            }
+            else if (exampleExam != null)
+            {
+                // Fallback if template is missing but exam exists (shouldn't happen with CreateTemplateAsync above)
+                foreach (var p in exampleExam.FinalExamPartials)
+                {
+                    configDto.PartialConfigs.Add(new FinalExamPartialConfigDto
+                    {
+                        Type = GetTypeName(p.Type ?? 0),
+                        ExamWeight = p.ExamWeight,
+                        Duration = p.Duration,
+                        // ... mapping
+                    });
+                }
+            }
+
+            return configDto;
+        }
+
+        public async Task UpdatePartialsConfigForClassAsync(UpdateClassPartialConfigDto dto)
+        {
+            int typeId = ParseExamType(dto.Type);
+
+            var classExists = await _uow.ClassRepository.ExistsAsync(c => c.Id == dto.ClassId);
+            if (!classExists) throw new KeyNotFoundException($"Class with ID {dto.ClassId} not found.");
+
+            // 1. Update Template (Weights)
+            await CreateTemplateAsync(dto.ClassId);
+
+            if (dto.ExamWeight.HasValue)
+            {
+                await UpdateTemplatePartialAsync(dto.ClassId, typeId, dto.ExamWeight.Value);
+            }
+
+            // 2. Validate References
+            if (typeId == 1 && dto.QuizId.HasValue)
+            {
+                var quizExists = await _uow.QuizRepository.ExistsAsync(q => q.Id == dto.QuizId.Value);
+                if (!quizExists) throw new KeyNotFoundException($"Quiz with ID {dto.QuizId.Value} not found.");
+            }
+            else if (typeId == 2 && dto.PracticeId.HasValue)
+            {
+                var practiceExists = await _uow.PracticeRepository.ExistsAsync(p => p.Id == dto.PracticeId.Value);
+                if (!practiceExists) throw new KeyNotFoundException($"Practice with ID {dto.PracticeId.Value} not found.");
+            }
+
+            // 3. Update All Student Partials
+            var partials = await _uow.FinalExamPartialRepository.GetAllAsQueryable()
+                .Where(p => p.FinalExam.Enrollment.ClassId == dto.ClassId && p.Type == typeId)
+                .Include(p => p.FinalExam) // Needed for recalculation context if needed, or ID
+                .Include(p => p.FeTheories)
+                .Include(p => p.FeSimulations)
+                .Include(p => p.PeChecklists)
+                .ToListAsync();
+
+            if (!partials.Any())
+            {
+                await ResetFinalExamAsync(dto.ClassId);
+                partials = await _uow.FinalExamPartialRepository.GetAllAsQueryable()
+                    .Where(p => p.FinalExam.Enrollment.ClassId == dto.ClassId && p.Type == typeId)
+                    .Include(p => p.FinalExam)
+                    .Include(p => p.FeTheories)
+                    .Include(p => p.FeSimulations)
+                    .Include(p => p.PeChecklists)
+                    .ToListAsync();
+            }
+
+            // We need to group partials by FinalExam to recalculate score efficiently (or just loop)
+            var examIdsToRecalculate = new HashSet<int>();
+
+            foreach (var p in partials)
+            {
+                if (dto.ExamWeight.HasValue) p.ExamWeight = dto.ExamWeight;
+                if (dto.Duration.HasValue) p.Duration = dto.Duration;
+
+                if (dto.StartTime.HasValue) p.StartTime = dto.StartTime.Value.AddHours(-7);
+                if (dto.EndTime.HasValue) p.EndTime = dto.EndTime.Value.AddHours(-7);
+
+                if (typeId == 1 && dto.QuizId.HasValue)
+                {
+                    var theory = p.FeTheories.FirstOrDefault();
+                    if (theory != null) { theory.QuizId = dto.QuizId.Value; await _uow.FeTheoryRepository.UpdateAsync(theory); }
+                    else { await _uow.FeTheoryRepository.CreateAsync(new FeTheory { FinalExamPartialId = p.Id, QuizId = dto.QuizId.Value }); }
+                }
+                else if (typeId == 2 && dto.PracticeId.HasValue)
+                {
+                    var sim = p.FeSimulations.FirstOrDefault();
+                    if (sim != null)
+                    {
+                        sim.PracticeId = dto.PracticeId.Value;
+                        await _uow.FeSimulationRepository.UpdateAsync(sim);
+                        await EnsureSeTasksForSimulationAsync(sim.Id, dto.PracticeId.Value);
+                    }
+                    else
+                    {
+                        var newSim = new FeSimulation { FinalExamPartialId = p.Id, PracticeId = dto.PracticeId.Value };
+                        await _uow.FeSimulationRepository.CreateAsync(newSim);
+                        await _uow.SaveChangesAsync(); // Need ID
+                        await EnsureSeTasksForSimulationAsync(newSim.Id, dto.PracticeId.Value);
+                    }
+                }
+                else if (typeId == 3 && dto.ChecklistConfig != null && dto.ChecklistConfig.Any())
+                {
+                    if (p.PeChecklists != null)
+                    {
+                        foreach (var oldChecklist in p.PeChecklists.ToList())
+                        {
+                            _uow.GetDbContext().Set<PeChecklist>().Remove(oldChecklist);
+                        }
+                    }
+
+                    foreach (var item in dto.ChecklistConfig)
+                    {
+                        _uow.GetDbContext().Set<PeChecklist>().Add(new PeChecklist
+                        {
+                            FinalExamPartialId = p.Id,
+                            Name = item.Name,
+                            Description = item.Description,
+                            IsPass = null
+                        });
+                    }
+                }
+
+                await _uow.FinalExamPartialRepository.UpdateAsync(p);
+                examIdsToRecalculate.Add(p.FinalExamId);
+            }
+            await _uow.SaveChangesAsync();
+
+            // Recalculate Scores
+            await RecalculateScoresForExams(examIdsToRecalculate);
+        }
+
+        public async Task UpdateClassExamWeightsAsync(int classId, UpdateClassWeightsDto dto)
+        {
+            // Validate
+            if (Math.Abs((dto.TheoryWeight + dto.SimulationWeight + dto.PracticalWeight) - 1.0m) > 0.0001m)
+            {
+                throw new InvalidOperationException("The sum of weights must be exactly 1.0 (100%).");
+            }
+
+            // 1. Update Template
+            await CreateTemplateAsync(classId);
+            await UpdateTemplatePartialAsync(classId, 1, dto.TheoryWeight * 100);
+            await UpdateTemplatePartialAsync(classId, 2, dto.SimulationWeight * 100);
+            await UpdateTemplatePartialAsync(classId, 3, dto.PracticalWeight * 100);
+
+            // 2. Update Students
+            var exams = await _uow.FinalExamRepository.GetAllAsQueryable()
+                .Include(fe => fe.FinalExamPartials)
+                .Where(fe => fe.Enrollment.ClassId == classId)
+                .ToListAsync();
+
+            if (!exams.Any())
+            {
+                await ResetFinalExamAsync(classId);
+                exams = await _uow.FinalExamRepository.GetAllAsQueryable()
+                    .Include(fe => fe.FinalExamPartials)
+                    .Where(fe => fe.Enrollment.ClassId == classId)
+                    .ToListAsync();
+            }
+
+            foreach (var exam in exams)
+            {
+                foreach (var partial in exam.FinalExamPartials)
+                {
+                    switch (partial.Type)
+                    {
+                        case 1: partial.ExamWeight = dto.TheoryWeight * 100; break;
+                        case 2: partial.ExamWeight = dto.SimulationWeight * 100; break;
+                        case 3: partial.ExamWeight = dto.PracticalWeight * 100; break;
+                    }
+                }
+
+                await RecalculateFinalExamScoreInternal(exam);
+            }
+
+            await _uow.SaveChangesAsync();
+        }
+
+        // --- Helpers ---
+
+        private async Task RecalculateScoresForExams(IEnumerable<int> examIds)
+        {
+            var exams = await _uow.FinalExamRepository.GetAllAsQueryable()
+                .Include(fe => fe.FinalExamPartials)
+                .Where(fe => examIds.Contains(fe.Id))
+                .ToListAsync();
+
+            foreach (var exam in exams)
+            {
+                await RecalculateFinalExamScoreInternal(exam);
+            }
+            await _uow.SaveChangesAsync();
+        }
+
+        private Task RecalculateFinalExamScoreInternal(FinalExam finalExam)
+        {
+            decimal total = 0;
+            foreach (var p in finalExam.FinalExamPartials)
+            {
+                total += (p.Marks ?? 0) * ((p.ExamWeight ?? 0) / 100m);
+            }
+            finalExam.TotalMarks = total;
+            finalExam.IsPass = finalExam.TotalMarks >= 5;
+
+            if (finalExam.FinalExamPartials.Any() &&
+                finalExam.FinalExamPartials.All(p => p.Status == (int)FinalExamPartialStatus.Approved || p.Status == (int)FinalExamPartialStatus.Submitted))
+            {
+                finalExam.CompleteTime = DateTime.UtcNow;
+                finalExam.Status = (int)FinalExamStatusEnum.Completed;
+            }
+            return Task.CompletedTask;
+        }
+
         private async Task EnsureTemplatePartialExists(FinalExamTemplate template, int type, decimal weight)
         {
             if (!template.FinalExamPartialsTemplates.Any(p => p.Type == type))
@@ -171,6 +441,17 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             }
         }
 
+        private static int ParseExamType(string type)
+        {
+            return type.Trim().ToLower() switch
+            {
+                "theory" => 1,
+                "simulation" => 2,
+                "practical" => 3,
+                _ => throw new ArgumentException($"Invalid exam type '{type}'. Allowed: 'Theory', 'Simulation', 'Practical'.")
+            };
+        }
+
         private string GetTypeName(int typeId) => typeId switch
         {
             1 => "Theory",
@@ -178,5 +459,35 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             3 => "Practical",
             _ => "Unknown"
         };
+
+        private async Task EnsureSeTasksForSimulationAsync(int feSimulationId, int practiceId)
+        {
+            var exists = await _uow.SeTaskRepository.ExistsAsync(t => t.FeSimulationId == feSimulationId);
+            if (exists) return;
+
+            var practiceTasks = await _uow.PracticeTaskRepository.GetAllAsQueryable()
+                .Include(pt => pt.Task)
+                .Where(pt => pt.PracticeId == practiceId)
+                .ToListAsync();
+
+            if (!practiceTasks.Any()) return;
+
+            foreach (var pt in practiceTasks)
+            {
+                var seTask = new SeTask
+                {
+                    FeSimulationId = feSimulationId,
+                    SimTaskId = pt.TaskId,
+                    Name = pt.Task?.TaskName ?? "Unknown Task",
+                    Description = pt.Task?.TaskDescription,
+                    Status = 0,
+                    IsPass = null,
+                    DurationSecond = 0,
+                    AttemptTime = null
+                };
+                await _uow.SeTaskRepository.CreateAsync(seTask);
+            }
+            await _uow.SaveChangesAsync();
+        }
     }
 }
