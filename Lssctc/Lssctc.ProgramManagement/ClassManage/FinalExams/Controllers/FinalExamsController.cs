@@ -12,13 +12,13 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Controllers
     public class FinalExamsController : ControllerBase
     {
         private readonly IFinalExamsService _finalExamsService;
-        private readonly IFinalExamPartialService _partialService;
+        private readonly IFEPartialService _partialService;
         private readonly IFinalExamSeService _seService;
         private readonly IFETemplateService _templateService;
 
         public FinalExamsController(
             IFinalExamsService finalExamsService,
-            IFinalExamPartialService partialService,
+            IFEPartialService partialService,
             IFinalExamSeService seService,
             IFETemplateService templateService)
         {
@@ -108,7 +108,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Controllers
         {
             try
             {
-                var result = await _partialService.GetClassExamConfigAsync(classId);
+                var result = await _templateService.GetClassExamConfigAsync(classId);
                 return Ok(result);
             }
             catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
@@ -165,7 +165,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Controllers
 
             try
             {
-                await _finalExamsService.UpdateClassExamWeightsAsync(classId, dto);
+                await _templateService.UpdateClassExamWeightsAsync(classId, dto);
                 return Ok(new { message = "Class exam weights updated successfully." });
             }
             catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
@@ -371,7 +371,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Controllers
         {
             try
             {
-                await _partialService.UpdatePartialsConfigForClassAsync(dto);
+                await _templateService.UpdatePartialsConfigForClassAsync(dto);
                 return Ok(new { message = "Updated partial configuration and checklist templates for the class." });
             }
             catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
