@@ -83,7 +83,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Helpers
                             foreach (var x in theories) await _uow.FeTheoryRepository.DeleteAsync(x);
 
                             // PeChecklists
-                            var checklists = await _uow.check.GetAllAsQueryable()
+                            var checklists = await _uow.PeChecklistRepository.GetAllAsQueryable()
                                 .Where(c => partialIds.Contains(c.FinalExamPartialId))
                                 .ToListAsync();
                             foreach (var x in checklists) await _uow.PeChecklistRepository.DeleteAsync(x);
