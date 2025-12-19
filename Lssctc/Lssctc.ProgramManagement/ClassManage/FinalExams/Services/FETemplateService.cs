@@ -1,4 +1,5 @@
 ﻿using Lssctc.ProgramManagement.ClassManage.FinalExams.Dtos;
+using Lssctc.ProgramManagement.ClassManage.Helpers;
 using Lssctc.Share.Entities;
 using Lssctc.Share.Enums;
 using Lssctc.Share.Interfaces;
@@ -99,6 +100,12 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             var classInfo = await _uow.ClassRepository.GetByIdAsync(classId);
             var defaultTime = classInfo?.EndDate ?? DateTime.UtcNow.AddMonths(1);
 
+            var existingCodes = await _uow.FinalExamPartialRepository.GetAllAsQueryable()
+                .Select(p => p.ExamCode)
+                .Where(c => c != null)
+                .ToListAsync();
+            var codesSet = new HashSet<string>(existingCodes!);
+
             var enrollments = await _uow.EnrollmentRepository.GetAllAsQueryable()
                 .Where(e => e.ClassId == classId && e.IsDeleted != true)
                 .ToListAsync();
@@ -122,13 +129,15 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                     await _uow.SaveChangesAsync();
                 }
 
-                // Ensure Partials match the Template
                 foreach (var partTemplate in template.FinalExamPartialsTemplates)
                 {
                     var existingPartial = finalExam.FinalExamPartials.FirstOrDefault(p => p.Type == partTemplate.Type);
 
                     if (existingPartial == null)
                     {
+                        var newCode = FEHelper.GenerateExamCode(codesSet);
+                        codesSet.Add(newCode); 
+
                         var newPartial = new FinalExamPartial
                         {
                             FinalExamId = finalExam.Id,
@@ -138,7 +147,8 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                             Duration = 60,
                             StartTime = defaultTime,
                             EndTime = defaultTime.AddMinutes(60),
-                            Status = (int)FinalExamPartialStatus.NotYet
+                            Status = (int)FinalExamPartialStatus.NotYet,
+                            ExamCode = newCode
                         };
                         await _uow.FinalExamPartialRepository.CreateAsync(newPartial);
                     }

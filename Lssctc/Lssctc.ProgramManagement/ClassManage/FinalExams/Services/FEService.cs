@@ -1,5 +1,6 @@
 ﻿using Lssctc.ProgramManagement.ClassManage.FinalExams.Dtos;
 using Lssctc.ProgramManagement.ClassManage.FinalExams.Services;
+using Lssctc.ProgramManagement.ClassManage.Helpers;
 using Lssctc.Share.Entities;
 using Lssctc.Share.Enums;
 using Lssctc.Share.Interfaces;
@@ -22,7 +23,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
         {
             await _feTemplateService.ResetFinalExamAsync(classId);
         }
-        
+
         public async Task<FinalExamDto> CreateFinalExamAsync(CreateFinalExamDto dto)
         {
             var exists = await _uow.FinalExamRepository.ExistsAsync(fe => fe.EnrollmentId == dto.EnrollmentId);
@@ -114,7 +115,12 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             var entity = await _uow.FinalExamRepository.GetByIdAsync(finalExamId);
             if (entity == null) throw new KeyNotFoundException("Final Exam not found.");
 
-            string code = Guid.NewGuid().ToString().Substring(0, 6).ToUpper();
+            var existingCodes = await _uow.FinalExamRepository.GetAllAsQueryable()
+                .Select(fe => fe.ExamCode)
+                .Where(code => code != null)
+                .ToListAsync();
+
+            string code = FEHelper.GenerateExamCode(existingCodes!);
             entity.ExamCode = code;
 
             await _uow.FinalExamRepository.UpdateAsync(entity);
@@ -237,7 +243,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                 Checklists = p.PeChecklists?.Select(c => new PeChecklistItemDto
                 {
                     Id = c.Id,
-                    Name = c.Name,
+                    Name = c.Name ?? "Assigned",
                     Description = c.Description,
                     IsPass = c.IsPass
                 }).ToList(),
