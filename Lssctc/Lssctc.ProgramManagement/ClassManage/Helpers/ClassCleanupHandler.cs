@@ -1,5 +1,9 @@
 ﻿using Lssctc.Share.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Lssctc.ProgramManagement.ClassManage.Helpers
 {
@@ -40,6 +44,60 @@ namespace Lssctc.ProgramManagement.ClassManage.Helpers
 
                 if (enrollmentIds.Any())
                 {
+                    // --- NEW: Final Exam Data (Deepest first) ---
+                    var finalExams = await _uow.FinalExamRepository.GetAllAsQueryable()
+                        .Where(f => enrollmentIds.Contains(f.EnrollmentId))
+                        .ToListAsync();
+
+                    if (finalExams.Any())
+                    {
+                        var finalExamIds = finalExams.Select(f => f.Id).ToList();
+
+                        var partials = await _uow.FinalExamPartialRepository.GetAllAsQueryable()
+                            .Where(p => finalExamIds.Contains(p.FinalExamId))
+                            .ToListAsync();
+
+                        if (partials.Any())
+                        {
+                            var partialIds = partials.Select(p => p.Id).ToList();
+
+                            // FeSimulations & SeTasks
+                            var simulations = await _uow.FeSimulationRepository.GetAllAsQueryable()
+                                .Where(s => partialIds.Contains(s.FinalExamPartialId))
+                                .ToListAsync();
+
+                            if (simulations.Any())
+                            {
+                                var simIds = simulations.Select(s => s.Id).ToList();
+                                var seTasks = await _uow.SeTaskRepository.GetAllAsQueryable()
+                                    .Where(t => simIds.Contains(t.FeSimulationId))
+                                    .ToListAsync();
+                                foreach (var x in seTasks) await _uow.SeTaskRepository.DeleteAsync(x);
+                                foreach (var x in simulations) await _uow.FeSimulationRepository.DeleteAsync(x);
+                            }
+
+                            // FeTheories
+                            var theories = await _uow.FeTheoryRepository.GetAllAsQueryable()
+                                .Where(t => partialIds.Contains(t.FinalExamPartialId))
+                                .ToListAsync();
+                            foreach (var x in theories) await _uow.FeTheoryRepository.DeleteAsync(x);
+
+                            // PeChecklists
+                            var checklists = await _uow.check.GetAllAsQueryable()
+                                .Where(c => partialIds.Contains(c.FinalExamPartialId))
+                                .ToListAsync();
+                            foreach (var x in checklists) await _uow.PeChecklistRepository.DeleteAsync(x);
+
+                            // Delete Partials
+                            foreach (var x in partials) await _uow.FinalExamPartialRepository.DeleteAsync(x);
+                        }
+
+                        // Delete Final Exams
+                        foreach (var x in finalExams) await _uow.FinalExamRepository.DeleteAsync(x);
+                    }
+                    // --- END NEW: Final Exam Data ---
+
+
                     // 3.1 Quiz Answers
                     var quizAnswers = await _uow.QuizAttemptAnswerRepository.GetAllAsQueryable()
                         .Where(a => enrollmentIds.Contains(a.QuizAttemptQuestion.QuizAttempt.ActivityRecord.SectionRecord.LearningProgress.EnrollmentId))
@@ -99,10 +157,53 @@ namespace Lssctc.ProgramManagement.ClassManage.Helpers
                         .Where(l => enrollmentIds.Contains(l.EnrollmentId))
                         .ToListAsync();
                     foreach (var x in progress) await _uow.LearningProgressRepository.DeleteAsync(x);
-
-                    // 3.11 Enrollments
-                    foreach (var x in enrollments) await _uow.EnrollmentRepository.DeleteAsync(x);
                 }
+
+                // --- NEW: Class-Level Data Cleanup (Timeslots & Attendances) ---
+                // We fetch timeslots first to get IDs, then delete attendances linked to them.
+                // This covers attendances even if enrollment logic above missed something (though unlikely with FKs).
+                var timeslots = await _uow.TimeslotRepository.GetAllAsQueryable()
+                    .Where(t => t.ClassId == classId)
+                    .ToListAsync();
+
+                var timeslotIds = timeslots.Select(t => t.Id).ToList();
+                if (timeslotIds.Any())
+                {
+                    var attendances = await _uow.AttendanceRepository.GetAllAsQueryable()
+                        .Where(a => timeslotIds.Contains(a.TimeslotId))
+                        .ToListAsync();
+                    foreach (var x in attendances) await _uow.AttendanceRepository.DeleteAsync(x);
+                }
+
+                // Now safe to delete Enrollments (Attendance FK to Enrollment is gone)
+                // 3.11 Enrollments
+                foreach (var x in enrollments) await _uow.EnrollmentRepository.DeleteAsync(x);
+
+                // --- NEW: Delete Timeslots ---
+                foreach (var x in timeslots) await _uow.TimeslotRepository.DeleteAsync(x);
+
+                // --- NEW: Final Exam Templates ---
+                var finalExamTemplates = await _uow.FinalExamTemplateRepository.GetAllAsQueryable()
+                    .Where(t => t.ClassId == classId)
+                    .ToListAsync();
+
+                if (finalExamTemplates.Any())
+                {
+                    var templateIds = finalExamTemplates.Select(t => t.Id).ToList();
+                    var partialTemplates = await _uow.FinalExamPartialsTemplateRepository.GetAllAsQueryable()
+                        .Where(pt => templateIds.Contains(pt.FinalExamTemplateId))
+                        .ToListAsync();
+
+                    foreach (var x in partialTemplates) await _uow.FinalExamPartialsTemplateRepository.DeleteAsync(x);
+                    foreach (var x in finalExamTemplates) await _uow.FinalExamTemplateRepository.DeleteAsync(x);
+                }
+
+                // --- NEW: Activity Sessions ---
+                var activitySessions = await _uow.ActivitySessionRepository.GetAllAsQueryable()
+                    .Where(s => s.ClassId == classId)
+                    .ToListAsync();
+                foreach (var x in activitySessions) await _uow.ActivitySessionRepository.DeleteAsync(x);
+
 
                 // 3.12 Class Instructors
                 var instructors = await _uow.ClassInstructorRepository.GetAllAsQueryable()

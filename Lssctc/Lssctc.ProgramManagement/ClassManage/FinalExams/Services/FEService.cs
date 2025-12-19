@@ -115,6 +115,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             var entity = await _uow.FinalExamRepository.GetByIdAsync(finalExamId);
             if (entity == null) throw new KeyNotFoundException("Final Exam not found.");
 
+            // Fetch existing codes to ensure uniqueness
             var existingCodes = await _uow.FinalExamRepository.GetAllAsQueryable()
                 .Select(fe => fe.ExamCode)
                 .Where(code => code != null)
@@ -130,6 +131,17 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
 
         public async Task FinishFinalExamAsync(int classId)
         {
+            // 1. Update Final Exam Template Status to Completed
+            var template = await _uow.FinalExamTemplateRepository.GetAllAsQueryable()
+                .FirstOrDefaultAsync(t => t.ClassId == classId);
+
+            if (template != null)
+            {
+                template.Status = (int)FinalExamStatusEnum.Completed;
+                await _uow.FinalExamTemplateRepository.UpdateAsync(template);
+            }
+
+            // 2. Conclude and Calculate Student Exams
             var exams = await _uow.FinalExamRepository.GetAllAsQueryable()
                 .Include(fe => fe.FinalExamPartials)
                 .Where(fe => fe.Enrollment.ClassId == classId)
@@ -137,7 +149,18 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
 
             foreach (var exam in exams)
             {
+                // Calculate scores based on current partials
                 RecalculateFinalExamScoreInternal(exam);
+
+                // Force status to Completed as the class exam is being finished by instructor
+                exam.Status = (int)FinalExamStatusEnum.Completed;
+
+                if (!exam.CompleteTime.HasValue)
+                {
+                    exam.CompleteTime = DateTime.UtcNow;
+                }
+
+                await _uow.FinalExamRepository.UpdateAsync(exam);
             }
             await _uow.SaveChangesAsync();
         }
@@ -167,6 +190,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             finalExam.TotalMarks = total;
             finalExam.IsPass = finalExam.TotalMarks >= 5;
 
+            // Auto-complete logic (used during individual updates, not necessarily during class finish)
             if (finalExam.FinalExamPartials.Any() &&
                 finalExam.FinalExamPartials.All(p => p.Status == (int)FinalExamPartialStatus.Approved || p.Status == (int)FinalExamPartialStatus.Submitted))
             {
@@ -243,7 +267,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                 Checklists = p.PeChecklists?.Select(c => new PeChecklistItemDto
                 {
                     Id = c.Id,
-                    Name = c.Name ?? "Assigned",
+                    Name = c.Name ?? "Unassigned",
                     Description = c.Description,
                     IsPass = c.IsPass
                 }).ToList(),

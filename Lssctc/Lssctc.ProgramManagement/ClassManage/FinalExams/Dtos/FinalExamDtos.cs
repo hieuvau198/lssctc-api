@@ -88,14 +88,11 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Dtos
         public DateTime? CompleteTime { get; set; }
         public string? Status { get; set; } // "NotYet", "Submitted", "Approved"
         public bool? IsPass { get; set; }
-
-        // Linked Info
+        public string? ExamCode { get; set; }
         public int? QuizId { get; set; }
         public string? QuizName { get; set; }
         public int? PracticeId { get; set; }
         public string? PracticeName { get; set; }
-
-        // [UPDATE] List of checklist items from Entity
         public List<PeChecklistItemDto>? Checklists { get; set; }
         public List<SeTaskDto>? Tasks { get; set; }
     }
@@ -249,6 +246,8 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Dtos
         public int? Duration { get; set; }
         public DateTime? StartTime { get; set; }
         public DateTime? EndTime { get; set; }
+
+        public string? ExamCode { get; set; }
 
         // Linked Info
         public int? QuizId { get; set; }
