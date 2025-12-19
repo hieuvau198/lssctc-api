@@ -42,7 +42,8 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
 
         public async Task<FinalExamPartialDto> CreateFinalExamPartialAsync(CreateFinalExamPartialDto dto)
         {
-            int typeId = ParseExamType(dto.Type);
+            var type = ParseExamType(dto.Type);
+            int typeId = (int)type;
 
             var partial = new FinalExamPartial
             {
@@ -60,11 +61,11 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             await _uow.FinalExamPartialRepository.CreateAsync(partial);
             await _uow.SaveChangesAsync();
 
-            if (typeId == 1 && dto.QuizId.HasValue)
+            if (type == FinalExamPartialType.Theory && dto.QuizId.HasValue)
             {
                 await _uow.FeTheoryRepository.CreateAsync(new FeTheory { FinalExamPartialId = partial.Id, QuizId = dto.QuizId.Value, Name = "Theory Exam" });
             }
-            else if (typeId == 2 && dto.PracticeId.HasValue)
+            else if (type == FinalExamPartialType.Simulation && dto.PracticeId.HasValue)
             {
                 var feSim = new FeSimulation { FinalExamPartialId = partial.Id, PracticeId = dto.PracticeId.Value, Name = "Simulation Exam" };
                 await _uow.FeSimulationRepository.CreateAsync(feSim);
@@ -84,7 +85,8 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
 
             if (!exams.Any()) throw new KeyNotFoundException("No final exams found for this class.");
 
-            int typeId = ParseExamType(dto.Type);
+            var type = ParseExamType(dto.Type);
+            int typeId = (int)type;
             var updatedExams = new List<FinalExamDto>();
 
             foreach (var exam in exams)
@@ -108,9 +110,9 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                 await _uow.FinalExamPartialRepository.CreateAsync(partial);
                 await _uow.SaveChangesAsync();
 
-                if (typeId == 1 && dto.QuizId.HasValue)
+                if (type == FinalExamPartialType.Theory && dto.QuizId.HasValue)
                     await _uow.FeTheoryRepository.CreateAsync(new FeTheory { FinalExamPartialId = partial.Id, QuizId = dto.QuizId.Value, Name = "Theory Exam" });
-                else if (typeId == 2 && dto.PracticeId.HasValue)
+                else if (type == FinalExamPartialType.Simulation && dto.PracticeId.HasValue)
                 {
                     var feSim = new FeSimulation { FinalExamPartialId = partial.Id, PracticeId = dto.PracticeId.Value, Name = "Simulation Exam" };
                     await _uow.FeSimulationRepository.CreateAsync(feSim);
@@ -123,8 +125,6 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             await _uow.SaveChangesAsync();
             return updatedExams;
         }
-
-        // Moved UpdatePartialsConfigForClassAsync to FETemplateService
 
         public async Task<FinalExamPartialDto> UpdateFinalExamPartialAsync(int id, UpdateFinalExamPartialDto dto)
         {
@@ -143,14 +143,14 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
 
             if (!string.IsNullOrEmpty(dto.Description)) partial.Description = dto.Description;
 
-            if (dto.QuizId.HasValue && partial.Type == 1)
+            if (dto.QuizId.HasValue && partial.Type == (int)FinalExamPartialType.Theory)
             {
                 var theory = partial.FeTheories.FirstOrDefault();
                 if (theory != null) { theory.QuizId = dto.QuizId.Value; await _uow.FeTheoryRepository.UpdateAsync(theory); }
                 else { await _uow.FeTheoryRepository.CreateAsync(new FeTheory { FinalExamPartialId = id, QuizId = dto.QuizId.Value }); }
             }
 
-            if (dto.PracticeId.HasValue && partial.Type == 2)
+            if (dto.PracticeId.HasValue && partial.Type == (int)FinalExamPartialType.Simulation)
             {
                 var sim = partial.FeSimulations.FirstOrDefault();
                 if (sim != null)
@@ -193,7 +193,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             if (partial == null)
                 throw new KeyNotFoundException("Partial not found.");
 
-            if (partial.Type != 1)
+            if (partial.Type != (int)FinalExamPartialType.Theory)
                 throw new ArgumentException("Only Theory partial can be reset.");
 
             partial.Status = (int)FinalExamPartialStatus.NotYet;
@@ -225,7 +225,8 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
         {
             var partial = await GetPartialWithSecurityCheckAsync(partialId, userId);
 
-            if (partial.Type != 1) throw new ArgumentException("This ID is not a Theory Exam.");
+            if (partial.Type != (int)FinalExamPartialType.Theory)
+                throw new ArgumentException("This ID is not a Theory Exam.");
 
             var learningProgress = await _uow.LearningProgressRepository.GetAllAsQueryable()
                 .FirstOrDefaultAsync(lp => lp.EnrollmentId == partial.FinalExam.EnrollmentId);
@@ -272,7 +273,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             if (partial.FinalExam.Enrollment.TraineeId != userId)
                 throw new UnauthorizedAccessException("This exam does not belong to the current user.");
 
-            if (partial.Type != 1)
+            if (partial.Type != (int)FinalExamPartialType.Theory)
                 throw new ArgumentException("This ID is not a Theory Exam.");
 
             var learningProgress = await _uow.LearningProgressRepository.GetAllAsQueryable()
@@ -383,14 +384,14 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
         public async Task<FinalExamDto> SubmitPeAsync(int partialId, SubmitPeDto dto)
         {
             var partial = await _uow.FinalExamPartialRepository.GetAllAsQueryable()
-                .Include(p => p.FinalExam) // Include FinalExam to access EnrollmentId
+                .Include(p => p.FinalExam)
                 .Include(p => p.PeChecklists)
                 .FirstOrDefaultAsync(p => p.Id == partialId);
 
             if (partial == null) throw new KeyNotFoundException("Partial not found.");
-            if (partial.Type != 3) throw new ArgumentException("Not a Practical Exam.");
+            if (partial.Type != (int)FinalExamPartialType.Practical)
+                throw new ArgumentException("Not a Practical Exam.");
 
-            // Check if Learning Progress is completed
             var learningProgress = await _uow.LearningProgressRepository.GetAllAsQueryable()
                 .FirstOrDefaultAsync(lp => lp.EnrollmentId == partial.FinalExam.EnrollmentId);
 
@@ -449,18 +450,17 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
 
             if (partial == null) throw new KeyNotFoundException("Partial exam not found.");
             if (partial.FinalExam.Enrollment.TraineeId != userId) throw new UnauthorizedAccessException("Access denied.");
-            if (partial.Type != 3) throw new ArgumentException("Not a Practical Exam.");
+            if (partial.Type != (int)FinalExamPartialType.Practical)
+                throw new ArgumentException("Not a Practical Exam.");
 
             return partial.PeChecklists.Select(c => new PeChecklistItemDto
             {
                 Id = c.Id,
-                Name = c.Name,
+                Name = c.Name ?? "Unassigned",
                 Description = c.Description,
                 IsPass = c.IsPass
             }).ToList();
         }
-
-        // Removed GetClassExamConfigAsync
 
         private async Task<FinalExamPartial> GetPartialWithSecurityCheckAsync(int partialId, int userId)
         {
@@ -475,25 +475,33 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             return partial;
         }
 
-        private static int ParseExamType(string type)
+        private static FinalExamPartialType ParseExamType(string type)
         {
             return type.Trim().ToLower() switch
             {
-                "theory" => 1,
-                "simulation" => 2,
-                "practical" => 3,
+                "theory" => FinalExamPartialType.Theory,
+                "simulation" => FinalExamPartialType.Simulation,
+                "practical" => FinalExamPartialType.Practical,
                 _ => throw new ArgumentException($"Invalid exam type '{type}'. Allowed: 'Theory', 'Simulation', 'Practical'.")
             };
         }
 
         private string GetTypeName(int typeId)
         {
-            return typeId switch { 1 => "Theory", 2 => "Simulation", 3 => "Practical", _ => "Unknown" };
+            if (Enum.IsDefined(typeof(FinalExamPartialType), typeId))
+            {
+                return ((FinalExamPartialType)typeId).ToString();
+            }
+            return "Unknown";
         }
 
         private string GetFinalExamPartialStatusName(int statusId)
         {
-            return statusId switch { 0 => "NotYet", 1 => "Submitted", 2 => "Approved", _ => "Unknown" };
+            if (Enum.IsDefined(typeof(FinalExamPartialStatus), statusId))
+            {
+                return ((FinalExamPartialStatus)statusId).ToString();
+            }
+            return "Unknown";
         }
 
         private FinalExamPartialDto MapToPartialDto(FinalExamPartial p, bool isInstructor)
@@ -502,7 +510,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             var sim = p.FeSimulations.FirstOrDefault();
             int statusId = p.Status ?? 0;
             List<SeTaskDto>? tasks = null;
-            if (p.Type == 2 && sim != null)
+            if (p.Type == (int)FinalExamPartialType.Simulation && sim != null)
             {
                 if (sim.SeTasks != null)
                 {
@@ -538,7 +546,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                 Checklists = p.PeChecklists?.Select(c => new PeChecklistItemDto
                 {
                     Id = c.Id,
-                    Name = c.Name,
+                    Name = c.Name ?? "Unassigned",
                     Description = c.Description,
                     IsPass = c.IsPass
                 }).ToList(),

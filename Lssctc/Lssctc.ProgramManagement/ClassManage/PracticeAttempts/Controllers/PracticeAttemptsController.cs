@@ -277,7 +277,7 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Controllers
 
         #endregion
 
-        // --- ADDED HELPER METHOD (if not already present from previous request) ---
+        #region Helpers
         private int GetTraineeIdFromClaims()
         {
             var traineeIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -287,5 +287,6 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Controllers
             }
             throw new UnauthorizedAccessException("Trainee ID claim is missing or invalid.");
         }
+        #endregion
     }
 }
