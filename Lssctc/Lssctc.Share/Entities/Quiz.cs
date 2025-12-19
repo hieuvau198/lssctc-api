@@ -21,6 +21,8 @@ public partial class Quiz
 
     public string? Description { get; set; }
 
+    public int MaxAttempts { get; set; }
+
     public virtual ICollection<ActivityQuiz> ActivityQuizzes { get; set; } = new List<ActivityQuiz>();
 
     public virtual ICollection<FeTheory> FeTheories { get; set; } = new List<FeTheory>();

@@ -1211,6 +1211,9 @@ public partial class LssctcDbContext : DbContext
             entity.Property(e => e.Description)
                 .HasMaxLength(1000)
                 .HasColumnName("description");
+            entity.Property(e => e.MaxAttempts)
+                .HasDefaultValue(1)
+                .HasColumnName("max_attempts");
             entity.Property(e => e.Name)
                 .HasMaxLength(100)
                 .HasColumnName("name");
