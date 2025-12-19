@@ -11,15 +11,15 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Controllers
     [Authorize]
     public class FinalExamsController : ControllerBase
     {
-        private readonly IFinalExamsService _finalExamsService;
+        private readonly IFEService _finalExamsService;
         private readonly IFEPartialService _partialService;
-        private readonly IFinalExamSeService _seService;
+        private readonly ISEService _seService;
         private readonly IFETemplateService _templateService;
 
         public FinalExamsController(
-            IFinalExamsService finalExamsService,
+            IFEService finalExamsService,
             IFEPartialService partialService,
-            IFinalExamSeService seService,
+            ISEService seService,
             IFETemplateService templateService)
         {
             _finalExamsService = finalExamsService;

@@ -12,14 +12,14 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
     {
         private readonly IUnitOfWork _uow;
         private readonly IQuizService _quizService;
-        private readonly IFinalExamsService _finalExamsService;
-        private readonly IFinalExamSeService _finalExamSeService;
+        private readonly IFEService _finalExamsService;
+        private readonly ISEService _finalExamSeService;
 
         public FEPartialService(
             IUnitOfWork uow,
             IQuizService quizService,
-            IFinalExamsService finalExamsService,
-            IFinalExamSeService finalExamSeService)
+            IFEService finalExamsService,
+            ISEService finalExamSeService)
         {
             _uow = uow;
             _quizService = quizService;

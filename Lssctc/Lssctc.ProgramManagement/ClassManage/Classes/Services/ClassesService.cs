@@ -23,7 +23,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
         private readonly ClassCleanupHandler _cleanupHandler;
         private readonly ITimeslotService _timeslotService;
         private readonly IActivitySessionService _activitySessionService;
-        private readonly IFinalExamsService _finalExamsService;
+        private readonly IFEService _finalExamsService;
         private readonly IEnrollmentsService _enrollmentsService;
         private readonly ITraineeCertificatesService _traineeCertificatesService;
 
@@ -34,7 +34,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
             IMailService mailService,
             ITimeslotService timeslotService,
             IActivitySessionService activitySessionService,
-            IFinalExamsService finalExamsService,
+            IFEService finalExamsService,
             IEnrollmentsService enrollmentsService,
             ITraineeCertificatesService traineeCertificatesService)
         {

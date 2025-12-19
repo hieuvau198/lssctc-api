@@ -2,7 +2,7 @@
 
 namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
 {
-    public interface IFinalExamsService
+    public interface IFEService
     {
         Task AutoCreateFinalExamsForClassAsync(int classId);
         Task<FinalExamDto> CreateFinalExamAsync(CreateFinalExamDto dto);

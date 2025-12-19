@@ -7,12 +7,12 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
 {
-    public class FinalExamSeService : IFinalExamSeService
+    public class SEService : ISEService
     {
         private readonly IUnitOfWork _uow;
-        private readonly IFinalExamsService _finalExamsService;
+        private readonly IFEService _finalExamsService;
 
-        public FinalExamSeService(IUnitOfWork uow, IFinalExamsService finalExamsService)
+        public SEService(IUnitOfWork uow, IFEService finalExamsService)
         {
             _uow = uow;
             _finalExamsService = finalExamsService;
