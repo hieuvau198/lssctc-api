@@ -361,9 +361,14 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             var learningProgress = await _uow.LearningProgressRepository.GetAllAsQueryable()
                 .FirstOrDefaultAsync(lp => lp.EnrollmentId == partial.FinalExam.EnrollmentId);
 
-            if (learningProgress == null || learningProgress.Status != (int)LearningProgressStatusEnum.Completed)
+            if (learningProgress == null)
             {
-                throw new InvalidOperationException("Learning progress must be completed before taking the Simulation Exam.");
+                throw new InvalidOperationException($"Learning progress not found for EnrollmentId: {partial.FinalExam.EnrollmentId} (PartialId: {partialId}, UserId: {userId})");
+            }
+
+            if (learningProgress.Status != (int)LearningProgressStatusEnum.Completed)
+            {
+                throw new InvalidOperationException($"Learning progress must be completed before taking the Simulation Exam. Current Status: {learningProgress.Status} (LP_ID: {learningProgress.Id}, EnrollmentId: {partial.FinalExam.EnrollmentId})");
             }
 
             return partial;
