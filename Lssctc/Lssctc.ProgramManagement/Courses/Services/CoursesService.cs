@@ -215,24 +215,79 @@ namespace Lssctc.ProgramManagement.Courses.Services
 
         public async Task DeleteCourseAsync(int id)
         {
+            // 1. Logic: Apply only if that course has no children class
+            // Check if any class is associated with this course via ProgramCourse
+            var hasClasses = await _uow.ProgramCourseRepository
+                .GetAllAsQueryable()
+                .AnyAsync(pc => pc.CourseId == id && pc.Classes.Any());
+
+            if (hasClasses)
+            {
+                throw new InvalidOperationException("Cannot delete course. It is currently assigned to one or more classes.");
+            }
+
             var course = await _uow.CourseRepository
                 .GetAllAsQueryable()
                 .Where(c => c.Id == id)
-                .Include(c => c.ProgramCourses)
-                .FirstOrDefaultAsync()
-                ;
+                .Include(c => c.CourseCertificates) // Include Certificates
+                .Include(c => c.CourseSections)     // Include Sections
+                    .ThenInclude(cs => cs.Section)
+                .Include(c => c.ProgramCourses)     // Include Program Links
+                .FirstOrDefaultAsync();
+
             if (course == null || course.IsDeleted == true)
             {
                 throw new KeyNotFoundException($"Course with ID {id} not found.");
             }
-            // check if course is associated with any program courses
-            if (course.ProgramCourses != null && course.ProgramCourses.Any())
+
+            // 2. Logic: Delete all course certificates (Links only, not the Certificate template)
+            if (course.CourseCertificates.Any())
             {
-                throw new InvalidOperationException("Cannot delete course associated with programs.");
+                foreach (var cert in course.CourseCertificates.ToList())
+                {
+                    await _uow.CourseCertificateRepository.DeleteAsync(cert);
+                }
             }
 
+            // 3. Logic: Delete all course sections, and section origin (if orphan)
+            if (course.CourseSections.Any())
+            {
+                foreach (var cs in course.CourseSections.ToList())
+                {
+                    var sectionId = cs.SectionId;
+                    
+                    // Remove the link
+                    await _uow.CourseSectionRepository.DeleteAsync(cs);
+
+                    // Check if Section Origin is an orphan (used by no other courses)
+                    // We check if ANY other course uses this sectionId
+                    var isUsedElsewhere = await _uow.CourseSectionRepository
+                        .GetAllAsQueryable()
+                        .AnyAsync(x => x.SectionId == sectionId && x.CourseId != id);
+
+                    // If not used elsewhere, Soft Delete the Section origin
+                    if (!isUsedElsewhere && cs.Section != null)
+                    {
+                        cs.Section.IsDeleted = true;
+                        await _uow.SectionRepository.UpdateAsync(cs.Section);
+                    }
+                }
+            }
+
+            // 4. Logic: Delete all program course links (Links only, not the Program origin)
+            if (course.ProgramCourses.Any())
+            {
+                foreach (var pc in course.ProgramCourses.ToList())
+                {
+                    await _uow.ProgramCourseRepository.DeleteAsync(pc);
+                }
+            }
+
+            // 5. Logic: Then delete the course (Soft Delete)
             course.IsDeleted = true;
             await _uow.CourseRepository.UpdateAsync(course);
+            
+            // Commit all changes
             await _uow.SaveChangesAsync();
         }
         #endregion

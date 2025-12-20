@@ -277,7 +277,25 @@ namespace Lssctc.ProgramManagement.Sections.Services
                 throw new KeyNotFoundException($"Section with ID {sectionId} not found in course {courseId}.");
             }
 
+            // 1. Delete the link (Remove section from THIS course)
             await _uow.CourseSectionRepository.DeleteAsync(courseSection);
+            
+            // 2. Orphan Check: Check if this section is used by any *other* course
+            var isUsedElsewhere = await _uow.CourseSectionRepository
+                .GetAllAsQueryable()
+                .AnyAsync(cs => cs.SectionId == sectionId && cs.CourseId != courseId);
+
+            // 3. If not used elsewhere, Soft Delete the Section origin
+            if (!isUsedElsewhere)
+            {
+                var section = await _uow.SectionRepository.GetByIdAsync(sectionId);
+                if (section != null && section.IsDeleted != true)
+                {
+                    section.IsDeleted = true;
+                    await _uow.SectionRepository.UpdateAsync(section);
+                }
+            }
+
             await _uow.SaveChangesAsync();
 
             // Reorder remaining sections
