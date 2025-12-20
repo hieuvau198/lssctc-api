@@ -142,7 +142,8 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
 
                     if (taskDto.IsPass == true) passedTaskIds.Add(taskId);
 
-                    decimal taskScore = CalculateTaskScore(totalPracticeTasks, taskDto.Mistakes ?? 0);
+                    // Updated: Pass taskDto.IsPass to CalculateTaskScore
+                    decimal taskScore = CalculateTaskScore(totalPracticeTasks, taskDto.Mistakes ?? 0, taskDto.IsPass ?? false);
 
                     tasksToSave.Add(new PracticeAttemptTask
                     {
@@ -230,14 +231,12 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
 
                     if (existingAttemptsCount >= practiceInfo.MaxAttempts)
                     {
-                        // CHANGE: Return latest attempt with error message instead of throwing
                         var latestDto = await GetLatestPracticeAttempt(traineeId, submitDto.ActivityRecordId);
                         if (latestDto != null)
                         {
                             latestDto.Description = $"Error: You have reached the maximum number of attempts ({practiceInfo.MaxAttempts}) allowed.";
                             return latestDto;
                         }
-                        // Fallback if no attempt exists (rare)
                         throw new InvalidOperationException($"You have reached the maximum number of attempts ({practiceInfo.MaxAttempts}) allowed.");
                     }
                 }
@@ -264,7 +263,6 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
             var taskDef = practice?.PracticeTasks.FirstOrDefault(pt => pt.Task?.TaskCode == submitDto.TaskCode);
             if (taskDef == null)
             {
-                // CHANGE: Return current attempt with error message
                 var currentDto = (await MapToDtosWithFullTaskContextAsync(new[] { attempt })).FirstOrDefault();
                 if (currentDto != null)
                 {
@@ -275,7 +273,8 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
             }
 
             int totalPracticeTasks = practice?.PracticeTasks.Count ?? 0;
-            decimal taskScore = CalculateTaskScore(totalPracticeTasks, submitDto.Mistakes ?? 0);
+            // Updated: Pass submitDto.IsPass to CalculateTaskScore
+            decimal taskScore = CalculateTaskScore(totalPracticeTasks, submitDto.Mistakes ?? 0, submitDto.IsPass ?? false);
 
             var existingTask = attempt.PracticeAttemptTasks.FirstOrDefault(t => t.TaskId == taskDef.TaskId);
             if (existingTask != null)
@@ -311,8 +310,10 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
             return (await GetPracticeAttemptById(attempt.Id))!;
         }
 
-        private decimal CalculateTaskScore(int totalTasksCount, int mistakes)
+        // Updated: Added isPass parameter. Returns 0 if isPass is false.
+        private decimal CalculateTaskScore(int totalTasksCount, int mistakes, bool isPass)
         {
+            if (!isPass) return 0;
             if (totalTasksCount <= 0) return 0;
             decimal maxScorePerTask = 10m / (decimal)totalTasksCount;
             decimal penalty = mistakes * 0.5m;
@@ -364,7 +365,7 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
                     {
                         var taskId = templateTask.TaskId;
                         var taskCode = templateTask.Task?.TaskCode;
-                        var taskName = templateTask.Task?.TaskName;
+                        var taskName = templateTask.Task?.TaskName; // Task Name is retrieved here
 
                         if (existingTasksMap.TryGetValue(taskId, out var recordedTask))
                         {
@@ -374,7 +375,7 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
                                 PracticeAttemptId = recordedTask.PracticeAttemptId,
                                 TaskId = taskId,
                                 TaskCode = taskCode,
-                                TaskName = taskName,
+                                TaskName = taskName, // Task Name assigned to DTO
                                 Score = recordedTask.Score,
                                 Mistakes = recordedTask.Mistakes,
                                 Description = recordedTask.Description,
@@ -389,7 +390,7 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
                                 PracticeAttemptId = pa.Id,
                                 TaskId = taskId,
                                 TaskCode = taskCode,
-                                TaskName = taskName,
+                                TaskName = taskName, // Task Name assigned to DTO
                                 Score = 0,
                                 Description = "Not Attempted",
                                 IsPass = false
