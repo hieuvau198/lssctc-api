@@ -230,7 +230,15 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
 
                     if (existingAttemptsCount >= practiceInfo.MaxAttempts)
                     {
-                        throw new InvalidOperationException($"You have reached the maximum number of attempts ({practiceInfo.MaxAttempts}) allowed for this practice.");
+                        // CHANGE: Return latest attempt with error message instead of throwing
+                        var latestDto = await GetLatestPracticeAttempt(traineeId, submitDto.ActivityRecordId);
+                        if (latestDto != null)
+                        {
+                            latestDto.Description = $"Error: You have reached the maximum number of attempts ({practiceInfo.MaxAttempts}) allowed.";
+                            return latestDto;
+                        }
+                        // Fallback if no attempt exists (rare)
+                        throw new InvalidOperationException($"You have reached the maximum number of attempts ({practiceInfo.MaxAttempts}) allowed.");
                     }
                 }
                 // -----------------------------
@@ -254,7 +262,17 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
                 .FirstOrDefaultAsync(p => p.Id == attempt.PracticeId);
 
             var taskDef = practice?.PracticeTasks.FirstOrDefault(pt => pt.Task?.TaskCode == submitDto.TaskCode);
-            if (taskDef == null) throw new ArgumentException($"Invalid TaskCode: {submitDto.TaskCode}");
+            if (taskDef == null)
+            {
+                // CHANGE: Return current attempt with error message
+                var currentDto = (await MapToDtosWithFullTaskContextAsync(new[] { attempt })).FirstOrDefault();
+                if (currentDto != null)
+                {
+                    currentDto.Description = $"Error: Invalid TaskCode '{submitDto.TaskCode}'";
+                    return currentDto;
+                }
+                throw new ArgumentException($"Invalid TaskCode: {submitDto.TaskCode}");
+            }
 
             int totalPracticeTasks = practice?.PracticeTasks.Count ?? 0;
             decimal taskScore = CalculateTaskScore(totalPracticeTasks, submitDto.Mistakes ?? 0);
