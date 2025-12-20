@@ -215,10 +215,10 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Controllers
             }
         }
 
-        // UPDATE 3: New Endpoint for Single Task Submission
         /// <summary>
         /// Submit or update a specific task for an ongoing practice attempt.
         /// This keeps the attempt in 'InProgress' status.
+        /// Always returns 200 OK with DTO structure, describing error in Description if failed.
         /// </summary>
         [HttpPost("submit-task")]
         [Authorize(Roles = "Trainee, Admin")]
@@ -226,18 +226,39 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Controllers
         {
             try
             {
-                if (!ModelState.IsValid) return BadRequest(ModelState);
+                if (!ModelState.IsValid)
+                {
+                    var errors = string.Join("; ", ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage));
+                    return Ok(new PracticeAttemptDto
+                    {
+                        ActivityRecordId = submitDto.ActivityRecordId,
+                        Description = $"Validation Error: {errors}",
+                        AttemptStatus = "Error",
+                        IsPass = false
+                    });
+                }
+
                 var traineeId = GetTraineeIdFromClaims();
 
                 var result = await _practiceAttemptsService.SubmitSinglePracticeTask(traineeId, submitDto);
                 return Ok(result);
             }
-            catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
-            catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error: {ex.Message}");
-                return StatusCode(500, new { message = "An unexpected error occurred.", details = ex.Message });
+                // Catch all exceptions (KeyNotFound, Argument, System, etc.)
+                // Return Success (200) with Error details in DTO
+                Console.WriteLine($"Error in SubmitTask: {ex.Message}");
+                if (ex.StackTrace != null) Console.WriteLine($"StackTrace: {ex.StackTrace}");
+
+                return Ok(new PracticeAttemptDto
+                {
+                    ActivityRecordId = submitDto.ActivityRecordId,
+                    Description = ex.Message,
+                    AttemptStatus = "Error",
+                    IsPass = false,
+                    // Return empty list to match DTO structure
+                    PracticeAttemptTasks = new List<PracticeAttemptTaskDto>()
+                });
             }
         }
 
