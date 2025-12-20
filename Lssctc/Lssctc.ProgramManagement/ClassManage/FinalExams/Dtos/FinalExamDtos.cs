@@ -182,6 +182,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Dtos
 
         [StringLength(1000, ErrorMessage = "Description cannot exceed 1000 characters.")]
         public string? Description { get; set; }
+        public DateTime? StartTime { get; set; }
         public DateTime? CompleteTime { get; set; }
         public List<SubmitSeTaskDto>? Tasks { get; set; }
     }
