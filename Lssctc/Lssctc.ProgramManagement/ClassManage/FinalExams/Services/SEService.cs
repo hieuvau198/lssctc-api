@@ -239,8 +239,10 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             partial.Marks = calculatedMarks;
             partial.IsPass = dto.IsPass;
             partial.Description = dto.Description;
-            partial.CompleteTime = nowUtc7;
+            partial.StartTime = dto.StartTime;
+            partial.CompleteTime = dto.CompleteTime;
             partial.Status = (int)FinalExamPartialStatus.Submitted;
+
 
             await _uow.FinalExamPartialRepository.UpdateAsync(partial);
             await _uow.SaveChangesAsync();
