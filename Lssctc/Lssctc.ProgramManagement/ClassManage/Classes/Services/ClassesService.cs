@@ -18,6 +18,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
     public class ClassesService : IClassesService
     {
         private readonly IUnitOfWork _uow;
+        private readonly IClassQueryService _queryService; // Inject ClassQueryService
         private readonly ClassManageHandler _handler;
         private readonly ClassImportHandler _importHandler;
         private readonly ClassCleanupHandler _cleanupHandler;
@@ -31,6 +32,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
 
         public ClassesService(
             IUnitOfWork uow,
+            IClassQueryService queryService, // Add to constructor
             IMailService mailService,
             ITimeslotService timeslotService,
             IActivitySessionService activitySessionService,
@@ -39,6 +41,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
             ITraineeCertificatesService traineeCertificatesService)
         {
             _uow = uow;
+            _queryService = queryService;
             _timeslotService = timeslotService;
             _activitySessionService = activitySessionService;
             _finalExamsService = finalExamsService;
@@ -51,75 +54,26 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
             _cleanupHandler = new ClassCleanupHandler(uow);
         }
 
-        #region Classes
+        #region Classes (Queries Delegated to QueryService)
 
         public async Task<IEnumerable<ClassDto>> GetAllClassesAsync()
         {
-            var classes = await _uow.ClassRepository
-                .GetAllAsQueryable()
-                .Include(c => c.ProgramCourse).ThenInclude(pc => pc.Course)
-                .Include(c => c.ClassCode)
-                .ToListAsync();
-
-            return classes.Select(MapToDto);
+            return await _queryService.GetAllClassesAsync();
         }
 
         public async Task<PagedResult<ClassDto>> GetClassesAsync(int pageNumber, int pageSize, string? searchTerm = null, string? sortBy = null, string? sortDirection = null, string? status = null)
         {
-            if (pageNumber < 1) pageNumber = 1;
-            if (pageSize < 1) pageSize = 10;
-
-            var query = _uow.ClassRepository
-                .GetAllAsQueryable()
-                .Include(c => c.ProgramCourse).ThenInclude(pc => pc.Course)
-                .Include(c => c.ClassCode)
-                .AsQueryable();
-
-            if (!string.IsNullOrWhiteSpace(status) && Enum.TryParse<ClassStatusEnum>(status, ignoreCase: true, out var parsedStatus))
-            {
-                query = query.Where(c => c.Status == (int)parsedStatus);
-            }
-
-            if (!string.IsNullOrWhiteSpace(searchTerm))
-            {
-                var searchLower = searchTerm.ToLower();
-                query = query.Where(c =>
-                    c.Name.ToLower().Contains(searchLower) ||
-                    (c.ClassCode != null && c.ClassCode.Name.ToLower().Contains(searchLower)) ||
-                    (c.Description != null && c.Description.ToLower().Contains(searchLower))
-                );
-            }
-
-            // Sorting logic
-            if (!string.IsNullOrWhiteSpace(sortBy))
-            {
-                bool isDesc = sortDirection?.ToLower() == "desc";
-                if (sortBy.ToLower() == "startdate") query = isDesc ? query.OrderByDescending(c => c.StartDate) : query.OrderBy(c => c.StartDate);
-                else if (sortBy.ToLower() == "enddate") query = isDesc ? query.OrderByDescending(c => c.EndDate) : query.OrderBy(c => c.EndDate);
-            }
-            else
-            {
-                query = query.OrderByDescending(c => c.Id);
-            }
-
-            var pagedEntities = await query.ToPagedResultAsync(pageNumber, pageSize);
-            return new PagedResult<ClassDto>
-            {
-                Items = pagedEntities.Items.Select(MapToDto).ToList(),
-                TotalCount = pagedEntities.TotalCount,
-                Page = pagedEntities.Page,
-                PageSize = pagedEntities.PageSize
-            };
+            return await _queryService.GetClassesAsync(pageNumber, pageSize, searchTerm, sortBy, sortDirection, status);
         }
 
         public async Task<ClassDto?> GetClassByIdAsync(int id)
         {
-            var c = await _uow.ClassRepository.GetAllAsQueryable()
-                .Include(c => c.ProgramCourse).ThenInclude(pc => pc.Course)
-                .Include(c => c.ClassCode)
-                .FirstOrDefaultAsync(c => c.Id == id);
-            return c == null ? null : MapToDto(c);
+            return await _queryService.GetClassByIdAsync(id);
         }
+
+        #endregion
+
+        #region Commands (Write Operations)
 
         public async Task<ClassDto> CreateClassAsync(CreateClassDto dto)
         {
@@ -370,89 +324,51 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
 
         #endregion
 
-        #region Read Operations (Queries)
+        #region Read Operations (Queries Delegated to QueryService)
 
         public async Task<IEnumerable<ClassDto>> GetClassesByProgramAndCourseAsync(int programId, int courseId)
         {
-            var classes = await _uow.ClassRepository.GetAllAsQueryable()
-                .Include(c => c.ProgramCourse).Include(c => c.ClassCode)
-                .Where(c => c.ProgramCourse.ProgramId == programId && c.ProgramCourse.CourseId == courseId)
-                .ToListAsync();
-            return classes.Select(MapToDto);
+            return await _queryService.GetClassesByProgramAndCourseAsync(programId, courseId);
         }
 
         public async Task<IEnumerable<ClassDto>> GetClassesByCourseAsync(int courseId)
         {
-            var classes = await _uow.ClassRepository.GetAllAsQueryable()
-                .Include(c => c.ProgramCourse).Include(c => c.ClassCode)
-                .Where(c => c.ProgramCourse.CourseId == courseId)
-                .ToListAsync();
-            return classes.Select(MapToDto);
+            return await _queryService.GetClassesByCourseAsync(courseId);
         }
 
         public async Task<IEnumerable<ClassDto>> GetClassesByCourseIdForTrainee(int courseId)
         {
-            var classes = await _uow.ClassRepository.GetAllAsQueryable()
-                .Include(c => c.ProgramCourse).Include(c => c.ClassCode)
-                .Where(c => c.ProgramCourse.CourseId == courseId && (c.Status == (int)ClassStatusEnum.Open || c.Status == (int)ClassStatusEnum.Inprogress))
-                .ToListAsync();
-            return classes.Select(MapToDto);
+            return await _queryService.GetClassesByCourseIdForTrainee(courseId);
         }
 
         public async Task<IEnumerable<ClassDto>> GetClassesByInstructorAsync(int instructorId)
         {
-            var classes = await _uow.ClassInstructorRepository.GetAllAsQueryable()
-                .Where(ci => ci.InstructorId == instructorId)
-                .Include(ci => ci.Class).ThenInclude(c => c.ProgramCourse)
-                .Include(ci => ci.Class).ThenInclude(c => c.ClassCode)
-                .Select(ci => ci.Class)
-                .ToListAsync();
-            return classes.Select(MapToDto);
+            return await _queryService.GetClassesByInstructorAsync(instructorId);
         }
 
         public async Task<IEnumerable<ClassDto>> GetAllClassesByTraineeAsync(int traineeId)
         {
-            var classes = await _uow.EnrollmentRepository.GetAllAsQueryable()
-                .Where(e => e.TraineeId == traineeId && (e.Status == (int)EnrollmentStatusEnum.Enrolled || e.Status == (int)EnrollmentStatusEnum.Inprogress || e.Status == (int)EnrollmentStatusEnum.Completed))
-                .Include(e => e.Class).ThenInclude(c => c.ProgramCourse).ThenInclude(pc => pc.Course)
-                .Include(e => e.Class).ThenInclude(c => c.ClassCode)
-                .Select(e => e.Class).Distinct().ToListAsync();
-            return classes.Select(MapToDto);
+            return await _queryService.GetAllClassesByTraineeAsync(traineeId);
         }
 
         public async Task<PagedResult<ClassDto>> GetPagedClassesByTraineeAsync(int traineeId, int pageNumber, int pageSize)
         {
-            if (pageNumber < 1) pageNumber = 1;
-            if (pageSize < 1) pageSize = 10;
-            var query = _uow.EnrollmentRepository.GetAllAsQueryable()
-                .Where(e => e.TraineeId == traineeId && (e.Status == (int)EnrollmentStatusEnum.Enrolled || e.Status == (int)EnrollmentStatusEnum.Inprogress || e.Status == (int)EnrollmentStatusEnum.Completed))
-                .Include(e => e.Class).ThenInclude(c => c.ProgramCourse).ThenInclude(pc => pc.Course)
-                .Include(e => e.Class).ThenInclude(c => c.ClassCode)
-                .Select(e => e.Class).Distinct();
-
-            var pagedEntities = await query.ToPagedResultAsync(pageNumber, pageSize);
-            return new PagedResult<ClassDto>
-            {
-                Items = pagedEntities.Items.Select(MapToDto).ToList(),
-                TotalCount = pagedEntities.TotalCount,
-                Page = pagedEntities.Page,
-                PageSize = pagedEntities.PageSize
-            };
+            return await _queryService.GetPagedClassesByTraineeAsync(traineeId, pageNumber, pageSize);
         }
 
         public async Task<ClassDto?> GetClassByIdAndTraineeAsync(int classId, int traineeId)
         {
-            var enrollment = await _uow.EnrollmentRepository.GetAllAsQueryable()
-                .Where(e => e.ClassId == classId && e.TraineeId == traineeId && (e.Status == (int)EnrollmentStatusEnum.Enrolled || e.Status == (int)EnrollmentStatusEnum.Inprogress || e.Status == (int)EnrollmentStatusEnum.Completed))
-                .Include(e => e.Class).ThenInclude(c => c.ProgramCourse).ThenInclude(pc => pc.Course)
-                .Include(e => e.Class).ThenInclude(c => c.ClassCode)
-                .FirstOrDefaultAsync();
-            return enrollment == null ? null : MapToDto(enrollment.Class);
+            return await _queryService.GetClassByIdAndTraineeAsync(classId, traineeId);
+        }
+
+        public async Task<IEnumerable<ClassWithEnrollmentDto>> GetAvailableClassesByProgramCourseForTraineeAsync(int programId, int courseId, int? traineeId)
+        {
+            return await _queryService.GetAvailableClassesByProgramCourseForTraineeAsync(programId, courseId, traineeId);
         }
 
         #endregion
 
-        #region Mapping
+        #region Mapping (Kept for UpdateClassAsync)
 
         private static ClassDto MapToDto(Class c)
         {

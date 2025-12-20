@@ -169,6 +169,7 @@ builder.Services.AddScoped<ITraineePracticesService, TraineePracticesService>();
 builder.Services.AddScoped<ITasksService, TasksService>();
 
 builder.Services.AddScoped<IClassesService, ClassesService>();
+builder.Services.AddScoped<IClassQueryService, ClassQueryService>();
 builder.Services.AddScoped<IClassInstructorsService, ClassInstructorsService>();
 builder.Services.AddScoped<IEnrollmentsService, EnrollmentsService>();
 builder.Services.AddScoped<IProgressesService, ProgressesService>();

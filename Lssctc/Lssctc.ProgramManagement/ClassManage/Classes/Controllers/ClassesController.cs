@@ -360,6 +360,29 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
             }
         }
 
+        [HttpGet("program/{programId}/course/{courseId}/available")]
+        [ProducesResponseType(typeof(IEnumerable<ClassWithEnrollmentDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> GetAvailableByProgramAndCourse(int programId, int courseId)
+        {
+            try
+            {
+                // Try to get TraineeId, but don't fail if not logged in
+                int? traineeId = GetUserIdFromClaimsOptional();
+
+                var result = await _service.GetAvailableClassesByProgramCourseForTraineeAsync(programId, courseId, traineeId);
+
+                if (result == null || !result.Any())
+                    return Ok(new List<ClassWithEnrollmentDto>()); // Return empty list instead of 404 for filters usually
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
         [HttpGet("course/{courseId}")]
         [ProducesResponseType(typeof(IEnumerable<ClassDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -561,6 +584,16 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
                 return userId;
             }
             throw new UnauthorizedAccessException("User ID claim is missing or invalid.");
+        }
+
+        private int? GetUserIdFromClaimsOptional()
+        {
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (int.TryParse(userIdClaim, out int userId))
+            {
+                return userId;
+            }
+            return null;
         }
         #endregion
 
