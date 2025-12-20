@@ -20,7 +20,6 @@ namespace Lssctc.ProgramManagement.Courses.Services
             var courses = await _uow.CourseRepository
                 .GetAllAsQueryable()
                 .Where(c => c.IsDeleted != true)
-                // ADDED: Include navigation properties
                 .Include(c => c.Category)
                 .Include(c => c.Level)
                 .ToListAsync();
@@ -33,7 +32,6 @@ namespace Lssctc.ProgramManagement.Courses.Services
             if (pageNumber < 1) pageNumber = 1;
             if (pageSize < 1) pageSize = 10;
 
-            // Start with base query including navigation properties
             var query = _uow.CourseRepository
                 .GetAllAsQueryable()
                 .Where(c => c.IsDeleted != true)
@@ -41,7 +39,6 @@ namespace Lssctc.ProgramManagement.Courses.Services
                 .Include(c => c.Level)
                 .AsQueryable();
 
-            // Apply search filter if searchTerm is provided
             if (!string.IsNullOrWhiteSpace(searchTerm))
             {
                 var normalizedSearchTerm = searchTerm.Trim();
@@ -53,7 +50,6 @@ namespace Lssctc.ProgramManagement.Courses.Services
                 );
             }
 
-            // Project to DTO
             var projectedQuery = query.Select(c => new CourseDto
             {
                 Id = c.Id,
@@ -70,10 +66,8 @@ namespace Lssctc.ProgramManagement.Courses.Services
                 BackgroundImageUrl = c.BackgroundImageUrl
             });
 
-            // Apply sorting logic
             if (!string.IsNullOrWhiteSpace(sortBy))
             {
-                // Scenario A: User selected specific sort
                 var isDescending = sortDirection?.ToLower() == "desc";
 
                 projectedQuery = sortBy.ToLower() switch
@@ -84,12 +78,11 @@ namespace Lssctc.ProgramManagement.Courses.Services
                     "duration" => isDescending
                         ? projectedQuery.OrderByDescending(c => c.DurationHours).ThenBy(c => c.Name)
                         : projectedQuery.OrderBy(c => c.DurationHours).ThenBy(c => c.Name),
-                    _ => projectedQuery.OrderBy(c => c.Name) // Default if invalid sortBy
+                    _ => projectedQuery.OrderBy(c => c.Name)
                 };
             }
             else if (!string.IsNullOrWhiteSpace(searchTerm))
             {
-                // Scenario B: Search relevance sorting (no specific sort selected)
                 var normalizedSearchTerm = searchTerm.Trim();
 
                 projectedQuery = projectedQuery
@@ -103,7 +96,6 @@ namespace Lssctc.ProgramManagement.Courses.Services
             }
             else
             {
-                // Scenario C: No search term and no sort - default ordering
                 projectedQuery = projectedQuery.OrderByDescending(c => c.CreatedAt);
             }
 
@@ -113,21 +105,26 @@ namespace Lssctc.ProgramManagement.Courses.Services
 
         public async Task<IEnumerable<CourseDto>> GetAvailableCoursesAsync()
         {
+            // Filter out invalid courses (missing certificate or sections) ===
             var courses = await _uow.CourseRepository
                 .GetAllAsQueryable()
-                .Where(c => c.IsDeleted != true && c.IsActive == true)
+                .Where(c => c.IsDeleted != true
+                         && c.IsActive == true
+                         && c.CourseCertificates.Any()
+                         && c.CourseSections.Any())
                 .Include(c => c.Category)
                 .Include(c => c.Level)
                 .ToListAsync();
+            // ============================================================================
 
             return courses.Select(MapToDto);
         }
+
         public async Task<CourseDto?> GetCourseByIdAsync(int id)
         {
             var course = await _uow.CourseRepository
                 .GetAllAsQueryable()
                 .Where(c => c.Id == id && c.IsDeleted != true)
-                // ADDED: Include navigation properties
                 .Include(c => c.Category)
                 .Include(c => c.Level)
                 .FirstOrDefaultAsync();
@@ -164,20 +161,16 @@ namespace Lssctc.ProgramManagement.Courses.Services
 
         public async Task<CourseDto> UpdateCourseAsync(int id, UpdateCourseDto updateDto)
         {
-            // Fetch the course to update (no includes needed yet)
             var course = await _uow.CourseRepository.GetByIdAsync(id);
             if (course == null || course.IsDeleted == true)
             {
                 throw new KeyNotFoundException($"Course with ID {id} not found.");
             }
 
-            // 1. Validation: Unique Name Check
             if (updateDto.Name != null)
             {
-                // Normalize name
                 var normalizedName = string.Join(' ', updateDto.Name.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries));
 
-                // Only check if the name is changing
                 if (!string.Equals(course.Name, normalizedName, StringComparison.CurrentCultureIgnoreCase))
                 {
                     var isDuplicate = await _uow.CourseRepository.GetAllAsQueryable()
@@ -191,7 +184,6 @@ namespace Lssctc.ProgramManagement.Courses.Services
                 }
             }
 
-            // 2. Update fields (Allow updates regardless of usage in Programs/Classes)
             course.Description = updateDto.Description ?? course.Description;
             course.CategoryId = updateDto.CategoryId ?? course.CategoryId;
             course.LevelId = updateDto.LevelId ?? course.LevelId;
@@ -204,19 +196,16 @@ namespace Lssctc.ProgramManagement.Courses.Services
             await _uow.CourseRepository.UpdateAsync(course);
             await _uow.SaveChangesAsync();
 
-            // Reload the entity *with* navigation properties to return the correct DTO
             var updatedCourse = await _uow.CourseRepository.GetAllAsQueryable()
                 .Include(c => c.Category)
                 .Include(c => c.Level)
                 .FirstOrDefaultAsync(c => c.Id == id);
 
-            return MapToDto(updatedCourse!); // Map the reloaded entity
+            return MapToDto(updatedCourse!);
         }
 
         public async Task DeleteCourseAsync(int id)
         {
-            // 1. Logic: Apply only if that course has no children class
-            // Check if any class is associated with this course via ProgramCourse
             var hasClasses = await _uow.ProgramCourseRepository
                 .GetAllAsQueryable()
                 .AnyAsync(pc => pc.CourseId == id && pc.Classes.Any());
@@ -229,10 +218,10 @@ namespace Lssctc.ProgramManagement.Courses.Services
             var course = await _uow.CourseRepository
                 .GetAllAsQueryable()
                 .Where(c => c.Id == id)
-                .Include(c => c.CourseCertificates) // Include Certificates
-                .Include(c => c.CourseSections)     // Include Sections
+                .Include(c => c.CourseCertificates)
+                .Include(c => c.CourseSections)
                     .ThenInclude(cs => cs.Section)
-                .Include(c => c.ProgramCourses)     // Include Program Links
+                .Include(c => c.ProgramCourses)
                 .FirstOrDefaultAsync();
 
             if (course == null || course.IsDeleted == true)
@@ -240,7 +229,6 @@ namespace Lssctc.ProgramManagement.Courses.Services
                 throw new KeyNotFoundException($"Course with ID {id} not found.");
             }
 
-            // 2. Logic: Delete all course certificates (Links only, not the Certificate template)
             if (course.CourseCertificates.Any())
             {
                 foreach (var cert in course.CourseCertificates.ToList())
@@ -249,23 +237,18 @@ namespace Lssctc.ProgramManagement.Courses.Services
                 }
             }
 
-            // 3. Logic: Delete all course sections, and section origin (if orphan)
             if (course.CourseSections.Any())
             {
                 foreach (var cs in course.CourseSections.ToList())
                 {
                     var sectionId = cs.SectionId;
-                    
-                    // Remove the link
+
                     await _uow.CourseSectionRepository.DeleteAsync(cs);
 
-                    // Check if Section Origin is an orphan (used by no other courses)
-                    // We check if ANY other course uses this sectionId
                     var isUsedElsewhere = await _uow.CourseSectionRepository
                         .GetAllAsQueryable()
                         .AnyAsync(x => x.SectionId == sectionId && x.CourseId != id);
 
-                    // If not used elsewhere, Soft Delete the Section origin
                     if (!isUsedElsewhere && cs.Section != null)
                     {
                         cs.Section.IsDeleted = true;
@@ -274,7 +257,6 @@ namespace Lssctc.ProgramManagement.Courses.Services
                 }
             }
 
-            // 4. Logic: Delete all program course links (Links only, not the Program origin)
             if (course.ProgramCourses.Any())
             {
                 foreach (var pc in course.ProgramCourses.ToList())
@@ -283,11 +265,9 @@ namespace Lssctc.ProgramManagement.Courses.Services
                 }
             }
 
-            // 5. Logic: Then delete the course (Soft Delete)
             course.IsDeleted = true;
             await _uow.CourseRepository.UpdateAsync(course);
-            
-            // Commit all changes
+
             await _uow.SaveChangesAsync();
         }
         #endregion
@@ -313,19 +293,23 @@ namespace Lssctc.ProgramManagement.Courses.Services
 
         public async Task<IEnumerable<CourseDto>> GetAvailableCoursesByProgramIdAsync(int programId)
         {
+            // Filter out invalid courses directly in query ===
             var programCourses = await _uow.ProgramCourseRepository
                 .GetAllAsQueryable()
-                .Where(pc => pc.ProgramId == programId)
+                .Where(pc => pc.ProgramId == programId
+                          && pc.Course != null
+                          && pc.Course.IsDeleted != true
+                          && pc.Course.IsActive == true
+                          && pc.Course.CourseCertificates.Any()
+                          && pc.Course.CourseSections.Any())
                 .Include(pc => pc.Course)
                     .ThenInclude(c => c!.Category)
                 .Include(pc => pc.Course)
                     .ThenInclude(c => c!.Level)
                 .ToListAsync();
+            // ============================================================
 
             var courses = programCourses
-                .Where(pc => pc.Course != null
-                             && pc.Course.IsDeleted != true
-                             && pc.Course.IsActive == true)
                 .Select(pc => MapToDto(pc.Course!));
 
             return courses;
@@ -341,11 +325,11 @@ namespace Lssctc.ProgramManagement.Courses.Services
                 .Where(c => c.Id == classId)
                 .Include(c => c.ProgramCourse)
                     .ThenInclude(pc => pc.Course)
-                        .ThenInclude(co => co.Category) // Include Category
+                        .ThenInclude(co => co.Category)
                 .Include(c => c.ProgramCourse)
                     .ThenInclude(pc => pc.Course)
-                        .ThenInclude(co => co.Level) // Include Level
-                .AsNoTracking() // Read-only operation
+                        .ThenInclude(co => co.Level)
+                .AsNoTracking()
                 .FirstOrDefaultAsync();
 
             if (targetClass == null || targetClass.ProgramCourse == null || targetClass.ProgramCourse.Course == null)
@@ -360,13 +344,11 @@ namespace Lssctc.ProgramManagement.Courses.Services
                 return null;
             }
 
-            return MapToDto(course); // Use existing mapper
+            return MapToDto(course);
         }
         #endregion
 
         #region Course Categories and Levels
-
-        // ... (No changes needed in this region) ...
 
         public async Task<IEnumerable<CourseCategoryDto>> GetAllCourseCategoriesAsync()
         {

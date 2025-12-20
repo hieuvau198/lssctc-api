@@ -123,6 +123,19 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
 
         public async Task<ClassDto> CreateClassAsync(CreateClassDto dto)
         {
+            // Validate Course Requirements (Certificate & Sections) ===
+            var courseValidation = await _uow.CourseRepository.GetAllAsQueryable()
+                .Where(c => c.Id == dto.CourseId)
+                .Select(c => new { HasCertificate = c.CourseCertificates.Any(), HasSections = c.CourseSections.Any() })
+                .FirstOrDefaultAsync();
+
+            if (courseValidation == null) throw new KeyNotFoundException("Course not found.");
+            if (!courseValidation.HasCertificate || !courseValidation.HasSections)
+            {
+                throw new InvalidOperationException("Cannot create class: The selected Course must have at least one Certificate and one Section assigned.");
+            }
+            // ===================================================================
+
             var startDateUtc = dto.StartDate.AddHours(-VietnamTimeZoneOffset);
             var endDateUtc = dto.EndDate?.AddHours(-VietnamTimeZoneOffset);
 
@@ -195,6 +208,16 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
             var existing = await _uow.ClassRepository.GetByIdAsync(id);
             if (existing == null) throw new KeyNotFoundException($"Class with ID {id} not found.");
             if (existing.Status != (int)ClassStatusEnum.Draft) throw new InvalidOperationException("Only 'Draft' classes can be opened.");
+
+            // Validate Timeslots and Instructors ===
+            var hasInstructors = await _uow.ClassInstructorRepository.GetAllAsQueryable()
+                .AnyAsync(ci => ci.ClassId == id);
+            if (!hasInstructors) throw new InvalidOperationException("Cannot open class: At least one Instructor must be assigned.");
+
+            var hasTimeslots = await _uow.TimeslotRepository.GetAllAsQueryable()
+                .AnyAsync(t => t.ClassId == id);
+            if (!hasTimeslots) throw new InvalidOperationException("Cannot open class: Timeslots must be configured.");
+            // =================================================
 
             existing.Status = (int)ClassStatusEnum.Open;
             await _uow.ClassRepository.UpdateAsync(existing);
