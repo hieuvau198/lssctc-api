@@ -40,11 +40,10 @@ namespace Lssctc.ProgramManagement.ClassManage.Helpers
 
                 var enrollmentIds = enrollments.Select(e => e.Id).ToList();
 
-                // 3. Delete child data (Reverse order of dependency)
-
+                // 3. Delete enrollment-related child data (Reverse order of dependency)
                 if (enrollmentIds.Any())
                 {
-                    // --- NEW: Final Exam Data (Deepest first) ---
+                    // --- Final Exam Student Data (Deepest first) ---
                     var finalExams = await _uow.FinalExamRepository.GetAllAsQueryable()
                         .Where(f => enrollmentIds.Contains(f.EnrollmentId))
                         .ToListAsync();
@@ -95,8 +94,6 @@ namespace Lssctc.ProgramManagement.ClassManage.Helpers
                         // Delete Final Exams
                         foreach (var x in finalExams) await _uow.FinalExamRepository.DeleteAsync(x);
                     }
-                    // --- END NEW: Final Exam Data ---
-
 
                     // 3.1 Quiz Answers
                     var quizAnswers = await _uow.QuizAttemptAnswerRepository.GetAllAsQueryable()
@@ -159,9 +156,9 @@ namespace Lssctc.ProgramManagement.ClassManage.Helpers
                     foreach (var x in progress) await _uow.LearningProgressRepository.DeleteAsync(x);
                 }
 
-                // --- NEW: Class-Level Data Cleanup (Timeslots & Attendances) ---
-                // We fetch timeslots first to get IDs, then delete attendances linked to them.
-                // This covers attendances even if enrollment logic above missed something (though unlikely with FKs).
+                // --- Class-Level Data Cleanup ---
+
+                // 4.1 Timeslots & Attendances
                 var timeslots = await _uow.TimeslotRepository.GetAllAsQueryable()
                     .Where(t => t.ClassId == classId)
                     .ToListAsync();
@@ -175,14 +172,14 @@ namespace Lssctc.ProgramManagement.ClassManage.Helpers
                     foreach (var x in attendances) await _uow.AttendanceRepository.DeleteAsync(x);
                 }
 
-                // Now safe to delete Enrollments (Attendance FK to Enrollment is gone)
-                // 3.11 Enrollments
+                // 4.2 Enrollments (Safe to delete now that Attendances are gone)
                 foreach (var x in enrollments) await _uow.EnrollmentRepository.DeleteAsync(x);
 
-                // --- NEW: Delete Timeslots ---
+                // 4.3 Timeslots
                 foreach (var x in timeslots) await _uow.TimeslotRepository.DeleteAsync(x);
 
-                // --- NEW: Final Exam Templates ---
+                // --- NEW: Final Exam Templates Cleanup ---
+                // Must delete these before Class because FinalExamTemplate depends on Class
                 var finalExamTemplates = await _uow.FinalExamTemplateRepository.GetAllAsQueryable()
                     .Where(t => t.ClassId == classId)
                     .ToListAsync();
@@ -190,31 +187,34 @@ namespace Lssctc.ProgramManagement.ClassManage.Helpers
                 if (finalExamTemplates.Any())
                 {
                     var templateIds = finalExamTemplates.Select(t => t.Id).ToList();
+
+                    // Delete Partial Templates first (FK to Template)
                     var partialTemplates = await _uow.FinalExamPartialsTemplateRepository.GetAllAsQueryable()
                         .Where(pt => templateIds.Contains(pt.FinalExamTemplateId))
                         .ToListAsync();
 
                     foreach (var x in partialTemplates) await _uow.FinalExamPartialsTemplateRepository.DeleteAsync(x);
+
+                    // Delete Templates
                     foreach (var x in finalExamTemplates) await _uow.FinalExamTemplateRepository.DeleteAsync(x);
                 }
 
-                // --- NEW: Activity Sessions ---
+                // 4.4 Activity Sessions
                 var activitySessions = await _uow.ActivitySessionRepository.GetAllAsQueryable()
                     .Where(s => s.ClassId == classId)
                     .ToListAsync();
                 foreach (var x in activitySessions) await _uow.ActivitySessionRepository.DeleteAsync(x);
 
-
-                // 3.12 Class Instructors
+                // 4.5 Class Instructors
                 var instructors = await _uow.ClassInstructorRepository.GetAllAsQueryable()
                     .Where(ci => ci.ClassId == classId)
                     .ToListAsync();
                 foreach (var x in instructors) await _uow.ClassInstructorRepository.DeleteAsync(x);
 
-                // 4. Delete Class
+                // 5. Delete Class
                 await _uow.ClassRepository.DeleteAsync(classEntity);
 
-                // 5. Commit
+                // 6. Commit
                 await _uow.SaveChangesAsync();
                 await transaction.CommitAsync();
             }

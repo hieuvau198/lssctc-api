@@ -100,8 +100,6 @@ namespace Lssctc.ProgramManagement.ClassManage.Helpers
                             foreach (var item in feTheories) await _unitOfWork.FeTheoryRepository.DeleteAsync(item);
 
                             // Delete PE Checklists
-                            // Note: PeChecklistRepository is missing from IUnitOfWork definition provided, 
-                            // so we access it via the DbContext directly to ensure cleanup.
                             var peChecklists = await dbContext.Set<PeChecklist>()
                                 .Where(p => partialIds.Contains(p.FinalExamPartialId))
                                 .ToListAsync();
@@ -235,15 +233,39 @@ namespace Lssctc.ProgramManagement.ClassManage.Helpers
                     .ToListAsync();
                 foreach (var item in classInstructors) await _unitOfWork.ClassInstructorRepository.DeleteAsync(item);
 
+                // --- NEW: D. Final Exam Templates (Fix for FK_final_exam_templates_classes) ---
+                var finalExamTemplates = await _unitOfWork.FinalExamTemplateRepository
+                    .GetAllAsQueryable()
+                    .Where(t => t.ClassId == classId)
+                    .ToListAsync();
+
+                if (finalExamTemplates.Any())
+                {
+                    var templateIds = finalExamTemplates.Select(t => t.Id).ToList();
+
+                    var partialTemplates = await _unitOfWork.FinalExamPartialsTemplateRepository
+                        .GetAllAsQueryable()
+                        .Where(pt => templateIds.Contains(pt.FinalExamTemplateId))
+                        .ToListAsync();
+
+                    foreach (var item in partialTemplates)
+                    {
+                        await _unitOfWork.FinalExamPartialsTemplateRepository.DeleteAsync(item);
+                    }
+
+                    foreach (var item in finalExamTemplates)
+                    {
+                        await _unitOfWork.FinalExamTemplateRepository.DeleteAsync(item);
+                    }
+                }
+                // --- END NEW BLOCK ---
+
                 // 3. Delete The Class and potentially ClassCode
                 var classCodeId = classEntity.ClassCodeId;
 
                 await _unitOfWork.ClassRepository.DeleteAsync(classEntity);
 
-                // Check if we can delete the ClassCode (if it's not used by any other class)
-                // We check count. Since we just deleted one (in tracking), if there are 0 left in DB (effectively), we delete.
-                // However, since SaveChanges isn't called, CountAsync might still see the old one unless filtered.
-                // Safer logic: Count all with that ID. If it is 1 (the one we are deleting), then we can delete the code too.
+                // Check if we can delete the ClassCode
                 if (classCodeId.HasValue)
                 {
                     var usageCount = await _unitOfWork.ClassRepository
