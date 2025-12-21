@@ -160,7 +160,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             }
         }
 
-        public async Task StartClassExamAsync(int classId)
+        public async Task OpenClassExamAsync(int classId)
         {
             // 1. Retrieve Template
             var template = await _uow.FinalExamTemplateRepository.GetAllAsQueryable()

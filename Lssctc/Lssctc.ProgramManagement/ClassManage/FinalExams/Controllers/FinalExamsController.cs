@@ -154,6 +154,20 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Controllers
             catch (Exception ex) { return StatusCode(500, new { message = ex.Message }); }
         }
 
+        [HttpPost("class/{classId}/open")]
+        [Authorize(Roles = "Admin, Instructor")]
+        public async Task<IActionResult> OpenClassExam(int classId)
+        {
+            try
+            {
+                await _finalExamsService.OpenClassExamAsync(classId);
+                return Ok(new { message = "Class final exam opened successfully (Status changed to Open)." });
+            }
+            catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+            catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
+            catch (Exception ex) { return StatusCode(500, new { message = ex.Message }); }
+        }
+
         [HttpPut("class/{classId}/weights")]
         [Authorize(Roles = "Admin, Instructor")]
         [ProducesResponseType(StatusCodes.Status200OK)]
