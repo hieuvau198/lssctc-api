@@ -160,6 +160,42 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             }
         }
 
+        public async Task StartClassExamAsync(int classId)
+        {
+            // 1. Retrieve Template
+            var template = await _uow.FinalExamTemplateRepository.GetAllAsQueryable()
+                .FirstOrDefaultAsync(t => t.ClassId == classId);
+
+            if (template == null)
+            {
+                // Optionally auto-create if missing, but requirement implies checking existing status
+                throw new KeyNotFoundException($"Final Exam Template for class {classId} not found. Please configure the exam first.");
+            }
+
+            // 2. Validate Status (Must be NotYet)
+            if (template.Status != (int)FinalExamStatusEnum.NotYet)
+            {
+                throw new InvalidOperationException($"Cannot start exam. Current status is {((FinalExamStatusEnum)template.Status).ToString()}. Required: NotYet.");
+            }
+
+            // 3. Update Template Status to Open
+            template.Status = (int)FinalExamStatusEnum.Open;
+            await _uow.FinalExamTemplateRepository.UpdateAsync(template);
+
+            // 4. Update Status for All Student Final Exams
+            var exams = await _uow.FinalExamRepository.GetAllAsQueryable()
+                .Where(fe => fe.Enrollment.ClassId == classId)
+                .ToListAsync();
+
+            foreach (var exam in exams)
+            {
+                exam.Status = (int)FinalExamStatusEnum.Open;
+                await _uow.FinalExamRepository.UpdateAsync(exam);
+            }
+
+            await _uow.SaveChangesAsync();
+        }
+
         private void RecalculateFinalExamScoreInternal(FinalExam finalExam)
         {
             decimal total = 0;
@@ -240,7 +276,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                 Status = GetFinalExamPartialStatusName(statusId),
                 IsPass = p.IsPass,
 
-                ExamCode = isInstructor ? p.ExamCode : null, // [ADDED]
+                ExamCode = isInstructor ? p.ExamCode : null,
 
                 QuizId = isInstructor ? theory?.QuizId : null,
                 QuizName = isInstructor ? theory?.Quiz?.Name : null,
@@ -265,6 +301,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                 2 => "Submitted",
                 3 => "Completed",
                 4 => "Cancelled",
+                5 => "Open",
                 _ => "Unknown"
             };
         }
