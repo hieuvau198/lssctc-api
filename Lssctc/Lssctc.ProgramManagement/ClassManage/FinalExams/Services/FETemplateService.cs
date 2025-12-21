@@ -1,4 +1,5 @@
 ﻿using Lssctc.ProgramManagement.ClassManage.FinalExams.Dtos;
+using Lssctc.ProgramManagement.ClassManage.FinalExams.Services;
 using Lssctc.ProgramManagement.ClassManage.Helpers;
 using Lssctc.Share.Entities;
 using Lssctc.Share.Enums;
@@ -52,7 +53,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             var template = new FinalExamTemplate
             {
                 ClassId = classId,
-                Status = 1 // Active
+                Status = 1 // Active / NotYet
             };
             await _uow.FinalExamTemplateRepository.CreateAsync(template);
             await _uow.SaveChangesAsync();
@@ -81,7 +82,6 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             }
             else
             {
-                // If for some reason it doesn't exist, create it
                 await EnsureTemplatePartialExists(template, type, weight);
             }
             await _uow.SaveChangesAsync();
@@ -96,16 +96,18 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                 .Include(t => t.FinalExamPartialsTemplates)
                 .FirstAsync(t => t.ClassId == classId);
 
+            // Reset template status to NotYet if needed, or keep as is. Usually reset implies starting over.
+            template.Status = (int)FinalExamStatusEnum.NotYet;
+            await _uow.FinalExamTemplateRepository.UpdateAsync(template);
+
             // --- 2. Ensure Student Final Exams & Partials Exist (Reset Logic) ---
             var classInfo = await _uow.ClassRepository.GetByIdAsync(classId);
             var defaultTime = classInfo?.EndDate ?? DateTime.UtcNow.AddMonths(1);
 
-            // Fetch all existing partial codes to ensure uniqueness when creating new ones
             var existingCodes = await _uow.FinalExamPartialRepository.GetAllAsQueryable()
                 .Select(p => p.ExamCode)
                 .Where(c => c != null)
                 .ToListAsync();
-            // Use a local HashSet to track codes including newly generated ones in this session
             var codesSet = new HashSet<string>(existingCodes!);
 
             var enrollments = await _uow.EnrollmentRepository.GetAllAsQueryable()
@@ -130,6 +132,14 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                     await _uow.FinalExamRepository.CreateAsync(finalExam);
                     await _uow.SaveChangesAsync();
                 }
+                else
+                {
+                    // If resetting, ensure status is NotYet
+                    finalExam.Status = (int)FinalExamStatusEnum.NotYet;
+                    finalExam.TotalMarks = 0;
+                    finalExam.IsPass = null;
+                    await _uow.FinalExamRepository.UpdateAsync(finalExam);
+                }
 
                 // Ensure Partials match the Template
                 foreach (var partTemplate in template.FinalExamPartialsTemplates)
@@ -138,9 +148,8 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
 
                     if (existingPartial == null)
                     {
-                        // Generate a unique code
                         var newCode = FEHelper.GenerateExamCode(codesSet);
-                        codesSet.Add(newCode); // Add to local exclusion set
+                        codesSet.Add(newCode);
 
                         var newPartial = new FinalExamPartial
                         {
@@ -158,12 +167,17 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                     }
                     else
                     {
-                        // Sync weight from template if resetting/checking
+                        // Reset partial data
+                        existingPartial.Status = (int)FinalExamPartialStatus.NotYet;
+                        existingPartial.Marks = 0;
+                        existingPartial.IsPass = null;
+
+                        // Sync weight
                         if (existingPartial.ExamWeight != partTemplate.Weight)
                         {
                             existingPartial.ExamWeight = partTemplate.Weight;
-                            await _uow.FinalExamPartialRepository.UpdateAsync(existingPartial);
                         }
+                        await _uow.FinalExamPartialRepository.UpdateAsync(existingPartial);
                     }
                 }
             }
@@ -172,7 +186,6 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
 
         public async Task<ClassExamConfigDto> GetClassExamConfigAsync(int classId)
         {
-            // Ensure template exists to get authoritative weights
             var template = await GetTemplatesByClassIdAsync(classId);
             if (template == null)
             {
@@ -180,7 +193,6 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                 template = await GetTemplatesByClassIdAsync(classId);
             }
 
-            // Get one example exam to retrieve assigned Quizzes/Practices (which are currently stored on the instance)
             var exampleExam = await _uow.FinalExamRepository.GetAllAsQueryable()
                 .Include(fe => fe.FinalExamPartials).ThenInclude(p => p.FeTheories).ThenInclude(t => t.Quiz)
                 .Include(fe => fe.FinalExamPartials).ThenInclude(p => p.FeSimulations).ThenInclude(s => s.Practice)
@@ -189,14 +201,12 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
 
             var configDto = new ClassExamConfigDto { ClassId = classId };
 
-            // We iterate through possible types (1, 2, 3) or the template definition
             if (template != null)
             {
-                configDto.Status = GetFinalExamStatusName(template.Status); // [UPDATED] Map status to string
+                configDto.Status = GetFinalExamStatusName(template.Status);
 
                 foreach (var tempPartial in template.PartialTemplates)
                 {
-                    // Find corresponding partial in example exam
                     var p = exampleExam?.FinalExamPartials.FirstOrDefault(ep => ep.Type == tempPartial.Type);
 
                     var theory = p?.FeTheories.FirstOrDefault();
@@ -217,7 +227,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                     configDto.PartialConfigs.Add(new FinalExamPartialConfigDto
                     {
                         Type = GetTypeName(tempPartial.Type),
-                        ExamWeight = tempPartial.Weight, // Use Template Weight
+                        ExamWeight = tempPartial.Weight,
                         Duration = p?.Duration,
                         StartTime = p?.StartTime,
                         EndTime = p?.EndTime,
@@ -232,7 +242,6 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             }
             else if (exampleExam != null)
             {
-                // Fallback if template is missing but exam exists (shouldn't happen with CreateTemplateAsync above)
                 foreach (var p in exampleExam.FinalExamPartials)
                 {
                     configDto.PartialConfigs.Add(new FinalExamPartialConfigDto
@@ -278,7 +287,6 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             // 3. Update All Student Partials
             var partials = await _uow.FinalExamPartialRepository.GetAllAsQueryable()
                 .Where(p => p.FinalExam.Enrollment.ClassId == dto.ClassId && p.Type == typeId)
-                // .Include(p => p.FinalExam) <-- REMOVED: Causes tracking conflicts during recalculation
                 .Include(p => p.FeTheories)
                 .Include(p => p.FeSimulations)
                 .Include(p => p.PeChecklists)
@@ -289,14 +297,12 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                 await ResetFinalExamAsync(dto.ClassId);
                 partials = await _uow.FinalExamPartialRepository.GetAllAsQueryable()
                     .Where(p => p.FinalExam.Enrollment.ClassId == dto.ClassId && p.Type == typeId)
-                    // .Include(p => p.FinalExam) <-- REMOVED here as well
                     .Include(p => p.FeTheories)
                     .Include(p => p.FeSimulations)
                     .Include(p => p.PeChecklists)
                     .ToListAsync();
             }
 
-            // We need to group partials by FinalExam to recalculate score efficiently (or just loop)
             var examIdsToRecalculate = new HashSet<int>();
 
             foreach (var p in partials)
@@ -326,7 +332,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                     {
                         var newSim = new FeSimulation { FinalExamPartialId = p.Id, PracticeId = dto.PracticeId.Value };
                         await _uow.FeSimulationRepository.CreateAsync(newSim);
-                        await _uow.SaveChangesAsync(); // Need ID
+                        await _uow.SaveChangesAsync();
                         await EnsureSeTasksForSimulationAsync(newSim.Id, dto.PracticeId.Value);
                     }
                 }
@@ -357,48 +363,38 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             }
             await _uow.SaveChangesAsync();
 
-            // Recalculate Scores
             await RecalculateScoresForExams(examIdsToRecalculate);
         }
 
         public async Task UpdateClassExamWeightsAsync(int classId, UpdateClassWeightsDto dto)
         {
-            // Validate
             if (Math.Abs((dto.TheoryWeight + dto.SimulationWeight + dto.PracticalWeight) - 1.0m) > 0.0001m)
             {
                 throw new InvalidOperationException("The sum of weights must be exactly 1.0 (100%).");
             }
 
-            // 1. Update Template
             await CreateTemplateAsync(classId);
 
-            // Fetch the template (this will be a DETACHED instance because repository is NoTracking)
             var template = await _uow.FinalExamTemplateRepository.GetAllAsQueryable()
                 .Include(t => t.FinalExamPartialsTemplates)
                 .FirstOrDefaultAsync(t => t.ClassId == classId);
 
             if (template == null) throw new KeyNotFoundException($"Final Exam Template for class {classId} not found.");
 
-            // Check if there is already a tracked instance (e.g., if CreateTemplateAsync just created it)
-            // If we try to attach 'template' while 'trackedTemplate' exists, EF will throw.
             var trackedTemplate = _uow.GetDbContext().ChangeTracker.Entries<FinalExamTemplate>()
                                     .FirstOrDefault(e => e.Entity.Id == template.Id)?.Entity;
 
             var targetTemplate = trackedTemplate ?? template;
 
-            // Update weights in memory
             UpdateOrAddPartial(targetTemplate, 1, dto.TheoryWeight * 100);
             UpdateOrAddPartial(targetTemplate, 2, dto.SimulationWeight * 100);
             UpdateOrAddPartial(targetTemplate, 3, dto.PracticalWeight * 100);
 
-            // If it wasn't tracked, we need to attach/update it.
             if (trackedTemplate == null)
             {
                 await _uow.FinalExamTemplateRepository.UpdateAsync(targetTemplate);
             }
-            // If it WAS tracked, changes are detected automatically by SaveChanges, no need to call Update.
 
-            // 2. Update Students
             var exams = await _uow.FinalExamRepository.GetAllAsQueryable()
                 .Include(fe => fe.FinalExamPartials)
                 .Where(fe => fe.Enrollment.ClassId == classId)
@@ -426,7 +422,6 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                 }
 
                 await RecalculateFinalExamScoreInternal(exam);
-                // Ensure the modified exam is marked for update in the context
                 await _uow.FinalExamRepository.UpdateAsync(exam);
             }
 
@@ -451,11 +446,8 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             }
         }
 
-        // --- Helpers ---
-
         private async Task RecalculateScoresForExams(IEnumerable<int> examIds)
         {
-            // Clear tracker to prevent conflict with implicitly attached FinalExams from previous steps
             _uow.GetDbContext().ChangeTracker.Clear();
 
             var exams = await _uow.FinalExamRepository.GetAllAsQueryable()
@@ -466,7 +458,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             foreach (var exam in exams)
             {
                 await RecalculateFinalExamScoreInternal(exam);
-                await _uow.FinalExamRepository.UpdateAsync(exam); // Ensure explicit update for NoTracking repo
+                await _uow.FinalExamRepository.UpdateAsync(exam);
             }
             await _uow.SaveChangesAsync();
         }
@@ -524,7 +516,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             _ => "Unknown"
         };
 
-        // [ADDED] Helper for Status Mapping
+        // [FIXED] Status Mapping
         private string GetFinalExamStatusName(int statusId)
         {
             return statusId switch
@@ -533,6 +525,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                 2 => "Submitted",
                 3 => "Completed",
                 4 => "Cancelled",
+                5 => "Open", // Added Open status
                 _ => "Unknown"
             };
         }
