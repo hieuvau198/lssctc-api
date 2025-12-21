@@ -184,6 +184,14 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
         {
             var partial = await GetPartialWithSecurityCheckAsync(partialId, userId);
 
+            // --- NEW VALIDATION: Check Final Exam Status ---
+            var feStatus = partial.FinalExam.Status;
+            if (feStatus != (int)FinalExamStatusEnum.Open && feStatus != (int)FinalExamStatusEnum.Submitted)
+            {
+                throw new InvalidOperationException($"Cannot submit result. Final Exam status is '{((FinalExamStatusEnum)feStatus)}'. Allowed statuses: Open, Submitted.");
+            }
+            // -----------------------------------------------
+
             if (partial.Type != 2) throw new ArgumentException("This ID is not a Simulation Exam (SE).");
             var nowUtc7 = DateTime.UtcNow.AddHours(7);
 
@@ -257,8 +265,19 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
 
         public async Task<FinalExamDto> SubmitSeAsync(int partialId, SubmitSeDto dto)
         {
-            var partial = await _uow.FinalExamPartialRepository.GetByIdAsync(partialId);
+            var partial = await _uow.FinalExamPartialRepository.GetAllAsQueryable()
+                .Include(p => p.FinalExam) // Ensure parent is loaded
+                .FirstOrDefaultAsync(p => p.Id == partialId);
+
             if (partial == null) throw new KeyNotFoundException("Partial exam not found.");
+
+            // --- NEW VALIDATION: Check Final Exam Status ---
+            var feStatus = partial.FinalExam.Status;
+            if (feStatus != (int)FinalExamStatusEnum.Open && feStatus != (int)FinalExamStatusEnum.Submitted)
+            {
+                throw new InvalidOperationException($"Cannot submit result. Final Exam status is '{((FinalExamStatusEnum)feStatus)}'. Allowed statuses: Open, Submitted.");
+            }
+            // -----------------------------------------------
 
             partial.Marks = dto.Marks;
             partial.CompleteTime = DateTime.UtcNow;

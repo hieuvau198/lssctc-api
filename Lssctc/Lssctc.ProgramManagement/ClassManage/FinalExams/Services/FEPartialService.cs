@@ -270,6 +270,14 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             if (partial == null)
                 throw new KeyNotFoundException("Partial exam not found.");
 
+            // --- NEW VALIDATION: Check Final Exam Status ---
+            var feStatus = partial.FinalExam.Status;
+            if (feStatus != (int)FinalExamStatusEnum.Open && feStatus != (int)FinalExamStatusEnum.Submitted)
+            {
+                throw new InvalidOperationException($"Cannot submit result. Final Exam status is '{((FinalExamStatusEnum)feStatus)}'. Allowed statuses: Open, Submitted.");
+            }
+            // -----------------------------------------------
+
             if (partial.FinalExam.Enrollment.TraineeId != userId)
                 throw new UnauthorizedAccessException("This exam does not belong to the current user.");
 
@@ -292,6 +300,8 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             if (quiz == null)
                 throw new KeyNotFoundException($"Quiz with ID {feTheory.QuizId} not found.");
 
+            // ... [Rest of calculation logic remains unchanged] ...
+
             var questionsById = quiz.Questions.ToDictionary(q => q.Id);
             var correctOptionIdsByQuestion = new Dictionary<int, HashSet<int>>();
             var questionScoreByQuestion = new Dictionary<int, decimal>();
@@ -308,11 +318,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             }
 
             decimal totalPossible = quiz.TotalScore ?? quiz.Questions.Sum(q => q.QuestionScore ?? 0m);
-
-            if (totalPossible == 0)
-            {
-                totalPossible = 10m;
-            }
+            if (totalPossible == 0) totalPossible = 10m;
 
             decimal totalObtained = 0m;
 
@@ -320,14 +326,12 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             {
                 foreach (var answer in dto.Answers)
                 {
-                    if (!questionsById.ContainsKey(answer.QuestionId))
-                        continue;
+                    if (!questionsById.ContainsKey(answer.QuestionId)) continue;
 
                     var correctOptions = correctOptionIdsByQuestion[answer.QuestionId];
                     var questionScore = questionScoreByQuestion[answer.QuestionId];
 
                     HashSet<int> studentAnswerIds;
-
                     if (answer.OptionIds != null && answer.OptionIds.Any())
                     {
                         studentAnswerIds = answer.OptionIds.ToHashSet();
@@ -353,16 +357,10 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                 : 0m;
 
             bool isPass;
-
             if (quiz.PassScoreCriteria.HasValue)
             {
                 decimal passThreshold = quiz.PassScoreCriteria.Value;
-
-                if (passThreshold > 10m)
-                {
-                    passThreshold = (passThreshold / 10m);
-                }
-
+                if (passThreshold > 10m) passThreshold = (passThreshold / 10m);
                 isPass = marks >= passThreshold;
             }
             else
@@ -389,6 +387,15 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                 .FirstOrDefaultAsync(p => p.Id == partialId);
 
             if (partial == null) throw new KeyNotFoundException("Partial not found.");
+
+            // --- NEW VALIDATION: Check Final Exam Status ---
+            var feStatus = partial.FinalExam.Status;
+            if (feStatus != (int)FinalExamStatusEnum.Open && feStatus != (int)FinalExamStatusEnum.Submitted)
+            {
+                throw new InvalidOperationException($"Cannot submit result. Final Exam status is '{((FinalExamStatusEnum)feStatus)}'. Allowed statuses: Open, Submitted.");
+            }
+            // -----------------------------------------------
+
             if (partial.Type != (int)FinalExamPartialType.Practical)
                 throw new ArgumentException("Not a Practical Exam.");
 
