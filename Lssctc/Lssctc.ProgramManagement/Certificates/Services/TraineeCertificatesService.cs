@@ -264,7 +264,7 @@ namespace Lssctc.ProgramManagement.Certificates.Services
             {
                 html = base64Html,
                 format = "A4",
-                landscape = true,
+                landscape = false,
                 scale = 1.0,
                 printBackground = true,
                 waitUntil = "networkidle"

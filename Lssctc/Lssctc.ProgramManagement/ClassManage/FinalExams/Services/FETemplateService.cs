@@ -96,9 +96,16 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                 .Include(t => t.FinalExamPartialsTemplates)
                 .FirstAsync(t => t.ClassId == classId);
 
+            // [FIX START] Check if the entity is already being tracked to avoid conflict
+            var trackedTemplate = _uow.GetDbContext().ChangeTracker.Entries<FinalExamTemplate>()
+                                    .FirstOrDefault(e => e.Entity.Id == template.Id)?.Entity;
+
+            var targetTemplate = trackedTemplate ?? template;
+
             // Reset template status to NotYet if needed, or keep as is. Usually reset implies starting over.
-            template.Status = (int)FinalExamStatusEnum.NotYet;
-            await _uow.FinalExamTemplateRepository.UpdateAsync(template);
+            targetTemplate.Status = (int)FinalExamStatusEnum.NotYet;
+            await _uow.FinalExamTemplateRepository.UpdateAsync(targetTemplate);
+            // [FIX END]
 
             // --- 2. Ensure Student Final Exams & Partials Exist (Reset Logic) ---
             var classInfo = await _uow.ClassRepository.GetByIdAsync(classId);
@@ -142,6 +149,9 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                 }
 
                 // Ensure Partials match the Template
+                // Note: We use 'template' (the one with Included partials) for reading structure
+                // But if 'trackedTemplate' had modifications to partials that weren't saved, we might need care.
+                // Assuming structure is stable after CreateTemplateAsync.
                 foreach (var partTemplate in template.FinalExamPartialsTemplates)
                 {
                     var existingPartial = finalExam.FinalExamPartials.FirstOrDefault(p => p.Type == partTemplate.Type);

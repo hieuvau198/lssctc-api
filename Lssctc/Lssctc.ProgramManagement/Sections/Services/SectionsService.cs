@@ -79,6 +79,24 @@ namespace Lssctc.ProgramManagement.Sections.Services
             {
                 throw new KeyNotFoundException($"Course with ID {courseId} not found.");
             }
+
+            // [FIX START] Check if total duration exceeds Course DurationHours
+            var newSectionMinutes = createDto.EstimatedDurationMinutes ?? 0;
+            if (course.DurationHours.HasValue)
+            {
+                var currentTotalMinutes = await _uow.CourseSectionRepository.GetAllAsQueryable()
+                    .Where(cs => cs.CourseId == courseId && cs.Section.IsDeleted != true)
+                    .SumAsync(cs => cs.Section.EstimatedDurationMinutes ?? 0);
+
+                var maxMinutes = course.DurationHours.Value * 60;
+
+                if (currentTotalMinutes + newSectionMinutes > maxMinutes)
+                {
+                    throw new InvalidOperationException($"Cannot add section. Total duration ({currentTotalMinutes + newSectionMinutes}m) would exceed the course limit of {maxMinutes}m ({course.DurationHours.Value}h).");
+                }
+            }
+            // [FIX END]
+
             var section = new Section
             {
                 SectionTitle = createDto.SectionTitle!.Trim(),
@@ -108,7 +126,15 @@ namespace Lssctc.ProgramManagement.Sections.Services
 
         public async Task<SectionDto> UpdateSectionAsync(int id, UpdateSectionDto updateDto)
         {
-            var section = await _uow.SectionRepository.GetByIdAsync(id);
+            // [FIX START] Include CourseSections and Course to check limits across all linked courses
+            var section = await _uow.SectionRepository
+                .GetAllAsQueryable()
+                .Include(s => s.CourseSections)
+                    .ThenInclude(cs => cs.Course)
+                .Where(s => s.Id == id)
+                .FirstOrDefaultAsync();
+            // [FIX END]
+
             if (section == null || section.IsDeleted == true)
             {
                 throw new KeyNotFoundException($"Section with ID {id} not found.");
@@ -137,6 +163,34 @@ namespace Lssctc.ProgramManagement.Sections.Services
                 }
             }
 
+            // [FIX START] Validation: Duration Check for all associated courses
+            if (updateDto.EstimatedDurationMinutes.HasValue)
+            {
+                var newDuration = updateDto.EstimatedDurationMinutes.Value;
+
+                foreach (var cs in section.CourseSections)
+                {
+                    var course = cs.Course;
+                    if (course != null && course.DurationHours.HasValue && course.IsDeleted != true)
+                    {
+                        var maxMinutes = course.DurationHours.Value * 60;
+
+                        // Sum all sections in this course EXCEPT the current one
+                        var otherSectionsTotal = await _uow.CourseSectionRepository.GetAllAsQueryable()
+                            .Where(x => x.CourseId == course.Id && x.SectionId != id && x.Section.IsDeleted != true)
+                            .SumAsync(x => x.Section.EstimatedDurationMinutes ?? 0);
+
+                        if (otherSectionsTotal + newDuration > maxMinutes)
+                        {
+                            throw new InvalidOperationException($"Cannot update section. Total duration would exceed limit for course '{course.Name}' ({maxMinutes}m).");
+                        }
+                    }
+                }
+
+                section.EstimatedDurationMinutes = newDuration;
+            }
+            // [FIX END]
+
             // 2. Update other fields
             if (updateDto.SectionDescription != null)
             {
@@ -145,10 +199,7 @@ namespace Lssctc.ProgramManagement.Sections.Services
                     : string.Join(' ', updateDto.SectionDescription.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries));
             }
 
-            if (updateDto.EstimatedDurationMinutes.HasValue)
-            {
-                section.EstimatedDurationMinutes = updateDto.EstimatedDurationMinutes.Value;
-            }
+            // Note: Duration update moved up into the validation block
 
             await _uow.SectionRepository.UpdateAsync(section);
             await _uow.SaveChangesAsync();
@@ -279,7 +330,7 @@ namespace Lssctc.ProgramManagement.Sections.Services
 
             // 1. Delete the link (Remove section from THIS course)
             await _uow.CourseSectionRepository.DeleteAsync(courseSection);
-            
+
             // 2. Orphan Check: Check if this section is used by any *other* course
             var isUsedElsewhere = await _uow.CourseSectionRepository
                 .GetAllAsQueryable()

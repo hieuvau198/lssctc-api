@@ -248,11 +248,30 @@ namespace Lssctc.ProgramManagement.Courses.Services
                 }
             }
 
+            // [FIX START] Check total section duration against new course duration
+            if (updateDto.DurationHours.HasValue)
+            {
+                var newDurationMinutes = updateDto.DurationHours.Value * 60;
+
+                // Calculate total duration of existing sections (ignore deleted sections)
+                var currentSectionTotalMinutes = await _uow.CourseSectionRepository.GetAllAsQueryable()
+                    .Where(cs => cs.CourseId == id && cs.Section != null && cs.Section.IsDeleted != true)
+                    .SumAsync(cs => cs.Section.EstimatedDurationMinutes ?? 0);
+
+                if (newDurationMinutes < currentSectionTotalMinutes)
+                {
+                    throw new InvalidOperationException($"Cannot update course duration to {updateDto.DurationHours} hours ({newDurationMinutes} minutes). It is less than the total duration of existing sections ({currentSectionTotalMinutes} minutes).");
+                }
+
+                course.DurationHours = updateDto.DurationHours;
+            }
+            // [FIX END]
+
             course.Description = updateDto.Description ?? course.Description;
             course.CategoryId = updateDto.CategoryId ?? course.CategoryId;
             course.LevelId = updateDto.LevelId ?? course.LevelId;
             course.Price = updateDto.Price ?? course.Price;
-            course.DurationHours = updateDto.DurationHours ?? course.DurationHours;
+            // course.DurationHours = updateDto.DurationHours ?? course.DurationHours; // Moved above to validation block
             course.ImageUrl = updateDto.ImageUrl ?? course.ImageUrl;
             course.IsActive = updateDto.IsActive ?? course.IsActive;
             course.BackgroundImageUrl = updateDto.BackgroundImageUrl ?? course.BackgroundImageUrl;
