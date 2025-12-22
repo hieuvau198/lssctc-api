@@ -80,6 +80,16 @@ namespace Lssctc.ProgramManagement.Materials.Services
             return material == null ? null : MapToDto(material);
         }
 
+        public async Task<IEnumerable<MaterialDto>> GetMaterialsByInstructorIdAsync(int instructorId)
+        {
+            var materials = await _uow.LearningMaterialRepository
+                .GetAllAsQueryable()
+                .Where(m => m.MaterialAuthors.Any(ma => ma.InstructorId == instructorId))
+                .ToListAsync();
+
+            return materials.Select(MapToDto);
+        }
+
         public async Task<MaterialDto> CreateMaterialAsync(CreateMaterialDto createDto)
         {
             return await CreateMaterialAsync(createDto, instructorId: 0);

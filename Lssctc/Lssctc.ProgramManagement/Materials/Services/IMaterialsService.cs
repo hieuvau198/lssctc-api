@@ -11,6 +11,7 @@ namespace Lssctc.ProgramManagement.Materials.Services
         Task<PagedResult<MaterialDto>> GetMaterialsAsync(int pageNumber, int pageSize, int? instructorId);
         Task<MaterialDto?> GetMaterialByIdAsync(int id);
         Task<MaterialDto?> GetMaterialByIdAsync(int id, int? instructorId);
+        Task<IEnumerable<MaterialDto>> GetMaterialsByInstructorIdAsync(int instructorId);
         Task<MaterialDto> CreateMaterialAsync(CreateMaterialDto createDto);
         Task<MaterialDto> CreateMaterialAsync(CreateMaterialDto createDto, int instructorId);
         Task<MaterialDto> UpdateMaterialAsync(int id, UpdateMaterialDto updateDto);

@@ -10,7 +10,6 @@ namespace Lssctc.ProgramManagement.Materials.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize]
     public class MaterialsController : ControllerBase
     {
         private readonly IMaterialsService _materialsService;
@@ -43,7 +42,6 @@ namespace Lssctc.ProgramManagement.Materials.Controllers
         {
             try
             {
-                // Extract instructor ID from JWT claims if user is Instructor (not Admin)
                 int? instructorId = null;
                 if (User.IsInRole("Instructor"))
                 {
@@ -65,7 +63,6 @@ namespace Lssctc.ProgramManagement.Materials.Controllers
         {
             try
             {
-                // Extract instructor ID from JWT claims if user is Instructor (not Admin)
                 int? instructorId = null;
                 if (User.IsInRole("Instructor"))
                 {
@@ -77,6 +74,21 @@ namespace Lssctc.ProgramManagement.Materials.Controllers
                     return NotFound(new { Message = "Material not found." });
 
                 return Ok(material);
+            }
+            catch (Exception)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "An unexpected error occurred." });
+            }
+        }
+
+        [HttpGet("instructor/{instructorId}")]
+        [Authorize(Roles = "Admin, Instructor")]
+        public async Task<IActionResult> GetMaterialsByInstructorId(int instructorId)
+        {
+            try
+            {
+                var materials = await _materialsService.GetMaterialsByInstructorIdAsync(instructorId);
+                return Ok(materials);
             }
             catch (Exception)
             {
