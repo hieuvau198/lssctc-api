@@ -81,14 +81,27 @@ namespace Lssctc.ProgramManagement.Materials.Controllers
             }
         }
 
-        [HttpGet("instructor/{instructorId}")]
+        [HttpGet("instructor")]
         [Authorize(Roles = "Admin, Instructor")]
-        public async Task<IActionResult> GetMaterialsByInstructorId(int instructorId)
+        public async Task<IActionResult> GetMaterialsByInstructorId()
         {
             try
             {
-                var materials = await _materialsService.GetMaterialsByInstructorIdAsync(instructorId);
-                return Ok(materials);
+                int instructorId;
+                if (User.IsInRole("Instructor"))
+                {
+                    instructorId = GetInstructorIdFromClaims();
+                }
+                else
+                {
+                    return Unauthorized();
+                }
+
+                var material = await _materialsService.GetMaterialsByInstructorIdAsync(instructorId);
+                if (material == null)
+                    return NotFound(new { Message = "Material not found." });
+
+                return Ok(material);
             }
             catch (Exception)
             {
