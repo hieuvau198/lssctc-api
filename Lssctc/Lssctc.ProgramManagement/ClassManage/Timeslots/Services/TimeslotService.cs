@@ -85,6 +85,16 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Services
             if (targetClass.Status == (int)ClassStatusEnum.Completed || targetClass.Status == (int)ClassStatusEnum.Cancelled)
                 throw new InvalidOperationException("Cannot create timeslots for completed or cancelled classes.");
 
+            if (startTime < targetClass.StartDate)
+            {
+                throw new ArgumentException($"Timeslot cannot start before the class start date ({targetClass.StartDate:yyyy-MM-dd}).");
+            }
+
+            if (targetClass.EndDate.HasValue && endTime > targetClass.EndDate.Value.AddDays(1)) // AddDays(1) if EndDate is just a date without time to include the full day
+            {
+                throw new ArgumentException($"Timeslot cannot end after the class end date ({targetClass.EndDate:yyyy-MM-dd}).");
+            }
+
             var creatorUser = await _uow.UserRepository.GetByIdAsync(creatorId);
             if (creatorUser?.Role == (int)UserRoleEnum.Instructor)
             {
@@ -169,9 +179,24 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Services
 
             ValidateTimeslotDuration(startTime, endTime);
 
-            var existing = await _uow.TimeslotRepository.GetByIdAsync(timeslotId);
+            var existing = await _uow.TimeslotRepository.GetAllAsQueryable()
+                .Include(t => t.Class)
+                .FirstOrDefaultAsync(t => t.Id == timeslotId);
+
             if (existing == null || existing.IsDeleted == true)
                 throw new KeyNotFoundException($"Timeslot with ID {timeslotId} not found.");
+
+            var targetClass = existing.Class;
+
+            if (startTime < targetClass.StartDate)
+            {
+                throw new ArgumentException($"Timeslot cannot start before the class start date ({targetClass.StartDate:yyyy-MM-dd}).");
+            }
+
+            if (targetClass.EndDate.HasValue && endTime > targetClass.EndDate.Value.AddDays(1))
+            {
+                throw new ArgumentException($"Timeslot cannot end after the class end date ({targetClass.EndDate:yyyy-MM-dd}).");
+            }
 
             var updaterUser = await _uow.UserRepository.GetByIdAsync(updaterId);
             if (updaterUser?.Role == (int)UserRoleEnum.Instructor)
