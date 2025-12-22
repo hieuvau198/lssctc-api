@@ -22,6 +22,7 @@ namespace Lssctc.ProgramManagement.Courses.Services
                 .Where(c => c.IsDeleted != true)
                 .Include(c => c.Category)
                 .Include(c => c.Level)
+                .Include(c => c.CourseCode) // [NEW] Include CourseCode
                 .ToListAsync();
 
             return courses.Select(MapToDto);
@@ -37,6 +38,7 @@ namespace Lssctc.ProgramManagement.Courses.Services
                 .Where(c => c.IsDeleted != true)
                 .Include(c => c.Category)
                 .Include(c => c.Level)
+                .Include(c => c.CourseCode) // [NEW] Include CourseCode
                 .AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(searchTerm))
@@ -46,7 +48,8 @@ namespace Lssctc.ProgramManagement.Courses.Services
                     c.Name.Contains(normalizedSearchTerm) ||
                     (c.Description != null && c.Description.Contains(normalizedSearchTerm)) ||
                     (c.Category != null && c.Category.Name.Contains(normalizedSearchTerm)) ||
-                    (c.Level != null && c.Level.Name.Contains(normalizedSearchTerm))
+                    (c.Level != null && c.Level.Name.Contains(normalizedSearchTerm)) ||
+                    (c.CourseCode != null && c.CourseCode.Name.Contains(normalizedSearchTerm)) // [NEW] Search by Code
                 );
             }
 
@@ -63,7 +66,8 @@ namespace Lssctc.ProgramManagement.Courses.Services
                 IsActive = c.IsActive ?? false,
                 CreatedAt = c.CreatedAt,
                 UpdatedAt = c.UpdatedAt,
-                BackgroundImageUrl = c.BackgroundImageUrl
+                BackgroundImageUrl = c.BackgroundImageUrl,
+                CourseCode = c.CourseCode != null ? c.CourseCode.Name : null // [NEW] Map Code
             });
 
             if (!string.IsNullOrWhiteSpace(sortBy))
@@ -78,6 +82,9 @@ namespace Lssctc.ProgramManagement.Courses.Services
                     "duration" => isDescending
                         ? projectedQuery.OrderByDescending(c => c.DurationHours).ThenBy(c => c.Name)
                         : projectedQuery.OrderBy(c => c.DurationHours).ThenBy(c => c.Name),
+                    "code" => isDescending // [NEW] Sort by Code
+                        ? projectedQuery.OrderByDescending(c => c.CourseCode).ThenBy(c => c.Name)
+                        : projectedQuery.OrderBy(c => c.CourseCode).ThenBy(c => c.Name),
                     _ => projectedQuery.OrderBy(c => c.Name)
                 };
             }
@@ -114,6 +121,7 @@ namespace Lssctc.ProgramManagement.Courses.Services
                          && c.CourseSections.Any())
                 .Include(c => c.Category)
                 .Include(c => c.Level)
+                .Include(c => c.CourseCode) // [NEW] Include CourseCode
                 .ToListAsync();
             // ============================================================================
 
@@ -127,6 +135,7 @@ namespace Lssctc.ProgramManagement.Courses.Services
                 .Where(c => c.Id == id && c.IsDeleted != true)
                 .Include(c => c.Category)
                 .Include(c => c.Level)
+                .Include(c => c.CourseCode) // [NEW] Include CourseCode
                 .FirstOrDefaultAsync();
 
             return course == null ? null : MapToDto(course);
@@ -134,6 +143,32 @@ namespace Lssctc.ProgramManagement.Courses.Services
 
         public async Task<CourseDto> CreateCourseAsync(CreateCourseDto createDto)
         {
+            // [NEW] Handle CourseCode creation
+            string finalCourseCode;
+
+            if (string.IsNullOrWhiteSpace(createDto.CourseCode))
+            {
+                // Generate unique code if null/empty
+                finalCourseCode = await GenerateUniqueCourseCodeAsync();
+            }
+            else
+            {
+                // Use provided code, verify uniqueness
+                finalCourseCode = createDto.CourseCode.Trim();
+                var exists = await _uow.CourseCodeRepository.GetAllAsQueryable()
+                    .AnyAsync(cc => cc.Name == finalCourseCode);
+
+                if (exists)
+                {
+                    throw new InvalidOperationException($"Course code '{finalCourseCode}' already exists.");
+                }
+            }
+
+            // Create CourseCode Entity
+            var newCourseCodeEntity = new CourseCode { Name = finalCourseCode };
+            await _uow.CourseCodeRepository.CreateAsync(newCourseCodeEntity);
+            await _uow.SaveChangesAsync(); // Save to get ID
+
             var course = new Course
             {
                 Name = createDto.Name,
@@ -145,7 +180,8 @@ namespace Lssctc.ProgramManagement.Courses.Services
                 ImageUrl = createDto.ImageUrl,
                 BackgroundImageUrl = createDto.BackgroundImageUrl ?? "https://templates.framework-y.com/lightwire/images/wide-1.jpg",
                 IsActive = true,
-                IsDeleted = false
+                IsDeleted = false,
+                CourseCodeId = newCourseCodeEntity.Id // Link the code
             };
 
             await _uow.CourseRepository.CreateAsync(course);
@@ -154,6 +190,7 @@ namespace Lssctc.ProgramManagement.Courses.Services
             var newCourse = await _uow.CourseRepository.GetAllAsQueryable()
                 .Include(c => c.Category)
                 .Include(c => c.Level)
+                .Include(c => c.CourseCode)
                 .FirstOrDefaultAsync(c => c.Id == course.Id);
 
             return MapToDto(newCourse!);
@@ -161,7 +198,10 @@ namespace Lssctc.ProgramManagement.Courses.Services
 
         public async Task<CourseDto> UpdateCourseAsync(int id, UpdateCourseDto updateDto)
         {
-            var course = await _uow.CourseRepository.GetByIdAsync(id);
+            var course = await _uow.CourseRepository.GetAllAsQueryable()
+                .Include(c => c.CourseCode)
+                .FirstOrDefaultAsync(c => c.Id == id);
+
             if (course == null || course.IsDeleted == true)
             {
                 throw new KeyNotFoundException($"Course with ID {id} not found.");
@@ -184,6 +224,30 @@ namespace Lssctc.ProgramManagement.Courses.Services
                 }
             }
 
+            // [NEW] Update CourseCode logic
+            if (!string.IsNullOrWhiteSpace(updateDto.CourseCode))
+            {
+                var newCode = updateDto.CourseCode.Trim();
+                // Check if code is different from current
+                if (course.CourseCode == null || !course.CourseCode.Name.Equals(newCode, StringComparison.OrdinalIgnoreCase))
+                {
+                    var exists = await _uow.CourseCodeRepository.GetAllAsQueryable()
+                        .AnyAsync(cc => cc.Name == newCode);
+
+                    if (exists)
+                    {
+                        throw new InvalidOperationException($"Course code '{newCode}' already exists.");
+                    }
+
+                    // Create new entity for the new code
+                    var newCourseCodeEntity = new CourseCode { Name = newCode };
+                    await _uow.CourseCodeRepository.CreateAsync(newCourseCodeEntity);
+                    await _uow.SaveChangesAsync();
+
+                    course.CourseCodeId = newCourseCodeEntity.Id;
+                }
+            }
+
             course.Description = updateDto.Description ?? course.Description;
             course.CategoryId = updateDto.CategoryId ?? course.CategoryId;
             course.LevelId = updateDto.LevelId ?? course.LevelId;
@@ -199,6 +263,7 @@ namespace Lssctc.ProgramManagement.Courses.Services
             var updatedCourse = await _uow.CourseRepository.GetAllAsQueryable()
                 .Include(c => c.Category)
                 .Include(c => c.Level)
+                .Include(c => c.CourseCode)
                 .FirstOrDefaultAsync(c => c.Id == id);
 
             return MapToDto(updatedCourse!);
@@ -283,6 +348,8 @@ namespace Lssctc.ProgramManagement.Courses.Services
                     .ThenInclude(c => c!.Category)
                 .Include(pc => pc.Course)
                     .ThenInclude(c => c!.Level)
+                .Include(pc => pc.Course)
+                    .ThenInclude(c => c!.CourseCode) // [NEW] Include CourseCode
                 .ToListAsync();
 
             var courses = programCourses
@@ -306,6 +373,8 @@ namespace Lssctc.ProgramManagement.Courses.Services
                     .ThenInclude(c => c!.Category)
                 .Include(pc => pc.Course)
                     .ThenInclude(c => c!.Level)
+                .Include(pc => pc.Course)
+                    .ThenInclude(c => c!.CourseCode) // [NEW] Include CourseCode
                 .ToListAsync();
             // ============================================================
 
@@ -329,6 +398,9 @@ namespace Lssctc.ProgramManagement.Courses.Services
                 .Include(c => c.ProgramCourse)
                     .ThenInclude(pc => pc.Course)
                         .ThenInclude(co => co.Level)
+                .Include(c => c.ProgramCourse)
+                    .ThenInclude(pc => pc.Course)
+                        .ThenInclude(co => co.CourseCode) // [NEW] Include CourseCode
                 .AsNoTracking()
                 .FirstOrDefaultAsync();
 
@@ -458,7 +530,22 @@ namespace Lssctc.ProgramManagement.Courses.Services
 
         #endregion
 
-        #region Mapping
+        #region Helpers
+
+        private async Task<string> GenerateUniqueCourseCodeAsync()
+        {
+            string code;
+            bool exists;
+            do
+            {
+                // Generate format C-XXXXXXXX (8 chars hex or random)
+                // Using 8 chars substring of GUID for simplicity and high uniqueness
+                code = "C-" + Guid.NewGuid().ToString("N").Substring(0, 8).ToUpper();
+                exists = await _uow.CourseCodeRepository.GetAllAsQueryable().AnyAsync(c => c.Name == code);
+            } while (exists);
+
+            return code;
+        }
 
         private static CourseDto MapToDto(Course c)
         {
@@ -475,7 +562,8 @@ namespace Lssctc.ProgramManagement.Courses.Services
                 IsActive = c.IsActive ?? false,
                 CreatedAt = c.CreatedAt,
                 UpdatedAt = c.UpdatedAt,
-                BackgroundImageUrl = c.BackgroundImageUrl
+                BackgroundImageUrl = c.BackgroundImageUrl,
+                CourseCode = c.CourseCode?.Name // [NEW] Map CourseCode
             };
         }
 

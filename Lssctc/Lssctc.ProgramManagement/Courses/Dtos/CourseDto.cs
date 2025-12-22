@@ -18,6 +18,9 @@ namespace Lssctc.ProgramManagement.Courses.Dtos
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
         public string? BackgroundImageUrl { get; set; }
+
+        // [NEW] Added CourseCode
+        public string? CourseCode { get; set; }
     }
 
     public class CreateCourseDto
@@ -51,6 +54,9 @@ namespace Lssctc.ProgramManagement.Courses.Dtos
         // Added Background Image with default
         [Url(ErrorMessage = "Background Image URL must be a valid URL.")]
         public string? BackgroundImageUrl { get; set; } = "https://templates.framework-y.com/lightwire/images/wide-1.jpg";
+
+        // [NEW] Course Code (Optional, auto-generated if null)
+        public string? CourseCode { get; set; }
     }
 
     public class UpdateCourseDto
@@ -81,5 +87,8 @@ namespace Lssctc.ProgramManagement.Courses.Dtos
         // Added Background Image
         [Url(ErrorMessage = "Background Image URL must be a valid URL.")]
         public string? BackgroundImageUrl { get; set; }
+
+        // [NEW] Course Code update
+        public string? CourseCode { get; set; }
     }
 }
