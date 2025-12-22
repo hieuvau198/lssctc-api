@@ -67,11 +67,10 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Dtos
     {
         [Required]
         public string TaskCode { get; set; } = null!; // Identify by Code
-
         [Required]
         public bool IsPass { get; set; }
-
         public int? DurationSecond { get; set; }
+        public int Mistake { get; set; }
 
     }
     // --- Final Exam Partial DTOs ---
@@ -179,6 +178,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Dtos
 
         [Required(ErrorMessage = "Pass/Fail status is required.")]
         public bool IsPass { get; set; }
+        public int TotalMistake { get; set; }
 
         [StringLength(1000, ErrorMessage = "Description cannot exceed 1000 characters.")]
         public string? Description { get; set; }

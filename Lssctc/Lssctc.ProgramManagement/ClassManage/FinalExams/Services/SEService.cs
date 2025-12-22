@@ -184,20 +184,20 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
         {
             var partial = await GetPartialWithSecurityCheckAsync(partialId, userId);
 
-            // --- NEW VALIDATION: Check Final Exam Status ---
+            // Validation: Check Final Exam Status
             var feStatus = partial.FinalExam.Status;
             if (feStatus != (int)FinalExamStatusEnum.Open && feStatus != (int)FinalExamStatusEnum.Submitted)
             {
                 throw new InvalidOperationException($"Cannot submit result. Final Exam status is '{((FinalExamStatusEnum)feStatus)}'. Allowed statuses: Open, Submitted.");
             }
-            // -----------------------------------------------
 
             if (partial.Type != 2) throw new ArgumentException("This ID is not a Simulation Exam (SE).");
             var nowUtc7 = DateTime.UtcNow.AddHours(7);
 
+            // 1. Update individual Task statuses (Always save task results regardless of pass/fail)
             if (dto.Tasks != null && dto.Tasks.Any())
             {
-                // FIX: Removed .Include(t => t.FeSimulation) to prevent tracking conflict
+                // Note: Removed .Include(t => t.FeSimulation) to avoid tracking conflicts with 'partial'
                 var seTasks = await _uow.GetDbContext().Set<SeTask>()
                     .Include(t => t.SimTask)
                     .Where(t => t.FeSimulation.FinalExamPartialId == partialId)
@@ -211,7 +211,9 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                         taskEntity.IsPass = taskDto.IsPass;
                         taskEntity.DurationSecond = taskDto.DurationSecond;
                         taskEntity.CompleteTime = nowUtc7;
-                        taskEntity.Status = 1;
+                        taskEntity.Status = 1; // Mark as attempted/submitted
+
+                        // Calculate attempt time based on duration
                         if (taskDto.DurationSecond.HasValue)
                         {
                             taskEntity.AttemptTime = nowUtc7.AddSeconds(-taskDto.DurationSecond.Value);
@@ -220,30 +222,34 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                         {
                             taskEntity.AttemptTime = nowUtc7;
                         }
+
+                        // Note: SeTask entity does not have a 'Mistake' column, so we do not save taskDto.Mistake to DB.
+                        // If persistent storage for task mistakes is needed, a database migration is required.
                     }
                 }
                 await _uow.SaveChangesAsync();
             }
 
-            var allTasks = await _uow.GetDbContext().Set<SeTask>()
-                .Where(t => t.FeSimulation.FinalExamPartialId == partialId)
-                .ToListAsync();
-
+            // 2. Calculate Overall Score based on New Logic
             decimal calculatedMarks = 0;
-            if (allTasks.Any())
-            {
-                int totalTasks = allTasks.Count;
-                int passedTasks = allTasks.Count(t => t.IsPass == true);
 
-                calculatedMarks = totalTasks > 0
-                    ? Math.Round(((decimal)passedTasks / totalTasks) * 10, 2)
-                    : 0;
+            if (dto.IsPass)
+            {
+                // Default score is 10. Minus 0.5 for every mistake.
+                // Formula: 10 - (TotalMistake * 0.5)
+                decimal deduction = dto.TotalMistake * 0.5m;
+                calculatedMarks = 10m - deduction;
+
+                // Ensure marks do not go below 0
+                if (calculatedMarks < 0) calculatedMarks = 0;
             }
             else
             {
-                calculatedMarks = (decimal)dto.Marks;
+                // If SE status is Fail, Total Score is 0
+                calculatedMarks = 0;
             }
 
+            // 3. Update Partial Exam Result
             partial.Marks = calculatedMarks;
             partial.IsPass = dto.IsPass;
             partial.Description = dto.Description;
@@ -251,13 +257,13 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             partial.CompleteTime = dto.CompleteTime;
             partial.Status = (int)FinalExamPartialStatus.Submitted;
 
-
             await _uow.FinalExamPartialRepository.UpdateAsync(partial);
             await _uow.SaveChangesAsync();
 
             // Auto generate new code after submission
             await _finalExamsService.GenerateExamCodeAsync(partialId);
 
+            // Recalculate the Final Exam total score
             await _finalExamsService.RecalculateFinalExamScore(partial.FinalExamId);
 
             return MapToPartialDto(partial, false);
