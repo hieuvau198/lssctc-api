@@ -499,17 +499,6 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Controllers
             catch (Exception ex) { return StatusCode(500, new { message = "An error occurred.", detail = ex.Message }); }
         }
 
-        [HttpPost("submit/se/{partialId}")]
-        public async Task<IActionResult> SubmitSe(int partialId, [FromBody] SubmitSeDto dto)
-        {
-            try
-            {
-                return Ok(await _seService.SubmitSeAsync(partialId, dto));
-            }
-            catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
-            catch (Exception ex) { return StatusCode(500, new { message = ex.Message }); }
-        }
-
         #endregion
 
         #region Simulation Exam Tracking

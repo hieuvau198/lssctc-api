@@ -103,7 +103,14 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             var partial = await GetPartialWithSecurityCheckAsync(partialId, userId);
 
             if (partial.Type != 2) throw new ArgumentException("This ID is not a Simulation Exam (SE).");
-            if (partial.CompleteTime.HasValue) throw new InvalidOperationException("Exam is already complete.");
+
+            // --- UPDATED VALIDATION: Check Final Exam Status instead of strictly checking CompleteTime ---
+            var feStatus = partial.FinalExam.Status;
+            if (feStatus != (int)FinalExamStatusEnum.Open && feStatus != (int)FinalExamStatusEnum.Submitted)
+            {
+                throw new InvalidOperationException($"Cannot start exam. Final Exam status is '{((FinalExamStatusEnum)feStatus)}'. Allowed statuses: Open, Submitted.");
+            }
+            // -----------------------------------------------------------------------------------------
 
             if (string.IsNullOrEmpty(partial.ExamCode) ||
                 !partial.ExamCode.Equals(examCode, StringComparison.OrdinalIgnoreCase))
@@ -125,7 +132,14 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
         {
             var partial = await GetPartialWithSecurityCheckAsync(partialId, userId);
             if (partial.Type != 2) throw new ArgumentException("This ID is not a Simulation Exam (SE).");
-            if (partial.CompleteTime.HasValue) throw new InvalidOperationException("Exam is already complete.");
+
+            // --- UPDATED VALIDATION: Check Final Exam Status ---
+            var feStatus = partial.FinalExam.Status;
+            if (feStatus != (int)FinalExamStatusEnum.Open && feStatus != (int)FinalExamStatusEnum.Submitted)
+            {
+                throw new InvalidOperationException($"Cannot start exam. Final Exam status is '{((FinalExamStatusEnum)feStatus)}'. Allowed statuses: Open, Submitted.");
+            }
+            // -------------------------------------------------
 
             if (!partial.StartTime.HasValue)
             {
@@ -222,9 +236,6 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                         {
                             taskEntity.AttemptTime = nowUtc7;
                         }
-
-                        // Note: SeTask entity does not have a 'Mistake' column, so we do not save taskDto.Mistake to DB.
-                        // If persistent storage for task mistakes is needed, a database migration is required.
                     }
                 }
                 await _uow.SaveChangesAsync();
@@ -267,37 +278,6 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             await _finalExamsService.RecalculateFinalExamScore(partial.FinalExamId);
 
             return MapToPartialDto(partial, false);
-        }
-
-        public async Task<FinalExamDto> SubmitSeAsync(int partialId, SubmitSeDto dto)
-        {
-            var partial = await _uow.FinalExamPartialRepository.GetAllAsQueryable()
-                .Include(p => p.FinalExam) // Ensure parent is loaded
-                .FirstOrDefaultAsync(p => p.Id == partialId);
-
-            if (partial == null) throw new KeyNotFoundException("Partial exam not found.");
-
-            // --- NEW VALIDATION: Check Final Exam Status ---
-            var feStatus = partial.FinalExam.Status;
-            if (feStatus != (int)FinalExamStatusEnum.Open && feStatus != (int)FinalExamStatusEnum.Submitted)
-            {
-                throw new InvalidOperationException($"Cannot submit result. Final Exam status is '{((FinalExamStatusEnum)feStatus)}'. Allowed statuses: Open, Submitted.");
-            }
-            // -----------------------------------------------
-
-            partial.Marks = dto.Marks;
-            partial.CompleteTime = DateTime.UtcNow;
-            partial.IsPass = partial.Marks >= 5;
-            partial.Status = (int)FinalExamPartialStatus.Submitted;
-
-            await _uow.FinalExamPartialRepository.UpdateAsync(partial);
-            await _uow.SaveChangesAsync();
-
-            // Auto generate new code after submission
-            await _finalExamsService.GenerateExamCodeAsync(partialId);
-
-            await _finalExamsService.RecalculateFinalExamScore(partial.FinalExamId);
-            return await _finalExamsService.GetFinalExamByIdAsync(partial.FinalExamId);
         }
 
         public async Task<SimulationExamDetailDto> GetSimulationExamDetailAsync(int partialId)
