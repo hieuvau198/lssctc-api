@@ -11,13 +11,26 @@ namespace Lssctc.ProgramManagement.Administrations.Controllers
     {
         private readonly IClassCustomizeService _classCustomizeService;
         private readonly IClassCompleteService _classCompleteService;
+        private readonly AccountHelper _accountHelper;
 
         public AdministrationsController(
             IClassCustomizeService classCustomizeService,
-            IClassCompleteService classCompleteService)
+            IClassCompleteService classCompleteService,
+            AccountHelper accountHelper)
         {
             _classCustomizeService = classCustomizeService;
             _classCompleteService = classCompleteService;
+            _accountHelper = accountHelper;
+        }
+
+        /// <summary>
+        /// Hard deletes a user account and all related data (Trainee, Instructor, Profiles, Records, etc.).
+        /// </summary>
+        [HttpDelete("users/{id}/hard-delete")]
+        public async Task<IActionResult> DeleteUserCompletely(int id)
+        {
+            await _accountHelper.HardDeleteUserAccountAsync(id);
+            return NoContent();
         }
 
         /// <summary>

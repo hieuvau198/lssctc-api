@@ -207,6 +207,8 @@ builder.Services.AddScoped<IFETemplateService, FETemplateService>();
 
 builder.Services.AddScoped<IClassCustomizeService, ClassCustomizeService>();
 builder.Services.AddScoped<IClassCompleteService, ClassCompleteService>();
+
+builder.Services.AddScoped<AccountHelper>();
 #endregion
 
 #region CORS
