@@ -197,9 +197,9 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
 
             if (dto.Tasks != null && dto.Tasks.Any())
             {
+                // FIX: Removed .Include(t => t.FeSimulation) to prevent tracking conflict
                 var seTasks = await _uow.GetDbContext().Set<SeTask>()
                     .Include(t => t.SimTask)
-                    .Include(t => t.FeSimulation)
                     .Where(t => t.FeSimulation.FinalExamPartialId == partialId)
                     .ToListAsync();
 
