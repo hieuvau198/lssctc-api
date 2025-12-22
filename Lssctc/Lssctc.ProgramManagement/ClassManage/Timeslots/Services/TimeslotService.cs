@@ -175,7 +175,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Timeslots.Services
         public async Task<TimeslotDto> UpdateTimeslotAsync(int timeslotId, UpdateTimeslotDto dto, int updaterId)
         {
             var startTime = dto.StartTime.AddHours(7);
-            var endTime = dto.EndTime.Value.AddHours(7);
+            var endTime = dto.EndTime.AddHours(7);
 
             ValidateTimeslotDuration(startTime, endTime);
 
