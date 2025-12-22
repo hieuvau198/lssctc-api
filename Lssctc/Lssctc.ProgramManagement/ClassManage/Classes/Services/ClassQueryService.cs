@@ -57,12 +57,34 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
                 );
             }
 
-            // Sorting logic
+            // UPDATED SORTING LOGIC
             if (!string.IsNullOrWhiteSpace(sortBy))
             {
                 bool isDesc = sortDirection?.ToLower() == "desc";
-                if (sortBy.ToLower() == "startdate") query = isDesc ? query.OrderByDescending(c => c.StartDate) : query.OrderBy(c => c.StartDate);
-                else if (sortBy.ToLower() == "enddate") query = isDesc ? query.OrderByDescending(c => c.EndDate) : query.OrderBy(c => c.EndDate);
+                switch (sortBy.ToLower())
+                {
+                    case "name":
+                        query = isDesc ? query.OrderByDescending(c => c.Name) : query.OrderBy(c => c.Name);
+                        break;
+                    case "classcode":
+                        query = isDesc
+                            ? query.OrderByDescending(c => c.ClassCode != null ? c.ClassCode.Name : string.Empty)
+                            : query.OrderBy(c => c.ClassCode != null ? c.ClassCode.Name : string.Empty);
+                        break;
+                    case "status":
+                        query = isDesc ? query.OrderByDescending(c => c.Status) : query.OrderBy(c => c.Status);
+                        break;
+                    case "startdate":
+                        query = isDesc ? query.OrderByDescending(c => c.StartDate) : query.OrderBy(c => c.StartDate);
+                        break;
+                    case "enddate":
+                        query = isDesc ? query.OrderByDescending(c => c.EndDate) : query.OrderBy(c => c.EndDate);
+                        break;
+                    default:
+                        // Fallback if an unknown sort term is passed
+                        query = query.OrderByDescending(c => c.Id);
+                        break;
+                }
             }
             else
             {
