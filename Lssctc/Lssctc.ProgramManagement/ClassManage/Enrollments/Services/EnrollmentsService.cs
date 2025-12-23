@@ -364,20 +364,19 @@ namespace Lssctc.ProgramManagement.ClassManage.Enrollments.Services
         }
 
         /// <summary>
-        /// Sends enrollment notification email to the trainee
+        /// Sends enrollment notification email to the trainee (Vietnamese)
         /// </summary>
         private async Task SendEnrollmentEmailAsync(Enrollment enrollment)
         {
             try
             {
                 // Extract trainee information
-                string traineeFullname = enrollment.Trainee?.IdNavigation?.Fullname ?? "Student";
+                string traineeFullname = enrollment.Trainee?.IdNavigation?.Fullname ?? "Học viên";
                 string traineeEmail = enrollment.Trainee?.IdNavigation?.Email;
 
                 // Validate email address
                 if (string.IsNullOrWhiteSpace(traineeEmail))
                 {
-                    // Log or silently skip if no email
                     return;
                 }
 
@@ -387,7 +386,8 @@ namespace Lssctc.ProgramManagement.ClassManage.Enrollments.Services
                 string startDate = enrollment.Class?.StartDate.ToString("dd/MM/yyyy") ?? "TBD";
                 string endDate = enrollment.Class?.EndDate?.ToString("dd/MM/yyyy") ?? "TBD";
 
-                string emailSubject = $"🎓 Enrollment Confirmation - {className}";
+                // Subject in Vietnamese
+                string emailSubject = $"🎓 Xác nhận ghi danh - {className}";
 
                 string emailBody = $@"
 <!DOCTYPE html>
@@ -466,7 +466,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Enrollments.Services
         .info-label {{ 
             font-weight: 600; 
             color: #666; 
-            min-width: 120px; 
+            min-width: 130px; /* Increased slightly for VN text */
         }}
         .info-value {{ 
             color: #333; 
@@ -535,68 +535,68 @@ namespace Lssctc.ProgramManagement.ClassManage.Enrollments.Services
     <div class='email-container'>
         <div class='email-header'>
             <div class='icon'>🎓</div>
-            <h1>Enrollment Confirmed!</h1>
+            <h1>Ghi danh thành công!</h1>
         </div>
         
         <div class='email-body'>
             <div class='greeting'>
-                Dear <span class='highlight'>{traineeFullname}</span>,
+                Xin chào <span class='highlight'>{traineeFullname}</span>,
             </div>
             
             <div class='message'>
-                Congratulations! We are delighted to inform you that you have been <strong>successfully enrolled</strong> in the training class. We look forward to supporting you on your learning journey.
+                Chúc mừng bạn! Chúng tôi vui mừng thông báo rằng bạn đã được <strong>ghi danh thành công</strong> vào lớp đào tạo. Chúng tôi rất mong được đồng hành và hỗ trợ bạn trên hành trình học tập sắp tới.
             </div>
             
             <div class='class-info'>
-                <div class='class-info-title'>📋 Class Information</div>
+                <div class='class-info-title'>📋 Thông Tin Lớp Học</div>
                 <div class='info-row'>
-                    <span class='info-label'>Class Name:</span>
+                    <span class='info-label'>Tên lớp:</span>
                     <span class='info-value'>{className}</span>
                 </div>
                 <div class='info-row'>
-                    <span class='info-label'>Class Code:</span>
+                    <span class='info-label'>Mã lớp:</span>
                     <span class='info-value'>{classCode}</span>
                 </div>
                 <div class='info-row'>
-                    <span class='info-label'>Start Date:</span>
+                    <span class='info-label'>Ngày bắt đầu:</span>
                     <span class='info-value'>{startDate}</span>
                 </div>
                 <div class='info-row'>
-                    <span class='info-label'>End Date:</span>
+                    <span class='info-label'>Ngày kết thúc:</span>
                     <span class='info-value'>{endDate}</span>
                 </div>
             </div>
             
             <div style='text-align: center;'>
-                <a href='#' class='cta-button'>View My Schedule</a>
+                <a href='#' class='cta-button'>Xem Thời Khóa Biểu</a>
             </div>
             
             <div class='divider'></div>
             
             <div class='message'>
-                <strong>Next Steps:</strong>
+                <strong>Các bước tiếp theo:</strong>
                 <ul style='margin-top: 10px; padding-left: 20px:'>
-                    <li>Log in to the training management system</li>
-                    <li>Review your class schedule and materials</li>
-                    <li>Prepare any required documents or prerequisites</li>
-                    <li>Contact your instructor if you have any questions</li>
+                    <li>Đăng nhập vào hệ thống quản lý đào tạo</li>
+                    <li>Xem lại lịch học và tài liệu của bạn</li>
+                    <li>Chuẩn bị các tài liệu hoặc điều kiện tiên quyết (nếu có)</li>
+                    <li>Liên hệ với giảng viên nếu bạn có bất kỳ câu hỏi nào</li>
                 </ul>
             </div>
             
             <div class='message' style='margin-top: 20px;'>
-                If you have any questions or concerns, please don't hesitate to reach out to our support team.
+                Nếu bạn có bất kỳ câu hỏi hoặc thắc mắc nào, đừng ngần ngại liên hệ với đội ngũ hỗ trợ của chúng tôi.
             </div>
             
             <div class='message' style='margin-top: 20px;'>
-                Best regards,<br>
-                <strong>LSSCTC Training Management Team</strong>
+                Trân trọng,<br>
+                <strong>Đội ngũ Quản lý Đào tạo LSSCTC</strong>
             </div>
         </div>
         
         <div class='footer'>
-            <p>© 2024 LSSCTC Training Center. All rights reserved.</p>
+            <p>© 2024 Trung tâm Đào tạo LSSCTC. Mọi quyền được bảo lưu.</p>
             <p class='footer-note'>
-                This is an automated message. Please do not reply directly to this email.
+                Đây là tin nhắn tự động. Vui lòng không trả lời trực tiếp email này.
             </p>
         </div>
     </div>

@@ -1,5 +1,6 @@
 ﻿using Lssctc.ProgramManagement.Activities.Services;
 using Lssctc.ProgramManagement.ClassManage.ActivityRecords.Dtos;
+using Lssctc.ProgramManagement.ClassManage.Helpers; // Added namespace for ProgressHelper
 using Lssctc.Share.Entities;
 using Lssctc.Share.Enums;
 using Lssctc.Share.Interfaces;
@@ -11,15 +12,18 @@ namespace Lssctc.ProgramManagement.ClassManage.ActivityRecords.Services
     {
         private readonly IUnitOfWork _uow;
         private readonly IActivitySessionService _sessionService;
-        public ActivityRecordsService(IUnitOfWork uow, IActivitySessionService activitySessionService)
+        private readonly ProgressHelper _progressHelper; // 1. Define ProgressHelper
+
+        // 2. Inject ProgressHelper
+        public ActivityRecordsService(IUnitOfWork uow, IActivitySessionService activitySessionService, ProgressHelper progressHelper)
         {
             _uow = uow;
             _sessionService = activitySessionService;
+            _progressHelper = progressHelper;
         }
 
         public async Task<IEnumerable<ActivityRecordDto>> GetActivityRecordsAsync(int classId, int sectionId, int traineeId)
         {
-            // MODIFIED: Join with Activity to get ActivityTitle
             var records = await GetActivityRecordQuery()
                 .Where(ar => ar.SectionRecord.LearningProgress.Enrollment.ClassId == classId &&
                              ar.SectionRecord.SectionId == sectionId &&
@@ -32,13 +36,11 @@ namespace Lssctc.ProgramManagement.ClassManage.ActivityRecords.Services
                 )
                 .ToListAsync();
 
-            // MODIFIED: Call new MapToDto overload
             return records.Select(r => MapToDto(r.ActivityRecord, r.ActivityTitle));
         }
 
         public async Task<IEnumerable<ActivityRecordDto>> GetActivityRecordsByActivityAsync(int classId, int sectionId, int activityId)
         {
-            // MODIFIED: Join with Activity to get ActivityTitle
             var records = await GetActivityRecordQuery()
                 .Where(ar => ar.SectionRecord.LearningProgress.Enrollment.ClassId == classId &&
                              ar.SectionRecord.SectionId == sectionId &&
@@ -51,7 +53,6 @@ namespace Lssctc.ProgramManagement.ClassManage.ActivityRecords.Services
                 )
                 .ToListAsync();
 
-            // MODIFIED: Call new MapToDto overload
             return records.Select(r => MapToDto(r.ActivityRecord, r.ActivityTitle));
         }
 
@@ -67,6 +68,7 @@ namespace Lssctc.ProgramManagement.ClassManage.ActivityRecords.Services
 
             if (activityRecord.SectionRecord.LearningProgress.Enrollment.TraineeId != traineeId)
                 throw new UnauthorizedAccessException("You are not authorized to submit this activity.");
+
             await _sessionService.CheckActivityAccess(
                 activityRecord.SectionRecord.LearningProgress.Enrollment.ClassId,
                 activityRecord.ActivityId.Value);
@@ -79,14 +81,28 @@ namespace Lssctc.ProgramManagement.ClassManage.ActivityRecords.Services
                 throw new InvalidOperationException("This endpoint is only for submitting 'Material' activities. Quiz and Practice must be submitted via their respective services.");
             }
 
+            // 1. Mark Activity as Completed
             activityRecord.Status = (int)ActivityRecordStatusEnum.Completed;
             activityRecord.IsCompleted = true;
+            activityRecord.Score = 10; // Optional: Usually materials get full score or 0
             activityRecord.CompletedDate = DateTime.UtcNow;
 
             await _uow.ActivityRecordRepository.UpdateAsync(activityRecord);
             await _uow.SaveChangesAsync();
 
-            // MODIFIED: Fetch the name to pass to MapToDto
+            // --- START OF FIX ---
+
+            // 2. Cascade Update: Check if Section is now completed
+            // This recalculates the percentage of the section based on completed activities
+            var updatedSection = await _progressHelper.UpdateSectionRecordProgressAsync(traineeId, activityRecord.SectionRecordId);
+
+            // 3. Cascade Update: Check if Course (LearningProgress) is now completed
+            // This recalculates based on completed sections
+            await _progressHelper.UpdateLearningProgressProgressAsync(traineeId, updatedSection.LearningProgressId);
+
+            // --- END OF FIX ---
+
+            // Fetch the name to pass to MapToDto
             var updatedRecord = await GetActivityRecordQuery().FirstAsync(ar => ar.Id == activityRecord.Id);
             string activityName = "N/A";
             if (updatedRecord.ActivityId.HasValue)
@@ -172,7 +188,7 @@ namespace Lssctc.ProgramManagement.ClassManage.ActivityRecords.Services
                 Id = ar.Id,
                 SectionRecordId = ar.SectionRecordId,
                 ActivityId = ar.ActivityId,
-                ActivityName = activityName, // <-- ADDED
+                ActivityName = activityName,
                 Status = status,
                 Score = ar.Score,
                 IsCompleted = ar.IsCompleted,

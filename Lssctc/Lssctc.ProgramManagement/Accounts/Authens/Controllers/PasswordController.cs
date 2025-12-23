@@ -1,4 +1,4 @@
-using Lssctc.ProgramManagement.Accounts.Authens.Dtos;
+﻿using Lssctc.ProgramManagement.Accounts.Authens.Dtos;
 using Lssctc.ProgramManagement.Accounts.Authens.Services;
 using Lssctc.ProgramManagement.Accounts.Users.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -58,7 +58,7 @@ namespace Lssctc.ProgramManagement.Accounts.Authens.Controllers
                 }
 
                 // Step 3: Send OTP via email
-                string subject = "OTP Code - Password Reset";
+                string subject = "Mã OTP - Đặt lại mật khẩu";
                 string htmlBody = $@"
                     <html>
                     <head>
@@ -78,39 +78,39 @@ namespace Lssctc.ProgramManagement.Accounts.Authens.Controllers
                     <body>
                         <div class='container'>
                             <div class='header'>
-                                <h1>?? Password Reset</h1>
-                                <p style='margin: 10px 0 0 0; font-size: 14px;'>LSSCTC Program Management System</p>
+                                <h1>🔑 Đặt lại mật khẩu</h1>
+                                <p style='margin: 10px 0 0 0; font-size: 14px;'>Hệ thống Quản lý Đào tạo LSSCTC</p>
                             </div>
                             <div class='content'>
-                                <h2 style='color: #333; margin-top: 0;'>Hello!</h2>
+                                <h2 style='color: #333; margin-top: 0;'>Xin chào!</h2>
                                 <p style='color: #555; line-height: 1.6;'>
-                                    You have requested to reset your account password. 
-                                    Please use the OTP code below to verify your identity:
+                                    Bạn đã yêu cầu đặt lại mật khẩu tài khoản. 
+                                    Vui lòng sử dụng mã OTP bên dưới để xác minh danh tính của bạn:
                                 </p>
                                 
                                 <div class='otp-box'>
-                                    <p style='margin: 0; color: #666; font-size: 14px;'>Your OTP Code</p>
+                                    <p style='margin: 0; color: #666; font-size: 14px;'>Mã OTP của bạn</p>
                                     <div class='otp-code'>{otpResult.OtpCode}</div>
-                                    <p style='margin: 10px 0 0 0; color: #666; font-size: 12px;'>Enter this code in the verification form</p>
+                                    <p style='margin: 10px 0 0 0; color: #666; font-size: 12px;'>Nhập mã này vào biểu mẫu xác minh</p>
                                 </div>
 
                                 <div class='warning'>
-                                    <p style='margin: 0;'><span class='warning-icon'>??</span> <strong>Important Notice:</strong></p>
+                                    <p style='margin: 0;'><span class='warning-icon'>⚠️</span> <strong>Lưu ý quan trọng:</strong></p>
                                     <ul style='margin: 10px 0 0 20px; color: #856404;'>
-                                        <li>This OTP code is valid for <strong>5 minutes only</strong></li>
-                                        <li>Do not share this code with anyone</li>
-                                        <li>If you did not request a password reset, please ignore this email</li>
+                                        <li>Mã OTP này chỉ có hiệu lực trong <strong>5 phút</strong></li>
+                                        <li>Không chia sẻ mã này cho bất kỳ ai</li>
+                                        <li>Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này</li>
                                     </ul>
                                 </div>
 
                                 <p style='color: #555; margin-top: 30px;'>
-                                    If you encounter any issues, please contact our support team.
+                                    Nếu bạn gặp bất kỳ vấn đề nào, vui lòng liên hệ với đội ngũ hỗ trợ của chúng tôi.
                                 </p>
                             </div>
                             <div class='footer'>
                                 <p style='margin: 0;'>
-                                    � 2024 LSSCTC Program Management System<br>
-                                    This is an automated email. Please do not reply.
+                                    © 2024 Trung tâm Đào tạo LSSCTC<br>
+                                    Đây là email tự động. Vui lòng không trả lời.
                                 </p>
                             </div>
                         </div>

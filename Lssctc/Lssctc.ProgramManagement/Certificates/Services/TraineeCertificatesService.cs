@@ -189,18 +189,132 @@ namespace Lssctc.ProgramManagement.Certificates.Services
                     };
                     _context.TraineeCertificates.Add(newCert);
 
+                    // --- START OF MODIFIED EMAIL SENDING BLOCK ---
                     var userEmail = enrollment.Trainee.IdNavigation.Email;
                     if (!string.IsNullOrEmpty(userEmail))
                     {
-                        string subject = $"Certificate of Completion - {courseName}";
-                        string body = $"<p>Dear {enrollment.Trainee.IdNavigation.Fullname},</p>" +
-                                      $"<p>Congratulations! You have successfully completed the course <strong>{courseName}</strong>.</p>" +
-                                      $"<p>Your official certificate is attached below:</p>" +
-                                      $"<p><a href='{pdfUrl}'>Download Certificate</a></p>" +
-                                      $"<p>Best Regards,<br/>LSSCTC Team</p>";
+                        string traineeName = enrollment.Trainee.IdNavigation.Fullname ?? "Học viên";
+                        string subject = $"🎓 Chứng nhận Hoàn thành Khóa học - {courseName}";
+
+                        string body = $@"
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <style>
+        body {{ 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            line-height: 1.6; 
+            color: #333; 
+            margin: 0; 
+            padding: 0; 
+            background-color: #f4f4f4; 
+        }}
+        .email-container {{ 
+            max-width: 600px; 
+            margin: 20px auto; 
+            background-color: #ffffff; 
+            border-radius: 10px; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1); 
+            overflow: hidden; 
+        }}
+        .email-header {{ 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+            color: #ffffff; 
+            padding: 30px 20px; 
+            text-align: center; 
+        }}
+        .email-header h1 {{ 
+            margin: 0; 
+            font-size: 24px; 
+            font-weight: 600; 
+        }}
+        .email-header .icon {{ 
+            font-size: 48px; 
+            margin-bottom: 10px; 
+        }}
+        .email-body {{ 
+            padding: 30px; 
+        }}
+        .greeting {{ 
+            font-size: 18px; 
+            font-weight: 500; 
+            color: #333; 
+            margin-bottom: 20px; 
+        }}
+        .message {{ 
+            font-size: 16px; 
+            color: #555; 
+            margin-bottom: 25px; 
+            line-height: 1.8; 
+        }}
+        .cta-button {{ 
+            display: inline-block; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+            color: #ffffff; 
+            padding: 14px 30px; 
+            text-decoration: none; 
+            border-radius: 5px; 
+            font-weight: 600; 
+            font-size: 16px; 
+            margin: 20px 0; 
+            text-align: center; 
+        }}
+        .cta-button:hover {{ 
+            opacity: 0.9; 
+        }}
+        .footer {{ 
+            background-color: #f8f9fa; 
+            padding: 20px; 
+            text-align: center; 
+            font-size: 14px; 
+            color: #666; 
+        }}
+    </style>
+</head>
+<body>
+    <div class='email-container'>
+        <div class='email-header'>
+            <div class='icon'>🏆</div>
+            <h1>Chứng Nhận Hoàn Thành</h1>
+        </div>
+        
+        <div class='email-body'>
+            <div class='greeting'>
+                Xin chào <span style='color: #667eea; font-weight: 600;'>{traineeName}</span>,
+            </div>
+            
+            <div class='message'>
+                Chúc mừng bạn! Chúng tôi vui mừng thông báo rằng bạn đã hoàn thành xuất sắc khóa học <strong>{courseName}</strong>.
+                <br><br>
+                Đây là một cột mốc quan trọng trong hành trình học tập của bạn. Chứng chỉ của bạn đã sẵn sàng để tải xuống.
+            </div>
+            
+            <div style='text-align: center;'>
+                <a href='{pdfUrl}' class='cta-button' style='color: #ffffff;'>Tải Xuống Chứng Chỉ</a>
+            </div>
+            
+            <div class='message'>
+                Cảm ơn bạn đã tham gia khóa học của chúng tôi. Chúc bạn gặt hái được nhiều thành công hơn nữa trong tương lai!
+            </div>
+            
+            <div class='message' style='margin-top: 20px;'>
+                Trân trọng,<br>
+                <strong>Đội ngũ Đào tạo LSSCTC</strong>
+            </div>
+        </div>
+        
+        <div class='footer'>
+            <p>© 2024 Trung tâm Đào tạo LSSCTC. Mọi quyền được bảo lưu.</p>
+        </div>
+    </div>
+</body>
+</html>";
 
                         await _mailService.SendEmailAsync(userEmail, subject, body);
                     }
+                    // --- END OF MODIFIED EMAIL SENDING BLOCK ---
                 }
                 catch (Exception ex)
                 {

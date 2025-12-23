@@ -209,6 +209,7 @@ builder.Services.AddScoped<IClassCustomizeService, ClassCustomizeService>();
 builder.Services.AddScoped<IClassCompleteService, ClassCompleteService>();
 
 builder.Services.AddScoped<AccountHelper>();
+builder.Services.AddScoped<ProgressHelper>();
 #endregion
 
 #region CORS
