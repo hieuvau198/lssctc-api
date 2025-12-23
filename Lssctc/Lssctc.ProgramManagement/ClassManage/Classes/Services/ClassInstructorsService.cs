@@ -2,6 +2,7 @@
 using Lssctc.Share.Entities;
 using Lssctc.Share.Enums;
 using Lssctc.Share.Interfaces;
+using Lssctc.ProgramManagement.Accounts.Authens.Services; // [1] Add namespace
 using Microsoft.EntityFrameworkCore;
 
 namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
@@ -9,10 +10,13 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
     public class ClassInstructorsService : IClassInstructorsService
     {
         private readonly IUnitOfWork _uow;
+        private readonly IMailService _mailService; // [2] Add private field
 
-        public ClassInstructorsService(IUnitOfWork uow)
+        // [2] Inject IMailService in constructor
+        public ClassInstructorsService(IUnitOfWork uow, IMailService mailService)
         {
             _uow = uow;
+            _mailService = mailService;
         }
 
         public async Task AssignInstructorAsync(int classId, int instructorId)
@@ -48,7 +52,6 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
 
             if (targetClassTimeslots.Any())
             {
-                
                 var otherClassIds = await _uow.ClassInstructorRepository
                     .GetAllAsQueryable()
                     .Where(ci => ci.InstructorId == instructorId && ci.ClassId != classId)
@@ -90,7 +93,37 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
 
             await _uow.ClassInstructorRepository.CreateAsync(newAssignment);
             await _uow.SaveChangesAsync();
+
+            // [3] Send Email Notification in Vietnamese
+            try
+            {
+                var emailSubject = $"[Thông báo] Phân công giảng dạy lớp {classToUpdate.ClassCode} - {classToUpdate.Name}";
+                var emailBody = $@"
+                    <div style='font-family: Arial, sans-serif; color: #333;'>
+                        <h3>Xin chào {instructor.IdNavigation.Fullname},</h3>
+                        <p>Bạn đã được phân công làm giảng viên cho lớp học: <strong>{classToUpdate.Name} ({classToUpdate.ClassCode})</strong>.</p>
+                        <p>Thông tin lớp học:</p>
+                        <ul>
+                            <li><strong>Mã lớp:</strong> {classToUpdate.ClassCode}</li>
+                            <li><strong>Tên lớp:</strong> {classToUpdate.Name}</li>
+                            <li><strong>Ngày bắt đầu:</strong> {classToUpdate.StartDate:dd/MM/yyyy}</li>
+                        </ul>
+                        <p>Vui lòng đăng nhập vào hệ thống để kiểm tra lịch dạy chi tiết và tài liệu liên quan.</p>
+                        <br/>
+                        <p>Trân trọng,</p>
+                        <p><strong>Ban Quản lý Đào tạo</strong></p>
+                    </div>";
+
+                await _mailService.SendEmailAsync(instructor.IdNavigation.Email, emailSubject, emailBody);
+            }
+            catch (Exception)
+            {
+                // Optionally log the error here. 
+                // We swallow the exception to ensure the API call doesn't fail just because the email failed,
+                // since the assignment data was already committed successfully.
+            }
         }
+
         public async Task RemoveInstructorAsync(int classId)
         {
             var classToUpdate = await _uow.ClassRepository.GetByIdAsync(classId);
@@ -166,10 +199,10 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
             return new ClassInstructorDto
             {
                 Id = i.Id,
-                Fullname = i.IdNavigation.Fullname, // <-- MODIFIED
-                Email = i.IdNavigation.Email, // <-- ADDED
-                PhoneNumber = i.IdNavigation.PhoneNumber, // <-- ADDED
-                AvatarUrl = i.IdNavigation.AvatarUrl, // <-- ADDED
+                Fullname = i.IdNavigation.Fullname,
+                Email = i.IdNavigation.Email,
+                PhoneNumber = i.IdNavigation.PhoneNumber,
+                AvatarUrl = i.IdNavigation.AvatarUrl,
                 InstructorCode = i.InstructorCode,
                 HireDate = i.HireDate
             };
