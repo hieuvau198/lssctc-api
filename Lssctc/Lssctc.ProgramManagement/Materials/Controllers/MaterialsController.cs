@@ -172,14 +172,22 @@ namespace Lssctc.ProgramManagement.Materials.Controllers
         {
             try
             {
-                // Extract instructor ID from JWT claims if user is Instructor (not Admin)
-                int? instructorId = null;
-                if (User.IsInRole("Instructor"))
+                int? instructorId = User.IsInRole("Instructor") ? GetInstructorIdFromClaims() : null;
+
+                // 1. Retrieve material first to get the URL
+                var material = await _materialsService.GetMaterialByIdAsync(id, instructorId);
+                if (material == null)
+                    return NotFound(new { Message = "Material not found." });
+
+                // 2. Delete from Database first (to ensure logic like 'linked to activity' checks pass)
+                await _materialsService.DeleteMaterialAsync(id, instructorId);
+
+                // 3. Delete from Firebase
+                if (!string.IsNullOrEmpty(material.MaterialUrl))
                 {
-                    instructorId = GetInstructorIdFromClaims();
+                    await _firebaseStorageService.DeleteFileAsync(material.MaterialUrl);
                 }
 
-                await _materialsService.DeleteMaterialAsync(id, instructorId);
                 return NoContent();
             }
             catch (KeyNotFoundException ex)
@@ -334,6 +342,65 @@ namespace Lssctc.ProgramManagement.Materials.Controllers
             catch (Exception ex)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "An unexpected error occurred during upload." });
+            }
+        }
+
+        [HttpPut("upload/{id}")]
+        [Authorize(Roles = "Admin, Instructor")]
+        [Consumes("multipart/form-data")]
+        public async Task<ActionResult<MaterialDto>> UpdateMaterialWithFile(int id, [FromForm] UpdateMaterialWithFileDto input)
+        {
+            try
+            {
+                // 1. Get the existing material to find the old URL and Author check
+                int? instructorId = User.IsInRole("Instructor") ? GetInstructorIdFromClaims() : null;
+                var existingMaterial = await _materialsService.GetMaterialByIdAsync(id, instructorId);
+
+                if (existingMaterial == null)
+                    return NotFound(new { Message = "Material not found or access denied." });
+
+                string currentUrl = existingMaterial.MaterialUrl;
+
+                // 2. Prepare Update DTO
+                var updateDto = new UpdateMaterialDto
+                {
+                    Name = input.Name,
+                    Description = input.Description,
+                    LearningMaterialType = input.LearningMaterialType,
+                    MaterialUrl = currentUrl // Keep old URL by default
+                };
+
+                // 3. Handle File Replacement
+                string? oldUrlToDelete = null;
+
+                if (input.File != null && input.File.Length > 0)
+                {
+                    // Upload new file
+                    var fileName = $"materials/{Guid.NewGuid()}_{input.File.FileName}";
+                    var newUrl = await _firebaseStorageService.UploadFileAsync(input.File.OpenReadStream(), fileName, input.File.ContentType);
+
+                    // Update DTO with new URL
+                    updateDto.MaterialUrl = newUrl;
+
+                    // Mark old URL for deletion (after DB update succeeds)
+                    oldUrlToDelete = currentUrl;
+                }
+
+                // 4. Update Database
+                var updatedMaterial = await _materialsService.UpdateMaterialAsync(id, updateDto, instructorId);
+
+                // 5. Cleanup: Delete old file from Firebase if replacement happened
+                if (!string.IsNullOrEmpty(oldUrlToDelete))
+                {
+                    // Fire and forget, or await if you want to ensure it's gone
+                    await _firebaseStorageService.DeleteFileAsync(oldUrlToDelete);
+                }
+
+                return Ok(updatedMaterial);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "An unexpected error occurred: " + ex.Message });
             }
         }
         #endregion

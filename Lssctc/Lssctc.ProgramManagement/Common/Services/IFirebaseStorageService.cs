@@ -10,5 +10,6 @@
         /// <param name="contentType">Mime type (e.g., "application/pdf")</param>
         /// <returns>The public download URL</returns>
         Task<string> UploadFileAsync(Stream fileStream, string fileName, string contentType);
+        Task DeleteFileAsync(string fileUrl); // Add this method
     }
 }

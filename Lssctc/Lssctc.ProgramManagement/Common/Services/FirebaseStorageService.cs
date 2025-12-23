@@ -50,5 +50,39 @@ namespace Lssctc.ProgramManagement.Common.Services
             var encodedName = Uri.EscapeDataString(fileName);
             return $"https://firebasestorage.googleapis.com/v0/b/{_bucketName}/o/{encodedName}?alt=media";
         }
+
+        public async Task DeleteFileAsync(string fileUrl)
+        {
+            if (string.IsNullOrEmpty(fileUrl)) return;
+
+            // Check if the URL is a Firebase Storage URL
+            if (!fileUrl.Contains("firebasestorage.googleapis.com")) return;
+
+            try
+            {
+                // Extract the object name from the URL
+                // URL Format: https://firebasestorage.googleapis.com/v0/b/{bucket}/o/{name}?alt=media...
+                var uri = new Uri(fileUrl);
+                var path = uri.LocalPath; // /v0/b/{bucket}/o/{name}
+
+                // We need to extract the part after /o/
+                var segments = path.Split("/o/");
+                if (segments.Length < 2) return;
+
+                var encodedName = segments[1];
+                var objectName = Uri.UnescapeDataString(encodedName);
+
+                await _storageClient.DeleteObjectAsync(_bucketName, objectName);
+            }
+            catch (Google.GoogleApiException ex) when (ex.Error.Code == 404)
+            {
+                // File not found, consider it already deleted
+            }
+            catch (Exception ex)
+            {
+                // Log exception if you have a logger
+                throw new Exception($"Failed to delete file from Firebase: {ex.Message}");
+            }
+        }
     }
 }
