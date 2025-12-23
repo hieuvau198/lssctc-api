@@ -18,7 +18,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
     public class ClassesService : IClassesService
     {
         private readonly IUnitOfWork _uow;
-        private readonly IClassQueryService _queryService; // Inject ClassQueryService
+        private readonly IClassQueryService _queryService;
         private readonly ClassManageHandler _handler;
         private readonly ClassImportHandler _importHandler;
         private readonly ClassCleanupHandler _cleanupHandler;
@@ -32,7 +32,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
 
         public ClassesService(
             IUnitOfWork uow,
-            IClassQueryService queryService, // Add to constructor
+            IClassQueryService queryService,
             IMailService mailService,
             ITimeslotService timeslotService,
             IActivitySessionService activitySessionService,
@@ -48,7 +48,6 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
             _enrollmentsService = enrollmentsService;
             _traineeCertificatesService = traineeCertificatesService;
 
-            // Instantiate Handlers
             _handler = new ClassManageHandler(uow);
             _importHandler = new ClassImportHandler(uow, mailService);
             _cleanupHandler = new ClassCleanupHandler(uow);
@@ -77,7 +76,6 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
 
         public async Task<ClassDto> CreateClassAsync(CreateClassDto dto)
         {
-            // Validate Course Requirements (Certificate & Sections) ===
             var courseValidation = await _uow.CourseRepository.GetAllAsQueryable()
                 .Where(c => c.Id == dto.CourseId)
                 .Select(c => new { HasCertificate = c.CourseCertificates.Any(), HasSections = c.CourseSections.Any() })
@@ -88,7 +86,6 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
             {
                 throw new InvalidOperationException("Cannot create class: The selected Course must have at least one Certificate and one Section assigned.");
             }
-            // ===================================================================
 
             var startDateUtc = dto.StartDate.AddHours(-VietnamTimeZoneOffset);
             var endDateUtc = dto.EndDate?.AddHours(-VietnamTimeZoneOffset);
@@ -163,7 +160,6 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
             if (existing == null) throw new KeyNotFoundException($"Class with ID {id} not found.");
             if (existing.Status != (int)ClassStatusEnum.Draft) throw new InvalidOperationException("Only 'Draft' classes can be opened.");
 
-            // Validate Timeslots and Instructors ===
             var hasInstructors = await _uow.ClassInstructorRepository.GetAllAsQueryable()
                 .AnyAsync(ci => ci.ClassId == id);
             if (!hasInstructors) throw new InvalidOperationException("Cannot open class: At least one Instructor must be assigned.");
@@ -171,7 +167,6 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
             var hasTimeslots = await _uow.TimeslotRepository.GetAllAsQueryable()
                 .AnyAsync(t => t.ClassId == id);
             if (!hasTimeslots) throw new InvalidOperationException("Cannot open class: Timeslots must be configured.");
-            // =================================================
 
             existing.Status = (int)ClassStatusEnum.Open;
             await _uow.ClassRepository.UpdateAsync(existing);
@@ -215,15 +210,12 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
 
         public async Task CompleteClassAsync(int id)
         {
-            // 1. Validate Class
             var existingClass = await _uow.ClassRepository.GetByIdAsync(id);
             if (existingClass == null)
                 throw new KeyNotFoundException($"Class with ID {id} not found.");
             if (existingClass.Status != (int)ClassStatusEnum.Inprogress)
                 throw new InvalidOperationException("Only 'Inprogress' classes can be completed.");
 
-            // 2. Validate Final Exams Status
-            // Get all final exams for this class via enrollments
             var finalExams = await _uow.FinalExamRepository.GetAllAsQueryable()
                 .Include(fe => fe.Enrollment)
                 .Where(fe => fe.Enrollment.ClassId == id)
@@ -236,7 +228,6 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
             if (!allExamsResolved)
                 throw new InvalidOperationException("Cannot complete class. All Final Exams must be either Completed or Cancelled.");
 
-            // 3. Update Enrollments
             var enrollments = await _uow.EnrollmentRepository.GetAllAsQueryable()
                 .Where(e => e.ClassId == id)
                 .Include(e => e.FinalExams)
@@ -246,10 +237,8 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
 
             foreach (var enrollment in enrollments)
             {
-                // Status Inprogress -> Check Exam Result
                 if (enrollment.Status == (int)EnrollmentStatusEnum.Inprogress)
                 {
-                    // Find the relevant final exam (assuming the latest one if multiple exist)
                     var finalExam = enrollment.FinalExams
                         .OrderByDescending(fe => fe.Id)
                         .FirstOrDefault();
@@ -260,21 +249,17 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
                     }
                     else
                     {
-                        // If IsPass is false OR null, or no exam found, they fail
                         enrollment.Status = (int)EnrollmentStatusEnum.Failed;
                     }
                     enrollmentsToUpdate.Add(enrollment);
                 }
-                // Ignored Statuses
                 else if (enrollment.Status == (int)EnrollmentStatusEnum.Cancelled ||
                          enrollment.Status == (int)EnrollmentStatusEnum.Rejected ||
                          enrollment.Status == (int)EnrollmentStatusEnum.Completed ||
                          enrollment.Status == (int)EnrollmentStatusEnum.Failed)
                 {
-                    // Unchanged
                     continue;
                 }
-                // Other Statuses (e.g. Pending, Enrolled) -> Cancelled
                 else
                 {
                     enrollment.Status = (int)EnrollmentStatusEnum.Cancelled;
@@ -282,18 +267,15 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
                 }
             }
 
-            // Batch update enrollments using EnrollmentService
             if (enrollmentsToUpdate.Any())
             {
                 await _enrollmentsService.UpdateEnrollmentsAsync(enrollmentsToUpdate);
             }
 
-            // 4. Update Class Status
             existingClass.Status = (int)ClassStatusEnum.Completed;
             await _uow.ClassRepository.UpdateAsync(existingClass);
             await _uow.SaveChangesAsync();
 
-            // 5. Generate Certificates
             await _traineeCertificatesService.CreateTraineeCertificatesForCompleteClass(id);
         }
 
@@ -310,13 +292,11 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
             await _uow.SaveChangesAsync();
         }
 
-        // Delegated to Helper
         public async Task DeleteClassDataRecursiveAsync(int classId)
         {
             await _cleanupHandler.DeleteClassDataRecursiveAsync(classId);
         }
 
-        // Delegated to Helper
         public async Task<string> ImportTraineesToClassAsync(int classId, IFormFile file)
         {
             return await _importHandler.ImportTraineesToClassAsync(classId, file);

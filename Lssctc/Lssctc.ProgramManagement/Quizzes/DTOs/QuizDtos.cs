@@ -12,6 +12,7 @@ namespace Lssctc.ProgramManagement.Quizzes.DTOs
         public int? TimelimitMinute { get; set; }
         public decimal? TotalScore { get; set; }
         public string? Description { get; set; }
+        public int MaxAttempts { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
         public List<QuizQuestionDto> Questions { get; set; } = new();
@@ -25,6 +26,7 @@ namespace Lssctc.ProgramManagement.Quizzes.DTOs
         public int? TimelimitMinute { get; set; }
         public decimal? TotalScore { get; set; }
         public string? Description { get; set; }
+        public int MaxAttempts { get; set; }
     }
 
     public class QuizTraineeDetailDto
@@ -35,6 +37,7 @@ namespace Lssctc.ProgramManagement.Quizzes.DTOs
         public int? TimelimitMinute { get; set; }
         public decimal? TotalScore { get; set; }
         public string? Description { get; set; }
+        public int MaxAttempts { get; set; }
         public List<QuizTraineeQuestionDto> Questions { get; set; } = new();
     }
 
@@ -71,6 +74,7 @@ namespace Lssctc.ProgramManagement.Quizzes.DTOs
 
         [StringLength(2000, ErrorMessage = "Description cannot exceed 2000 characters.")]
         public string? Description { get; set; }
+        public int? MaxAttempts { get; set; }
     }
 
     #endregion

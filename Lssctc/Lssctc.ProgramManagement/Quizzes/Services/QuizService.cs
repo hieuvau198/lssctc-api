@@ -91,7 +91,8 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
                 PassScoreCriteria = q.PassScoreCriteria,
                 TimelimitMinute = q.TimelimitMinute,
                 TotalScore = q.TotalScore,
-                Description = q.Description
+                Description = q.Description,
+                MaxAttempts = q.MaxAttempts
             }).ToPagedResultAsync(page, size);
         }
 
@@ -113,6 +114,7 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
                 TimelimitMinute = x.TimelimitMinute,
                 TotalScore = x.TotalScore,
                 Description = x.Description,
+                MaxAttempts = x.MaxAttempts,
                 CreatedAt = x.CreatedAt,
                 UpdatedAt = x.UpdatedAt,
                 Questions = x.QuizQuestions.Select(qq => new QuizQuestionDto
@@ -149,6 +151,7 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
                     TimelimitMinute = x.TimelimitMinute,
                     TotalScore = x.TotalScore,
                     Description = x.Description,
+                    MaxAttempts = x.MaxAttempts,
                     Questions = x.QuizQuestions.Select(qq => new QuizTraineeQuestionDto
                     {
                         Id = qq.Id,
@@ -273,6 +276,7 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
                 PassScoreCriteria = dto.PassScoreCriteria.HasValue ? Math.Round(dto.PassScoreCriteria.Value, 2) : null,
                 TimelimitMinute = dto.TimelimitMinute,
                 Description = dto.Description,
+                MaxAttempts = dto.MaxAttempts ?? 1,
                 TotalScore = 10m,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -296,6 +300,7 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
         public async Task<int> CreateQuizFromExcel(ImportQuizExcelDto dto, int instructorId)
         {
             var createDto = _excelProcessor.ParseExcel(dto);
+            createDto.MaxAttempts = dto.MaxAttempts;
             return await CreateQuizWithQuestions(createDto, instructorId);
         }
 
@@ -315,16 +320,16 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
 
             _validator.ValidateUpdateQuiz(dto);
 
-            // Update Quiz Info
             if (!string.IsNullOrEmpty(dto.Name)) quiz.Name = string.Join(' ', dto.Name.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries));
             if (dto.PassScoreCriteria.HasValue) quiz.PassScoreCriteria = Math.Round(dto.PassScoreCriteria.Value, 2);
             if (dto.TimelimitMinute.HasValue) quiz.TimelimitMinute = dto.TimelimitMinute;
             if (dto.Description != null) quiz.Description = dto.Description;
-            quiz.UpdatedAt = DateTime.UtcNow;
+            if (dto.MaxAttempts.HasValue) quiz.MaxAttempts = dto.MaxAttempts.Value;
+
+            quiz.UpdatedAt = DateTime.UtcNow.AddHours(7);
 
             await _uow.QuizRepository.UpdateAsync(quiz);
 
-            // Clear old questions
             var oldQs = await _uow.QuizQuestionRepository.GetAllAsQueryable().Where(q => q.QuizId == quizId).ToListAsync();
             foreach (var q in oldQs)
             {
@@ -334,9 +339,6 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
             }
             await _uow.SaveChangesAsync();
 
-            // Convert UpdateDto to CreateDto format to reuse saving logic if possible, or just copy logic
-            // Since DTOs are different types, we duplicate the save loop or map it. 
-            // Mapping is cleaner.
             var questionDtos = dto.Questions.Select(q => new CreateQuizQuestionWithOptionsDto
             {
                 Name = q.Name,

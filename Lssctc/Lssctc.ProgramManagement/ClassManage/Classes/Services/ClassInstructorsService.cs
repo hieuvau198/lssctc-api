@@ -29,11 +29,9 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
             if (instructor == null)
                 throw new KeyNotFoundException($"Instructor with ID {instructorId} not found.");
 
-            // BR 1: Check if the user has the 'Instructor' role
             if (instructor.IdNavigation.Role != (int)UserRoleEnum.Instructor)
                 throw new InvalidOperationException($"User {instructor.IdNavigation.Fullname} does not have the 'Instructor' role.");
 
-            // BR 2: Check if class already has an instructor
             var existingAssignment = await _uow.ClassInstructorRepository
                 .GetAllAsQueryable()
                 .AnyAsync(ci => ci.ClassId == classId);
@@ -41,9 +39,6 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
             if (existingAssignment)
                 throw new InvalidOperationException("This class already has an instructor assigned.");
 
-            // --- NEW LOGIC START: Time Overlap Check ---
-
-            // 1. Get all timeslots of the TARGET class
             var targetClassTimeslots = await _uow.TimeslotRepository
                 .GetAllAsQueryable()
                 .AsNoTracking()
@@ -51,13 +46,9 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
                 .Select(t => new { t.StartTime, t.EndTime })
                 .ToListAsync();
 
-            // If the target class has no schedule yet, we can safely assign.
             if (targetClassTimeslots.Any())
             {
-                // 2. Get IDs of OTHER classes this instructor is currently teaching
-                // We filter for active classes (Open/Inprogress) usually, 
-                // but strictly speaking, we should check against ANY allocated timeslot in the future to be safe.
-                // Assuming we only care about classes that aren't Cancelled or Completed:
+                
                 var otherClassIds = await _uow.ClassInstructorRepository
                     .GetAllAsQueryable()
                     .Where(ci => ci.InstructorId == instructorId && ci.ClassId != classId)
@@ -66,7 +57,6 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
 
                 if (otherClassIds.Any())
                 {
-                    // 3. Get all timeslots from those OTHER classes
                     var instructorExistingTimeslots = await _uow.TimeslotRepository
                         .GetAllAsQueryable()
                         .AsNoTracking()
@@ -74,12 +64,10 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
                         .Select(t => new { t.Class.Name, t.StartTime, t.EndTime })
                         .ToListAsync();
 
-                    // 4. Check for intersection
                     foreach (var targetSlot in targetClassTimeslots)
                     {
                         foreach (var existingSlot in instructorExistingTimeslots)
                         {
-                            // Overlap formula: StartA < EndB && EndA > StartB
                             if (targetSlot.StartTime < existingSlot.EndTime && targetSlot.EndTime > existingSlot.StartTime)
                             {
                                 throw new InvalidOperationException(
@@ -92,7 +80,6 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
                     }
                 }
             }
-            // --- NEW LOGIC END ---
 
             var newAssignment = new ClassInstructor
             {
@@ -110,7 +97,6 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
             if (classToUpdate == null)
                 throw new KeyNotFoundException($"Class with ID {classId} not found.");
 
-            // BR 4: Can only remove if class is 'Draft'
             if (classToUpdate.Status != (int)ClassStatusEnum.Draft)
                 throw new InvalidOperationException("Instructors can only be removed from classes in 'Draft' status.");
 
@@ -144,26 +130,21 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
 
         public async Task<IEnumerable<ClassInstructorDto>> GetAvailableInstructorsAsync(DateTime startDate, DateTime endDate)
         {
-            // Validate date range
             if (endDate <= startDate)
                 throw new ArgumentException("End date must be after start date.");
 
-            // Get all instructors who are assigned to classes with status Open or Inprogress
-            // that have date ranges overlapping with the specified date range
             var busyInstructorIds = await _uow.ClassInstructorRepository
                 .GetAllAsQueryable()
                 .Include(ci => ci.Class)
                 .Where(ci => ci.Class != null &&
                             (ci.Class.Status == (int)ClassStatusEnum.Open ||
                              ci.Class.Status == (int)ClassStatusEnum.Inprogress) &&
-                            // Check date overlap: class starts before query ends AND class ends after query starts
                             ci.Class.StartDate < endDate &&
                             ci.Class.EndDate > startDate)
                 .Select(ci => ci.InstructorId)
                 .Distinct()
                 .ToListAsync();
 
-            // Get all active instructors who are NOT in the busy list
             var availableInstructors = await _uow.InstructorRepository
                 .GetAllAsQueryable()
                 .Include(i => i.IdNavigation)
