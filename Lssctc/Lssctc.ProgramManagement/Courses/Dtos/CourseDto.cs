@@ -14,12 +14,10 @@ namespace Lssctc.ProgramManagement.Courses.Dtos
         public string? ImageUrl { get; set; }
         public bool IsActive { get; set; }
 
-        // Added fields
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
         public string? BackgroundImageUrl { get; set; }
 
-        // [NEW] Added CourseCode
         public string? CourseCode { get; set; }
     }
 
@@ -45,17 +43,15 @@ namespace Lssctc.ProgramManagement.Courses.Dtos
         public decimal? Price { get; set; }
 
         [Required(ErrorMessage = "Duration in hours is required.")]
-        [Range(1, 500, ErrorMessage = "Duration must be between 1 and 500 hours.")]
-        public int? DurationHours { get; set; }
+        [Range(0.1, 500, ErrorMessage = "Duration must be between 0.1 and 500 hours.")]
+        public decimal? DurationHours { get; set; }
 
         [Url(ErrorMessage = "Image URL must be a valid URL.")]
         public string? ImageUrl { get; set; } = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS2sUcEWdSaINXf8E4hmy7obh3B1w0-l_T8Tw&s";
 
-        // Added Background Image with default
         [Url(ErrorMessage = "Background Image URL must be a valid URL.")]
         public string? BackgroundImageUrl { get; set; } = "https://templates.framework-y.com/lightwire/images/wide-1.jpg";
 
-        // [NEW] Course Code (Optional, auto-generated if null)
         public string? CourseCode { get; set; }
     }
 
@@ -76,19 +72,17 @@ namespace Lssctc.ProgramManagement.Courses.Dtos
         [Range(0, 1000000000, ErrorMessage = "Price must be between 0 and 1,000,000.")]
         public decimal? Price { get; set; }
 
-        [Range(1, 500, ErrorMessage = "Duration must be between 1 and 500 hours.")]
-        public int? DurationHours { get; set; }
+        [Range(0.1, 500, ErrorMessage = "Duration must be between 0.1 and 500 hours.")]
+        public decimal? DurationHours { get; set; }
 
         [Url(ErrorMessage = "Image URL must be a valid URL.")]
         public string? ImageUrl { get; set; }
 
         public bool? IsActive { get; set; }
 
-        // Added Background Image
         [Url(ErrorMessage = "Background Image URL must be a valid URL.")]
         public string? BackgroundImageUrl { get; set; }
 
-        // [NEW] Course Code update
         public string? CourseCode { get; set; }
     }
 }

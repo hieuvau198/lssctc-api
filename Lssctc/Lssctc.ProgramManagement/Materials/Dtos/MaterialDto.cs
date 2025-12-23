@@ -52,6 +52,6 @@ namespace Lssctc.ProgramManagement.Materials.Dtos
         public string Name { get; set; } = null!;
         public string Description { get; set; } = null!;
         public string? LearningMaterialType { get; set; }
-        public string? MaterialUrl { get; set; } // <-- ADDED
+        public string? MaterialUrl { get; set; }
     }
 }

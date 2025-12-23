@@ -32,6 +32,5 @@ namespace Lssctc.ProgramManagement.Courses.Services
         Task<CourseLevelDto> CreateCourseLevelAsync(CreateCourseLevelDto dto);
         Task<CourseLevelDto> UpdateCourseLevelAsync(int id, UpdateCourseLevelDto dto);
         #endregion
-
     }
 }

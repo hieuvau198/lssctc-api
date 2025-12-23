@@ -291,7 +291,6 @@ namespace Lssctc.ProgramManagement.Materials.Controllers
 
         private int GetInstructorIdFromClaims()
         {
-            // Try to get instructorId claim first, otherwise use NameIdentifier
             var instructorIdClaim = User.FindFirstValue("instructorId") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
 
             if (int.TryParse(instructorIdClaim, out int instructorId))

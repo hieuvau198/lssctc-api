@@ -18,8 +18,6 @@ namespace Lssctc.ProgramManagement.Materials.Services
 
         #region Learning Materials
 
-        // ... (Existing methods GetAllMaterialsAsync through DeleteMaterialAsync remain unchanged) ...
-
         public async Task<IEnumerable<MaterialDto>> GetAllMaterialsAsync()
         {
             var materials = await _uow.LearningMaterialRepository
@@ -190,11 +188,6 @@ namespace Lssctc.ProgramManagement.Materials.Services
 
             if (material.ActivityMaterials.Any())
             {
-                // REMOVED: IsActivityLockedAsync check logic to allow deletion flexibility
-                // (Though deleting a material that is actively used might still be risky, 
-                // the requirement is to "allow more space for update data")
-
-                // Keep the structural integrity check:
                 throw new InvalidOperationException("Cannot delete material linked to activities. Please remove it from all activities first.");
             }
 
@@ -229,9 +222,6 @@ namespace Lssctc.ProgramManagement.Materials.Services
 
         public async Task AddMaterialToActivityAsync(int activityId, int materialId)
         {
-            // REMOVED: Lock check (IsActivityLockedAsync) to allow updates to running classes
-
-            // Validate both entities
             var activity = await _uow.ActivityRepository
                 .GetAllAsQueryable()
                 .Include(a => a.ActivityMaterials)
@@ -277,8 +267,6 @@ namespace Lssctc.ProgramManagement.Materials.Services
 
         public async Task RemoveMaterialFromActivityAsync(int activityId, int materialId)
         {
-            // REMOVED: Lock check (IsActivityLockedAsync) to allow updates to running classes
-
             var link = await _uow.ActivityMaterialRepository
                 .GetAllAsQueryable()
                 .FirstOrDefaultAsync(am => am.ActivityId == activityId && am.LearningMaterialId == materialId);
@@ -295,8 +283,6 @@ namespace Lssctc.ProgramManagement.Materials.Services
         #region Trainee Materials
         public async Task<TraineeMaterialResponseDto> GetMaterialsForTraineeAsync(int activityRecordId)
         {
-            // 1. Lấy thông tin ActivityRecord cùng với ClassId thông qua chuỗi quan hệ
-            // ActivityRecord -> SectionRecord -> LearningProgress -> Enrollment -> ClassId
             var record = await _uow.ActivityRecordRepository.GetAllAsQueryable()
                 .Include(ar => ar.SectionRecord)
                     .ThenInclude(sr => sr.LearningProgress)
@@ -308,15 +294,12 @@ namespace Lssctc.ProgramManagement.Materials.Services
 
             var activityId = record.ActivityId.GetValueOrDefault();
             var classId = record.SectionRecord.LearningProgress.Enrollment.ClassId;
-
-            // 2. Tìm Session của Activity trong Class này
             var session = await _uow.ActivitySessionRepository.GetAllAsQueryable()
                 .FirstOrDefaultAsync(s => s.ClassId == classId && s.ActivityId == activityId && s.IsActive == true);
 
-            // 3. Kiểm tra trạng thái Session
             var status = new TraineeSessionStatusDto
             {
-                IsOpen = true, // Mặc định mở nếu không có session cài đặt
+                IsOpen = true,
                 Message = "Available"
             };
 
@@ -338,7 +321,6 @@ namespace Lssctc.ProgramManagement.Materials.Services
                 }
             }
 
-            // 4. Lấy danh sách Material (Sử dụng lại logic cũ)
             var materials = await GetMaterialsByActivityAsync(activityId);
 
             return new TraineeMaterialResponseDto
@@ -377,7 +359,7 @@ namespace Lssctc.ProgramManagement.Materials.Services
                 LearningMaterialType = am.LearningMaterial.LearningMaterialType.HasValue
                     ? Enum.GetName(typeof(LearningMaterialTypeEnum), am.LearningMaterial.LearningMaterialType.Value)
                     : null,
-                MaterialUrl = am.LearningMaterial.MaterialUrl // <-- ADDED
+                MaterialUrl = am.LearningMaterial.MaterialUrl
             };
         }
 
@@ -391,67 +373,6 @@ namespace Lssctc.ProgramManagement.Materials.Services
             }
 
             throw new ArgumentException($"Invalid LearningMaterialType value: {type}");
-        }
-
-        /// <summary>
-        /// Checks if a course is "locked" (i.e., tied to a class that is InProgress, Completed, or Cancelled).
-        /// </summary>
-        private async Task<bool> IsCourseLockedAsync(int courseId)
-        {
-            var lockedStatuses = new[] {
-                (int)ClassStatusEnum.Inprogress,
-                (int)ClassStatusEnum.Completed,
-                (int)ClassStatusEnum.Cancelled
-            };
-
-            bool isLocked = await _uow.ClassRepository
-                .GetAllAsQueryable()
-                .AnyAsync(c => c.ProgramCourse.CourseId == courseId &&
-                               c.Status.HasValue &&
-                               lockedStatuses.Contains(c.Status.Value));
-            return isLocked;
-        }
-
-        /// <summary>
-        /// Checks if a specific section is "locked" by being part of any locked course.
-        /// </summary>
-        private async Task<bool> IsSectionLockedAsync(int sectionId)
-        {
-            var courseIds = await _uow.CourseSectionRepository
-                .GetAllAsQueryable()
-                .Where(cs => cs.SectionId == sectionId)
-                .Select(cs => cs.CourseId)
-                .Distinct()
-                .ToListAsync();
-
-            if (!courseIds.Any()) return false;
-
-            foreach (var courseId in courseIds)
-            {
-                if (await IsCourseLockedAsync(courseId)) return true;
-            }
-            return false;
-        }
-
-        /// <summary>
-        /// Checks if a specific activity is "locked" by being part of any locked section.
-        /// </summary>
-        private async Task<bool> IsActivityLockedAsync(int activityId)
-        {
-            var sectionIds = await _uow.SectionActivityRepository
-                .GetAllAsQueryable()
-                .Where(sa => sa.ActivityId == activityId)
-                .Select(sa => sa.SectionId)
-                .Distinct()
-                .ToListAsync();
-
-            if (!sectionIds.Any()) return false;
-
-            foreach (var sectionId in sectionIds)
-            {
-                if (await IsSectionLockedAsync(sectionId)) return true;
-            }
-            return false;
         }
 
         #endregion
