@@ -1,4 +1,5 @@
-﻿using Lssctc.ProgramManagement.Materials.Dtos;
+﻿using Lssctc.ProgramManagement.Common.Services;
+using Lssctc.ProgramManagement.Materials.Dtos;
 using Lssctc.ProgramManagement.Materials.Services;
 using Lssctc.Share.Common;
 using Microsoft.AspNetCore.Authorization;
@@ -13,10 +14,12 @@ namespace Lssctc.ProgramManagement.Materials.Controllers
     public class MaterialsController : ControllerBase
     {
         private readonly IMaterialsService _materialsService;
+        private readonly IFirebaseStorageService _firebaseStorageService;
 
-        public MaterialsController(IMaterialsService materialsService)
+        public MaterialsController(IMaterialsService materialsService, IFirebaseStorageService firebaseStorageService)
         {
             _materialsService = materialsService;
+            _firebaseStorageService = firebaseStorageService;
         }
 
         #region Learning Materials
@@ -285,6 +288,54 @@ namespace Lssctc.ProgramManagement.Materials.Controllers
             }
         }
 
+        #endregion
+
+        #region File Upload
+        [HttpPost("upload")]
+        [Authorize(Roles = "Admin, Instructor")]
+        [Consumes("multipart/form-data")] // Important for file uploads
+        public async Task<ActionResult<MaterialDto>> CreateMaterialWithFile([FromForm] CreateMaterialWithFileDto input)
+        {
+            if (input == null || input.File == null || input.File.Length == 0)
+                return BadRequest(new { Message = "Invalid material data or empty file." });
+
+            try
+            {
+                // 1. Upload File to Firebase
+                var fileName = $"materials/{Guid.NewGuid()}_{input.File.FileName}";
+                string fileUrl;
+
+                using (var stream = input.File.OpenReadStream())
+                {
+                    fileUrl = await _firebaseStorageService.UploadFileAsync(stream, fileName, input.File.ContentType);
+                }
+
+                // 2. Prepare CreateDto for the Service
+                var createDto = new CreateMaterialDto
+                {
+                    Name = input.Name,
+                    Description = input.Description,
+                    LearningMaterialType = input.LearningMaterialType,
+                    MaterialUrl = fileUrl
+                };
+
+                // 3. Extract instructor ID from JWT claims
+                var instructorId = GetInstructorIdFromClaims();
+
+                // 4. Save to Database using existing service logic
+                var newMaterial = await _materialsService.CreateMaterialAsync(createDto, instructorId);
+
+                return CreatedAtAction(nameof(GetMaterialById), new { id = newMaterial.Id }, newMaterial);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "An unexpected error occurred during upload." });
+            }
+        }
         #endregion
 
         #region Helper 
