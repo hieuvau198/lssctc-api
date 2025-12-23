@@ -274,6 +274,15 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             var classExists = await _uow.ClassRepository.ExistsAsync(c => c.Id == dto.ClassId);
             if (!classExists) throw new KeyNotFoundException($"Class with ID {dto.ClassId} not found.");
 
+            // --- Validate Duration (if provided in DTO) ---
+            if (dto.Duration.HasValue)
+            {
+                if (dto.Duration < 15 || dto.Duration > 1440)
+                {
+                    throw new ArgumentException("Duration must be between 15 minutes and 24 hours.");
+                }
+            }
+
             // 1. Update Template (Weights)
             await CreateTemplateAsync(dto.ClassId);
 
@@ -318,10 +327,37 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             foreach (var p in partials)
             {
                 if (dto.ExamWeight.HasValue) p.ExamWeight = dto.ExamWeight;
-                if (dto.Duration.HasValue) p.Duration = dto.Duration;
 
-                if (dto.StartTime.HasValue) p.StartTime = dto.StartTime.Value.AddHours(-7);
-                if (dto.EndTime.HasValue) p.EndTime = dto.EndTime.Value.AddHours(-7);
+                // --- TIME & DURATION LOGIC START ---
+
+                // 1. Determine Duration: Use DTO value if present, otherwise keep existing (default to 60 if null)
+                int finalDuration = dto.Duration ?? p.Duration ?? 60;
+
+                // Validate final duration (in case existing data was invalid)
+                if (finalDuration < 15 || finalDuration > 1440)
+                {
+                    // Fallback or Throw. Throwing ensures we fix data integrity.
+                    throw new ArgumentException($"Duration for partial {p.Id} results in {finalDuration} minutes, which is invalid. Must be 15-1440 mins.");
+                }
+
+                // 2. Determine StartTime: Use DTO value (converted from VN to UTC) if present, otherwise keep existing
+                DateTime finalStartTime = p.StartTime ?? DateTime.UtcNow; // Default fallback
+                if (dto.StartTime.HasValue)
+                {
+                    // Assume User Input is Vietnam Time (UTC+7), so save as UTC
+                    finalStartTime = dto.StartTime.Value.AddHours(+7);
+                }
+
+                // 3. Determine EndTime: Always calculate based on StartTime + Duration to ensure consistency
+                DateTime finalEndTime = finalStartTime.AddMinutes(finalDuration);
+
+                // Apply changes
+                p.Duration = finalDuration;
+                p.StartTime = finalStartTime;
+                p.EndTime = finalEndTime;
+
+                // --- TIME & DURATION LOGIC END ---
+
 
                 if (typeId == 1 && dto.QuizId.HasValue)
                 {
