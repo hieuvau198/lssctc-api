@@ -1,6 +1,7 @@
 ﻿using Lssctc.ProgramManagement.Activities.Services;
 using Lssctc.ProgramManagement.ClassManage.Helpers;
 using Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Dtos;
+using Lssctc.ProgramManagement.Accounts.Authens.Services; // Added namespace
 using Lssctc.Share.Common;
 using Lssctc.Share.Entities;
 using Lssctc.Share.Enums;
@@ -15,10 +16,12 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
         private readonly ProgressHelper _progressHelper;
         private readonly IActivitySessionService _sessionService;
 
-        public PracticeAttemptsService(IUnitOfWork uow, IActivitySessionService sessionService)
+        // Injected IMailService
+        public PracticeAttemptsService(IUnitOfWork uow, IActivitySessionService sessionService, IMailService mailService)
         {
             _uow = uow;
-            _progressHelper = new ProgressHelper(uow);
+            // Passed mailService to ProgressHelper
+            _progressHelper = new ProgressHelper(uow, mailService);
             _sessionService = sessionService;
         }
 
@@ -142,7 +145,6 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
 
                     if (taskDto.IsPass == true) passedTaskIds.Add(taskId);
 
-                    // Updated: Pass taskDto.IsPass to CalculateTaskScore
                     decimal taskScore = CalculateTaskScore(totalPracticeTasks, taskDto.Mistakes ?? 0, taskDto.IsPass ?? false);
 
                     tasksToSave.Add(new PracticeAttemptTask

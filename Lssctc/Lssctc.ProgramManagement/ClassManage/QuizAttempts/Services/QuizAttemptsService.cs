@@ -1,6 +1,7 @@
 ﻿using Lssctc.ProgramManagement.Activities.Services;
 using Lssctc.ProgramManagement.ClassManage.Helpers;
 using Lssctc.ProgramManagement.ClassManage.QuizAttempts.Dtos;
+using Lssctc.ProgramManagement.Accounts.Authens.Services; // Added namespace
 using Lssctc.Share.Entities;
 using Lssctc.Share.Enums;
 using Lssctc.Share.Interfaces;
@@ -14,10 +15,12 @@ namespace Lssctc.ProgramManagement.ClassManage.QuizAttempts.Services
         private readonly ProgressHelper _progressHelper;
         private readonly IActivitySessionService _sessionService;
 
-        public QuizAttemptsService(IUnitOfWork uow, IActivitySessionService sessionService)
+        // Injected IMailService
+        public QuizAttemptsService(IUnitOfWork uow, IActivitySessionService sessionService, IMailService mailService)
         {
             _uow = uow;
-            _progressHelper = new ProgressHelper(uow);
+            // Passed mailService to ProgressHelper
+            _progressHelper = new ProgressHelper(uow, mailService);
             _sessionService = sessionService;
         }
 
@@ -140,8 +143,6 @@ namespace Lssctc.ProgramManagement.ClassManage.QuizAttempts.Services
                 .ToListAsync();
 
             // Validate Max Attempts
-            // Assuming MaxAttempts > 0 indicates a limit. If 0, it might mean unlimited depending on your logic.
-            // Adjust condition 'quizTemplate.MaxAttempts > 0' if 0 implies no attempts allowed.
             if (quizTemplate.MaxAttempts > 0 && oldAttempts.Count >= quizTemplate.MaxAttempts)
             {
                 throw new InvalidOperationException($"You have reached the maximum number of attempts ({quizTemplate.MaxAttempts}) allowed for this quiz.");
