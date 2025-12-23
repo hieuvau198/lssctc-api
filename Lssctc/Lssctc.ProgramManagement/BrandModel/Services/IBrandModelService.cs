@@ -3,9 +3,8 @@ using Lssctc.Share.Common;
 
 namespace Lssctc.ProgramManagement.BrandModel.Services
 {
-    public interface IBrandModel
+    public interface IBrandModelService
     {
-        // BrandModel methods
         Task<BrandModelDto?> GetBrandModelById(int id, CancellationToken cancellationToken = default);
         Task<PagedResult<BrandModelDto>> GetAllBrandModels(int page, int pageSize, CancellationToken cancellationToken = default);
         Task<int> CreateBrandModel(CreateBrandModelDto dto, CancellationToken cancellationToken = default);

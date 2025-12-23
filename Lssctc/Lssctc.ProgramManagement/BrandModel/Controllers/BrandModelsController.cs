@@ -12,20 +12,13 @@ namespace Lssctc.ProgramManagement.BrandModel.Controllers
     [Authorize]
     public class BrandModelsController : ControllerBase
     {
-        private readonly IBrandModel _brandModelService;
+        private readonly IBrandModelService _brandModelService;
 
-        public BrandModelsController(IBrandModel brandModelService)
+        public BrandModelsController(IBrandModelService brandModelService)
         {
             _brandModelService = brandModelService;
         }
 
-        /// <summary>
-        /// Get all BrandModels with pagination
-        /// </summary>
-        /// <param name="page">Page number (default: 1)</param>
-        /// <param name="pageSize">Page size (default: 10)</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>Paginated list of BrandModels</returns>
         [HttpGet]
         public async Task<ActionResult<PagedResult<BrandModelDto>>> GetAllBrandModels(
             [FromQuery] int page = 1,
@@ -43,12 +36,6 @@ namespace Lssctc.ProgramManagement.BrandModel.Controllers
             }
         }
 
-        /// <summary>
-        /// Get BrandModel by ID
-        /// </summary>
-        /// <param name="id">BrandModel ID</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>BrandModel details</returns>
         [HttpGet("{id}")]
         public async Task<ActionResult<BrandModelDto>> GetBrandModelById(
             int id,
@@ -68,12 +55,6 @@ namespace Lssctc.ProgramManagement.BrandModel.Controllers
             }
         }
 
-        /// <summary>
-        /// Create a new BrandModel
-        /// </summary>
-        /// <param name="dto">BrandModel creation data</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>Created BrandModel ID</returns>
         [HttpPost]
         [Authorize(Roles = "Admin")]
         public async Task<ActionResult<int>> CreateBrandModel(
@@ -95,13 +76,6 @@ namespace Lssctc.ProgramManagement.BrandModel.Controllers
             }
         }
 
-        /// <summary>
-        /// Update an existing BrandModel
-        /// </summary>
-        /// <param name="id">BrandModel ID</param>
-        /// <param name="dto">BrandModel update data</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>Success status</returns>
         [HttpPut("{id}")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> UpdateBrandModel(
@@ -127,12 +101,6 @@ namespace Lssctc.ProgramManagement.BrandModel.Controllers
             }
         }
 
-        /// <summary>
-        /// Delete a BrandModel (soft delete)
-        /// </summary>
-        /// <param name="id">BrandModel ID</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>Success status</returns>
         [HttpDelete("{id}")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteBrandModel(

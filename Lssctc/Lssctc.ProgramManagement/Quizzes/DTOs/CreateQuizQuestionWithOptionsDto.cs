@@ -41,21 +41,7 @@ namespace Lssctc.ProgramManagement.Quizzes.DTOs
         public decimal? OptionScore { get; set; }
     }
 
-    public class CreateQuizQuestionDto
-    {
-        [Required(ErrorMessage = "Question name is required.")]
-        [StringLength(100, MinimumLength = 1, ErrorMessage = "Question name must be between 1 and 100 characters.")]
-        public string Name { get; set; } = null!;
-
-        [Required(ErrorMessage = "Question score is required.")]
-        [Range(0.01, 10, ErrorMessage = "Question score must be between 0.01 and 10.")]
-        public decimal? QuestionScore { get; set; }
-        [StringLength(2000, ErrorMessage = "Description must be at most 2000 characters.")]
-        public string? Description { get; set; }
-        public bool IsMultipleAnswers { get; set; }
-        [StringLength(500, ErrorMessage = "ImageUrl must be at most 500 characters.")]
-        public string? ImageUrl { get; set; }
-    }
+    
     public class CreateQuizWithQuestionsDto
     {
         [Required(ErrorMessage = "Quiz name is required.")]
@@ -73,11 +59,6 @@ namespace Lssctc.ProgramManagement.Quizzes.DTOs
         [MaxLength(100, ErrorMessage = "Maximum 100 questions allowed.")]
         public List<CreateQuizQuestionWithOptionsDto> Questions { get; set; } = new();
     }
-    public class BulkUpdateQuizQuestionsDto
-    {
-        [Required(ErrorMessage = "Questions list is required.")]
-        public List<UpdateQuizQuestionItemDto> Questions { get; set; } = new();
-    }
 
     public class UpdateQuizQuestionItemDto
     {
@@ -92,20 +73,6 @@ namespace Lssctc.ProgramManagement.Quizzes.DTOs
         public bool? IsMultipleAnswers { get; set; }
         [StringLength(500, ErrorMessage = "ImageUrl must be at most 500 characters.")]
         public string? ImageUrl { get; set; }
-    }
-
-    public class UpdateQuizQuestionOptionDto
-    {
-        [StringLength(100, ErrorMessage = "Option name must be at most 100 characters.")]
-        public string? Name { get; set; }
-        [StringLength(2000, ErrorMessage = "Description must be at most 2000 characters.")]
-        public string? Description { get; set; }
-        public bool? IsCorrect { get; set; }
-        public int? DisplayOrder { get; set; }
-        [StringLength(2000, ErrorMessage = "Explanation must be at most 2000 characters.")]
-        public string? Explanation { get; set; }
-        [Range(0, 999.99, ErrorMessage = "Option score must be between 0 and 999.99.")]
-        public decimal? OptionScore { get; set; }
     }
 
     public class UpdateQuizWithQuestionsDto

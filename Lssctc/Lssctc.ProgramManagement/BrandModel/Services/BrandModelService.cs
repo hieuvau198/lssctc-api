@@ -6,11 +6,11 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Lssctc.ProgramManagement.BrandModel.Services
 {
-    public class BrandModel : IBrandModel
+    public class BrandModelService : IBrandModelService
     {
         private readonly IUnitOfWork _uow;
 
-        public BrandModel(IUnitOfWork uow)
+        public BrandModelService(IUnitOfWork uow)
         {
             _uow = uow;
         }
