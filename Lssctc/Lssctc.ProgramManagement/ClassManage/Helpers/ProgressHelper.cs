@@ -1,16 +1,21 @@
-﻿using Lssctc.Share.Entities;
+﻿using Lssctc.ProgramManagement.Accounts.Authens.Services;
+using Lssctc.Share.Entities;
 using Lssctc.Share.Enums;
 using Lssctc.Share.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using System.Text;
 
 namespace Lssctc.ProgramManagement.ClassManage.Helpers
 {
     public class ProgressHelper
     {
         private readonly IUnitOfWork _uow;
-        public ProgressHelper(IUnitOfWork uow)
+        private readonly IMailService _mailService;
+
+        public ProgressHelper(IUnitOfWork uow, IMailService mailService)
         {
             _uow = uow;
+            _mailService = mailService;
         }
         #region BR
 
@@ -209,13 +214,25 @@ namespace Lssctc.ProgramManagement.ClassManage.Helpers
                 .GetAllAsQueryable()
                 .CountAsync(cs => cs.CourseId == learningProgress.CourseId);
 
+            bool isJustCompleted = false;
+
             if (totalSections == 0)
             {
                 learningProgress.ProgressPercentage = 100;
+                // Check transition
+                if (learningProgress.Status != (int)LearningProgressStatusEnum.Completed)
+                {
+                    isJustCompleted = true;
+                }
                 learningProgress.Status = (int)LearningProgressStatusEnum.Completed;
 
                 await _uow.LearningProgressRepository.UpdateAsync(learningProgress);
                 await _uow.SaveChangesAsync();
+
+                if (isJustCompleted)
+                {
+                    await SendCompletionEmailAsync(learningProgressId);
+                }
                 return learningProgress;
             }
 
@@ -234,6 +251,11 @@ namespace Lssctc.ProgramManagement.ClassManage.Helpers
 
             if (completedSections == totalSections)
             {
+                // Check transition
+                if (learningProgress.Status != (int)LearningProgressStatusEnum.Completed)
+                {
+                    isJustCompleted = true;
+                }
                 learningProgress.Status = (int)LearningProgressStatusEnum.Completed;
             }
             else if (anyProgress || learningProgress.Status == (int)LearningProgressStatusEnum.InProgress)
@@ -250,7 +272,82 @@ namespace Lssctc.ProgramManagement.ClassManage.Helpers
             // 5. Update the *tracked* entity
             await _uow.LearningProgressRepository.UpdateAsync(learningProgress);
             await _uow.SaveChangesAsync();
+
+            // Send Email if just completed
+            if (isJustCompleted)
+            {
+                await SendCompletionEmailAsync(learningProgressId);
+            }
+
             return learningProgress;
+        }
+
+        private async Task SendCompletionEmailAsync(int progressId)
+        {
+            try
+            {
+                // Fetch deep graph needed for email
+                var progress = await _uow.LearningProgressRepository.GetAllAsQueryable()
+                    .Include(lp => lp.Enrollment)
+                        .ThenInclude(e => e.Trainee)
+                            .ThenInclude(t => t.IdNavigation) // User
+                    .Include(lp => lp.Enrollment)
+                        .ThenInclude(e => e.Class)
+                    .Include(lp => lp.Enrollment)
+                        .ThenInclude(e => e.FinalExams)
+                            .ThenInclude(fe => fe.FinalExamPartials)
+                    .FirstOrDefaultAsync(p => p.Id == progressId);
+
+                if (progress == null || progress.Enrollment?.Trainee?.IdNavigation == null) return;
+
+                var traineeName = progress.Enrollment.Trainee.IdNavigation.Fullname ?? "Học viên";
+                var email = progress.Enrollment.Trainee.IdNavigation.Email;
+                var className = progress.Enrollment.Class?.Name ?? "Lớp học";
+
+                // Get Final Exam Info
+                var finalExam = progress.Enrollment.FinalExams
+                    .OrderByDescending(fe => fe.Id)
+                    .FirstOrDefault();
+
+                var sb = new StringBuilder();
+                sb.AppendLine($"<p>Xin chào <strong>{traineeName}</strong>,</p>");
+                sb.AppendLine($"<p>Chúc mừng bạn đã hoàn thành 100% nội dung học tập của lớp <strong>{className}</strong>.</p>");
+                sb.AppendLine("<p>Đây là bước quan trọng để bạn đủ điều kiện tham gia kỳ thi cuối khóa.</p>");
+                sb.AppendLine("<br/>");
+                sb.AppendLine("<h3>Thông tin kỳ thi cuối khóa:</h3>");
+
+                if (finalExam != null && finalExam.FinalExamPartials.Any())
+                {
+                    sb.AppendLine("<ul>");
+                    foreach (var partial in finalExam.FinalExamPartials)
+                    {
+                        var name = !string.IsNullOrEmpty(partial.Description) ? partial.Description : "Phần thi";
+                        var timeStr = "Đang cập nhật";
+                        if (partial.StartTime.HasValue && partial.EndTime.HasValue)
+                        {
+                            timeStr = $"{partial.StartTime.Value:dd/MM/yyyy HH:mm} - {partial.EndTime.Value:HH:mm}";
+                        }
+                        var duration = partial.Duration.HasValue ? $"{partial.Duration} phút" : "N/A";
+
+                        sb.AppendLine($"<li><strong>{name}</strong>: {timeStr} (Thời lượng: {duration})</li>");
+                    }
+                    sb.AppendLine("</ul>");
+                }
+                else
+                {
+                    sb.AppendLine("<p><em>Hiện chưa có lịch thi cụ thể. Vui lòng theo dõi thông báo từ hệ thống hoặc liên hệ giảng viên để biết thêm chi tiết.</em></p>");
+                }
+
+                sb.AppendLine("<br/>");
+                sb.AppendLine("<p>Chúc bạn ôn tập tốt và đạt kết quả cao!</p>");
+                sb.AppendLine("<p>Trân trọng,<br/>Đội ngũ đào tạo LSSCTC</p>");
+
+                await _mailService.SendEmailAsync(email, "[LSSCTC] Thông báo hoàn thành khóa học và Lịch thi cuối khóa", sb.ToString());
+            }
+            catch (Exception)
+            {
+                // Silently fail or log error
+            }
         }
 
         #endregion
