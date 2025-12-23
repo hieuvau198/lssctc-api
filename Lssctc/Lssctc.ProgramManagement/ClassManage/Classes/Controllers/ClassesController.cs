@@ -2,6 +2,7 @@
 using Lssctc.ProgramManagement.ClassManage.Classes.Services;
 using Lssctc.ProgramManagement.ClassManage.Enrollments.Dtos;
 using Lssctc.ProgramManagement.ClassManage.Enrollments.Services;
+using Lssctc.ProgramManagement.HttpCustomResponse; // Added for BadRequestException
 using Lssctc.Share.Common;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -31,7 +32,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
 
         [HttpGet]
         [ProducesResponseType(typeof(IEnumerable<ClassDto>), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetAll()
         {
             try
@@ -41,13 +42,13 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
             }
         }
 
         [HttpGet("paged")]
         [ProducesResponseType(typeof(PagedResult<ClassDto>), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetPaged(
             [FromQuery] int pageNumber = 1,
             [FromQuery] int pageSize = 10,
@@ -63,24 +64,29 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
             }
         }
 
         [HttpGet("{id}")]
         [ProducesResponseType(typeof(ClassDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetById(int id)
         {
             try
             {
                 var result = await _service.GetClassByIdAsync(id);
-                if (result == null) return NotFound();
+                if (result == null) return NotFound(new { message = $"Class with ID {id} not found." });
                 return Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
             }
         }
 
@@ -88,6 +94,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
         [Authorize(Roles = "Admin")]
         [ProducesResponseType(typeof(ClassDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> Create([FromBody] CreateClassDto dto)
         {
             try
@@ -95,9 +102,13 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
                 var result = await _service.CreateClassAsync(dto);
                 return Ok(result);
             }
+            catch (BadRequestException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
             catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
             }
         }
 
@@ -105,6 +116,8 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
         [Authorize(Roles = "Admin, Instructor")]
         [ProducesResponseType(typeof(ClassDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> Update(int id, [FromBody] UpdateClassDto dto)
         {
             try
@@ -112,9 +125,17 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
                 var result = await _service.UpdateClassAsync(id, dto);
                 return Ok(result);
             }
+            catch (BadRequestException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
             catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
             }
         }
 
@@ -122,67 +143,94 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
         [Authorize(Roles = "Admin, Instructor")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Open(int id)
         {
             try
             {
                 await _service.OpenClassAsync(id);
-                return Ok();
+                return Ok(new { message = "Class opened successfully." });
+            }
+            catch (BadRequestException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
             }
         }
 
         [HttpPut("{id}/start")]
         [Authorize(Roles = "Admin, Instructor")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Start(int id)
         {
             try
             {
                 await _service.StartClassAsync(id);
-                return Ok();
+                return Ok(new { message = "Class started successfully." });
+            }
+            catch (BadRequestException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
             }
         }
 
         [HttpPut("{id}/complete")]
         [Authorize(Roles = "Admin, Instructor")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> CompleteClass(int id)
         {
             try
             {
                 await _service.CompleteClassAsync(id);
-                return Ok();
+                return Ok(new { message = "Class completed successfully." });
+            }
+            catch (BadRequestException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
             }
         }
 
         [HttpPut("{id}/cancel")]
         [Authorize(Roles = "Admin")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> CancelClass(int id)
         {
             try
             {
                 await _service.CancelClassAsync(id);
-                return Ok();
+                return Ok(new { message = "Class cancelled successfully." });
+            }
+            catch (BadRequestException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
             }
         }
         #endregion
@@ -197,24 +245,19 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
             try
             {
                 var result = await _instructorsService.GetInstructorByClassIdAsync(id);
-                if (result == null) return NotFound("No instructor found for this class.");
+                if (result == null) return NotFound(new { message = "No instructor found for this class." });
                 return Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
             }
         }
 
-        /// <summary>
-        /// Get available instructors within a date range.
-        /// An instructor is available if they are NOT assigned to any class that:
-        /// 1. Has status Open or Inprogress, AND
-        /// 2. Has date range that overlaps with the specified date range
-        /// </summary>
-        /// <param name="startDate">Start date of the period (required)</param>
-        /// <param name="endDate">End date of the period (required)</param>
-        /// <returns>List of available instructors</returns>
         [HttpGet("available-instructors")]
         [Authorize(Roles = "Admin")]
         [ProducesResponseType(typeof(IEnumerable<ClassInstructorDto>), StatusCodes.Status200OK)]
@@ -230,45 +273,57 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
             }
             catch (ArgumentException ex)
             {
-                return BadRequest(ex.Message);
+                return BadRequest(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
             }
         }
 
         [HttpPost("{id}/instructor")]
         [Authorize(Roles = "Admin")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> AssignInstructor(int id, [FromBody] AssignInstructorDto dto)
         {
             try
             {
                 await _instructorsService.AssignInstructorAsync(id, dto.InstructorId);
-                return Ok();
+                return Ok(new { message = "Instructor assigned successfully." });
+            }
+            catch (BadRequestException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
             }
         }
 
         [HttpDelete("{id}/instructor")]
         [Authorize(Roles = "Admin")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> RemoveInstructor(int id)
         {
             try
             {
                 await _instructorsService.RemoveInstructorAsync(id);
-                return Ok();
+                return Ok(new { message = "Instructor removed successfully." });
+            }
+            catch (BadRequestException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
             }
         }
 
@@ -276,13 +331,6 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
 
         #region Class Trainees
 
-        /// <summary>
-        /// Get all trainees enrolled in a specific class (paginated).
-        /// </summary>
-        /// <param name="id">The Class ID</param>
-        /// <param name="pageNumber">Page number (default: 1)</param>
-        /// <param name="pageSize">Page size (default: 10)</param>
-        /// <returns>A paginated list of enrollments, which include trainee details.</returns>
         [HttpGet("{id}/trainees")]
         [Authorize(Roles = "Admin, Instructor")]
         [ProducesResponseType(typeof(PagedResult<EnrollmentDto>), StatusCodes.Status200OK)]
@@ -292,10 +340,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
         {
             try
             {
-                // We reuse the existing service method from EnrollmentsService
                 var result = await _enrollmentsService.GetEnrollmentsForClassAsync(id, pageNumber, pageSize);
-
-                // A class with 0 trainees is a valid state, so we return OK with the (empty) result.
                 return Ok(result);
             }
             catch (KeyNotFoundException ex)
@@ -304,22 +349,15 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
             }
             catch (Exception ex)
             {
-                // In a real app, you would log this exception
-                return StatusCode(500, $"An internal server error occurred: {ex.Message}");
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
             }
         }
 
-        /// <summary>
-        /// Bulk import trainees into a specific class from an Excel file.
-        /// For each row: Find or Create User, then Enroll in Class (if not already enrolled).
-        /// </summary>
-        /// <param name="id">The Class ID to import trainees into</param>
-        /// <param name="file">Excel file (.xlsx) containing trainee data</param>
-        /// <returns>Summary message of the import operation</returns>
         [HttpPost("{id}/import-trainees")]
         [Authorize(Roles = "Admin")]
-        [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> ImportTraineesToClass(int id, IFormFile file)
         {
@@ -328,13 +366,17 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
                 var result = await _service.ImportTraineesToClassAsync(id, file);
                 return Ok(new { message = result });
             }
+            catch (BadRequestException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
             catch (KeyNotFoundException ex)
             {
                 return NotFound(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { message = ex.Message });
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
             }
         }
 
@@ -351,35 +393,28 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
             {
                 var result = await _service.GetClassesByProgramAndCourseAsync(programId, courseId);
                 if (result == null || !result.Any())
-                    return NotFound("No classes found for this program and course.");
+                    return NotFound(new { message = "No classes found for this program and course." });
                 return Ok(result);
             }
             catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
             }
         }
 
         [HttpGet("program/{programId}/course/{courseId}/available")]
         [ProducesResponseType(typeof(IEnumerable<ClassWithEnrollmentDto>), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetAvailableByProgramAndCourse(int programId, int courseId)
         {
             try
             {
-                // Try to get TraineeId, but don't fail if not logged in
                 int? traineeId = GetUserIdFromClaimsOptional();
-
                 var result = await _service.GetAvailableClassesByProgramCourseForTraineeAsync(programId, courseId, traineeId);
-
-                if (result == null || !result.Any())
-                    return Ok(new List<ClassWithEnrollmentDto>()); // Return empty list instead of 404 for filters usually
-
-                return Ok(result);
+                return Ok(result ?? new List<ClassWithEnrollmentDto>());
             }
             catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
             }
         }
 
@@ -392,12 +427,12 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
             {
                 var result = await _service.GetClassesByCourseAsync(courseId);
                 if (result == null || !result.Any())
-                    return NotFound("No classes found for this course.");
+                    return NotFound(new { message = "No classes found for this course." });
                 return Ok(result);
             }
             catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
             }
         }
 
@@ -411,12 +446,12 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
             {
                 var result = await _service.GetClassesByCourseIdForTrainee(courseId);
                 if (result == null || !result.Any())
-                    return NotFound("No open or in-progress classes found for this course.");
+                    return NotFound(new { message = "No open or in-progress classes found for this course." });
                 return Ok(result);
             }
             catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
             }
         }
 
@@ -430,12 +465,12 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
             {
                 var result = await _service.GetClassesByInstructorAsync(instructorId);
                 if (result == null || !result.Any())
-                    return NotFound("No classes found for this instructor.");
+                    return NotFound(new { message = "No classes found for this instructor." });
                 return Ok(result);
             }
             catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
             }
         }
 
@@ -453,20 +488,19 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
             {
                 var result = await _service.GetAllClassesByTraineeAsync(traineeId);
                 if (result == null || !result.Any())
-                    return NotFound("No classes found for this trainee.");
+                    return NotFound(new { message = "No classes found for this trainee." });
 
                 return Ok(result);
             }
             catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
             }
         }
 
         [HttpGet("trainee/{traineeId}/paged")]
         [Authorize(Roles = "Admin, Instructor, Trainee")]
         [ProducesResponseType(typeof(PagedResult<ClassDto>), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> GetPagedByTrainee(int traineeId, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
             try
@@ -476,7 +510,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
             }
         }
 
@@ -490,13 +524,13 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
             {
                 var result = await _service.GetClassByIdAndTraineeAsync(classId, traineeId);
                 if (result == null)
-                    return NotFound("Class not found for this trainee.");
+                    return NotFound(new { message = "Class not found for this trainee." });
 
                 return Ok(result);
             }
             catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
             }
         }
 
@@ -505,6 +539,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
         [Authorize(Roles = "Trainee")]
         [ProducesResponseType(typeof(IEnumerable<ClassDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> GetMyClasses()
         {
             try
@@ -512,24 +547,24 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
                 var traineeId = GetUserIdFromClaims();
                 var result = await _service.GetAllClassesByTraineeAsync(traineeId);
                 if (result == null || !result.Any())
-                    return NotFound("No classes found for you.");
+                    return NotFound(new { message = "No classes found for you." });
 
                 return Ok(result);
             }
             catch (UnauthorizedAccessException ex)
             {
-                return Unauthorized(ex.Message);
+                return Unauthorized(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
             }
         }
 
         [HttpGet("my-classes/paged")]
         [Authorize(Roles = "Trainee")]
         [ProducesResponseType(typeof(PagedResult<ClassDto>), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> GetMyPagedClasses([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
             try
@@ -540,11 +575,11 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
             }
             catch (UnauthorizedAccessException ex)
             {
-                return Unauthorized(ex.Message);
+                return Unauthorized(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
             }
         }
 
@@ -552,6 +587,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
         [Authorize(Roles = "Trainee")]
         [ProducesResponseType(typeof(ClassDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> GetMyClassById(int classId)
         {
             try
@@ -559,17 +595,17 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
                 var traineeId = GetUserIdFromClaims();
                 var result = await _service.GetClassByIdAndTraineeAsync(classId, traineeId);
                 if (result == null)
-                    return NotFound("Class not found or you are not enrolled.");
+                    return NotFound(new { message = "Class not found or you are not enrolled." });
 
                 return Ok(result);
             }
             catch (UnauthorizedAccessException ex)
             {
-                return Unauthorized(ex.Message);
+                return Unauthorized(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
             }
         }
 
@@ -599,22 +635,6 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
 
         #region Hard Delete for Demo
 
-        /// <summary>
-        /// HARD DELETE: Permanently deletes a Class and ALL its associated data.
-        /// This endpoint is for demo/cleanup purposes only.
-        /// WARNING: This operation is irreversible and will delete:
-        /// - ClassInstructors
-        /// - Enrollments
-        /// - LearningProgress
-        /// - SectionRecords
-        /// - ActivityRecords
-        /// - QuizAttempts, QuizAttemptQuestions, QuizAttemptAnswers
-        /// - PracticeAttempts, PracticeAttemptTasks
-        /// - InstructorFeedbacks
-        /// - TraineeCertificates
-        /// </summary>
-        /// <param name="id">The Class ID to delete</param>
-        /// <returns>Success message or error</returns>
         [HttpDelete("{id}/hard-delete")]
         [Authorize(Roles = "Admin")]
         [ProducesResponseType(StatusCodes.Status200OK)]
@@ -633,7 +653,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = $"An error occurred while deleting class data: {ex.Message}" });
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = $"An error occurred while deleting class data: {ex.Message}" });
             }
         }
 
