@@ -42,13 +42,71 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
                     return false;
             }
 
-            if (await _uow.ActivityQuizRepository.ExistsAsync(aq => aq.QuizId == id))
-                throw new ValidationException("Cannot delete quiz used in an activity.");
+            // --- 1. Check Usage in Activities & Records ---
 
-            if (await _uow.QuizAttemptRepository.ExistsAsync(a => a.QuizId == id))
-                throw new ValidationException("Cannot delete quiz that has attempts.");
+            // Get all activities linked to this quiz
+            var activityIds = await _uow.ActivityQuizRepository.GetAllAsQueryable()
+                .Where(aq => aq.QuizId == id)
+                .Select(aq => aq.ActivityId)
+                .ToListAsync();
 
-            // Cleanup related data
+            if (activityIds.Any())
+            {
+                // Check if ANY of these activities have student records
+                // We only block if actual learning data exists for these activities
+                var hasRecords = await _uow.ActivityRecordRepository.GetAllAsQueryable()
+                    .AnyAsync(ar => ar.ActivityId.HasValue && activityIds.Contains(ar.ActivityId.Value));
+
+                if (hasRecords)
+                {
+                    throw new ValidationException("Cannot delete quiz because it is used in an activity that has existing student records.");
+                }
+
+                // If no records, unassign the quiz from these activities (Delete links)
+                var activityQuizzes = await _uow.ActivityQuizRepository.GetAllAsQueryable()
+                    .Where(aq => aq.QuizId == id)
+                    .ToListAsync();
+
+                foreach (var aq in activityQuizzes)
+                {
+                    await _uow.ActivityQuizRepository.DeleteAsync(aq);
+                }
+            }
+
+            // --- 2. Cleanup Attempts (Student History) ---
+
+            // Fetch all attempts for this quiz
+            var attempts = await _uow.QuizAttemptRepository.GetAllAsQueryable()
+                .Where(a => a.QuizId == id)
+                .ToListAsync();
+
+            foreach (var attempt in attempts)
+            {
+                // Delete Attempt Questions
+                var attemptQuestions = await _uow.QuizAttemptQuestionRepository.GetAllAsQueryable()
+                    .Where(aq => aq.QuizAttemptId == attempt.Id)
+                    .ToListAsync();
+
+                foreach (var aq in attemptQuestions)
+                {
+                    // Delete Attempt Answers linked to this question
+                    var attemptAnswers = await _uow.QuizAttemptAnswerRepository.GetAllAsQueryable()
+                        .Where(ans => ans.QuizAttemptQuestionId == aq.Id)
+                        .ToListAsync();
+
+                    foreach (var ans in attemptAnswers)
+                    {
+                        await _uow.QuizAttemptAnswerRepository.DeleteAsync(ans);
+                    }
+
+                    await _uow.QuizAttemptQuestionRepository.DeleteAsync(aq);
+                }
+
+                await _uow.QuizAttemptRepository.DeleteAsync(attempt);
+            }
+
+            // --- 3. Cleanup Quiz Structure (Questions, Options, Authors) ---
+
             var questions = await _uow.QuizQuestionRepository.GetAllAsQueryable().Where(q => q.QuizId == id).ToListAsync();
             foreach (var q in questions)
             {
@@ -60,6 +118,7 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
             var authors = await _uow.QuizAuthorRepository.GetAllAsQueryable().Where(qa => qa.QuizId == id).ToListAsync();
             foreach (var a in authors) await _uow.QuizAuthorRepository.DeleteAsync(a);
 
+            // --- 4. Delete the Quiz Entity ---
             await _uow.QuizRepository.DeleteAsync(entity);
             await _uow.SaveChangesAsync();
             return true;
