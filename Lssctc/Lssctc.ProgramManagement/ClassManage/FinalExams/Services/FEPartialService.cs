@@ -242,8 +242,8 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             var feTheory = partial.FeTheories.FirstOrDefault();
             if (feTheory == null || feTheory.QuizId == 0) throw new KeyNotFoundException("Quiz content not assigned.");
 
-            if (string.IsNullOrEmpty(partial.FinalExam.ExamCode) ||
-                !partial.FinalExam.ExamCode.Equals(examCode, StringComparison.OrdinalIgnoreCase))
+            if (string.IsNullOrEmpty(partial.ExamCode) || // [FIX] Check the Partial's code
+                !partial.ExamCode.Equals(examCode, StringComparison.OrdinalIgnoreCase))
             {
                 throw new UnauthorizedAccessException("Invalid Exam Code.");
             }
