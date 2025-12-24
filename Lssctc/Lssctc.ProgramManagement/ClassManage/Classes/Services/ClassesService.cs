@@ -28,7 +28,8 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
         private readonly IEnrollmentsService _enrollmentsService;
         private readonly ITraineeCertificatesService _traineeCertificatesService;
 
-        private const int VietnamTimeZoneOffset = 7;
+        // [CHANGED] Removed offset constant usage
+        // private const int VietnamTimeZoneOffset = 7; 
 
         public ClassesService(
             IUnitOfWork uow,
@@ -87,8 +88,9 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
                 throw new InvalidOperationException("Cannot create class: The selected Course must have at least one Certificate and one Section assigned.");
             }
 
-            var startDateUtc = dto.StartDate.AddHours(-VietnamTimeZoneOffset);
-            var endDateUtc = dto.EndDate?.AddHours(-VietnamTimeZoneOffset);
+            // [CHANGED] Removed .AddHours(-VietnamTimeZoneOffset)
+            var startDateUtc = dto.StartDate;
+            var endDateUtc = dto.EndDate;
 
             if (startDateUtc < DateTime.UtcNow.AddDays(-30)) throw new InvalidOperationException("Start date cannot be more than 30 days in the past.");
             if (!endDateUtc.HasValue || endDateUtc <= startDateUtc.AddDays(2)) throw new InvalidOperationException("End date must be at least 3 days after the start date.");
@@ -135,8 +137,9 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
             if (existing == null) throw new KeyNotFoundException($"Class with ID {id} not found.");
             if (existing.Status != (int)ClassStatusEnum.Draft) throw new InvalidOperationException("Only classes in 'Draft' status can be updated.");
 
-            var startDateUtc = dto.StartDate.AddHours(-VietnamTimeZoneOffset);
-            var endDateUtc = dto.EndDate?.AddHours(-VietnamTimeZoneOffset);
+            // [CHANGED] Removed .AddHours(-VietnamTimeZoneOffset)
+            var startDateUtc = dto.StartDate;
+            var endDateUtc = dto.EndDate;
 
             if (startDateUtc < DateTime.UtcNow.AddDays(-30)) throw new InvalidOperationException("Start date cannot be more than 30 days in the past.");
             if (!endDateUtc.HasValue || endDateUtc <= startDateUtc.AddDays(2)) throw new InvalidOperationException("End date must be at least 3 days after the start date.");
@@ -353,8 +356,9 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
         private static ClassDto MapToDto(Class c)
         {
             string classStatus = c.Status.HasValue ? Enum.GetName(typeof(ClassStatusEnum), c.Status.Value) ?? "Cancelled" : "Cancelled";
-            var startDateVn = c.StartDate.AddHours(VietnamTimeZoneOffset);
-            var endDateVn = c.EndDate?.AddHours(VietnamTimeZoneOffset);
+            // [CHANGED] Removed .AddHours(VietnamTimeZoneOffset)
+            var startDateVn = c.StartDate;
+            var endDateVn = c.EndDate;
 
             return new ClassDto
             {

@@ -149,9 +149,6 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                 }
 
                 // Ensure Partials match the Template
-                // Note: We use 'template' (the one with Included partials) for reading structure
-                // But if 'trackedTemplate' had modifications to partials that weren't saved, we might need care.
-                // Assuming structure is stable after CreateTemplateAsync.
                 foreach (var partTemplate in template.FinalExamPartialsTemplates)
                 {
                     var existingPartial = finalExam.FinalExamPartials.FirstOrDefault(p => p.Type == partTemplate.Type);
@@ -336,16 +333,15 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                 // Validate final duration (in case existing data was invalid)
                 if (finalDuration < 15 || finalDuration > 1440)
                 {
-                    // Fallback or Throw. Throwing ensures we fix data integrity.
                     throw new ArgumentException($"Duration for partial {p.Id} results in {finalDuration} minutes, which is invalid. Must be 15-1440 mins.");
                 }
 
-                // 2. Determine StartTime: Use DTO value (converted from VN to UTC) if present, otherwise keep existing
+                // 2. Determine StartTime: Use DTO value if present, otherwise keep existing
                 DateTime finalStartTime = p.StartTime ?? DateTime.UtcNow; // Default fallback
                 if (dto.StartTime.HasValue)
                 {
-                    // Assume User Input is Vietnam Time (UTC+7), so save as UTC
-                    finalStartTime = dto.StartTime.Value.AddHours(+7);
+                    // [CHANGED] Removed .AddHours(+7) to use client time directly
+                    finalStartTime = dto.StartTime.Value;
                 }
 
                 // 3. Determine EndTime: Always calculate based on StartTime + Duration to ensure consistency
@@ -562,7 +558,6 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             _ => "Unknown"
         };
 
-        // [FIXED] Status Mapping
         private string GetFinalExamStatusName(int statusId)
         {
             return statusId switch
@@ -571,7 +566,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                 2 => "Submitted",
                 3 => "Completed",
                 4 => "Cancelled",
-                5 => "Open", // Added Open status
+                5 => "Open",
                 _ => "Unknown"
             };
         }

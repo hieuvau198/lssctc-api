@@ -51,8 +51,9 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                 Type = typeId,
                 ExamWeight = dto.ExamWeight,
                 Duration = dto.Duration,
-                StartTime = dto.StartTime.HasValue ? dto.StartTime.Value.AddHours(-7) : null,
-                EndTime = dto.EndTime.HasValue ? dto.EndTime.Value.AddHours(-7) : null,
+                // [CHANGED] Removed .AddHours(-7) to use client time directly
+                StartTime = dto.StartTime,
+                EndTime = dto.EndTime,
                 Marks = 0,
                 IsPass = null,
                 Status = (int)FinalExamPartialStatus.NotYet
@@ -100,8 +101,9 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                     Type = typeId,
                     ExamWeight = dto.ExamWeight,
                     Duration = dto.Duration,
-                    StartTime = dto.StartTime.HasValue ? dto.StartTime.Value.AddHours(-7) : null,
-                    EndTime = dto.EndTime.HasValue ? dto.EndTime.Value.AddHours(-7) : null,
+                    // [CHANGED] Removed .AddHours(-7) to use client time directly
+                    StartTime = dto.StartTime,
+                    EndTime = dto.EndTime,
                     Marks = 0,
                     IsPass = null,
                     Status = (int)FinalExamPartialStatus.NotYet
@@ -138,8 +140,9 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             if (dto.ExamWeight.HasValue) partial.ExamWeight = dto.ExamWeight;
             if (dto.Duration.HasValue) partial.Duration = dto.Duration;
 
-            if (dto.StartTime.HasValue) partial.StartTime = dto.StartTime.Value.AddHours(-7);
-            if (dto.EndTime.HasValue) partial.EndTime = dto.EndTime.Value.AddHours(-7);
+            // [CHANGED] Removed .AddHours(-7) to use client time directly
+            if (dto.StartTime.HasValue) partial.StartTime = dto.StartTime.Value;
+            if (dto.EndTime.HasValue) partial.EndTime = dto.EndTime.Value;
 
             if (!string.IsNullOrEmpty(dto.Description)) partial.Description = dto.Description;
 
@@ -270,13 +273,11 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             if (partial == null)
                 throw new KeyNotFoundException("Partial exam not found.");
 
-            // --- NEW VALIDATION: Check Final Exam Status ---
             var feStatus = partial.FinalExam.Status;
             if (feStatus != (int)FinalExamStatusEnum.Open && feStatus != (int)FinalExamStatusEnum.Submitted)
             {
                 throw new InvalidOperationException($"Cannot submit result. Final Exam status is '{((FinalExamStatusEnum)feStatus)}'. Allowed statuses: Open, Submitted.");
             }
-            // -----------------------------------------------
 
             if (partial.FinalExam.Enrollment.TraineeId != userId)
                 throw new UnauthorizedAccessException("This exam does not belong to the current user.");
@@ -299,8 +300,6 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             var quiz = await _quizService.GetQuizById(feTheory.QuizId);
             if (quiz == null)
                 throw new KeyNotFoundException($"Quiz with ID {feTheory.QuizId} not found.");
-
-            // ... [Rest of calculation logic remains unchanged] ...
 
             var questionsById = quiz.Questions.ToDictionary(q => q.Id);
             var correctOptionIdsByQuestion = new Dictionary<int, HashSet<int>>();
@@ -388,13 +387,11 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
 
             if (partial == null) throw new KeyNotFoundException("Partial not found.");
 
-            // --- NEW VALIDATION: Check Final Exam Status ---
             var feStatus = partial.FinalExam.Status;
             if (feStatus != (int)FinalExamStatusEnum.Open && feStatus != (int)FinalExamStatusEnum.Submitted)
             {
                 throw new InvalidOperationException($"Cannot submit result. Final Exam status is '{((FinalExamStatusEnum)feStatus)}'. Allowed statuses: Open, Submitted.");
             }
-            // -----------------------------------------------
 
             if (partial.Type != (int)FinalExamPartialType.Practical)
                 throw new ArgumentException("Not a Practical Exam.");

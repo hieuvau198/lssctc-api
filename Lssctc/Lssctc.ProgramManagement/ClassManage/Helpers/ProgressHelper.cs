@@ -100,7 +100,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Helpers
             if (isCompleted)
             {
                 activityRecord.Status = (int)ActivityRecordStatusEnum.Completed;
-                activityRecord.CompletedDate = DateTime.UtcNow;
+                activityRecord.CompletedDate = DateTime.UtcNow.AddHours(7);
             }
             // We need to check if *any* attempts exist, which requires another query
             else if (activityRecord.ActivityType == (int)ActivityType.Quiz || activityRecord.ActivityType == (int)ActivityType.Practice)

@@ -172,15 +172,12 @@ namespace Lssctc.ProgramManagement.Materials.Controllers
         {
             try
             {
-                int? instructorId = User.IsInRole("Instructor") ? GetInstructorIdFromClaims() : null;
-
-                // 1. Retrieve material first to get the URL
-                var material = await _materialsService.GetMaterialByIdAsync(id, instructorId);
+                var material = await _materialsService.GetMaterialByIdAsync(id);
                 if (material == null)
                     return NotFound(new { Message = "Material not found." });
 
                 // 2. Delete from Database first (to ensure logic like 'linked to activity' checks pass)
-                await _materialsService.DeleteMaterialAsync(id, instructorId);
+                await _materialsService.DeleteMaterialAsync(id);
 
                 // 3. Delete from Firebase
                 if (!string.IsNullOrEmpty(material.MaterialUrl))
