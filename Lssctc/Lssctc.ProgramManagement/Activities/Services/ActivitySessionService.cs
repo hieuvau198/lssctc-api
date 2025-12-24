@@ -318,7 +318,6 @@ namespace Lssctc.ProgramManagement.Activities.Services
         /// </summary>
         private async Task SendEmailsToTraineesAsync(List<TraineeEmailInfo> traineeInfos, string activityTitle, string className, DateTime? startTime, DateTime? endTime)
         {
-            // Convert times to Vietnam timezone (UTC+7)
             string startTimeFormatted = startTime.HasValue
                 ? startTime.Value.ToString("dd/MM/yyyy HH:mm")
                 : "Chưa xác định";
