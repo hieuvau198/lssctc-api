@@ -4,6 +4,9 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Dtos
 {
     public class UpdateUserDto
     {
+        [EmailAddress(ErrorMessage = "Invalid email format.")]
+        public string? Email { get; set; }
+
         [StringLength(100, ErrorMessage = "Full name cannot exceed 100 characters.")]
         public string? Fullname { get; set; }
 

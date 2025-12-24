@@ -287,6 +287,23 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Services
             if (user == null || user.IsDeleted)
                 throw new Exception("User not found.");
 
+            // Check if Email is provided and different from current
+            if (!string.IsNullOrWhiteSpace(dto.Email) &&
+                !string.Equals(user.Email, dto.Email, StringComparison.OrdinalIgnoreCase))
+            {
+                // Check for uniqueness excluding the current user
+                bool emailExists = await _uow.UserRepository
+                    .GetAllAsQueryable()
+                    .AnyAsync(u => u.Email.ToLower() == dto.Email.ToLower()
+                                   && u.Id != id
+                                   && !u.IsDeleted);
+
+                if (emailExists)
+                    throw new Exception("Email already exists.");
+
+                user.Email = dto.Email;
+            }
+
             user.Fullname = dto.Fullname ?? user.Fullname;
             user.PhoneNumber = dto.PhoneNumber ?? user.PhoneNumber;
             user.AvatarUrl = dto.AvatarUrl ?? user.AvatarUrl;
