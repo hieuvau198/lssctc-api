@@ -232,6 +232,7 @@ builder.Services.AddCors(options =>
                 "http://20.2.88.115.nip.io", 
                 "https://20.2.88.115.nip.io",
                 "https://lssctc.site",
+                "https://www.lssctc.site",
                 "216.198.79.1",
                 "lssctc-rny2qjrcg-nhats-projects-1e2c91a7.vercel.app",
                 "https://lssctc-web.vercel.app"
