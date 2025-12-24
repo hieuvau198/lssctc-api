@@ -474,7 +474,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Enrollments.Services
         }}
         .cta-button {{ 
             display: inline-block; 
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+            background: #F9F8F6; 
             color: #ffffff; 
             padding: 14px 30px; 
             text-decoration: none; 
