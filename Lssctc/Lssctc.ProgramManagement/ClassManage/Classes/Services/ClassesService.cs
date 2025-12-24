@@ -235,6 +235,9 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
                 .AnyAsync(t => t.ClassId == id);
             if (!hasTimeslots) throw new InvalidOperationException("Không thể mở lớp: Phải cấu hình lịch học (Timeslots).");
 
+            // Validate Final Exam Config (Same as Start Class)
+            await ValidateFinalExamConfigurationAsync(id, "mở lớp học");
+
             existing.Status = (int)ClassStatusEnum.Open;
             await _uow.ClassRepository.UpdateAsync(existing);
             await _uow.SaveChangesAsync();
@@ -250,6 +253,9 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
             if (existing.Status != (int)ClassStatusEnum.Draft && existing.Status != (int)ClassStatusEnum.Open) throw new InvalidOperationException("Chỉ có thể bắt đầu các lớp học ở trạng thái 'Nháp' hoặc 'Mở'.");
             if (existing.ClassInstructors == null || !existing.ClassInstructors.Any()) throw new InvalidOperationException("Không thể bắt đầu lớp học nếu chưa có giảng viên.");
             if (existing.Enrollments == null || !existing.Enrollments.Any(e => e.Status == (int)EnrollmentStatusEnum.Enrolled)) throw new InvalidOperationException("Không thể bắt đầu lớp học nếu chưa có ít nhất một học viên ghi danh.");
+
+            // Validate Final Exam Config
+            await ValidateFinalExamConfigurationAsync(id, "bắt đầu lớp học");
 
             foreach (var enrollment in existing.Enrollments)
             {
@@ -415,6 +421,55 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
 
         #endregion
 
+        #region Helpers
+
+        private async Task ValidateFinalExamConfigurationAsync(int classId, string actionName)
+        {
+            var feTemplate = await _uow.FinalExamTemplateRepository.GetAllAsQueryable()
+                .Include(t => t.FinalExamPartialsTemplates)
+                .FirstOrDefaultAsync(t => t.ClassId == classId);
+
+            if (feTemplate == null || !feTemplate.FinalExamPartialsTemplates.Any())
+                throw new InvalidOperationException($"Không thể {actionName}: Cấu hình bài thi cuối khóa chưa được tạo.");
+
+            var exampleExam = await _uow.FinalExamRepository.GetAllAsQueryable()
+                .Include(fe => fe.FinalExamPartials).ThenInclude(p => p.FeTheories)
+                .Include(fe => fe.FinalExamPartials).ThenInclude(p => p.FeSimulations)
+                .Include(fe => fe.FinalExamPartials).ThenInclude(p => p.PeChecklists)
+                .FirstOrDefaultAsync(fe => fe.Enrollment.ClassId == classId && fe.Enrollment.IsDeleted != true);
+
+            if (exampleExam == null)
+                throw new InvalidOperationException($"Không thể {actionName}: Dữ liệu bài thi cuối khóa chưa được khởi tạo. Vui lòng lưu cấu hình bài thi trước.");
+
+            foreach (var templatePartial in feTemplate.FinalExamPartialsTemplates)
+            {
+                var partial = exampleExam.FinalExamPartials.FirstOrDefault(p => p.Type == templatePartial.Type);
+
+                if (partial == null)
+                    throw new InvalidOperationException($"Không thể {actionName}: Phần thi {GetExamTypeName(templatePartial.Type)} được yêu cầu nhưng chưa được tạo trong dữ liệu bài thi.");
+
+                if (templatePartial.Type == 1) // Theory
+                {
+                    var theory = partial.FeTheories.FirstOrDefault();
+                    if (theory == null || theory.QuizId <= 0)
+                        throw new InvalidOperationException($"Không thể {actionName}: Bài thi Lý thuyết (TE) chưa được gán đề trắc nghiệm (Quiz).");
+                }
+                else if (templatePartial.Type == 2) // Simulation
+                {
+                    var sim = partial.FeSimulations.FirstOrDefault();
+                    if (sim == null || sim.PracticeId <= 0)
+                        throw new InvalidOperationException($"Không thể {actionName}: Bài thi Mô phỏng (SE) chưa được gán bài thực hành (Practice).");
+                }
+                else if (templatePartial.Type == 3) // Practical
+                {
+                    if (partial.PeChecklists == null || !partial.PeChecklists.Any())
+                        throw new InvalidOperationException($"Không thể {actionName}: Bài thi Thực hành (PE) chưa có Checklist đánh giá.");
+                }
+            }
+        }
+
+        #endregion
+
         #region Mapping (Kept for UpdateClassAsync)
 
         private static ClassDto MapToDto(Class c)
@@ -437,6 +492,17 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
                 Status = classStatus,
                 DurationHours = c.ProgramCourse.Course?.DurationHours,
                 BackgroundImageUrl = c.BackgroundImageUrl
+            };
+        }
+
+        private string GetExamTypeName(int typeId)
+        {
+            return typeId switch
+            {
+                1 => "Lý thuyết (Theory)",
+                2 => "Mô phỏng (Simulation)",
+                3 => "Thực hành (Practical)",
+                _ => "Không xác định"
             };
         }
 
