@@ -28,9 +28,6 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
         private readonly IEnrollmentsService _enrollmentsService;
         private readonly ITraineeCertificatesService _traineeCertificatesService;
 
-        // [CHANGED] Removed offset constant usage
-        // private const int VietnamTimeZoneOffset = 7; 
-
         public ClassesService(
             IUnitOfWork uow,
             IClassQueryService queryService,
@@ -77,32 +74,100 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
 
         public async Task<ClassDto> CreateClassAsync(CreateClassDto dto)
         {
-            var courseValidation = await _uow.CourseRepository.GetAllAsQueryable()
+            // 1. Fetch Course with Hierarchy for Validation
+            var course = await _uow.CourseRepository.GetAllAsQueryable()
                 .Where(c => c.Id == dto.CourseId)
-                .Select(c => new { HasCertificate = c.CourseCertificates.Any(), HasSections = c.CourseSections.Any() })
+                .Include(c => c.CourseCertificates)
+                .Include(c => c.CourseSections)
+                    .ThenInclude(cs => cs.Section)
+                        .ThenInclude(s => s.SectionActivities)
+                            .ThenInclude(sa => sa.Activity)
+                                .ThenInclude(a => a.ActivityMaterials)
+                .Include(c => c.CourseSections)
+                    .ThenInclude(cs => cs.Section)
+                        .ThenInclude(s => s.SectionActivities)
+                            .ThenInclude(sa => sa.Activity)
+                                .ThenInclude(a => a.ActivityQuizzes)
+                .Include(c => c.CourseSections)
+                    .ThenInclude(cs => cs.Section)
+                        .ThenInclude(s => s.SectionActivities)
+                            .ThenInclude(sa => sa.Activity)
+                                .ThenInclude(a => a.ActivityPractices)
                 .FirstOrDefaultAsync();
 
-            if (courseValidation == null) throw new KeyNotFoundException("Course not found.");
-            if (!courseValidation.HasCertificate || !courseValidation.HasSections)
+            if (course == null) throw new KeyNotFoundException("Không tìm thấy khóa học.");
+
+            // 2. Validate Course Structure
+            if (!course.CourseCertificates.Any())
             {
-                throw new InvalidOperationException("Cannot create class: The selected Course must have at least one Certificate and one Section assigned.");
+                throw new InvalidOperationException("Không thể tạo lớp học: Khóa học đã chọn phải có ít nhất một chứng chỉ.");
             }
 
-            // [CHANGED] Removed .AddHours(-VietnamTimeZoneOffset)
+            if (!course.CourseSections.Any())
+            {
+                throw new InvalidOperationException("Không thể tạo lớp học: Khóa học đã chọn phải có ít nhất một chương học.");
+            }
+
+            // Iterate through all sections to ensure they have activities, and those activities have content
+            foreach (var courseSection in course.CourseSections)
+            {
+                var section = courseSection.Section;
+                if (!section.SectionActivities.Any())
+                {
+                    throw new InvalidOperationException($"Không thể tạo lớp học: Chương '{section.SectionTitle}' chưa được gán hoạt động nào.");
+                }
+
+                foreach (var sectionActivity in section.SectionActivities)
+                {
+                    var activity = sectionActivity.Activity;
+                    if (!activity.ActivityType.HasValue)
+                    {
+                        throw new InvalidOperationException($"Không thể tạo lớp học: Hoạt động '{activity.ActivityTitle}' không có loại hợp lệ.");
+                    }
+
+                    var type = (ActivityType)activity.ActivityType.Value;
+                    bool hasContent = false;
+
+                    switch (type)
+                    {
+                        case ActivityType.Material:
+                            hasContent = activity.ActivityMaterials.Any();
+                            break;
+                        case ActivityType.Quiz:
+                            hasContent = activity.ActivityQuizzes.Any();
+                            break;
+                        case ActivityType.Practice:
+                            hasContent = activity.ActivityPractices.Any();
+                            break;
+                        default:
+                            break;
+                    }
+
+                    if (!hasContent)
+                    {
+                        throw new InvalidOperationException($"Không thể tạo lớp học: Hoạt động '{activity.ActivityTitle}' (Loại: {type}) trong chương '{section.SectionTitle}' chưa được gán nội dung.");
+                    }
+                }
+            }
+
+            // 3. Prepare Dates
             var startDateUtc = dto.StartDate;
             var endDateUtc = dto.EndDate;
 
-            if (startDateUtc < DateTime.UtcNow.AddDays(-30)) throw new InvalidOperationException("Start date cannot be more than 30 days in the past.");
-            if (!endDateUtc.HasValue || endDateUtc <= startDateUtc.AddDays(2)) throw new InvalidOperationException("End date must be at least 3 days after the start date.");
+            if (startDateUtc < DateTime.UtcNow.AddDays(-30)) throw new InvalidOperationException("Ngày bắt đầu không được quá 30 ngày trong quá khứ.");
+            if (!endDateUtc.HasValue || endDateUtc <= startDateUtc.AddDays(2)) throw new InvalidOperationException("Ngày kết thúc phải sau ngày bắt đầu ít nhất 3 ngày.");
 
+            // 4. Validate Class Code Unique
             var existingClassCode = await _uow.ClassCodeRepository.GetAllAsQueryable()
                 .FirstOrDefaultAsync(cc => cc.Name.ToLower() == dto.ClassCode.Trim().ToLower());
-            if (existingClassCode != null) throw new InvalidOperationException($"Class code '{existingClassCode.Name}' already exists.");
+            if (existingClassCode != null) throw new InvalidOperationException($"Mã lớp '{existingClassCode.Name}' đã tồn tại.");
 
+            // 5. Validate ProgramCourse link
             var programCourse = await _uow.ProgramCourseRepository.GetAllAsQueryable()
                 .FirstOrDefaultAsync(pc => pc.ProgramId == dto.ProgramId && pc.CourseId == dto.CourseId);
-            if (programCourse == null) throw new KeyNotFoundException("No matching ProgramCourse found.");
+            if (programCourse == null) throw new KeyNotFoundException("Không tìm thấy chương trình học phù hợp.");
 
+            // 6. Create Entities
             var classCodeEntity = new ClassCode { Name = dto.ClassCode.Trim() };
             await _uow.ClassCodeRepository.CreateAsync(classCodeEntity);
             await _uow.SaveChangesAsync();
@@ -134,15 +199,14 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
                  .Include(c => c.ClassCode)
                  .FirstOrDefaultAsync(c => c.Id == id);
 
-            if (existing == null) throw new KeyNotFoundException($"Class with ID {id} not found.");
-            if (existing.Status != (int)ClassStatusEnum.Draft) throw new InvalidOperationException("Only classes in 'Draft' status can be updated.");
+            if (existing == null) throw new KeyNotFoundException($"Không tìm thấy lớp học với ID {id}.");
+            if (existing.Status != (int)ClassStatusEnum.Draft) throw new InvalidOperationException("Chỉ có thể cập nhật các lớp học ở trạng thái 'Nháp'.");
 
-            // [CHANGED] Removed .AddHours(-VietnamTimeZoneOffset)
             var startDateUtc = dto.StartDate;
             var endDateUtc = dto.EndDate;
 
-            if (startDateUtc < DateTime.UtcNow.AddDays(-30)) throw new InvalidOperationException("Start date cannot be more than 30 days in the past.");
-            if (!endDateUtc.HasValue || endDateUtc <= startDateUtc.AddDays(2)) throw new InvalidOperationException("End date must be at least 3 days after the start date.");
+            if (startDateUtc < DateTime.UtcNow.AddDays(-30)) throw new InvalidOperationException("Ngày bắt đầu không được quá 30 ngày trong quá khứ.");
+            if (!endDateUtc.HasValue || endDateUtc <= startDateUtc.AddDays(2)) throw new InvalidOperationException("Ngày kết thúc phải sau ngày bắt đầu ít nhất 3 ngày.");
 
             existing.Name = dto.Name.Trim();
             existing.Capacity = dto.Capacity;
@@ -160,16 +224,16 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
         public async Task OpenClassAsync(int id)
         {
             var existing = await _uow.ClassRepository.GetByIdAsync(id);
-            if (existing == null) throw new KeyNotFoundException($"Class with ID {id} not found.");
-            if (existing.Status != (int)ClassStatusEnum.Draft) throw new InvalidOperationException("Only 'Draft' classes can be opened.");
+            if (existing == null) throw new KeyNotFoundException($"Không tìm thấy lớp học với ID {id}.");
+            if (existing.Status != (int)ClassStatusEnum.Draft) throw new InvalidOperationException("Chỉ có thể mở các lớp học ở trạng thái 'Nháp'.");
 
             var hasInstructors = await _uow.ClassInstructorRepository.GetAllAsQueryable()
                 .AnyAsync(ci => ci.ClassId == id);
-            if (!hasInstructors) throw new InvalidOperationException("Cannot open class: At least one Instructor must be assigned.");
+            if (!hasInstructors) throw new InvalidOperationException("Không thể mở lớp: Phải có ít nhất một giảng viên được phân công.");
 
             var hasTimeslots = await _uow.TimeslotRepository.GetAllAsQueryable()
                 .AnyAsync(t => t.ClassId == id);
-            if (!hasTimeslots) throw new InvalidOperationException("Cannot open class: Timeslots must be configured.");
+            if (!hasTimeslots) throw new InvalidOperationException("Không thể mở lớp: Phải cấu hình lịch học (Timeslots).");
 
             existing.Status = (int)ClassStatusEnum.Open;
             await _uow.ClassRepository.UpdateAsync(existing);
@@ -182,10 +246,10 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
                 .Include(c => c.ClassInstructors).Include(c => c.Enrollments)
                 .FirstOrDefaultAsync(c => c.Id == id);
 
-            if (existing == null) throw new KeyNotFoundException($"Class with ID {id} not found.");
-            if (existing.Status != (int)ClassStatusEnum.Draft && existing.Status != (int)ClassStatusEnum.Open) throw new InvalidOperationException("Only 'Draft' or 'Open' classes can be started.");
-            if (existing.ClassInstructors == null || !existing.ClassInstructors.Any()) throw new InvalidOperationException("Cannot start class without instructors.");
-            if (existing.Enrollments == null || !existing.Enrollments.Any(e => e.Status == (int)EnrollmentStatusEnum.Enrolled)) throw new InvalidOperationException("Cannot start class without at least one enrolled student.");
+            if (existing == null) throw new KeyNotFoundException($"Không tìm thấy lớp học với ID {id}.");
+            if (existing.Status != (int)ClassStatusEnum.Draft && existing.Status != (int)ClassStatusEnum.Open) throw new InvalidOperationException("Chỉ có thể bắt đầu các lớp học ở trạng thái 'Nháp' hoặc 'Mở'.");
+            if (existing.ClassInstructors == null || !existing.ClassInstructors.Any()) throw new InvalidOperationException("Không thể bắt đầu lớp học nếu chưa có giảng viên.");
+            if (existing.Enrollments == null || !existing.Enrollments.Any(e => e.Status == (int)EnrollmentStatusEnum.Enrolled)) throw new InvalidOperationException("Không thể bắt đầu lớp học nếu chưa có ít nhất một học viên ghi danh.");
 
             foreach (var enrollment in existing.Enrollments)
             {
@@ -215,9 +279,9 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
         {
             var existingClass = await _uow.ClassRepository.GetByIdAsync(id);
             if (existingClass == null)
-                throw new KeyNotFoundException($"Class with ID {id} not found.");
+                throw new KeyNotFoundException($"Không tìm thấy lớp học với ID {id}.");
             if (existingClass.Status != (int)ClassStatusEnum.Inprogress)
-                throw new InvalidOperationException("Only 'Inprogress' classes can be completed.");
+                throw new InvalidOperationException("Chỉ có thể hoàn thành các lớp học đang diễn ra (Inprogress).");
 
             var finalExams = await _uow.FinalExamRepository.GetAllAsQueryable()
                 .Include(fe => fe.Enrollment)
@@ -229,7 +293,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
                 fe.Status == (int)FinalExamStatusEnum.Cancelled);
 
             if (!allExamsResolved)
-                throw new InvalidOperationException("Cannot complete class. All Final Exams must be either Completed or Cancelled.");
+                throw new InvalidOperationException("Không thể hoàn thành lớp học. Tất cả các bài kiểm tra cuối khóa phải ở trạng thái Hoàn thành hoặc Đã hủy.");
 
             var enrollments = await _uow.EnrollmentRepository.GetAllAsQueryable()
                 .Where(e => e.ClassId == id)
@@ -285,10 +349,10 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
         public async Task CancelClassAsync(int id)
         {
             var existing = await _uow.ClassRepository.GetAllAsQueryable().Include(c => c.Enrollments).FirstOrDefaultAsync(c => c.Id == id);
-            if (existing == null) throw new KeyNotFoundException($"Class with ID {id} not found.");
-            if (existing.Enrollments != null && existing.Enrollments.Any()) throw new InvalidOperationException("Cannot cancel a class with enrolled students.");
+            if (existing == null) throw new KeyNotFoundException($"Không tìm thấy lớp học với ID {id}.");
+            if (existing.Enrollments != null && existing.Enrollments.Any()) throw new InvalidOperationException("Không thể hủy lớp học đã có học viên ghi danh.");
             if (existing.Status == (int)ClassStatusEnum.Inprogress || existing.Status == (int)ClassStatusEnum.Completed || existing.Status == (int)ClassStatusEnum.Cancelled)
-                throw new InvalidOperationException("Cannot cancel a class that is in progress, completed, or already cancelled.");
+                throw new InvalidOperationException("Không thể hủy lớp học đang diễn ra, đã hoàn thành hoặc đã bị hủy.");
 
             existing.Status = (int)ClassStatusEnum.Cancelled;
             await _uow.ClassRepository.UpdateAsync(existing);
@@ -356,7 +420,6 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Services
         private static ClassDto MapToDto(Class c)
         {
             string classStatus = c.Status.HasValue ? Enum.GetName(typeof(ClassStatusEnum), c.Status.Value) ?? "Cancelled" : "Cancelled";
-            // [CHANGED] Removed .AddHours(VietnamTimeZoneOffset)
             var startDateVn = c.StartDate;
             var endDateVn = c.EndDate;
 
