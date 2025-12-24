@@ -57,7 +57,13 @@ namespace Lssctc.ProgramManagement.Materials.Services
 
         public async Task<MaterialDto?> GetMaterialByIdAsync(int id)
         {
-            var material = await _uow.LearningMaterialRepository.GetByIdAsync(id);
+            // FIX: Use GetAllAsQueryable() (AsNoTracking) instead of GetByIdAsync (Find/Tracked)
+            // This prevents the entity from being tracked, avoiding conflicts when DeleteMaterialAsync
+            // later attempts to attach/remove a different instance of the same entity.
+            var material = await _uow.LearningMaterialRepository
+                .GetAllAsQueryable()
+                .FirstOrDefaultAsync(m => m.Id == id);
+
             return material == null ? null : MapToDto(material);
         }
 
@@ -172,6 +178,7 @@ namespace Lssctc.ProgramManagement.Materials.Services
         public async Task DeleteMaterialAsync(int id)
         {
             // 1. Retrieve Material with its Activity links
+            // Uses GetAllAsQueryable which is AsNoTracking, so this material instance is NOT tracked initially.
             var material = await _uow.LearningMaterialRepository
                 .GetAllAsQueryable()
                 .Include(m => m.ActivityMaterials)
@@ -220,6 +227,8 @@ namespace Lssctc.ProgramManagement.Materials.Services
             }
 
             // 5. DELETE: The Material itself
+            // DeleteAsync attempts to attach the entity. Since we fixed GetMaterialByIdAsync to be NoTracking,
+            // the context is clean, and this attachment will succeed.
             await _uow.LearningMaterialRepository.DeleteAsync(material);
             await _uow.SaveChangesAsync();
         }
