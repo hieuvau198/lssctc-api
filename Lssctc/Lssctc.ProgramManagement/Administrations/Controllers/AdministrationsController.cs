@@ -12,15 +12,18 @@ namespace Lssctc.ProgramManagement.Administrations.Controllers
         private readonly IClassCustomizeService _classCustomizeService;
         private readonly IClassCompleteService _classCompleteService;
         private readonly AccountHelper _accountHelper;
+        private readonly EnrollmentResetHelper _enrollmentResetHelper;
 
         public AdministrationsController(
             IClassCustomizeService classCustomizeService,
             IClassCompleteService classCompleteService,
-            AccountHelper accountHelper)
+            AccountHelper accountHelper,
+            EnrollmentResetHelper enrollmentResetHelper)
         {
             _classCustomizeService = classCustomizeService;
             _classCompleteService = classCompleteService;
             _accountHelper = accountHelper;
+            _enrollmentResetHelper = enrollmentResetHelper;
         }
 
         /// <summary>
@@ -110,6 +113,36 @@ namespace Lssctc.ProgramManagement.Administrations.Controllers
         public async Task<IActionResult> AutoCompleteEnrollmentFinalExam(int id)
         {
             await _classCompleteService.AutoCompleteFinalExamForEnrollment(id);
+            return NoContent();
+        }
+
+        /// <summary>
+        /// Resets attendance for a specific enrollment to 'NotStarted'.
+        /// </summary>
+        [HttpPost("enrollments/{id}/reset-attendance")]
+        public async Task<IActionResult> ResetEnrollmentAttendance(int id)
+        {
+            await _enrollmentResetHelper.ResetAttendanceAsync(id);
+            return NoContent();
+        }
+
+        /// <summary>
+        /// Resets learning progress (scores, completion status) for a specific enrollment.
+        /// </summary>
+        [HttpPost("enrollments/{id}/reset-progress")]
+        public async Task<IActionResult> ResetEnrollmentProgress(int id)
+        {
+            await _enrollmentResetHelper.ResetLearningProgressAsync(id);
+            return NoContent();
+        }
+
+        /// <summary>
+        /// Resets final exam (scores, status) for a specific enrollment.
+        /// </summary>
+        [HttpPost("enrollments/{id}/reset-final-exam")]
+        public async Task<IActionResult> ResetEnrollmentFinalExam(int id)
+        {
+            await _enrollmentResetHelper.ResetFinalExamAsync(id);
             return NoContent();
         }
     }

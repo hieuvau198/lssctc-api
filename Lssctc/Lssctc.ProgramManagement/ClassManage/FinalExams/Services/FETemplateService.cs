@@ -311,6 +311,11 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             if (!partials.Any())
             {
                 await ResetFinalExamAsync(dto.ClassId);
+
+                // [FIX START] Clear tracking to avoid conflict with the newly created entities
+                _uow.GetDbContext().ChangeTracker.Clear();
+                // [FIX END]
+
                 partials = await _uow.FinalExamPartialRepository.GetAllAsQueryable()
                     .Where(p => p.FinalExam.Enrollment.ClassId == dto.ClassId && p.Type == typeId)
                     .Include(p => p.FeTheories)
