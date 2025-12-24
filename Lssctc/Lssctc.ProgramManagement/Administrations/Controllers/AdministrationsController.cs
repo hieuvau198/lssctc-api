@@ -145,5 +145,15 @@ namespace Lssctc.ProgramManagement.Administrations.Controllers
             await _enrollmentResetHelper.ResetFinalExamAsync(id);
             return NoContent();
         }
+
+        /// <summary>
+        /// Resets final exam (scores, status) for ALL students in a class, AND resets the class template status.
+        /// </summary>
+        [HttpPost("classes/{id}/reset-final-exam")]
+        public async Task<IActionResult> ResetClassFinalExam(int id)
+        {
+            await _enrollmentResetHelper.ResetClassFinalExamAsync(id);
+            return NoContent();
+        }
     }
 }

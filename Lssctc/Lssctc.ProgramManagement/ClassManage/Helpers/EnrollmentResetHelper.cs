@@ -108,7 +108,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Helpers
         }
 
         /// <summary>
-        /// Resets the final exam, its partials (SE, TE, PE), and checklist items to 'NotYet' started.
+        /// Resets the final exam for a single enrollment.
         /// </summary>
         public async Task ResetFinalExamAsync(int enrollmentId)
         {
@@ -124,6 +124,48 @@ namespace Lssctc.ProgramManagement.ClassManage.Helpers
 
             if (enrollment == null) throw new Exception("Enrollment not found");
 
+            ResetFinalExamDataInternal(enrollment);
+
+            await _context.SaveChangesAsync();
+        }
+
+        /// <summary>
+        /// Resets the final exam for an entire class (all enrollments) AND resets the Class Template status.
+        /// </summary>
+        public async Task ResetClassFinalExamAsync(int classId)
+        {
+            // 1. Reset Template Status
+            var template = await _context.FinalExamTemplates
+                .FirstOrDefaultAsync(t => t.ClassId == classId);
+
+            if (template != null)
+            {
+                template.Status = (int)FinalExamStatusEnum.NotYet;
+            }
+
+            // 2. Fetch all enrollments for the class with necessary deep includes
+            var enrollments = await _context.Enrollments
+                .Where(e => e.ClassId == classId)
+                .Include(e => e.FinalExams)
+                    .ThenInclude(fe => fe.FinalExamPartials)
+                        .ThenInclude(fep => fep.PeChecklists)
+                .Include(e => e.FinalExams)
+                    .ThenInclude(fe => fe.FinalExamPartials)
+                        .ThenInclude(fep => fep.FeSimulations)
+                            .ThenInclude(s => s.SeTasks)
+                .ToListAsync();
+
+            // 3. Reset Data for each enrollment
+            foreach (var enrollment in enrollments)
+            {
+                ResetFinalExamDataInternal(enrollment);
+            }
+
+            await _context.SaveChangesAsync();
+        }
+
+        private void ResetFinalExamDataInternal(Enrollment enrollment)
+        {
             foreach (var finalExam in enrollment.FinalExams)
             {
                 // Reset Final Exam Root
@@ -145,11 +187,14 @@ namespace Lssctc.ProgramManagement.ClassManage.Helpers
                     {
                         foreach (var sim in partial.FeSimulations)
                         {
-                            foreach (var task in sim.SeTasks)
+                            if (sim.SeTasks != null)
                             {
-                                task.IsPass = null;
-                                task.Status = 0; // Assuming 0 is NotStarted/Pending
-                                task.CompleteTime = null;
+                                foreach (var task in sim.SeTasks)
+                                {
+                                    task.IsPass = null;
+                                    task.Status = 0; // NotStarted/Pending
+                                    task.CompleteTime = null;
+                                }
                             }
                         }
                     }
@@ -170,8 +215,6 @@ namespace Lssctc.ProgramManagement.ClassManage.Helpers
             {
                 enrollment.Status = (int)EnrollmentStatusEnum.Inprogress;
             }
-
-            await _context.SaveChangesAsync();
         }
     }
 }

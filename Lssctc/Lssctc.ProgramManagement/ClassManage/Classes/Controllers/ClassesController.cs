@@ -135,7 +135,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Classes.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
+                return BadRequest(new { message = ex.Message });
             }
         }
 
