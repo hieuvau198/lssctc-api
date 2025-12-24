@@ -212,31 +212,31 @@ builder.Services.AddScoped<EnrollmentResetHelper>();
 #endregion
 
 #region CORS
-//builder.Services.AddCors(options =>
-//{
-//    options.AddPolicy("AllowAll", policy =>
-//    {
-//        policy.AllowAnyOrigin()
-//              .AllowAnyMethod()
-//              .AllowAnyHeader();
-//    });
-//});
-
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowSpecificOrigin",
-        option =>
-        {
-            option.WithOrigins(
-                "http://localhost:5173", 
-                "http://20.2.88.115.nip.io", 
-                "https://20.2.88.115.nip.io",
-                "https://lssctc.site")
-                  .AllowAnyHeader()
-                  .AllowAnyMethod()
-                  .AllowCredentials();
-        });
+    options.AddPolicy("AllowAll", policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyMethod()
+              .AllowAnyHeader();
+    });
 });
+
+//builder.Services.AddCors(options =>
+//{
+//    options.AddPolicy("AllowSpecificOrigin",
+//        option =>
+//        {
+//            option.WithOrigins(
+//                "http://localhost:5173", 
+//                "http://20.2.88.115.nip.io", 
+//                "https://20.2.88.115.nip.io",
+//                "https://lssctc.site")
+//                  .AllowAnyHeader()
+//                  .AllowAnyMethod()
+//                  .AllowCredentials();
+//        });
+//});
 
 // 1. Bind configuration from appsettings to EmailSettings class
 builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
