@@ -16,7 +16,7 @@ namespace Lssctc.ProgramManagement.Materials.Services
         Task<MaterialDto> CreateMaterialAsync(CreateMaterialDto createDto, int instructorId);
         Task<MaterialDto> UpdateMaterialAsync(int id, UpdateMaterialDto updateDto);
         Task<MaterialDto> UpdateMaterialAsync(int id, UpdateMaterialDto updateDto, int? instructorId);
-        Task DeleteMaterialAsync(int id, int? instructorId);
+        Task DeleteMaterialAsync(int id);
         #endregion
 
         #region Activity Materials

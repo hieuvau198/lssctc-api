@@ -169,15 +169,9 @@ namespace Lssctc.ProgramManagement.Materials.Services
             return MapToDto(material);
         }
 
-        public async Task DeleteMaterialAsync(int id, int? instructorId)
+        public async Task DeleteMaterialAsync(int id)
         {
-            if (instructorId.HasValue && instructorId.Value > 0)
-            {
-                var isAuthor = await _uow.MaterialAuthorRepository.ExistsAsync(ma => ma.MaterialId == id && ma.InstructorId == instructorId.Value);
-                if (!isAuthor)
-                    throw new KeyNotFoundException($"Material with ID {id} not found.");
-            }
-
+            // 1. Retrieve Material with its Activity links
             var material = await _uow.LearningMaterialRepository
                 .GetAllAsQueryable()
                 .Include(m => m.ActivityMaterials)
@@ -186,11 +180,35 @@ namespace Lssctc.ProgramManagement.Materials.Services
             if (material == null)
                 throw new KeyNotFoundException($"Material with ID {id} not found.");
 
+            // 2. CHECK USAGE: Activity Records
+            // We strictly check if any activity using this material has generated student records.
             if (material.ActivityMaterials.Any())
             {
-                throw new InvalidOperationException("Cannot delete material linked to activities. Please remove it from all activities first.");
+                // Get the list of Activity IDs that use this material
+                var linkedActivityIds = material.ActivityMaterials.Select(am => am.ActivityId).Distinct().ToList();
+
+                // Query the ActivityRecordRepository to see if any of these activities are actually in use
+                var isUsedInClasses = await _uow.ActivityRecordRepository
+                    .GetAllAsQueryable()
+                    .AnyAsync(ar => ar.ActivityId.HasValue && linkedActivityIds.Contains(ar.ActivityId.Value));
+
+                if (isUsedInClasses)
+                {
+                    throw new InvalidOperationException("Cannot delete material because it is currently used in class activities (Activity Records exist).");
+                }
+
+                // 3. CLEANUP: Remove links to Activities
+                // If not used in classes, we must manually remove the links in the ActivityMaterial table 
+                // before deleting the material to avoid Foreign Key errors.
+                var linksToDelete = material.ActivityMaterials.ToList();
+                foreach (var link in linksToDelete)
+                {
+                    await _uow.ActivityMaterialRepository.DeleteAsync(link);
+                }
             }
 
+            // 4. CLEANUP: Remove Material Authors
+            // Even though we don't check for permissions, we must clean up the author association table.
             var materialAuthors = await _uow.MaterialAuthorRepository
                 .GetAllAsQueryable()
                 .Where(ma => ma.MaterialId == id)
@@ -201,6 +219,7 @@ namespace Lssctc.ProgramManagement.Materials.Services
                 await _uow.MaterialAuthorRepository.DeleteAsync(materialAuthor);
             }
 
+            // 5. DELETE: The Material itself
             await _uow.LearningMaterialRepository.DeleteAsync(material);
             await _uow.SaveChangesAsync();
         }
