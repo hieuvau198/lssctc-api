@@ -154,8 +154,8 @@ namespace Lssctc.ProgramManagement.Activities.Services
                 ActivityId = dto.ActivityId,
                 IsActive = dto.IsActive,
                 // [FIX] Convert Client Input (Vietnam Time) to UTC
-                StartTime = dto.StartTime.HasValue ? dto.StartTime.Value.AddHours(-7) : null,
-                EndTime = dto.EndTime.HasValue ? dto.EndTime.Value.AddHours(-7) : null
+                StartTime = dto.StartTime.HasValue ? dto.StartTime : null,
+                EndTime = dto.EndTime.HasValue ? dto.EndTime : null
             };
 
             await _uow.ActivitySessionRepository.CreateAsync(newSession);
@@ -177,9 +177,8 @@ namespace Lssctc.ProgramManagement.Activities.Services
                 throw new KeyNotFoundException($"Activity Session with ID {sessionId} not found.");
 
             existing.IsActive = dto.IsActive;
-            // [FIX] Convert Client Input (Vietnam Time) to UTC
-            existing.StartTime = dto.StartTime.HasValue ? dto.StartTime.Value.AddHours(-7) : null;
-            existing.EndTime = dto.EndTime.HasValue ? dto.EndTime.Value.AddHours(-7) : null;
+            existing.StartTime = dto.StartTime.HasValue ? dto.StartTime : null;
+            existing.EndTime = dto.EndTime.HasValue ? dto.EndTime : null;
 
             await _uow.ActivitySessionRepository.UpdateAsync(existing);
             await _uow.SaveChangesAsync();
@@ -320,16 +319,11 @@ namespace Lssctc.ProgramManagement.Activities.Services
         private async Task SendEmailsToTraineesAsync(List<TraineeEmailInfo> traineeInfos, string activityTitle, string className, DateTime? startTime, DateTime? endTime)
         {
             // Convert times to Vietnam timezone (UTC+7)
-            var vietnamTimeZone = TimeSpan.FromHours(7);
             string startTimeFormatted = startTime.HasValue
-                ? (startTime.Value.Kind == DateTimeKind.Utc 
-                    ? startTime.Value.Add(vietnamTimeZone) 
-                    : startTime.Value).ToString("dd/MM/yyyy HH:mm")
+                ? startTime.Value.ToString("dd/MM/yyyy HH:mm")
                 : "Chưa xác định";
             string endTimeFormatted = endTime.HasValue
-                ? (endTime.Value.Kind == DateTimeKind.Utc 
-                    ? endTime.Value.Add(vietnamTimeZone) 
-                    : endTime.Value).ToString("dd/MM/yyyy HH:mm")
+                ? endTime.Value.ToString("dd/MM/yyyy HH:mm")
                 : "Chưa xác định";
 
             // Send emails to each trainee
