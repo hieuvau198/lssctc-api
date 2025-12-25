@@ -168,6 +168,20 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Controllers
             catch (Exception ex) { return StatusCode(500, new { message = ex.Message }); }
         }
 
+        [HttpPost("class/{classId}/pause")]
+        [Authorize(Roles = "Admin, Instructor")]
+        public async Task<IActionResult> PauseClassExam(int classId)
+        {
+            try
+            {
+                await _finalExamsService.PauseClassExamAsync(classId);
+                return Ok(new { message = "Class final exam paused successfully (Status changed to NotYet)." });
+            }
+            catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+            catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
+            catch (Exception ex) { return StatusCode(500, new { message = ex.Message }); }
+        }
+
         [HttpPut("class/{classId}/weights")]
         [Authorize(Roles = "Admin, Instructor")]
         [ProducesResponseType(StatusCodes.Status200OK)]

@@ -112,6 +112,7 @@ namespace Lssctc.ProgramManagement.Materials.Controllers
             }
         }
 
+        // MODIFIED: Checks role before getting Instructor ID to allow Admins to create materials without authors
         [HttpPost]
         [Authorize(Roles = "Admin, Instructor")]
         public async Task<ActionResult<MaterialDto>> CreateMaterial([FromBody] CreateMaterialDto createDto)
@@ -121,10 +122,20 @@ namespace Lssctc.ProgramManagement.Materials.Controllers
 
             try
             {
-                // Extract instructor ID from JWT claims
-                var instructorId = GetInstructorIdFromClaims();
+                MaterialDto newMaterial;
 
-                var newMaterial = await _materialsService.CreateMaterialAsync(createDto, instructorId);
+                // Only link author if user is an Instructor
+                if (User.IsInRole("Instructor"))
+                {
+                    var instructorId = GetInstructorIdFromClaims();
+                    newMaterial = await _materialsService.CreateMaterialAsync(createDto, instructorId);
+                }
+                else
+                {
+                    // Admin or other roles: create without author
+                    newMaterial = await _materialsService.CreateMaterialAsync(createDto);
+                }
+
                 return CreatedAtAction(nameof(GetMaterialById), new { id = newMaterial.Id }, newMaterial);
             }
             catch (ArgumentException ex)
@@ -324,11 +335,23 @@ namespace Lssctc.ProgramManagement.Materials.Controllers
                     MaterialUrl = fileUrl
                 };
 
-                // 3. Extract instructor ID from JWT claims
-                var instructorId = GetInstructorIdFromClaims();
+                // 3. Extract instructor ID from JWT claims only if Instructor
+                int instructorId = 0;
+                if (User.IsInRole("Instructor"))
+                {
+                    instructorId = GetInstructorIdFromClaims();
+                }
 
                 // 4. Save to Database using existing service logic
-                var newMaterial = await _materialsService.CreateMaterialAsync(createDto, instructorId);
+                MaterialDto newMaterial;
+                if (instructorId > 0)
+                {
+                    newMaterial = await _materialsService.CreateMaterialAsync(createDto, instructorId);
+                }
+                else
+                {
+                    newMaterial = await _materialsService.CreateMaterialAsync(createDto);
+                }
 
                 return CreatedAtAction(nameof(GetMaterialById), new { id = newMaterial.Id }, newMaterial);
             }
@@ -338,7 +361,7 @@ namespace Lssctc.ProgramManagement.Materials.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "An unexpected error occurred during upload." });
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "An unexpected error occurred during upload. " + ex.Message });
             }
         }
 
@@ -356,7 +379,7 @@ namespace Lssctc.ProgramManagement.Materials.Controllers
                 if (existingMaterial == null)
                     return NotFound(new { Message = "Material not found or access denied." });
 
-                string currentUrl = existingMaterial.MaterialUrl;
+                string currentUrl = existingMaterial.MaterialUrl ?? "Not Found";
 
                 // 2. Prepare Update DTO
                 var updateDto = new UpdateMaterialDto

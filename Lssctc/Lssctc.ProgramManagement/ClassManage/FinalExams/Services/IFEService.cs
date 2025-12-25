@@ -16,5 +16,6 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
         Task FinishFinalExamAsync(int classId);
         Task RecalculateFinalExamScore(int finalExamId);
         Task OpenClassExamAsync(int classId);
+        Task PauseClassExamAsync(int classId);
     }
 }

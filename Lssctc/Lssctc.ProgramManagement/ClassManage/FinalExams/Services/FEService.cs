@@ -214,6 +214,42 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             await _uow.SaveChangesAsync();
         }
 
+        public async Task PauseClassExamAsync(int classId)
+        {
+            // 1. Retrieve Template
+            var template = await _uow.FinalExamTemplateRepository.GetAllAsQueryable()
+                .FirstOrDefaultAsync(t => t.ClassId == classId);
+
+            if (template == null)
+            {
+                throw new KeyNotFoundException($"Final Exam Template for class {classId} not found.");
+            }
+
+            // 2. Validate Status (Must be Open)
+            if (template.Status != (int)FinalExamStatusEnum.Open)
+            {
+                throw new InvalidOperationException($"Cannot pause exam. Current status is {((FinalExamStatusEnum)template.Status).ToString()}. Required: Open.");
+            }
+
+            // 3. Update Template Status to NotYet
+            template.Status = (int)FinalExamStatusEnum.NotYet;
+            await _uow.FinalExamTemplateRepository.UpdateAsync(template);
+
+            // 4. Update Status for Student Final Exams
+            // Only revert exams that are currently Open. Do not touch Completed or Submitted exams.
+            var exams = await _uow.FinalExamRepository.GetAllAsQueryable()
+                .Where(fe => fe.Enrollment.ClassId == classId && fe.Status == (int)FinalExamStatusEnum.Open)
+                .ToListAsync();
+
+            foreach (var exam in exams)
+            {
+                exam.Status = (int)FinalExamStatusEnum.NotYet;
+                await _uow.FinalExamRepository.UpdateAsync(exam);
+            }
+
+            await _uow.SaveChangesAsync();
+        }
+
         private void RecalculateFinalExamScoreInternal(FinalExam finalExam)
         {
             decimal total = 0;
@@ -303,7 +339,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                 Checklists = p.PeChecklists?.Select(c => new PeChecklistItemDto
                 {
                     Id = c.Id,
-                    Name = c.Name,
+                    Name = c.Name ?? "Not Found",
                     Description = c.Description,
                     IsPass = c.IsPass
                 }).ToList(),
