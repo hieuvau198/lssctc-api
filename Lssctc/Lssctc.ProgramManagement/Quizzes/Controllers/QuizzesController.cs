@@ -239,8 +239,13 @@ namespace Lssctc.ProgramManagement.Quizzes.Controllers
                 if (!ModelState.IsValid)
                     return BadRequest(new { status = 400, message = "Invalid model state", type = "ValidationException", errors = ModelState });
 
-                
-                var instructorId = GetInstructorIdFromClaims();
+                // Logic updated: Check role before getting ID.
+                // If Admin, instructorId remains 0, and Service will skip QuizAuthor creation.
+                int instructorId = 0;
+                if (User.IsInRole("Instructor"))
+                {
+                    instructorId = GetInstructorIdFromClaims();
+                }
 
                 var quizId = await _service.CreateQuizFromExcel(input, instructorId);
 
@@ -248,21 +253,20 @@ namespace Lssctc.ProgramManagement.Quizzes.Controllers
             }
             catch (ValidationException ex)
             {
-                // Bắt lỗi validation (ví dụ: sai tổng điểm, thiếu file...)
+                // Validation errors (e.g. wrong total score, missing file, or Instructor not found if ID was passed)
                 return BadRequest(new { status = 400, message = ex.Message, type = "ValidationException" });
             }
             catch (UnauthorizedAccessException ex)
             {
-                // Bắt lỗi auth từ GetInstructorIdFromClaims
+                // Auth errors from GetInstructorIdFromClaims
                 return Unauthorized(new { status = 401, message = ex.Message, type = "Unauthorized" });
             }
             catch (Exception ex)
             {
-                // Lỗi hệ thống khác
+                // System errors
                 return StatusCode(500, new { status = 500, message = ex.Message, type = ex.GetType().Name });
             }
         }
-
 
         [HttpPost("add-to-activity")]
         [Authorize(Roles = "Admin, Instructor")]
