@@ -378,6 +378,8 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                 .Include(p => p.FinalExam).ThenInclude(fe => fe.Enrollment)
                 .Include(p => p.FeTheories)
                 .Include(p => p.FeSimulations)
+                    .ThenInclude(s => s.SeTasks)      
+                    .ThenInclude(t => t.SimTask)      
                 .FirstOrDefaultAsync(p => p.Id == partialId);
 
             if (partial == null) throw new KeyNotFoundException("Partial exam not found.");
