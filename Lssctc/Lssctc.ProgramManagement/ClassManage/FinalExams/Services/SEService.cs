@@ -212,20 +212,22 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             {
                 foreach (var taskDto in dto.Tasks)
                 {
-                    var taskEntity = seTasks.FirstOrDefault(t => t.SimTask.TaskCode == taskDto.TaskCode);
+                    // [FIX] Use Case-Insensitive comparison and handle potential nulls
+                    var taskEntity = seTasks.FirstOrDefault(t =>
+                        t.SimTask != null &&
+                        t.SimTask.TaskCode.Equals(taskDto.TaskCode, StringComparison.OrdinalIgnoreCase));
+
                     if (taskEntity != null)
                     {
                         taskEntity.IsPass = taskDto.IsPass;
                         taskEntity.DurationSecond = taskDto.DurationSecond;
                         taskEntity.Status = 1; // Mark as attempted
 
-                        // [CHANGE] Use specific task completion time from DTO
-                        // If taskDto doesn't have CompleteTime, fallback to the global exam CompleteTime
+                        // Use specific task completion time from DTO
                         var taskCompletionTime = dto.CompleteTime;
 
                         taskEntity.CompleteTime = taskCompletionTime != null ? taskCompletionTime.Value.AddHours(7) : DateTime.UtcNow.AddHours(7);
 
-                        // [CHANGE] Calculate AttemptTime based on the specific completion time
                         if (taskDto.DurationSecond.HasValue && taskCompletionTime.HasValue)
                             taskEntity.AttemptTime = taskCompletionTime.Value.AddSeconds(-taskDto.DurationSecond.Value);
                         else
@@ -242,7 +244,6 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             {
                 int totalTasksCount = seTasks.Count;
 
-                // Priority: Calculate based on granular Task performance
                 if (dto.Tasks != null && dto.Tasks.Any() && totalTasksCount > 0)
                 {
                     decimal scorePerTask = 10m / totalTasksCount;
@@ -256,15 +257,10 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                             if (taskScore < 0) taskScore = 0;
                             calculatedMarks += taskScore;
                         }
-                        else
-                        {
-                            calculatedMarks += 0;
-                        }
                     }
                 }
                 else
                 {
-                    // Fallback: Use global mistakes
                     decimal deduction = dto.TotalMistake * 0.5m;
                     calculatedMarks = 10m - deduction;
                 }
@@ -272,20 +268,13 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                 if (calculatedMarks < 0) calculatedMarks = 0;
                 if (calculatedMarks > 10) calculatedMarks = 10;
             }
-            else
-            {
-                calculatedMarks = 0;
-            }
 
             // 3. Update Partial Exam Result
             partial.Marks = calculatedMarks;
             partial.IsPass = dto.IsPass;
             partial.Description = dto.Description;
             partial.StartTime = dto.StartTime != null ? dto.StartTime.Value.AddHours(7) : DateTime.UtcNow.AddHours(7);
-
-            // [CHANGE] This was already correct, using client provided time
             partial.CompleteTime = dto.CompleteTime != null ? dto.CompleteTime.Value.AddHours(7) : DateTime.UtcNow.AddHours(7);
-
             partial.Status = (int)FinalExamPartialStatus.Submitted;
 
             await _uow.FinalExamPartialRepository.UpdateAsync(partial);
@@ -297,9 +286,11 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             // Recalculate the Final Exam total score
             await _finalExamsService.RecalculateFinalExamScore(partial.FinalExamId);
 
+            // [OPTIONAL] Reload partial to ensure response definitely includes the updated tasks
+            // partial = await GetPartialWithSecurityCheckAsync(partialId, userId);
+
             return MapToPartialDto(partial, false);
         }
-
         public async Task<SimulationExamDetailDto> GetSimulationExamDetailAsync(int partialId)
         {
             var checkSim = await _uow.FeSimulationRepository.GetAllAsQueryable()

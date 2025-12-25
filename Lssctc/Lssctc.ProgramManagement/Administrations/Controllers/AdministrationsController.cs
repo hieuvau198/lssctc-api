@@ -13,17 +13,20 @@ namespace Lssctc.ProgramManagement.Administrations.Controllers
         private readonly IClassCompleteService _classCompleteService;
         private readonly AccountHelper _accountHelper;
         private readonly EnrollmentResetHelper _enrollmentResetHelper;
+        private readonly ContentCleanupHandler _contentCleanupHandler;
 
         public AdministrationsController(
             IClassCustomizeService classCustomizeService,
             IClassCompleteService classCompleteService,
             AccountHelper accountHelper,
-            EnrollmentResetHelper enrollmentResetHelper)
+            EnrollmentResetHelper enrollmentResetHelper,
+            ContentCleanupHandler contentCleanupHandler)
         {
             _classCustomizeService = classCustomizeService;
             _classCompleteService = classCompleteService;
             _accountHelper = accountHelper;
             _enrollmentResetHelper = enrollmentResetHelper;
+            _contentCleanupHandler = contentCleanupHandler;
         }
 
         /// <summary>
@@ -153,6 +156,17 @@ namespace Lssctc.ProgramManagement.Administrations.Controllers
         public async Task<IActionResult> ResetClassFinalExam(int id)
         {
             await _enrollmentResetHelper.ResetClassFinalExamAsync(id);
+            return NoContent();
+        }
+
+        /// <summary>
+        /// Permanently deletes Sections and Activities that are not used by any Course or Section.
+        /// Warning: This operation is irreversible.
+        /// </summary>
+        [HttpDelete("content/cleanup-unused")]
+        public async Task<IActionResult> CleanupUnusedContent()
+        {
+            await _contentCleanupHandler.CleanupUnusedContentAsync();
             return NoContent();
         }
     }
