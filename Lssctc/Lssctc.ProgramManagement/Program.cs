@@ -235,7 +235,9 @@ builder.Services.AddCors(options =>
                 "https://www.lssctc.site",
                 "216.198.79.1",
                 "lssctc-rny2qjrcg-nhats-projects-1e2c91a7.vercel.app",
-                "https://lssctc-web.vercel.app"
+                "https://lssctc-web.vercel.app",
+                "https://lssctc-web-git-dev-nhats-projects-1e2c91a7.vercel.app/",
+                "https://lssctc-web-git-feat-update-ui-nhats-projects-1e2c91a7.vercel.app/"
                 )
                   .AllowAnyHeader()
                   .AllowAnyMethod()
