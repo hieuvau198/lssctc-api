@@ -133,13 +133,12 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             var partial = await GetPartialWithSecurityCheckAsync(partialId, userId);
             if (partial.Type != 2) throw new ArgumentException("This ID is not a Simulation Exam (SE).");
 
-            // --- UPDATED VALIDATION: Check Final Exam Status ---
+            // Check Final Exam Status ---
             var feStatus = partial.FinalExam.Status;
             if (feStatus != (int)FinalExamStatusEnum.Open && feStatus != (int)FinalExamStatusEnum.Submitted)
             {
                 throw new InvalidOperationException($"Cannot start exam. Final Exam status is '{((FinalExamStatusEnum)feStatus)}'. Allowed statuses: Open, Submitted.");
             }
-            // -------------------------------------------------
 
             if (!partial.StartTime.HasValue)
             {
@@ -163,11 +162,15 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                                        && t.SimTask.TaskCode == taskCode);
 
             if (seTask == null) throw new KeyNotFoundException($"Task with code '{taskCode}' not found in this exam.");
-            var nowUtc7 = DateTime.UtcNow;
+            var nowUtc7 = DateTime.UtcNow.AddHours(7);
 
+            // Update status
             seTask.IsPass = dto.IsPass;
             seTask.DurationSecond = dto.DurationSecond;
-            seTask.CompleteTime = DateTime.UtcNow.AddHours(7);
+            seTask.CompleteTime = nowUtc7; // Mark completion time
+            seTask.Status = 1; // Mark as Attempted/Submitted
+
+            // Calculate AttemptTime backwards from Duration if available, else use now
             if (dto.DurationSecond.HasValue)
             {
                 seTask.AttemptTime = nowUtc7.AddSeconds(-dto.DurationSecond.Value);
@@ -176,7 +179,10 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             {
                 seTask.AttemptTime = nowUtc7;
             }
-            seTask.Status = 1;
+
+            /* * NOTE: We cannot save 'Mistake' or 'Score' here because the SeTask entity 
+             * does not have columns for them. The scoring logic is handled in SubmitSeFinalAsync.
+             */
 
             _uow.GetDbContext().Set<SeTask>().Update(seTask);
             await _uow.SaveChangesAsync();
@@ -206,17 +212,17 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             }
 
             if (partial.Type != 2) throw new ArgumentException("This ID is not a Simulation Exam (SE).");
-            var nowUtc7 = DateTime.UtcNow;
+            var nowUtc7 = DateTime.UtcNow.AddHours(7);
 
-            // 1. Update individual Task statuses (Always save task results regardless of pass/fail)
+            // Fetch all existing tasks for this simulation to determine the total count for scoring
+            var seTasks = await _uow.GetDbContext().Set<SeTask>()
+                .Include(t => t.SimTask)
+                .Where(t => t.FeSimulation.FinalExamPartialId == partialId)
+                .ToListAsync();
+
+            // 1. Update individual Task statuses from the DTO
             if (dto.Tasks != null && dto.Tasks.Any())
             {
-                // Note: Removed .Include(t => t.FeSimulation) to avoid tracking conflicts with 'partial'
-                var seTasks = await _uow.GetDbContext().Set<SeTask>()
-                    .Include(t => t.SimTask)
-                    .Where(t => t.FeSimulation.FinalExamPartialId == partialId)
-                    .ToListAsync();
-
                 foreach (var taskDto in dto.Tasks)
                 {
                     var taskEntity = seTasks.FirstOrDefault(t => t.SimTask.TaskCode == taskDto.TaskCode);
@@ -225,38 +231,65 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                         taskEntity.IsPass = taskDto.IsPass;
                         taskEntity.DurationSecond = taskDto.DurationSecond;
                         taskEntity.CompleteTime = nowUtc7;
-                        taskEntity.Status = 1; // Mark as attempted/submitted
+                        taskEntity.Status = 1; // Mark as attempted
 
-                        // Calculate attempt time based on duration
                         if (taskDto.DurationSecond.HasValue)
-                        {
                             taskEntity.AttemptTime = nowUtc7.AddSeconds(-taskDto.DurationSecond.Value);
-                        }
                         else
-                        {
                             taskEntity.AttemptTime = nowUtc7;
-                        }
                     }
                 }
                 await _uow.SaveChangesAsync();
             }
 
-            // 2. Calculate Overall Score based on New Logic
+            // 2. Calculate Overall Score
             decimal calculatedMarks = 0;
 
             if (dto.IsPass)
             {
-                // Default score is 10. Minus 0.5 for every mistake.
-                // Formula: 10 - (TotalMistake * 0.5)
-                decimal deduction = dto.TotalMistake * 0.5m;
-                calculatedMarks = 10m - deduction;
+                int totalTasksCount = seTasks.Count;
 
-                // Ensure marks do not go below 0
+                // Priority: Calculate based on granular Task performance (Rule 3)
+                if (dto.Tasks != null && dto.Tasks.Any() && totalTasksCount > 0)
+                {
+                    decimal scorePerTask = 10m / totalTasksCount;
+
+                    foreach (var taskDto in dto.Tasks)
+                    {
+                        // Rule: Task score 0 if task fail
+                        if (taskDto.IsPass)
+                        {
+                            // Rule: Task score = (MaxTaskScore) - 0.5 for each mistake
+                            decimal deduction = taskDto.Mistake * 0.5m;
+                            decimal taskScore = scorePerTask - deduction;
+
+                            // Ensure task score doesn't go below 0 (implied constraint)
+                            if (taskScore < 0) taskScore = 0;
+
+                            calculatedMarks += taskScore;
+                        }
+                        else
+                        {
+                            // Task Failed -> Score is 0
+                            calculatedMarks += 0;
+                        }
+                    }
+                }
+                else
+                {
+                    // Fallback (Rule 1): If no detailed tasks provided, use global mistakes
+                    // Formula: 10 - (TotalMistake * 0.5)
+                    decimal deduction = dto.TotalMistake * 0.5m;
+                    calculatedMarks = 10m - deduction;
+                }
+
+                // Ensure marks do not fall below 0 or exceed 10
                 if (calculatedMarks < 0) calculatedMarks = 0;
+                if (calculatedMarks > 10) calculatedMarks = 10;
             }
             else
             {
-                // If SE status is Fail, Total Score is 0
+                // Rule 2: If the whole practice fail, 0 score always
                 calculatedMarks = 0;
             }
 
