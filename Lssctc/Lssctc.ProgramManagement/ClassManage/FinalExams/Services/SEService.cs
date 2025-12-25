@@ -190,6 +190,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
 
         public async Task<FinalExamPartialDto> SubmitSeFinalAsync(int partialId, int userId, SubmitSeFinalDto dto)
         {
+            // This method ALREADY loads FeSimulations and SeTasks
             var partial = await GetPartialWithSecurityCheckAsync(partialId, userId);
 
             // Validation: Check Final Exam Status
@@ -201,53 +202,49 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
 
             if (partial.Type != 2) throw new ArgumentException("This ID is not a Simulation Exam (SE).");
 
-            // Fetch all existing tasks for this simulation
-            var seTasks = await _uow.SeTaskRepository.GetAllAsQueryable()
-                .Include(t => t.SimTask)
-                .Where(t => t.FeSimulation.FinalExamPartialId == partialId)
-                .ToListAsync();
+            // [FIX] Use the tasks ALREADY loaded in the partial graph. Do not fetch a new list.
+            var existingTasks = partial.FeSimulations.SelectMany(s => s.SeTasks).ToList();
 
-            // 1. Update individual Task statuses from the DTO
+            // 1. Update individual Task statuses
             if (dto.Tasks != null && dto.Tasks.Any())
             {
                 foreach (var taskDto in dto.Tasks)
                 {
-                    // [FIX] Use Case-Insensitive comparison and handle potential nulls
-                    var taskEntity = seTasks.FirstOrDefault(t =>
+                    // Find the task inside the loaded graph
+                    var taskEntity = existingTasks.FirstOrDefault(t =>
                         t.SimTask != null &&
                         t.SimTask.TaskCode.Equals(taskDto.TaskCode, StringComparison.OrdinalIgnoreCase));
 
                     if (taskEntity != null)
                     {
+                        // Updating properties on the graph object directly
                         taskEntity.IsPass = taskDto.IsPass;
                         taskEntity.DurationSecond = taskDto.DurationSecond;
                         taskEntity.Status = 1; // Mark as attempted
 
-                        // Use specific task completion time from DTO
                         var taskCompletionTime = dto.CompleteTime;
-
                         taskEntity.CompleteTime = taskCompletionTime != null ? taskCompletionTime.Value.AddHours(7) : DateTime.UtcNow.AddHours(7);
 
                         if (taskDto.DurationSecond.HasValue && taskCompletionTime.HasValue)
                             taskEntity.AttemptTime = taskCompletionTime.Value.AddSeconds(-taskDto.DurationSecond.Value);
                         else
                             taskEntity.AttemptTime = taskCompletionTime;
+
+                        // Note: We do NOT need to call _uow.SeTaskRepository.UpdateAsync(taskEntity) here.
+                        // The UpdateAsync(partial) call at the end will handle the whole graph.
                     }
                 }
-                await _uow.SaveChangesAsync();
             }
 
             // 2. Calculate Overall Score
             decimal calculatedMarks = 0;
-
             if (dto.IsPass)
             {
-                int totalTasksCount = seTasks.Count;
+                int totalTasksCount = existingTasks.Count;
 
                 if (dto.Tasks != null && dto.Tasks.Any() && totalTasksCount > 0)
                 {
                     decimal scorePerTask = 10m / totalTasksCount;
-
                     foreach (var taskDto in dto.Tasks)
                     {
                         if (taskDto.IsPass)
@@ -277,6 +274,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             partial.CompleteTime = dto.CompleteTime != null ? dto.CompleteTime.Value.AddHours(7) : DateTime.UtcNow.AddHours(7);
             partial.Status = (int)FinalExamPartialStatus.Submitted;
 
+            // [FIX] This Single Update call saves the partial AND the modified SeTasks in its graph
             await _uow.FinalExamPartialRepository.UpdateAsync(partial);
             await _uow.SaveChangesAsync();
 
@@ -286,11 +284,12 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             // Recalculate the Final Exam total score
             await _finalExamsService.RecalculateFinalExamScore(partial.FinalExamId);
 
-            // [OPTIONAL] Reload partial to ensure response definitely includes the updated tasks
-            // partial = await GetPartialWithSecurityCheckAsync(partialId, userId);
+            // Reload partial to ensure response includes the latest state from DB
+            partial = await GetPartialWithSecurityCheckAsync(partialId, userId);
 
             return MapToPartialDto(partial, false);
         }
+
         public async Task<SimulationExamDetailDto> GetSimulationExamDetailAsync(int partialId)
         {
             var checkSim = await _uow.FeSimulationRepository.GetAllAsQueryable()
