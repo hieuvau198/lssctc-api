@@ -530,6 +530,133 @@ namespace Lssctc.ProgramManagement.Sections.Services
             // 8. Return Result
             return newSections.Select(MapToDto);
         }
+
+        public async Task<IEnumerable<SectionDto>> ImportSectionsWithActivitiesFromExcelAsync(int courseId, IFormFile file)
+        {
+            // 1. Validation
+            if (await IsCourseLockedAsync(courseId))
+            {
+                throw new InvalidOperationException("Cannot import to a locked course.");
+            }
+
+            var course = await _uow.CourseRepository.GetByIdAsync(courseId);
+            if (course == null || course.IsDeleted == true)
+                throw new KeyNotFoundException($"Course with ID {courseId} not found.");
+
+            System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
+
+            var createdSections = new List<Section>();
+            Section? currentSection = null;
+
+            // Get current max order for the course to append new sections at the end
+            var currentSectionOrder = await _uow.CourseSectionRepository
+                .GetAllAsQueryable()
+                .Where(cs => cs.CourseId == courseId)
+                .MaxAsync(cs => (int?)cs.SectionOrder) ?? 0;
+
+            using (var stream = file.OpenReadStream())
+            using (var reader = ExcelReaderFactory.CreateReader(stream))
+            {
+                var result = reader.AsDataSet(new ExcelDataSetConfiguration()
+                {
+                    ConfigureDataTable = (_) => new ExcelDataTableConfiguration() { UseHeaderRow = true }
+                });
+
+                var dataTable = result.Tables[0];
+                if (dataTable.Rows.Count == 0) throw new ArgumentException("Excel file is empty.");
+
+                foreach (DataRow row in dataTable.Rows)
+                {
+                    // --- Column Mapping ---
+                    // 0: Section Title
+                    // 1: Section Description
+                    // 2: Activity Type (Material, Quiz, Practice)
+                    // 3: Activity Name
+                    // 4: Activity Description / Link
+                    // 5: Duration (Minutes)
+
+                    string secTitle = row[0]?.ToString()?.Trim() ?? "";
+                    string secDesc = row[1]?.ToString()?.Trim() ?? "";
+
+                    string actTypeStr = row[2]?.ToString()?.Trim() ?? "";
+                    string actName = row[3]?.ToString()?.Trim() ?? "";
+                    string actDesc = row[4]?.ToString()?.Trim() ?? "";
+
+                    // Parse Duration
+                    int.TryParse(row[5]?.ToString(), out int duration);
+                    if (duration <= 0) duration = 0;
+
+                    // === LOGIC: NEW SECTION ===
+                    if (!string.IsNullOrEmpty(secTitle))
+                    {
+                        // Create and Save Section
+                        var newSection = new Section
+                        {
+                            SectionTitle = secTitle,
+                            SectionDescription = string.IsNullOrEmpty(secDesc) ? null : secDesc,
+                            EstimatedDurationMinutes = duration > 0 ? duration : 0, // Default to 0 if not set, or sum activities later
+                            IsDeleted = false
+                        };
+
+                        await _uow.SectionRepository.CreateAsync(newSection);
+                        await _uow.SaveChangesAsync(); // Save to get Id
+
+                        // Link to Course
+                        currentSectionOrder++;
+                        var courseSection = new CourseSection
+                        {
+                            CourseId = courseId,
+                            SectionId = newSection.Id,
+                            SectionOrder = currentSectionOrder
+                        };
+                        await _uow.CourseSectionRepository.CreateAsync(courseSection);
+                        await _uow.SaveChangesAsync();
+
+                        currentSection = newSection;
+                        createdSections.Add(newSection);
+                    }
+
+                    // === LOGIC: NEW ACTIVITY (Attached to Current Section) ===
+                    // Valid if we have a current section AND an Activity Type is specified
+                    if (currentSection != null && !string.IsNullOrEmpty(actTypeStr) && !string.IsNullOrEmpty(actName))
+                    {
+                        if (Enum.TryParse<ActivityType>(actTypeStr, true, out var activityTypeEnum))
+                        {
+                            // 1. Create Generic Activity
+                            var newActivity = new Activity
+                            {
+                                ActivityTitle = actName,
+                                ActivityDescription = string.IsNullOrEmpty(actDesc) ? null : actDesc,
+                                ActivityType = (int)activityTypeEnum,
+                                EstimatedDurationMinutes = duration,
+                                IsDeleted = false
+                            };
+
+                            await _uow.ActivityRepository.CreateAsync(newActivity);
+                            await _uow.SaveChangesAsync();
+
+                            // 2. Link to Section
+                            // Get next order for this specific section
+                            var actOrder = await _uow.SectionActivityRepository.GetAllAsQueryable()
+                                .Where(sa => sa.SectionId == currentSection.Id)
+                                .CountAsync() + 1;
+
+                            var sectionActivity = new SectionActivity
+                            {
+                                SectionId = currentSection.Id,
+                                ActivityId = newActivity.Id,
+                                ActivityOrder = actOrder
+                            };
+                            await _uow.SectionActivityRepository.CreateAsync(sectionActivity);
+                            await _uow.SaveChangesAsync();
+                        }
+                    }
+                }
+            }
+
+            return createdSections.Select(MapToDto);
+        }
+
         #endregion
 
         #region --- ADDED HELPER METHODS ---
@@ -545,8 +672,6 @@ namespace Lssctc.ProgramManagement.Sections.Services
                 (int)ClassStatusEnum.Cancelled
             };
 
-            // A course is locked if it's part of a ProgramCourse
-            // that is used by any Class with a locked status.
             bool isLocked = await _uow.ClassRepository
                 .GetAllAsQueryable()
                 .AnyAsync(c => c.ProgramCourse.CourseId == courseId &&

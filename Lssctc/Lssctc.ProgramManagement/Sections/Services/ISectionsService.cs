@@ -18,5 +18,6 @@ namespace Lssctc.ProgramManagement.Sections.Services
         Task RemoveSectionFromCourseAsync(int courseId, int sectionId);
         Task UpdateCourseSectionOrderAsync(int courseId, int sectionId, int newOrder);
         Task<IEnumerable<SectionDto>> ImportSectionsFromExcelAsync(int courseId, IFormFile file);
+        Task<IEnumerable<SectionDto>> ImportSectionsWithActivitiesFromExcelAsync(int courseId, IFormFile file);
     }
 }

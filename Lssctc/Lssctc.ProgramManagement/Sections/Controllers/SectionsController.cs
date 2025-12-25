@@ -249,6 +249,38 @@ namespace Lssctc.ProgramManagement.Sections.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "An error occurred while processing the file: " + ex.Message });
             }
         }
+
+        [HttpPost("course/{courseId}/import-full")]
+        [Authorize(Roles = "Admin, Instructor")]
+        public async Task<ActionResult<IEnumerable<SectionDto>>> ImportSectionsWithActivities(int courseId, IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+                return BadRequest(new { Message = "No file uploaded." });
+
+            var extension = Path.GetExtension(file.FileName).ToLower();
+            if (extension != ".xlsx" && extension != ".xls")
+                return BadRequest(new { Message = "Invalid file format. Please upload an Excel file (.xlsx or .xls)." });
+
+            try
+            {
+                // Call the new service method
+                var createdSections = await _sectionsService.ImportSectionsWithActivitiesFromExcelAsync(courseId, file);
+                return Ok(createdSections);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { Message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "Error processing file: " + ex.Message });
+            }
+        }
+
         #endregion
 
     }
