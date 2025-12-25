@@ -56,7 +56,7 @@ namespace Lssctc.ProgramManagement.BrandModel.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Admin, SimulationManager")]
         public async Task<ActionResult<int>> CreateBrandModel(
             [FromBody] CreateBrandModelDto dto,
             CancellationToken cancellationToken = default)
@@ -77,7 +77,7 @@ namespace Lssctc.ProgramManagement.BrandModel.Controllers
         }
 
         [HttpPut("{id}")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Admin, SimulationManager")]
         public async Task<IActionResult> UpdateBrandModel(
             int id,
             [FromBody] UpdateBrandModelDto dto,
@@ -102,7 +102,7 @@ namespace Lssctc.ProgramManagement.BrandModel.Controllers
         }
 
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Admin, SimulationManager")]
         public async Task<IActionResult> DeleteBrandModel(
             int id,
             CancellationToken cancellationToken = default)
