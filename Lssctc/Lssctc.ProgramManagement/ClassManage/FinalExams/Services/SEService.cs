@@ -163,11 +163,11 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                                        && t.SimTask.TaskCode == taskCode);
 
             if (seTask == null) throw new KeyNotFoundException($"Task with code '{taskCode}' not found in this exam.");
-            var nowUtc7 = DateTime.UtcNow.AddHours(7);
+            var nowUtc7 = DateTime.UtcNow;
 
             seTask.IsPass = dto.IsPass;
             seTask.DurationSecond = dto.DurationSecond;
-            seTask.CompleteTime = DateTime.UtcNow;
+            seTask.CompleteTime = DateTime.UtcNow.AddHours(7);
             if (dto.DurationSecond.HasValue)
             {
                 seTask.AttemptTime = nowUtc7.AddSeconds(-dto.DurationSecond.Value);
@@ -206,7 +206,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             }
 
             if (partial.Type != 2) throw new ArgumentException("This ID is not a Simulation Exam (SE).");
-            var nowUtc7 = DateTime.UtcNow.AddHours(7);
+            var nowUtc7 = DateTime.UtcNow;
 
             // 1. Update individual Task statuses (Always save task results regardless of pass/fail)
             if (dto.Tasks != null && dto.Tasks.Any())
