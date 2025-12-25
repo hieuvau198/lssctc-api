@@ -178,11 +178,29 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                 throw new InvalidOperationException($"Cannot start exam. Current status is {((FinalExamStatusEnum)template.Status).ToString()}. Required: NotYet.");
             }
 
-            // 3. Update Template Status to Open
+            // 3. Validate Date (Current date must match StartTime)
+            var examStartTime = await _uow.FinalExamRepository.GetAllAsQueryable()
+                .Where(fe => fe.Enrollment.ClassId == classId)
+                .SelectMany(fe => fe.FinalExamPartials)
+                .Where(p => p.StartTime.HasValue)
+                .Select(p => p.StartTime)
+                .FirstOrDefaultAsync();
+
+            if (!examStartTime.HasValue)
+            {
+                throw new InvalidOperationException("Cannot open exam. No start time configured for any student.");
+            }
+
+            if (examStartTime.Value.Date != DateTime.UtcNow.Date)
+            {
+                throw new InvalidOperationException($"Cannot open exam. The current date ({DateTime.UtcNow.Date:yyyy-MM-dd}) must be the same as the start time of the final exam ({examStartTime.Value.Date:yyyy-MM-dd}).");
+            }
+
+            // 4. Update Template Status to Open
             template.Status = (int)FinalExamStatusEnum.Open;
             await _uow.FinalExamTemplateRepository.UpdateAsync(template);
 
-            // 4. Update Status for All Student Final Exams
+            // 5. Update Status for All Student Final Exams
             var exams = await _uow.FinalExamRepository.GetAllAsQueryable()
                 .Where(fe => fe.Enrollment.ClassId == classId)
                 .ToListAsync();
