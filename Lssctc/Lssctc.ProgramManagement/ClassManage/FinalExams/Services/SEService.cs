@@ -223,7 +223,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                         // If taskDto doesn't have CompleteTime, fallback to the global exam CompleteTime
                         var taskCompletionTime = dto.CompleteTime;
 
-                        taskEntity.CompleteTime = taskCompletionTime;
+                        taskEntity.CompleteTime = taskCompletionTime != null ? taskCompletionTime.Value.AddHours(7) : DateTime.UtcNow.AddHours(7);
 
                         // [CHANGE] Calculate AttemptTime based on the specific completion time
                         if (taskDto.DurationSecond.HasValue && taskCompletionTime.HasValue)
@@ -281,10 +281,10 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             partial.Marks = calculatedMarks;
             partial.IsPass = dto.IsPass;
             partial.Description = dto.Description;
-            partial.StartTime = dto.StartTime;
+            partial.StartTime = dto.StartTime != null ? dto.StartTime.Value.AddHours(7) : DateTime.UtcNow.AddHours(7);
 
             // [CHANGE] This was already correct, using client provided time
-            partial.CompleteTime = dto.CompleteTime;
+            partial.CompleteTime = dto.CompleteTime != null ? dto.CompleteTime.Value.AddHours(7) : DateTime.UtcNow.AddHours(7);
 
             partial.Status = (int)FinalExamPartialStatus.Submitted;
 
