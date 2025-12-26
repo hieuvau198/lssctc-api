@@ -131,13 +131,13 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
         public async Task<FinalExamPartialDto> StartSimulationExamAsync(int partialId, int userId)
         {
             var partial = await GetPartialWithSecurityCheckAsync(partialId, userId);
-            if (partial.Type != 2) throw new ArgumentException("This ID is not a Simulation Exam (SE).");
+            if (partial.Type != 2) throw new ArgumentException("Đây không phải bài kiểm tra mô phỏng.");
 
             // Check Final Exam Status ---
             var feStatus = partial.FinalExam.Status;
             if (feStatus != (int)FinalExamStatusEnum.Open && feStatus != (int)FinalExamStatusEnum.Submitted)
             {
-                throw new InvalidOperationException($"Cannot start exam. Final Exam status is '{((FinalExamStatusEnum)feStatus)}'. Allowed statuses: Open, Submitted.");
+                throw new InvalidOperationException($"Không thể bắt đầu bài làm,  '{((FinalExamStatusEnum)feStatus)}'. Allowed statuses: Open, Submitted.");
             }
 
             if (!partial.StartTime.HasValue)

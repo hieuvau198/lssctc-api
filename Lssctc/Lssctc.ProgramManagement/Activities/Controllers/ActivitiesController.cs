@@ -32,7 +32,7 @@ namespace Lssctc.ProgramManagement.Activities.Controllers
             }
             catch (Exception)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "An unexpected error occurred." });
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "Đã xảy ra lỗi không mong muốn." });
             }
         }
 
@@ -47,7 +47,7 @@ namespace Lssctc.ProgramManagement.Activities.Controllers
             }
             catch (Exception)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "An unexpected error occurred." });
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "Đã xảy ra lỗi không mong muốn." });
             }
         }
 
@@ -60,13 +60,13 @@ namespace Lssctc.ProgramManagement.Activities.Controllers
                 var activity = await _activitiesService.GetActivityByIdAsync(id);
                 if (activity == null)
                 {
-                    return NotFound(new { Message = "Activity not found." });
+                    return NotFound(new { Message = "Không tìm thấy hoạt động." });
                 }
                 return Ok(activity);
             }
             catch (Exception)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "An unexpected error occurred." });
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "Đã xảy ra lỗi không mong muốn." });
             }
         }
 
@@ -76,7 +76,7 @@ namespace Lssctc.ProgramManagement.Activities.Controllers
         {
             if (createDto == null)
             {
-                return BadRequest(new { Message = "Invalid activity data." });
+                return BadRequest(new { Message = "Dữ liệu hoạt động không hợp lệ." });
             }
 
             try
@@ -86,7 +86,7 @@ namespace Lssctc.ProgramManagement.Activities.Controllers
             }
             catch (Exception)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "An unexpected error occurred." });
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "Đã xảy ra lỗi không mong muốn." });
             }
         }
 
@@ -96,7 +96,7 @@ namespace Lssctc.ProgramManagement.Activities.Controllers
         {
             if (updateDto == null)
             {
-                return BadRequest(new { Message = "Invalid activity data." });
+                return BadRequest(new { Message = "Dữ liệu hoạt động không hợp lệ." });
             }
 
             try
@@ -114,7 +114,7 @@ namespace Lssctc.ProgramManagement.Activities.Controllers
             }
             catch (Exception)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "An unexpected error occurred." });
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "Đã xảy ra lỗi không mong muốn." });
             }
         }
 
@@ -137,7 +137,7 @@ namespace Lssctc.ProgramManagement.Activities.Controllers
             }
             catch (Exception)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "An unexpected error occurred." });
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "Đã xảy ra lỗi không mong muốn." });
             }
         }
 
@@ -156,7 +156,7 @@ namespace Lssctc.ProgramManagement.Activities.Controllers
             }
             catch (Exception)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "An unexpected error occurred." });
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "Đã xảy ra lỗi không mong muốn." });
             }
         }
 
@@ -167,7 +167,7 @@ namespace Lssctc.ProgramManagement.Activities.Controllers
             try
             {
                 await _activitiesService.AddActivityToSectionAsync(sectionId, activityId);
-                return Ok(new { Message = "Activity successfully added to section." });
+                return Ok(new { Message = "Thêm hoạt động vào phần học thành công." });
             }
             catch (KeyNotFoundException ex)
             {
@@ -179,7 +179,7 @@ namespace Lssctc.ProgramManagement.Activities.Controllers
             }
             catch (Exception)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "An unexpected error occurred." });
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "Đã xảy ra lỗi không mong muốn." });
             }
         }
 
@@ -189,7 +189,7 @@ namespace Lssctc.ProgramManagement.Activities.Controllers
         {
             if (createDto == null)
             {
-                return BadRequest(new { Message = "Invalid activity data." });
+                return BadRequest(new { Message = "Dữ liệu hoạt động không hợp lệ." });
             }
 
             try
@@ -209,7 +209,7 @@ namespace Lssctc.ProgramManagement.Activities.Controllers
             }
             catch (Exception)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "An unexpected error occurred." });
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "Đã xảy ra lỗi không mong muốn." });
             }
         }
 
@@ -220,7 +220,7 @@ namespace Lssctc.ProgramManagement.Activities.Controllers
             try
             {
                 await _activitiesService.RemoveActivityFromSectionAsync(sectionId, activityId);
-                return Ok(new { Message = "Activity successfully removed from section." });
+                return Ok(new { Message = "Xóa hoạt động khỏi phần học thành công." });
             }
             catch (KeyNotFoundException ex)
             {
@@ -232,7 +232,7 @@ namespace Lssctc.ProgramManagement.Activities.Controllers
             }
             catch (Exception)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "An unexpected error occurred." });
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "Đã xảy ra lỗi không mong muốn." });
             }
         }
 
@@ -243,7 +243,7 @@ namespace Lssctc.ProgramManagement.Activities.Controllers
             try
             {
                 await _activitiesService.UpdateSectionActivityOrderAsync(sectionId, activityId, newOrder);
-                return Ok(new { Message = "Section activity order updated successfully." });
+                return Ok(new { Message = "Cập nhật thứ tự hoạt động thành công." });
             }
             catch (KeyNotFoundException ex)
             {
@@ -259,7 +259,7 @@ namespace Lssctc.ProgramManagement.Activities.Controllers
             }
             catch (Exception)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "An unexpected error occurred." });
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "Đã xảy ra lỗi không mong muốn." });
             }
         }
 

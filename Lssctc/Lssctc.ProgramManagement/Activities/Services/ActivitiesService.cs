@@ -10,7 +10,7 @@ namespace Lssctc.ProgramManagement.Activities.Services
     public class ActivitiesService : IActivitiesService
     {
         private readonly IUnitOfWork _uow;
-        private readonly IActivitySessionService _activitySessionService; // Added Service
+        private readonly IActivitySessionService _activitySessionService;
 
         public ActivitiesService(IUnitOfWork uow, IActivitySessionService activitySessionService)
         {
@@ -77,7 +77,7 @@ namespace Lssctc.ProgramManagement.Activities.Services
             var activity = await _uow.ActivityRepository.GetByIdAsync(id);
             if (activity == null || activity.IsDeleted == true)
             {
-                throw new KeyNotFoundException($"Activity with ID {id} not found.");
+                throw new KeyNotFoundException($"Không tìm thấy hoạt động với ID {id}.");
             }
 
             // 1. Validation: Unique Title Check
@@ -92,7 +92,7 @@ namespace Lssctc.ProgramManagement.Activities.Services
 
                     if (isDuplicate)
                     {
-                        throw new InvalidOperationException($"Activity title '{normalizedTitle}' already exists.");
+                        throw new InvalidOperationException($"Tiêu đề hoạt động '{normalizedTitle}' đã tồn tại.");
                     }
                     activity.ActivityTitle = normalizedTitle;
                 }
@@ -129,12 +129,22 @@ namespace Lssctc.ProgramManagement.Activities.Services
 
             if (activity == null || activity.IsDeleted == true)
             {
-                throw new KeyNotFoundException($"Activity with ID {id} not found.");
+                throw new KeyNotFoundException($"Không tìm thấy hoạt động với ID {id}.");
             }
 
+            // Check if any section using this activity is locked by an active class
+            foreach (var sa in activity.SectionActivities)
+            {
+                if (await IsSectionLockedAsync(sa.SectionId))
+                {
+                    throw new InvalidOperationException("Không thể xóa hoạt động này vì nó đang được sử dụng trong một lớp học đang diễn ra hoặc đã kết thúc.");
+                }
+            }
+
+            // Enforce cleanup first
             if (activity.SectionActivities != null && activity.SectionActivities.Any())
             {
-                throw new InvalidOperationException("Cannot delete activity associated with sections. Please remove it from all sections first.");
+                throw new InvalidOperationException("Không thể xóa hoạt động này vì nó đang được gán vào một hoặc nhiều phần học. Vui lòng gỡ bỏ hoạt động khỏi các phần học trước.");
             }
 
             activity.IsDeleted = true;
@@ -159,20 +169,26 @@ namespace Lssctc.ProgramManagement.Activities.Services
 
         public async Task AddActivityToSectionAsync(int sectionId, int activityId)
         {
+            // Lock Check
+            if (await IsSectionLockedAsync(sectionId))
+            {
+                throw new InvalidOperationException("Không thể thêm hoạt động vào phần học này vì lớp học đang diễn ra hoặc đã kết thúc.");
+            }
+
             var section = await _uow.SectionRepository.GetByIdAsync(sectionId);
             if (section == null)
-                throw new KeyNotFoundException($"Section with ID {sectionId} not found.");
+                throw new KeyNotFoundException($"Không tìm thấy phần học với ID {sectionId}.");
 
             var activity = await _uow.ActivityRepository.GetByIdAsync(activityId);
             if (activity == null || activity.IsDeleted == true)
-                throw new KeyNotFoundException($"Activity with ID {activityId} not found.");
+                throw new KeyNotFoundException($"Không tìm thấy hoạt động với ID {activityId}.");
 
             bool alreadyExists = await _uow.SectionActivityRepository
                 .GetAllAsQueryable()
                 .AnyAsync(sa => sa.SectionId == sectionId && sa.ActivityId == activityId);
 
             if (alreadyExists)
-                throw new InvalidOperationException("This activity is already assigned to the section.");
+                throw new InvalidOperationException("Hoạt động này đã được gán vào phần học.");
 
             // 1. Add to SectionActivity (The Template)
             int newOrder = await GetNextAvailableOrderAsync(sectionId);
@@ -188,13 +204,13 @@ namespace Lssctc.ProgramManagement.Activities.Services
             await _uow.SectionActivityRepository.CreateAsync(sectionActivity);
             await _uow.SaveChangesAsync();
 
-            // 2. Propagate to Active Classes (The Live Data)
-            // Find all existing SectionRecords for this SectionId
+            // 2. Propagate to Open/Draft Classes (Data Consistency for non-locked classes)
+            // If class is locked, we threw exception above. If we are here, class is likely Draft or Open.
             var affectedSectionRecords = await _uow.SectionRecordRepository
                 .GetAllAsQueryable()
                 .Where(sr => sr.SectionId == sectionId)
                 .Include(sr => sr.LearningProgress)
-                    .ThenInclude(lp => lp.Enrollment) // Need Enrollment to get ClassId
+                    .ThenInclude(lp => lp.Enrollment)
                 .ToListAsync();
 
             if (affectedSectionRecords.Any())
@@ -217,7 +233,7 @@ namespace Lssctc.ProgramManagement.Activities.Services
                 }
                 await _uow.SaveChangesAsync();
 
-                // B. Create Activity Sessions for Affected Classes (FIX)
+                // B. Create Activity Sessions for Affected Classes
                 var affectedClassIds = affectedSectionRecords
                     .Select(sr => sr.LearningProgress.Enrollment.ClassId)
                     .Distinct()
@@ -225,7 +241,6 @@ namespace Lssctc.ProgramManagement.Activities.Services
 
                 foreach (var classId in affectedClassIds)
                 {
-                    // This service method checks internally if a session already exists before creating
                     await _activitySessionService.CreateSessionsOnClassStartAsync(classId);
                 }
 
@@ -239,14 +254,20 @@ namespace Lssctc.ProgramManagement.Activities.Services
 
         public async Task<ActivityDto> CreateActivityForSectionAsync(int sectionId, CreateActivityDto createDto)
         {
+            // Lock Check
+            if (await IsSectionLockedAsync(sectionId))
+            {
+                throw new InvalidOperationException("Không thể tạo và thêm hoạt động vào phần học này vì lớp học đang diễn ra hoặc đã kết thúc.");
+            }
+
             var section = await _uow.SectionRepository.GetByIdAsync(sectionId);
             if (section == null)
-                throw new KeyNotFoundException($"Section with ID {sectionId} not found.");
+                throw new KeyNotFoundException($"Không tìm thấy phần học với ID {sectionId}.");
 
             // 2. Create the Activity
             var activityDto = await CreateActivityAsync(createDto);
 
-            // 3. Assign to Section (This now handles Session creation)
+            // 3. Assign to Section
             await AddActivityToSectionAsync(sectionId, activityDto.Id);
 
             return activityDto;
@@ -254,15 +275,21 @@ namespace Lssctc.ProgramManagement.Activities.Services
 
         public async Task RemoveActivityFromSectionAsync(int sectionId, int activityId)
         {
+            // Lock Check
+            if (await IsSectionLockedAsync(sectionId))
+            {
+                throw new InvalidOperationException("Không thể xóa hoạt động khỏi phần học này vì lớp học đang diễn ra hoặc đã kết thúc.");
+            }
+
             var sectionActivity = await _uow.SectionActivityRepository
                 .GetAllAsQueryable()
                 .Where(sa => sa.SectionId == sectionId && sa.ActivityId == activityId)
                 .FirstOrDefaultAsync();
 
             if (sectionActivity == null)
-                throw new KeyNotFoundException($"Activity with ID {activityId} is not assigned to section ID {sectionId}.");
+                throw new KeyNotFoundException($"Hoạt động với ID {activityId} chưa được gán vào phần học ID {sectionId}.");
 
-            // 1. Handle Active Classes (Deep Delete of Activity Records)
+            // 1. Handle Open Classes (Cleanup for non-locked classes)
             var affectedSectionRecords = await _uow.SectionRecordRepository
                 .GetAllAsQueryable()
                 .Where(sr => sr.SectionId == sectionId)
@@ -273,7 +300,6 @@ namespace Lssctc.ProgramManagement.Activities.Services
             {
                 var sectionRecordIds = affectedSectionRecords.Select(sr => sr.Id).ToList();
 
-                // Find all ActivityRecords for this specific Activity in these Sections
                 var activityRecordsToDelete = await _uow.ActivityRecordRepository
                     .GetAllAsQueryable()
                     .Where(ar => sectionRecordIds.Contains(ar.SectionRecordId) && ar.ActivityId == activityId)
@@ -320,13 +346,19 @@ namespace Lssctc.ProgramManagement.Activities.Services
 
         public async Task UpdateSectionActivityOrderAsync(int sectionId, int activityId, int newOrder)
         {
+            // Lock Check
+            if (await IsSectionLockedAsync(sectionId))
+            {
+                throw new InvalidOperationException("Không thể cập nhật thứ tự hoạt động trong phần học này vì lớp học đang diễn ra hoặc đã kết thúc.");
+            }
+
             var current = await _uow.SectionActivityRepository
                 .GetAllAsQueryable()
                 .Where(sa => sa.SectionId == sectionId && sa.ActivityId == activityId)
                 .FirstOrDefaultAsync();
 
             if (current == null)
-                throw new KeyNotFoundException($"Activity with ID {activityId} is not assigned to section ID {sectionId}.");
+                throw new KeyNotFoundException($"Hoạt động với ID {activityId} chưa được gán vào phần học ID {sectionId}.");
 
             if (current.ActivityOrder == newOrder)
                 return;
@@ -336,6 +368,40 @@ namespace Lssctc.ProgramManagement.Activities.Services
             current.ActivityOrder = newOrder;
             await _uow.SectionActivityRepository.UpdateAsync(current);
             await _uow.SaveChangesAsync();
+        }
+
+        #endregion
+
+        #region Helpers
+
+        private async Task<bool> IsSectionLockedAsync(int sectionId)
+        {
+            var lockedStatuses = new[] {
+                (int)ClassStatusEnum.Open,
+                (int)ClassStatusEnum.Inprogress,
+                (int)ClassStatusEnum.Completed,
+                (int)ClassStatusEnum.Cancelled
+            };
+
+            // Find all CourseIDs this Section is linked to
+            var courseIds = await _uow.CourseSectionRepository
+                .GetAllAsQueryable()
+                .Where(cs => cs.SectionId == sectionId)
+                .Select(cs => cs.CourseId)
+                .Distinct()
+                .ToListAsync();
+
+            if (!courseIds.Any())
+            {
+                return false;
+            }
+
+            // Check if ANY of those courses are linked to an active class
+            return await _uow.ClassRepository
+                .GetAllAsQueryable()
+                .AnyAsync(c => courseIds.Contains(c.ProgramCourse.CourseId) &&
+                               c.Status.HasValue &&
+                               lockedStatuses.Contains(c.Status.Value));
         }
 
         #endregion
@@ -487,7 +553,7 @@ namespace Lssctc.ProgramManagement.Activities.Services
                 return (int)(ActivityType)parsed!;
             }
 
-            throw new ArgumentException($"Invalid ActivityType value: {activityType}");
+            throw new ArgumentException($"Loại hoạt động không hợp lệ: {activityType}");
         }
         #endregion
     }
