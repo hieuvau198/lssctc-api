@@ -46,37 +46,34 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Services
         {
             if (pageNumber < 1) pageNumber = 1;
             if (pageSize < 1) pageSize = 10;
-            
+
             var query = _uow.UserRepository
                 .GetAllAsQueryable()
                 .Where(u => !u.IsDeleted && u.Role == (int)UserRoleEnum.Trainee);
 
-            // Filter by IsActive if provided
             if (isActive.HasValue)
             {
                 query = query.Where(u => u.IsActive == isActive.Value);
             }
 
-            // Filter by search term if provided
             if (!string.IsNullOrWhiteSpace(searchTerm))
             {
                 var term = searchTerm.ToLower();
-                query = query.Where(u => 
+                query = query.Where(u =>
                     (u.Username != null && u.Username.ToLower().Contains(term)) ||
                     (u.Email != null && u.Email.ToLower().Contains(term)) ||
                     (u.PhoneNumber != null && u.PhoneNumber.ToLower().Contains(term)) ||
                     (u.Fullname != null && u.Fullname.ToLower().Contains(term))
                 );
 
-                // Sort by relevance: prioritize Email and PhoneNumber matches
-                query = query.OrderByDescending(u => 
-                    (u.Email != null && u.Email.ToLower().Contains(term)) || 
+                query = query.OrderByDescending(u =>
+                    (u.Email != null && u.Email.ToLower().Contains(term)) ||
                     (u.PhoneNumber != null && u.PhoneNumber.ToLower().Contains(term))
                 );
             }
 
             var result = query.Select(u => MapToDto(u));
-            
+
             return await result.ToPagedResultAsync(pageNumber, pageSize);
         }
 
@@ -84,37 +81,34 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Services
         {
             if (pageNumber < 1) pageNumber = 1;
             if (pageSize < 1) pageSize = 10;
-            
+
             var query = _uow.UserRepository
                 .GetAllAsQueryable()
                 .Where(u => !u.IsDeleted && u.Role == (int)UserRoleEnum.Instructor);
 
-            // Filter by IsActive if provided
             if (isActive.HasValue)
             {
                 query = query.Where(u => u.IsActive == isActive.Value);
             }
 
-            // Filter by search term if provided
             if (!string.IsNullOrWhiteSpace(searchTerm))
             {
                 var term = searchTerm.ToLower();
-                query = query.Where(u => 
+                query = query.Where(u =>
                     (u.Username != null && u.Username.ToLower().Contains(term)) ||
                     (u.Email != null && u.Email.ToLower().Contains(term)) ||
                     (u.PhoneNumber != null && u.PhoneNumber.ToLower().Contains(term)) ||
                     (u.Fullname != null && u.Fullname.ToLower().Contains(term))
                 );
 
-                // Sort by relevance: prioritize Email and PhoneNumber matches
-                query = query.OrderByDescending(u => 
-                    (u.Email != null && u.Email.ToLower().Contains(term)) || 
+                query = query.OrderByDescending(u =>
+                    (u.Email != null && u.Email.ToLower().Contains(term)) ||
                     (u.PhoneNumber != null && u.PhoneNumber.ToLower().Contains(term))
                 );
             }
 
             var result = query.Select(u => MapToDto(u));
-            
+
             return await result.ToPagedResultAsync(pageNumber, pageSize);
         }
 
@@ -122,37 +116,34 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Services
         {
             if (pageNumber < 1) pageNumber = 1;
             if (pageSize < 1) pageSize = 10;
-            
+
             var query = _uow.UserRepository
                 .GetAllAsQueryable()
                 .Where(u => !u.IsDeleted && u.Role == (int)UserRoleEnum.SimulationManager);
 
-            // Filter by IsActive if provided
             if (isActive.HasValue)
             {
                 query = query.Where(u => u.IsActive == isActive.Value);
             }
 
-            // Filter by search term if provided
             if (!string.IsNullOrWhiteSpace(searchTerm))
             {
                 var term = searchTerm.ToLower();
-                query = query.Where(u => 
+                query = query.Where(u =>
                     (u.Username != null && u.Username.ToLower().Contains(term)) ||
                     (u.Email != null && u.Email.ToLower().Contains(term)) ||
                     (u.PhoneNumber != null && u.PhoneNumber.ToLower().Contains(term)) ||
                     (u.Fullname != null && u.Fullname.ToLower().Contains(term))
                 );
 
-                // Sort by relevance: prioritize Email and PhoneNumber matches
-                query = query.OrderByDescending(u => 
-                    (u.Email != null && u.Email.ToLower().Contains(term)) || 
+                query = query.OrderByDescending(u =>
+                    (u.Email != null && u.Email.ToLower().Contains(term)) ||
                     (u.PhoneNumber != null && u.PhoneNumber.ToLower().Contains(term))
                 );
             }
 
             var result = query.Select(u => MapToDto(u));
-            
+
             return await result.ToPagedResultAsync(pageNumber, pageSize);
         }
 
@@ -165,7 +156,7 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Services
                 || u.Email.ToLower() == dto.Email.ToLower())
                 && !u.IsDeleted);
             if (exists)
-                throw new Exception("Username or Email already exists.");
+                throw new Exception("Tên đăng nhập hoặc Email đã tồn tại.");
 
             string hashedPassword = PasswordHashHandler.HashPassword(dto.Password);
 
@@ -212,7 +203,7 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Services
                 || u.Email.ToLower() == dto.Email.ToLower())
                 && !u.IsDeleted);
             if (exists)
-                throw new Exception("Username or Email already exists.");
+                throw new Exception("Tên đăng nhập hoặc Email đã tồn tại.");
 
             string hashedPassword = PasswordHashHandler.HashPassword(dto.Password);
             string instructorCode = await GenerateUniqueInstructorCode();
@@ -255,7 +246,7 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Services
                 || u.Email.ToLower() == dto.Email.ToLower())
                 && !u.IsDeleted);
             if (exists)
-                throw new Exception("Username or Email already exists.");
+                throw new Exception("Tên đăng nhập hoặc Email đã tồn tại.");
 
             string hashedPassword = PasswordHashHandler.HashPassword(dto.Password);
 
@@ -285,13 +276,12 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Services
         {
             var user = await _uow.UserRepository.GetByIdAsync(id);
             if (user == null || user.IsDeleted)
-                throw new Exception("User not found.");
+                throw new Exception("Không tìm thấy người dùng.");
 
-            // Check if Email is provided and different from current
+            // 1. Check Email Duplicate
             if (!string.IsNullOrWhiteSpace(dto.Email) &&
                 !string.Equals(user.Email, dto.Email, StringComparison.OrdinalIgnoreCase))
             {
-                // Check for uniqueness excluding the current user
                 bool emailExists = await _uow.UserRepository
                     .GetAllAsQueryable()
                     .AnyAsync(u => u.Email.ToLower() == dto.Email.ToLower()
@@ -299,13 +289,33 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Services
                                    && !u.IsDeleted);
 
                 if (emailExists)
-                    throw new Exception("Email already exists.");
+                    throw new Exception("Email đã tồn tại.");
 
                 user.Email = dto.Email;
             }
 
+            // 2. Check PhoneNumber Duplicate
+            if (!string.IsNullOrWhiteSpace(dto.PhoneNumber))
+            {
+                // Normalize phone number if needed (e.g., remove spaces) - optional
+                var newPhone = dto.PhoneNumber.Trim();
+
+                if (!string.Equals(user.PhoneNumber, newPhone, StringComparison.OrdinalIgnoreCase))
+                {
+                    bool phoneExists = await _uow.UserRepository
+                        .GetAllAsQueryable()
+                        .AnyAsync(u => u.PhoneNumber == newPhone
+                                       && u.Id != id
+                                       && !u.IsDeleted);
+
+                    if (phoneExists)
+                        throw new Exception("Số điện thoại đã tồn tại trong hệ thống.");
+
+                    user.PhoneNumber = newPhone;
+                }
+            }
+
             user.Fullname = dto.Fullname ?? user.Fullname;
-            user.PhoneNumber = dto.PhoneNumber ?? user.PhoneNumber;
             user.AvatarUrl = dto.AvatarUrl ?? user.AvatarUrl;
 
             await _uow.UserRepository.UpdateAsync(user);
@@ -319,9 +329,9 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Services
             if (user == null)
                 return false;
 
-            
+
             var trainee = await _uow.TraineeRepository.GetByIdAsync(id);
-            if (trainee != null) 
+            if (trainee != null)
             {
                 trainee.IsDeleted = true;
             }
@@ -348,7 +358,7 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Services
                 .FirstOrDefaultAsync(u => u.Email.ToLower() == email.ToLower() && !u.IsDeleted);
 
             if (user == null)
-                throw new Exception("User not found.");
+                throw new Exception("Không tìm thấy người dùng.");
 
             // Hash the new password
             user.Password = PasswordHashHandler.HashPassword(newPassword);
@@ -366,10 +376,10 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Services
         {
             var user = await _uow.UserRepository.GetByIdAsync(userId);
             if (user == null || user.IsDeleted)
-                throw new Exception("User not found.");
+                throw new Exception("Không tìm thấy người dùng.");
 
             if (!PasswordHashHandler.VerifyPassword(dto.CurrentPassword, user.Password))
-                throw new Exception("Current password is incorrect.");
+                throw new Exception("Mật khẩu hiện tại không chính xác.");
 
             user.Password = PasswordHashHandler.HashPassword(dto.NewPassword);
 
@@ -447,7 +457,6 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Services
             return instructorCode;
         }
 
-        // Helper method to validate email format
         private bool IsValidEmail(string email)
         {
             if (string.IsNullOrWhiteSpace(email))
@@ -466,14 +475,21 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Services
 
         #endregion
 
+        // ... (Import methods have detailed string messages inside)
         public async Task<string> ImportTraineesAsync(IFormFile file)
         {
+            // ... (previous validation code) ...
             if (file == null || file.Length == 0)
-                throw new Exception("File is empty or null.");
+                throw new Exception("File trống hoặc không tồn tại.");
 
             if (!file.FileName.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase))
-                throw new Exception("Invalid file format. Please upload an Excel file (.xlsx).");
+                throw new Exception("Định dạng file không hợp lệ. Vui lòng tải lên file Excel (.xlsx).");
 
+            // ... (rest of the logic remains similar but with VN messages)
+            // Simplified for brevity, assume similar logic structure but messages like:
+            // "Username or Email already exists" -> "Tên đăng nhập hoặc Email đã tồn tại"
+
+            // I will return the full logic with updated messages below
             int importedCount = 0;
             int skippedCount = 0;
             var errors = new List<string>();
@@ -491,24 +507,21 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Services
                     {
                         var worksheet = package.Workbook.Worksheets.FirstOrDefault();
                         if (worksheet == null)
-                            throw new Exception("Excel file does not contain any worksheets.");
+                            throw new Exception("File Excel không chứa worksheet nào.");
 
                         int rowCount = worksheet.Dimension?.Rows ?? 0;
                         if (rowCount < 2)
-                            throw new Exception("Excel file must contain at least one data row (plus header row).");
+                            throw new Exception("File Excel phải chứa ít nhất một dòng dữ liệu (ngoài dòng tiêu đề).");
 
-                        // Start a transaction for batch import
                         var dbContext = _uow.GetDbContext();
                         using (var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted))
                         {
                             try
                             {
-                                // Process each row (skip header row 1)
                                 for (int row = 2; row <= rowCount; row++)
                                 {
                                     try
                                     {
-                                        // Read values from Excel
                                         string? username = worksheet.Cells[row, 1].Value?.ToString()?.Trim();
                                         string? email = worksheet.Cells[row, 2].Value?.ToString()?.Trim();
                                         string? fullname = worksheet.Cells[row, 3].Value?.ToString()?.Trim();
@@ -516,41 +529,33 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Services
                                         string? phoneNumber = worksheet.Cells[row, 5].Value?.ToString()?.Trim();
                                         string? avatarUrl = worksheet.Cells[row, 6].Value?.ToString()?.Trim();
 
-                                        // Skip completely empty rows
-                                        if (string.IsNullOrWhiteSpace(username) && 
-                                            string.IsNullOrWhiteSpace(email) && 
+                                        if (string.IsNullOrWhiteSpace(username) &&
+                                            string.IsNullOrWhiteSpace(email) &&
                                             string.IsNullOrWhiteSpace(fullname))
                                         {
                                             continue;
                                         }
 
-                                        // Validate required fields with detailed messages
                                         var missingFields = new List<string>();
-                                        if (string.IsNullOrWhiteSpace(username))
-                                            missingFields.Add("Username (Column A)");
-                                        if (string.IsNullOrWhiteSpace(email))
-                                            missingFields.Add("Email (Column B)");
-                                        if (string.IsNullOrWhiteSpace(fullname))
-                                            missingFields.Add("Fullname (Column C)");
-                                        if (string.IsNullOrWhiteSpace(password))
-                                            missingFields.Add("Password (Column D)");
+                                        if (string.IsNullOrWhiteSpace(username)) missingFields.Add("Username (Cột A)");
+                                        if (string.IsNullOrWhiteSpace(email)) missingFields.Add("Email (Cột B)");
+                                        if (string.IsNullOrWhiteSpace(fullname)) missingFields.Add("Họ tên (Cột C)");
+                                        if (string.IsNullOrWhiteSpace(password)) missingFields.Add("Mật khẩu (Cột D)");
 
                                         if (missingFields.Any())
                                         {
-                                            errors.Add($"Row {row}: Missing required fields - {string.Join(", ", missingFields)}");
+                                            errors.Add($"Dòng {row}: Thiếu thông tin bắt buộc - {string.Join(", ", missingFields)}");
                                             skippedCount++;
                                             continue;
                                         }
 
-                                        // Validate email format
                                         if (!IsValidEmail(email))
                                         {
-                                            errors.Add($"Row {row}: Invalid email format '{email}' (Column B)");
+                                            errors.Add($"Dòng {row}: Định dạng email không hợp lệ '{email}' (Cột B)");
                                             skippedCount++;
                                             continue;
                                         }
 
-                                        // Check for duplicates in database (deduplication logic)
                                         var existingUser = await _uow.UserRepository
                                             .GetAllAsQueryable()
                                             .Where(u => !u.IsDeleted && (u.Username == username || u.Email.ToLower() == email.ToLower()))
@@ -560,33 +565,19 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Services
                                         if (existingUser != null)
                                         {
                                             if (existingUser.Username == username && existingUser.Email.ToLower() == email.ToLower())
-                                            {
-                                                errors.Add($"Row {row}: Username '{username}' and Email '{email}' already exist in the system");
-                                            }
+                                                errors.Add($"Dòng {row}: Tên đăng nhập '{username}' và Email '{email}' đã tồn tại trong hệ thống");
                                             else if (existingUser.Username == username)
-                                            {
-                                                errors.Add($"Row {row}: Username '{username}' already exists in the system (Column A)");
-                                            }
+                                                errors.Add($"Dòng {row}: Tên đăng nhập '{username}' đã tồn tại (Cột A)");
                                             else
-                                            {
-                                                errors.Add($"Row {row}: Email '{email}' already exists in the system (Column B)");
-                                            }
+                                                errors.Add($"Dòng {row}: Email '{email}' đã tồn tại (Cột B)");
+
                                             skippedCount++;
                                             continue;
                                         }
 
-                                        // Hash password
                                         string hashedPassword = PasswordHashHandler.HashPassword(password);
-
-                                        // Generate unique trainee code
                                         string traineeCode = await GenerateUniqueTraineeCode();
-
-                                        // Create Trainee Profile
-                                        var traineeProfile = new TraineeProfile
-                                        {
-                                        };
-
-                                        // Create Trainee
+                                        var traineeProfile = new TraineeProfile { };
                                         var trainee = new Trainee
                                         {
                                             TraineeCode = traineeCode,
@@ -595,7 +586,6 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Services
                                             TraineeProfile = traineeProfile
                                         };
 
-                                        // Create User with Trainee role
                                         var user = new User
                                         {
                                             Username = username,
@@ -615,12 +605,10 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Services
                                     }
                                     catch (Exception ex)
                                     {
-                                        errors.Add($"Row {row}: Unexpected error - {ex.Message}");
+                                        errors.Add($"Dòng {row}: Lỗi không mong muốn - {ex.Message}");
                                         skippedCount++;
                                     }
                                 }
-
-                                // Save all changes within transaction
                                 await _uow.SaveChangesAsync();
                                 await transaction.CommitAsync();
                             }
@@ -633,29 +621,28 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Services
                     }
                 }
 
-                // Build detailed result message
-                var resultMessage = $"Import completed. Successfully imported: {importedCount} trainees. Skipped: {skippedCount} rows.";
-                
+                var resultMessage = $"Nhập liệu hoàn tất. Đã nhập thành công: {importedCount} học viên. Bỏ qua: {skippedCount} dòng.";
                 if (errors.Any())
                 {
-                    resultMessage += $"\n\n=== ERROR DETAILS ===\n{string.Join("\n", errors)}";
+                    resultMessage += $"\n\n=== CHI TIẾT LỖI ===\n{string.Join("\n", errors)}";
                 }
-
                 return resultMessage;
             }
             catch (Exception ex)
             {
-                throw new Exception($"Error processing Excel file: {ex.Message}");
+                throw new Exception($"Lỗi xử lý file Excel: {ex.Message}");
             }
         }
 
+        // Similar translations for ImportInstructorsAsync and ImportSimulationManagersAsync
+        // (I'm applying the same logic for brevity and correctness in the final file output)
         public async Task<string> ImportInstructorsAsync(IFormFile file)
         {
             if (file == null || file.Length == 0)
-                throw new Exception("File is empty or null.");
+                throw new Exception("File trống hoặc không tồn tại.");
 
             if (!file.FileName.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase))
-                throw new Exception("Invalid file format. Please upload an Excel file (.xlsx).");
+                throw new Exception("Định dạng file không hợp lệ. Vui lòng tải lên file Excel (.xlsx).");
 
             int importedCount = 0;
             int skippedCount = 0;
@@ -674,24 +661,21 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Services
                     {
                         var worksheet = package.Workbook.Worksheets.FirstOrDefault();
                         if (worksheet == null)
-                            throw new Exception("Excel file does not contain any worksheets.");
+                            throw new Exception("File Excel không chứa worksheet nào.");
 
                         int rowCount = worksheet.Dimension?.Rows ?? 0;
                         if (rowCount < 2)
-                            throw new Exception("Excel file must contain at least one data row (plus header row).");
+                            throw new Exception("File Excel phải chứa ít nhất một dòng dữ liệu (ngoài dòng tiêu đề).");
 
-                        // Start a transaction for batch import
                         var dbContext = _uow.GetDbContext();
                         using (var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted))
                         {
                             try
                             {
-                                // Process each row (skip header row 1)
                                 for (int row = 2; row <= rowCount; row++)
                                 {
                                     try
                                     {
-                                        // Read values from Excel
                                         string? username = worksheet.Cells[row, 1].Value?.ToString()?.Trim();
                                         string? email = worksheet.Cells[row, 2].Value?.ToString()?.Trim();
                                         string? fullname = worksheet.Cells[row, 3].Value?.ToString()?.Trim();
@@ -699,41 +683,33 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Services
                                         string? phoneNumber = worksheet.Cells[row, 5].Value?.ToString()?.Trim();
                                         string? avatarUrl = worksheet.Cells[row, 6].Value?.ToString()?.Trim();
 
-                                        // Skip completely empty rows
-                                        if (string.IsNullOrWhiteSpace(username) && 
-                                            string.IsNullOrWhiteSpace(email) && 
+                                        if (string.IsNullOrWhiteSpace(username) &&
+                                            string.IsNullOrWhiteSpace(email) &&
                                             string.IsNullOrWhiteSpace(fullname))
                                         {
                                             continue;
                                         }
 
-                                        // Validate required fields with detailed messages
                                         var missingFields = new List<string>();
-                                        if (string.IsNullOrWhiteSpace(username))
-                                            missingFields.Add("Username (Column A)");
-                                        if (string.IsNullOrWhiteSpace(email))
-                                            missingFields.Add("Email (Column B)");
-                                        if (string.IsNullOrWhiteSpace(fullname))
-                                            missingFields.Add("Fullname (Column C)");
-                                        if (string.IsNullOrWhiteSpace(password))
-                                            missingFields.Add("Password (Column D)");
+                                        if (string.IsNullOrWhiteSpace(username)) missingFields.Add("Username (Cột A)");
+                                        if (string.IsNullOrWhiteSpace(email)) missingFields.Add("Email (Cột B)");
+                                        if (string.IsNullOrWhiteSpace(fullname)) missingFields.Add("Họ tên (Cột C)");
+                                        if (string.IsNullOrWhiteSpace(password)) missingFields.Add("Mật khẩu (Cột D)");
 
                                         if (missingFields.Any())
                                         {
-                                            errors.Add($"Row {row}: Missing required fields - {string.Join(", ", missingFields)}");
+                                            errors.Add($"Dòng {row}: Thiếu thông tin bắt buộc - {string.Join(", ", missingFields)}");
                                             skippedCount++;
                                             continue;
                                         }
 
-                                        // Validate email format
                                         if (!IsValidEmail(email))
                                         {
-                                            errors.Add($"Row {row}: Invalid email format '{email}' (Column B)");
+                                            errors.Add($"Dòng {row}: Định dạng email không hợp lệ '{email}' (Cột B)");
                                             skippedCount++;
                                             continue;
                                         }
 
-                                        // Check for duplicates in database (deduplication logic)
                                         var existingUser = await _uow.UserRepository
                                             .GetAllAsQueryable()
                                             .Where(u => !u.IsDeleted && (u.Username == username || u.Email.ToLower() == email.ToLower()))
@@ -743,33 +719,18 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Services
                                         if (existingUser != null)
                                         {
                                             if (existingUser.Username == username && existingUser.Email.ToLower() == email.ToLower())
-                                            {
-                                                errors.Add($"Row {row}: Username '{username}' and Email '{email}' already exist in the system");
-                                            }
+                                                errors.Add($"Dòng {row}: Tên đăng nhập '{username}' và Email '{email}' đã tồn tại");
                                             else if (existingUser.Username == username)
-                                            {
-                                                errors.Add($"Row {row}: Username '{username}' already exists in the system (Column A)");
-                                            }
+                                                errors.Add($"Dòng {row}: Tên đăng nhập '{username}' đã tồn tại");
                                             else
-                                            {
-                                                errors.Add($"Row {row}: Email '{email}' already exists in the system (Column B)");
-                                            }
+                                                errors.Add($"Dòng {row}: Email '{email}' đã tồn tại");
                                             skippedCount++;
                                             continue;
                                         }
 
-                                        // Hash password
                                         string hashedPassword = PasswordHashHandler.HashPassword(password);
-
-                                        // Generate unique instructor code
                                         string instructorCode = await GenerateUniqueInstructorCode();
-
-                                        // Create Instructor Profile
-                                        var instructorProfile = new InstructorProfile
-                                        {
-                                        };
-
-                                        // Create Instructor
+                                        var instructorProfile = new InstructorProfile { };
                                         var instructor = new Instructor
                                         {
                                             InstructorCode = instructorCode,
@@ -778,7 +739,6 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Services
                                             InstructorProfile = instructorProfile
                                         };
 
-                                        // Create User with Instructor role
                                         var user = new User
                                         {
                                             Username = username,
@@ -798,12 +758,10 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Services
                                     }
                                     catch (Exception ex)
                                     {
-                                        errors.Add($"Row {row}: Unexpected error - {ex.Message}");
+                                        errors.Add($"Dòng {row}: Lỗi không mong muốn - {ex.Message}");
                                         skippedCount++;
                                     }
                                 }
-
-                                // Save all changes within transaction
                                 await _uow.SaveChangesAsync();
                                 await transaction.CommitAsync();
                             }
@@ -816,29 +774,23 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Services
                     }
                 }
 
-                // Build detailed result message
-                var resultMessage = $"Import completed. Successfully imported: {importedCount} instructors. Skipped: {skippedCount} rows.";
-                
-                if (errors.Any())
-                {
-                    resultMessage += $"\n\n=== ERROR DETAILS ===\n{string.Join("\n", errors)}";
-                }
-
+                var resultMessage = $"Nhập liệu hoàn tất. Đã nhập thành công: {importedCount} giảng viên. Bỏ qua: {skippedCount} dòng.";
+                if (errors.Any()) resultMessage += $"\n\n=== CHI TIẾT LỖI ===\n{string.Join("\n", errors)}";
                 return resultMessage;
             }
             catch (Exception ex)
             {
-                throw new Exception($"Error processing Excel file: {ex.Message}");
+                throw new Exception($"Lỗi xử lý file Excel: {ex.Message}");
             }
         }
 
         public async Task<string> ImportSimulationManagersAsync(IFormFile file)
         {
             if (file == null || file.Length == 0)
-                throw new Exception("File is empty or null.");
+                throw new Exception("File trống hoặc không tồn tại.");
 
             if (!file.FileName.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase))
-                throw new Exception("Invalid file format. Please upload an Excel file (.xlsx).");
+                throw new Exception("Định dạng file không hợp lệ. Vui lòng tải lên file Excel (.xlsx).");
 
             int importedCount = 0;
             int skippedCount = 0;
@@ -857,24 +809,21 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Services
                     {
                         var worksheet = package.Workbook.Worksheets.FirstOrDefault();
                         if (worksheet == null)
-                            throw new Exception("Excel file does not contain any worksheets.");
+                            throw new Exception("File Excel không chứa worksheet nào.");
 
                         int rowCount = worksheet.Dimension?.Rows ?? 0;
                         if (rowCount < 2)
-                            throw new Exception("Excel file must contain at least one data row (plus header row).");
+                            throw new Exception("File Excel phải chứa ít nhất một dòng dữ liệu (ngoài dòng tiêu đề).");
 
-                        // Start a transaction for batch import
                         var dbContext = _uow.GetDbContext();
                         using (var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted))
                         {
                             try
                             {
-                                // Process each row (skip header row 1)
                                 for (int row = 2; row <= rowCount; row++)
                                 {
                                     try
                                     {
-                                        // Read values from Excel
                                         string? username = worksheet.Cells[row, 1].Value?.ToString()?.Trim();
                                         string? email = worksheet.Cells[row, 2].Value?.ToString()?.Trim();
                                         string? fullname = worksheet.Cells[row, 3].Value?.ToString()?.Trim();
@@ -882,41 +831,33 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Services
                                         string? phoneNumber = worksheet.Cells[row, 5].Value?.ToString()?.Trim();
                                         string? avatarUrl = worksheet.Cells[row, 6].Value?.ToString()?.Trim();
 
-                                        // Skip completely empty rows
-                                        if (string.IsNullOrWhiteSpace(username) && 
-                                            string.IsNullOrWhiteSpace(email) && 
+                                        if (string.IsNullOrWhiteSpace(username) &&
+                                            string.IsNullOrWhiteSpace(email) &&
                                             string.IsNullOrWhiteSpace(fullname))
                                         {
                                             continue;
                                         }
 
-                                        // Validate required fields with detailed messages
                                         var missingFields = new List<string>();
-                                        if (string.IsNullOrWhiteSpace(username))
-                                            missingFields.Add("Username (Column A)");
-                                        if (string.IsNullOrWhiteSpace(email))
-                                            missingFields.Add("Email (Column B)");
-                                        if (string.IsNullOrWhiteSpace(fullname))
-                                            missingFields.Add("Fullname (Column C)");
-                                        if (string.IsNullOrWhiteSpace(password))
-                                            missingFields.Add("Password (Column D)");
+                                        if (string.IsNullOrWhiteSpace(username)) missingFields.Add("Username (Cột A)");
+                                        if (string.IsNullOrWhiteSpace(email)) missingFields.Add("Email (Cột B)");
+                                        if (string.IsNullOrWhiteSpace(fullname)) missingFields.Add("Họ tên (Cột C)");
+                                        if (string.IsNullOrWhiteSpace(password)) missingFields.Add("Mật khẩu (Cột D)");
 
                                         if (missingFields.Any())
                                         {
-                                            errors.Add($"Row {row}: Missing required fields - {string.Join(", ", missingFields)}");
+                                            errors.Add($"Dòng {row}: Thiếu thông tin bắt buộc - {string.Join(", ", missingFields)}");
                                             skippedCount++;
                                             continue;
                                         }
 
-                                        // Validate email format
                                         if (!IsValidEmail(email))
                                         {
-                                            errors.Add($"Row {row}: Invalid email format '{email}' (Column B)");
+                                            errors.Add($"Dòng {row}: Định dạng email không hợp lệ '{email}' (Cột B)");
                                             skippedCount++;
                                             continue;
                                         }
 
-                                        // Check for duplicates in database (deduplication logic)
                                         var existingUser = await _uow.UserRepository
                                             .GetAllAsQueryable()
                                             .Where(u => !u.IsDeleted && (u.Username == username || u.Email.ToLower() == email.ToLower()))
@@ -926,30 +867,17 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Services
                                         if (existingUser != null)
                                         {
                                             if (existingUser.Username == username && existingUser.Email.ToLower() == email.ToLower())
-                                            {
-                                                errors.Add($"Row {row}: Username '{username}' and Email '{email}' already exist in the system");
-                                            }
+                                                errors.Add($"Dòng {row}: Tên đăng nhập '{username}' và Email '{email}' đã tồn tại");
                                             else if (existingUser.Username == username)
-                                            {
-                                                errors.Add($"Row {row}: Username '{username}' already exists in the system (Column A)");
-                                            }
+                                                errors.Add($"Dòng {row}: Tên đăng nhập '{username}' đã tồn tại");
                                             else
-                                            {
-                                                errors.Add($"Row {row}: Email '{email}' already exists in the system (Column B)");
-                                            }
+                                                errors.Add($"Dòng {row}: Email '{email}' đã tồn tại");
                                             skippedCount++;
                                             continue;
                                         }
 
-                                        // Hash password
                                         string hashedPassword = PasswordHashHandler.HashPassword(password);
-
-                                        // Create Simulation Manager
-                                        var simulationManager = new SimulationManager
-                                        {
-                                        };
-
-                                        // Create User with SimulationManager role
+                                        var simulationManager = new SimulationManager { };
                                         var user = new User
                                         {
                                             Username = username,
@@ -969,12 +897,10 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Services
                                     }
                                     catch (Exception ex)
                                     {
-                                        errors.Add($"Row {row}: Unexpected error - {ex.Message}");
+                                        errors.Add($"Dòng {row}: Lỗi không mong muốn - {ex.Message}");
                                         skippedCount++;
                                     }
                                 }
-
-                                // Save all changes within transaction
                                 await _uow.SaveChangesAsync();
                                 await transaction.CommitAsync();
                             }
@@ -987,19 +913,13 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Services
                     }
                 }
 
-                // Build detailed result message
-                var resultMessage = $"Import completed. Successfully imported: {importedCount} simulation managers. Skipped: {skippedCount} rows.";
-                
-                if (errors.Any())
-                {
-                    resultMessage += $"\n\n=== ERROR DETAILS ===\n{string.Join("\n", errors)}";
-                }
-
+                var resultMessage = $"Nhập liệu hoàn tất. Đã nhập thành công: {importedCount} quản lý mô phỏng. Bỏ qua: {skippedCount} dòng.";
+                if (errors.Any()) resultMessage += $"\n\n=== CHI TIẾT LỖI ===\n{string.Join("\n", errors)}";
                 return resultMessage;
             }
             catch (Exception ex)
             {
-                throw new Exception($"Error processing Excel file: {ex.Message}");
+                throw new Exception($"Lỗi xử lý file Excel: {ex.Message}");
             }
         }
     }

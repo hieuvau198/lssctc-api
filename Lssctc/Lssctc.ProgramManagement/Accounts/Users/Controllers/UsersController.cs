@@ -33,7 +33,7 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "Đã xảy ra lỗi không mong muốn: " + ex.Message });
             }
         }
 
@@ -46,20 +46,20 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Controllers
                 var user = await _usersService.GetUserByIdAsync(id);
                 if (user == null)
                 {
-                    return NotFound();
+                    return NotFound(new { Message = "Không tìm thấy người dùng." });
                 }
                 return Ok(user);
             }
             catch (Exception ex)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "Đã xảy ra lỗi không mong muốn: " + ex.Message });
             }
         }
 
         [HttpGet("trainees")]
         [Authorize(Roles = "Admin,Instructor,SimulationManager")]
         public async Task<ActionResult<PagedResult<UserDto>>> GetAllTrainees(
-            [FromQuery] int pageNumber, 
+            [FromQuery] int pageNumber,
             [FromQuery] int pageSize,
             [FromQuery] string? searchTerm,
             [FromQuery] bool? isActive)
@@ -71,14 +71,14 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "Đã xảy ra lỗi không mong muốn: " + ex.Message });
             }
         }
 
         [HttpGet("instructors")]
         [Authorize(Roles = "Admin")]
         public async Task<ActionResult<PagedResult<UserDto>>> GetAllInstructors(
-            [FromQuery] int pageNumber, 
+            [FromQuery] int pageNumber,
             [FromQuery] int pageSize,
             [FromQuery] string? searchTerm,
             [FromQuery] bool? isActive)
@@ -90,14 +90,14 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "Đã xảy ra lỗi không mong muốn: " + ex.Message });
             }
         }
 
         [HttpGet("simulation-managers")]
         [Authorize(Roles = "Admin")]
         public async Task<ActionResult<PagedResult<UserDto>>> GetAllSimulationManagers(
-            [FromQuery] int pageNumber, 
+            [FromQuery] int pageNumber,
             [FromQuery] int pageSize,
             [FromQuery] string? searchTerm,
             [FromQuery] bool? isActive)
@@ -109,7 +109,7 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "Đã xảy ra lỗi không mong muốn: " + ex.Message });
             }
         }
 
@@ -128,11 +128,11 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Controllers
             }
             catch (Exception ex)
             {
-                if (ex.Message == "Username already exists.")
+                if (ex.Message == "Tên đăng nhập hoặc Email đã tồn tại.")
                 {
-                    return BadRequest(ex.Message);
+                    return BadRequest(new { Message = ex.Message });
                 }
-                return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "Đã xảy ra lỗi không mong muốn: " + ex.Message });
             }
         }
 
@@ -147,11 +147,11 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Controllers
             }
             catch (Exception ex)
             {
-                if (ex.Message == "Username already exists.")
+                if (ex.Message == "Tên đăng nhập hoặc Email đã tồn tại.")
                 {
-                    return BadRequest(ex.Message);
+                    return BadRequest(new { Message = ex.Message });
                 }
-                return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "Đã xảy ra lỗi không mong muốn: " + ex.Message });
             }
         }
 
@@ -166,19 +166,16 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Controllers
             }
             catch (Exception ex)
             {
-                if (ex.Message == "Username or Email already exists.")
+                if (ex.Message == "Tên đăng nhập hoặc Email đã tồn tại.")
                 {
-                    return BadRequest(ex.Message);
+                    return BadRequest(new { Message = ex.Message });
                 }
-                return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "Đã xảy ra lỗi không mong muốn: " + ex.Message });
             }
         }
 
         [HttpPost("import-trainees")]
         [Authorize(Roles = "Admin")]
-        [ProducesResponseType(200)]
-        [ProducesResponseType(400)]
-        [ProducesResponseType(500)]
         public async Task<IActionResult> ImportTrainees(IFormFile file)
         {
             try
@@ -194,9 +191,6 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Controllers
 
         [HttpPost("import-instructors")]
         [Authorize(Roles = "Admin")]
-        [ProducesResponseType(200)]
-        [ProducesResponseType(400)]
-        [ProducesResponseType(500)]
         public async Task<IActionResult> ImportInstructors(IFormFile file)
         {
             try
@@ -212,9 +206,6 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Controllers
 
         [HttpPost("import-simulation-managers")]
         [Authorize(Roles = "Admin")]
-        [ProducesResponseType(200)]
-        [ProducesResponseType(400)]
-        [ProducesResponseType(500)]
         public async Task<IActionResult> ImportSimulationManagers(IFormFile file)
         {
             try
@@ -239,11 +230,15 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Controllers
             }
             catch (Exception ex)
             {
-                if (ex.Message == "User not found.")
+                if (ex.Message == "Không tìm thấy người dùng.")
                 {
-                    return NotFound(ex.Message);
+                    return NotFound(new { Message = ex.Message });
                 }
-                return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+                if (ex.Message == "Email đã tồn tại." || ex.Message == "Số điện thoại đã tồn tại trong hệ thống.")
+                {
+                    return BadRequest(new { Message = ex.Message });
+                }
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "Đã xảy ra lỗi không mong muốn: " + ex.Message });
             }
         }
 
@@ -256,13 +251,13 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Controllers
                 var result = await _usersService.DeleteUserAsync(id);
                 if (!result)
                 {
-                    return NotFound("User not found.");
+                    return NotFound(new { Message = "Không tìm thấy người dùng." });
                 }
                 return NoContent();
             }
             catch (Exception ex)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "Đã xảy ra lỗi không mong muốn: " + ex.Message });
             }
         }
 
@@ -276,19 +271,19 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Controllers
             try
             {
                 await _usersService.ChangePasswordAsync(id, dto);
-                return Ok("Password changed successfully.");
+                return Ok(new { Message = "Đổi mật khẩu thành công." });
             }
             catch (Exception ex)
             {
-                if (ex.Message == "User not found.")
+                if (ex.Message == "Không tìm thấy người dùng.")
                 {
-                    return NotFound(ex.Message);
+                    return NotFound(new { Message = ex.Message });
                 }
-                if (ex.Message == "Current password is incorrect.")
+                if (ex.Message == "Mật khẩu hiện tại không chính xác.")
                 {
-                    return BadRequest(ex.Message);
+                    return BadRequest(new { Message = ex.Message });
                 }
-                return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "Đã xảy ra lỗi không mong muốn: " + ex.Message });
             }
         }
 

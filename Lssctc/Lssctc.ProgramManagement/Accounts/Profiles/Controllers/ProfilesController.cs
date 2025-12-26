@@ -26,26 +26,17 @@ namespace Lssctc.ProgramManagement.Accounts.Profiles.Controllers
                 var profile = await _profilesService.GetTraineeProfile(traineeId);
                 if (profile == null)
                 {
-                    return NotFound("Trainee profile not found.");
+                    return NotFound(new { Message = "Không tìm thấy hồ sơ học viên." });
                 }
 
                 return Ok(profile);
             }
             catch (Exception ex)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "Đã xảy ra lỗi không mong muốn: " + ex.Message });
             }
         }
 
-        /// <summary>
-        /// Get student profile information including user information and training records by user ID
-        /// </summary>
-        /// <param name="userId">ID của người dùng</param>
-        /// <returns>Thông tin hồ sơ học viên với thông tin người dùng</returns>
-        /// <remarks>
-        /// Returns a 404 Not Found response if the user or trainee profile is not found.
-        /// Returns a 500 Internal Server Error response in case of an unexpected error.
-        /// </remarks>
         [HttpGet("trainee/by-user/{userId:int}")]
         public async Task<ActionResult<TraineeProfileWithUserDto>> GetTraineeProfileByUserId(int userId)
         {
@@ -54,28 +45,17 @@ namespace Lssctc.ProgramManagement.Accounts.Profiles.Controllers
                 var profile = await _profilesService.GetTraineeProfileByUserId(userId);
                 if (profile == null)
                 {
-                    return NotFound("User or trainee profile not found.");
+                    return NotFound(new { Message = "Không tìm thấy hồ sơ học viên hoặc người dùng." });
                 }
 
                 return Ok(profile);
             }
             catch (Exception ex)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "Đã xảy ra lỗi không mong muốn: " + ex.Message });
             }
         }
 
-        /// <summary>
-        /// Update user information and student profile by user ID
-        /// </summary>
-        /// <param name="userId">ID của người dùng</param>
-        /// <param name="dto">Thông tin cần cập nhật (PhoneNumber, AvatarUrl, EducationLevel, EducationImageUrl)</param>
-        /// <returns>Thông tin hồ sơ học viên đã được cập nhật</returns>
-        /// <remarks>
-        /// Chỉ có thể cập nhật:
-        /// - PhoneNumber và AvatarUrl trong User Profile
-        /// - EducationLevel và EducationImageUrl trong Trainee Profile
-        /// </remarks>
         [HttpPut("trainee/by-user/{userId:int}")]
         public async Task<ActionResult<TraineeProfileWithUserDto>> UpdateUserAndTraineeProfile(int userId, [FromBody] UpdateUserAndTraineeProfileDto dto)
         {
@@ -86,11 +66,15 @@ namespace Lssctc.ProgramManagement.Accounts.Profiles.Controllers
             }
             catch (Exception ex)
             {
-                if (ex.Message == "User not found." || ex.Message == "Trainee not found for this user.")
+                if (ex.Message == "Không tìm thấy người dùng." || ex.Message == "Không tìm thấy thông tin học viên cho người dùng này.")
                 {
-                    return NotFound(ex.Message);
+                    return NotFound(new { Message = ex.Message });
                 }
-                return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+                if (ex.Message == "Số điện thoại đã tồn tại trong hệ thống.")
+                {
+                    return BadRequest(new { Message = ex.Message });
+                }
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "Đã xảy ra lỗi không mong muốn: " + ex.Message });
             }
         }
 
@@ -104,11 +88,11 @@ namespace Lssctc.ProgramManagement.Accounts.Profiles.Controllers
             }
             catch (Exception ex)
             {
-                if (ex.Message == "Trainee not found." || ex.Message == "Trainee profile already exists.")
+                if (ex.Message == "Không tìm thấy học viên." || ex.Message == "Hồ sơ học viên đã tồn tại.")
                 {
-                    return BadRequest(ex.Message);
+                    return BadRequest(new { Message = ex.Message });
                 }
-                return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "Đã xảy ra lỗi không mong muốn: " + ex.Message });
             }
         }
 
@@ -122,11 +106,11 @@ namespace Lssctc.ProgramManagement.Accounts.Profiles.Controllers
             }
             catch (Exception ex)
             {
-                if (ex.Message == "Trainee profile not found.")
+                if (ex.Message == "Không tìm thấy hồ sơ học viên.")
                 {
-                    return NotFound(ex.Message);
+                    return NotFound(new { Message = ex.Message });
                 }
-                return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "Đã xảy ra lỗi không mong muốn: " + ex.Message });
             }
         }
 
@@ -138,13 +122,13 @@ namespace Lssctc.ProgramManagement.Accounts.Profiles.Controllers
                 var result = await _profilesService.DeleteTraineeProfile(traineeId);
                 if (!result)
                 {
-                    return NotFound("Trainee profile not found.");
+                    return NotFound(new { Message = "Không tìm thấy hồ sơ học viên." });
                 }
                 return NoContent();
             }
             catch (Exception ex)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "Đã xảy ra lỗi không mong muốn: " + ex.Message });
             }
         }
     }
