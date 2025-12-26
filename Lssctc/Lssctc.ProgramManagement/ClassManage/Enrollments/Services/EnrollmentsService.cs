@@ -183,13 +183,13 @@ namespace Lssctc.ProgramManagement.ClassManage.Enrollments.Services
                 existingEnrollment.EnrollDate = DateTime.UtcNow;
                 await _uow.EnrollmentRepository.UpdateAsync(existingEnrollment);
                 await _uow.SaveChangesAsync();
-                
+
                 // Fetch the updated enrollment with all required navigation properties
                 var updatedEnrollment = await GetEnrollmentQuery().FirstAsync(e => e.Id == existingEnrollment.Id);
-                
+
                 // Send email notification for re-enrollment
                 await SendEnrollmentEmailAsync(updatedEnrollment);
-                
+
                 return MapToDto(updatedEnrollment);
             }
 
@@ -219,10 +219,10 @@ namespace Lssctc.ProgramManagement.ClassManage.Enrollments.Services
             await _uow.SaveChangesAsync();
 
             var created = await GetEnrollmentQuery().FirstAsync(e => e.Id == newEnrollment.Id);
-            
+
             // Send email notification
             await SendEnrollmentEmailAsync(created);
-            
+
             return MapToDto(created);
         }
 
@@ -474,7 +474,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Enrollments.Services
         }}
         .cta-button {{ 
             display: inline-block; 
-            background: #F9F8F6; 
+            background: #667eea; 
             color: #ffffff; 
             padding: 14px 30px; 
             text-decoration: none; 
@@ -568,7 +568,7 @@ namespace Lssctc.ProgramManagement.ClassManage.Enrollments.Services
             </div>
             
             <div style='text-align: center;'>
-                <a href='#' class='cta-button'>Xem Thời Khóa Biểu</a>
+                <a href='https://lssctc.site' class='cta-button'>Xem Thời Khóa Biểu</a>
             </div>
             
             <div class='divider'></div>

@@ -14,6 +14,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
         private readonly IQuizService _quizService;
         private readonly IFEService _finalExamsService;
         private readonly ISEService _finalExamSeService;
+        private static readonly Random _random = new Random(); // Added for code generation
 
         public FEPartialService(
             IUnitOfWork uow,
@@ -51,7 +52,6 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                 Type = typeId,
                 ExamWeight = dto.ExamWeight,
                 Duration = dto.Duration,
-                // [CHANGED] Removed .AddHours(-7) to use client time directly
                 StartTime = dto.StartTime,
                 EndTime = dto.EndTime,
                 Marks = 0,
@@ -101,7 +101,6 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                     Type = typeId,
                     ExamWeight = dto.ExamWeight,
                     Duration = dto.Duration,
-                    // [CHANGED] Removed .AddHours(-7) to use client time directly
                     StartTime = dto.StartTime,
                     EndTime = dto.EndTime,
                     Marks = 0,
@@ -140,7 +139,6 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             if (dto.ExamWeight.HasValue) partial.ExamWeight = dto.ExamWeight;
             if (dto.Duration.HasValue) partial.Duration = dto.Duration;
 
-            // [CHANGED] Removed .AddHours(-7) to use client time directly
             if (dto.StartTime.HasValue) partial.StartTime = dto.StartTime.Value;
             if (dto.EndTime.HasValue) partial.EndTime = dto.EndTime.Value;
 
@@ -242,18 +240,22 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             var feTheory = partial.FeTheories.FirstOrDefault();
             if (feTheory == null || feTheory.QuizId == 0) throw new KeyNotFoundException("Quiz content not assigned.");
 
-            if (string.IsNullOrEmpty(partial.ExamCode) || // [FIX] Check the Partial's code
+            if (string.IsNullOrEmpty(partial.ExamCode) ||
                 !partial.ExamCode.Equals(examCode, StringComparison.OrdinalIgnoreCase))
             {
                 throw new UnauthorizedAccessException("Invalid Exam Code.");
             }
 
+            // [MODIFIED] Generate new code to prevent reuse
+            partial.ExamCode = GenerateRandomCode();
+
             if (!partial.StartTime.HasValue)
             {
                 partial.StartTime = DateTime.UtcNow;
-                await _uow.FinalExamPartialRepository.UpdateAsync(partial);
-                await _uow.SaveChangesAsync();
             }
+
+            await _uow.FinalExamPartialRepository.UpdateAsync(partial);
+            await _uow.SaveChangesAsync();
 
             var quizContent = await _quizService.GetQuizDetailForTrainee(feTheory.QuizId, CancellationToken.None);
 
@@ -556,6 +558,13 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                 }).ToList(),
                 Tasks = tasks
             };
+        }
+
+        private string GenerateRandomCode()
+        {
+            const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+            return new string(Enumerable.Repeat(chars, 6)
+                .Select(s => s[_random.Next(s.Length)]).ToArray());
         }
     }
 }

@@ -8,18 +8,65 @@ using Microsoft.EntityFrameworkCore;
 using OfficeOpenXml;
 using Microsoft.AspNetCore.Http;
 using System.Data;
+using Lssctc.ProgramManagement.Accounts.Authens.Services; // Added for IMailService
 
 namespace Lssctc.ProgramManagement.Accounts.Users.Services
 {
     public class UsersService : IUsersService
     {
         private readonly IUnitOfWork _uow;
+        private readonly IMailService _mailService; // Injected MailService
         private static readonly Random _random = new Random();
 
-        public UsersService(IUnitOfWork uow)
+        public UsersService(IUnitOfWork uow, IMailService mailService)
         {
             _uow = uow;
+            _mailService = mailService;
         }
+
+        #region Helpers for Email
+
+        private string GenerateWelcomeEmailBody(string fullname, string username, string password, string email)
+        {
+            return $@"
+                <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;'>
+                    <h2 style='color: #0056b3; text-align: center;'>Chào mừng đến với hệ thống LSSCTC</h2>
+                    <p>Xin chào <strong>{fullname}</strong>,</p>
+                    <p>Tài khoản của bạn đã được khởi tạo thành công trên hệ thống. Dưới đây là thông tin đăng nhập của bạn:</p>
+                    
+                    <div style='background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0;'>
+                        <p style='margin: 5px 0;'><strong>Tên đăng nhập:</strong> {username}</p>
+                        <p style='margin: 5px 0;'><strong>Mật khẩu:</strong> {password}</p>
+                        <p style='margin: 5px 0;'><strong>Email:</strong> {email}</p>
+                    </div>
+
+                    <p>Bạn có thể sử dụng thông tin trên để đăng nhập, hoặc sử dụng tính năng <strong>Đăng nhập bằng Google</strong> với email này.</p>
+                    
+                    <div style='text-align: center; margin: 30px 0;'>
+                        <a href='https://lssctc.site' style='background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;'>Truy cập Hệ thống LSSCTC</a>
+                    </div>
+                    
+                    <p>Vì lý do bảo mật, vui lòng đổi mật khẩu sau lần đăng nhập đầu tiên.</p>
+                    <hr style='border: none; border-top: 1px solid #eee; margin: 20px 0;'>
+                    <p style='font-size: 12px; color: #666; text-align: center;'>Đây là email tự động, vui lòng không trả lời email này.</p>
+                </div>";
+        }
+
+        private async Task TrySendEmailAsync(string email, string subject, string body)
+        {
+            try
+            {
+                await _mailService.SendEmailAsync(email, subject, body);
+            }
+            catch
+            {
+                // Suppress email errors to ensure the user creation flow doesn't break
+                // In a real production env, we might want to log this
+            }
+        }
+
+        #endregion
+
         #region Users
 
         public async Task<PagedResult<UserDto>> GetUsersAsync(int pageNumber, int pageSize)
@@ -191,6 +238,9 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Services
             await _uow.UserRepository.CreateAsync(user);
             await _uow.SaveChangesAsync();
 
+            // Send Email
+            await TrySendEmailAsync(dto.Email, "Thông tin tài khoản hệ thống LSSCTC", GenerateWelcomeEmailBody(dto.Fullname, dto.Username, dto.Password, dto.Email));
+
             return MapToDto(user);
         }
 
@@ -234,6 +284,10 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Services
             };
             await _uow.UserRepository.CreateAsync(user);
             await _uow.SaveChangesAsync();
+
+            // Send Email
+            await TrySendEmailAsync(dto.Email, "Thông tin tài khoản hệ thống LSSCTC", GenerateWelcomeEmailBody(dto.Fullname, dto.Username, dto.Password, dto.Email));
+
             return MapToDto(user);
         }
 
@@ -269,6 +323,10 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Services
             };
             await _uow.UserRepository.CreateAsync(user);
             await _uow.SaveChangesAsync();
+
+            // Send Email
+            await TrySendEmailAsync(dto.Email, "Thông tin tài khoản hệ thống LSSCTC", GenerateWelcomeEmailBody(dto.Fullname, dto.Username, dto.Password, dto.Email));
+
             return MapToDto(user);
         }
 
@@ -475,24 +533,18 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Services
 
         #endregion
 
-        // ... (Import methods have detailed string messages inside)
         public async Task<string> ImportTraineesAsync(IFormFile file)
         {
-            // ... (previous validation code) ...
             if (file == null || file.Length == 0)
                 throw new Exception("File trống hoặc không tồn tại.");
 
             if (!file.FileName.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase))
                 throw new Exception("Định dạng file không hợp lệ. Vui lòng tải lên file Excel (.xlsx).");
 
-            // ... (rest of the logic remains similar but with VN messages)
-            // Simplified for brevity, assume similar logic structure but messages like:
-            // "Username or Email already exists" -> "Tên đăng nhập hoặc Email đã tồn tại"
-
-            // I will return the full logic with updated messages below
             int importedCount = 0;
             int skippedCount = 0;
             var errors = new List<string>();
+            var emailsToSend = new List<(string Email, string Body)>(); // Store email info
 
             try
             {
@@ -602,6 +654,9 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Services
 
                                         await _uow.UserRepository.CreateAsync(user);
                                         importedCount++;
+
+                                        // Prepare Email
+                                        emailsToSend.Add((email, GenerateWelcomeEmailBody(fullname, username, password, email)));
                                     }
                                     catch (Exception ex)
                                     {
@@ -611,6 +666,12 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Services
                                 }
                                 await _uow.SaveChangesAsync();
                                 await transaction.CommitAsync();
+
+                                // Send emails after successful commit
+                                foreach (var (eEmail, eBody) in emailsToSend)
+                                {
+                                    await TrySendEmailAsync(eEmail, "Thông tin tài khoản hệ thống LSSCTC", eBody);
+                                }
                             }
                             catch (Exception)
                             {
@@ -634,8 +695,6 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Services
             }
         }
 
-        // Similar translations for ImportInstructorsAsync and ImportSimulationManagersAsync
-        // (I'm applying the same logic for brevity and correctness in the final file output)
         public async Task<string> ImportInstructorsAsync(IFormFile file)
         {
             if (file == null || file.Length == 0)
@@ -647,6 +706,7 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Services
             int importedCount = 0;
             int skippedCount = 0;
             var errors = new List<string>();
+            var emailsToSend = new List<(string Email, string Body)>();
 
             try
             {
@@ -755,6 +815,9 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Services
 
                                         await _uow.UserRepository.CreateAsync(user);
                                         importedCount++;
+
+                                        // Prepare Email
+                                        emailsToSend.Add((email, GenerateWelcomeEmailBody(fullname, username, password, email)));
                                     }
                                     catch (Exception ex)
                                     {
@@ -764,6 +827,12 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Services
                                 }
                                 await _uow.SaveChangesAsync();
                                 await transaction.CommitAsync();
+
+                                // Send emails after successful commit
+                                foreach (var (eEmail, eBody) in emailsToSend)
+                                {
+                                    await TrySendEmailAsync(eEmail, "Thông tin tài khoản hệ thống LSSCTC", eBody);
+                                }
                             }
                             catch (Exception)
                             {
@@ -795,6 +864,7 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Services
             int importedCount = 0;
             int skippedCount = 0;
             var errors = new List<string>();
+            var emailsToSend = new List<(string Email, string Body)>();
 
             try
             {
@@ -894,6 +964,9 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Services
 
                                         await _uow.UserRepository.CreateAsync(user);
                                         importedCount++;
+
+                                        // Prepare Email
+                                        emailsToSend.Add((email, GenerateWelcomeEmailBody(fullname, username, password, email)));
                                     }
                                     catch (Exception ex)
                                     {
@@ -903,6 +976,12 @@ namespace Lssctc.ProgramManagement.Accounts.Users.Services
                                 }
                                 await _uow.SaveChangesAsync();
                                 await transaction.CommitAsync();
+
+                                // Send emails after successful commit
+                                foreach (var (eEmail, eBody) in emailsToSend)
+                                {
+                                    await TrySendEmailAsync(eEmail, "Thông tin tài khoản hệ thống LSSCTC", eBody);
+                                }
                             }
                             catch (Exception)
                             {
