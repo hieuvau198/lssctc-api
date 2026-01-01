@@ -67,7 +67,10 @@ namespace Lssctc.ProgramManagement.ClassManage.Enrollments.Services
                     throw new InvalidOperationException("Class is full.");
             }
 
-            // 4. Create new enrollment
+            // 4. Validate schedule conflict before creating new enrollment
+            await ValidateTraineeScheduleConflictAsync(traineeId, dto.ClassId);
+
+            // 5. Create new enrollment
             var newEnrollment = new Enrollment
             {
                 ClassId = dto.ClassId,
@@ -204,7 +207,10 @@ namespace Lssctc.ProgramManagement.ClassManage.Enrollments.Services
                     throw new InvalidOperationException("Class is full.");
             }
 
-            // 5. Create new enrollment
+            // 5. Validate schedule conflict before creating new enrollment
+            await ValidateTraineeScheduleConflictAsync(dto.TraineeId, dto.ClassId);
+
+            // 6. Create new enrollment
             var newEnrollment = new Enrollment
             {
                 ClassId = dto.ClassId,
@@ -609,6 +615,86 @@ namespace Lssctc.ProgramManagement.ClassManage.Enrollments.Services
             {
                 // Silently ignore email sending failures to avoid rolling back the enrollment transaction
                 // In production, you might want to log this error
+            }
+        }
+
+        /// <summary>
+        /// Validates that the trainee does not have any schedule conflicts with the target class.
+        /// Throws InvalidOperationException if a conflict is detected.
+        /// </summary>
+        /// <param name="traineeId">The ID of the trainee</param>
+        /// <param name="targetClassId">The ID of the target class to enroll in</param>
+        private async Task ValidateTraineeScheduleConflictAsync(int traineeId, int targetClassId)
+        {
+            // 1. Get timeslots of the target class
+            var targetClassTimeslots = await _uow.TimeslotRepository
+                .GetAllAsQueryable()
+                .AsNoTracking()
+                .Where(t => t.ClassId == targetClassId && t.IsDeleted != true)
+                .Select(t => new { t.StartTime, t.EndTime, t.Name })
+                .ToListAsync();
+
+            // If target class has no timeslots, no conflict can occur
+            if (!targetClassTimeslots.Any())
+                return;
+
+            // 2. Get all OTHER classes the trainee is enrolled in with active statuses (Enrolled, Inprogress, Pending)
+            var activeEnrollmentStatuses = new[]
+            {
+                (int)EnrollmentStatusEnum.Enrolled,
+                (int)EnrollmentStatusEnum.Inprogress,
+                (int)EnrollmentStatusEnum.Pending
+            };
+
+            var enrolledClassIds = await _uow.EnrollmentRepository
+                .GetAllAsQueryable()
+                .AsNoTracking()
+                .Where(e => e.TraineeId == traineeId
+                            && e.ClassId != targetClassId
+                            && e.IsDeleted != true
+                            && activeEnrollmentStatuses.Contains(e.Status ?? 0))
+                .Select(e => e.ClassId)
+                .Distinct()
+                .ToListAsync();
+
+            // If trainee is not enrolled in any other class, no conflict
+            if (!enrolledClassIds.Any())
+                return;
+
+            // 3. Get timeslots of all enrolled classes
+            var enrolledClassTimeslots = await _uow.TimeslotRepository
+                .GetAllAsQueryable()
+                .AsNoTracking()
+                .Where(t => enrolledClassIds.Contains(t.ClassId) && t.IsDeleted != true)
+                .Include(t => t.Class)
+                .Select(t => new
+                {
+                    t.StartTime,
+                    t.EndTime,
+                    t.Name,
+                    ClassName = t.Class.Name,
+                    t.ClassId
+                })
+                .ToListAsync();
+
+            // If no timeslots in enrolled classes, no conflict
+            if (!enrolledClassTimeslots.Any())
+                return;
+
+            // 4. Check for time overlap between target class timeslots and enrolled class timeslots
+            foreach (var targetSlot in targetClassTimeslots)
+            {
+                foreach (var enrolledSlot in enrolledClassTimeslots)
+                {
+                    // Time overlap check: two intervals [A.Start, A.End) and [B.Start, B.End) overlap if A.Start < B.End AND A.End > B.Start
+                    if (targetSlot.StartTime < enrolledSlot.EndTime && targetSlot.EndTime > enrolledSlot.StartTime)
+                    {
+                        throw new InvalidOperationException(
+                            $"Schedule conflict detected: Timeslot '{targetSlot.Name}' ({targetSlot.StartTime:dd/MM/yyyy HH:mm} - {targetSlot.EndTime:HH:mm}) " +
+                            $"overlaps with timeslot '{enrolledSlot.Name}' ({enrolledSlot.StartTime:dd/MM/yyyy HH:mm} - {enrolledSlot.EndTime:HH:mm}) " +
+                            $"from class '{enrolledSlot.ClassName}'.");
+                    }
+                }
             }
         }
 
