@@ -1,7 +1,9 @@
 ﻿using Lssctc.ProgramManagement.Certificates.Dtos;
 using Lssctc.ProgramManagement.Certificates.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Collections.Generic;
+using System.Security.Claims;
 using System.Threading.Tasks;
 
 namespace Lssctc.ProgramManagement.Certificates.Controllers
@@ -50,6 +52,43 @@ namespace Lssctc.ProgramManagement.Certificates.Controllers
             return Ok(result);
         }
 
+        /// <summary>
+        /// Get all certificates for the current authenticated trainee (from token).
+        /// </summary>
+        [HttpGet("my-certificates")]
+        [Authorize(Roles = "Trainee")]
+        [ProducesResponseType(typeof(IEnumerable<TraineeCertificateResponseDto>), 200)]
+        [ProducesResponseType(401)]
+        public async Task<IActionResult> GetMyCertificates()
+        {
+            try
+            {
+                var traineeId = GetTraineeIdFromClaims();
+                var result = await _service.GetTraineeCertificatesByTraineeIdAsync(traineeId);
+                return Ok(result);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { message = ex.Message });
+            }
+            catch (System.Exception)
+            {
+                return StatusCode(500, new { message = "An unexpected error occurred." });
+            }
+        }
+
+        /// <summary>
+        /// Get all certificates for a specific trainee by ID (Admin/Instructor only).
+        /// </summary>
+        [HttpGet("trainee/{traineeId}")]
+        [Authorize(Roles = "Admin, Instructor")]
+        [ProducesResponseType(typeof(IEnumerable<TraineeCertificateResponseDto>), 200)]
+        public async Task<IActionResult> GetByTraineeId(int traineeId)
+        {
+            var result = await _service.GetTraineeCertificatesByTraineeIdAsync(traineeId);
+            return Ok(result);
+        }
+
         [HttpPost]
         [ProducesResponseType(typeof(TraineeCertificateResponseDto), 201)]
         public async Task<IActionResult> Create([FromBody] CreateTraineeCertificateDto dto)
@@ -72,5 +111,21 @@ namespace Lssctc.ProgramManagement.Certificates.Controllers
             if (!result) return NotFound();
             return NoContent();
         }
+
+        #region Private Helpers
+
+        private int GetTraineeIdFromClaims()
+        {
+            var traineeIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (int.TryParse(traineeIdClaim, out int traineeId))
+            {
+                return traineeId;
+            }
+
+            throw new UnauthorizedAccessException("Trainee ID claim is missing or invalid.");
+        }
+
+        #endregion
     }
 }
