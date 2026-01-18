@@ -10,6 +10,7 @@ namespace Lssctc.ProgramManagement.Certificates.Services
         Task<TraineeCertificateResponseDto> GetByIdAsync(int id);
         Task<TraineeCertificateResponseDto> GetByCodeAsync(string code);
         Task<IEnumerable<TraineeCertificateResponseDto>> GetTraineeCertificatesByClassIdAsync(int classId);
+        Task<IEnumerable<TraineeCertificateResponseDto>> GetTraineeCertificatesByTraineeIdAsync(int traineeId);
         Task<TraineeCertificateResponseDto> CreateCertificateAsync(CreateTraineeCertificateDto dto);
         Task<bool> DeleteCertificateAsync(int id);
 

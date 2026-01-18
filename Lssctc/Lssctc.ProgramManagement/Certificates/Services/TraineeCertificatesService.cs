@@ -91,6 +91,23 @@ namespace Lssctc.ProgramManagement.Certificates.Services
                 }).ToListAsync();
         }
 
+        public async Task<IEnumerable<TraineeCertificateResponseDto>> GetTraineeCertificatesByTraineeIdAsync(int traineeId)
+        {
+            return await _context.TraineeCertificates
+                .Include(x => x.Enrollment).ThenInclude(e => e.Trainee).ThenInclude(t => t.IdNavigation)
+                .Include(x => x.CourseCertificate).ThenInclude(cc => cc.Course)
+                .Where(x => x.Enrollment.TraineeId == traineeId)
+                .Select(x => new TraineeCertificateResponseDto
+                {
+                    Id = x.Id,
+                    CertificateCode = x.CertificateCode,
+                    IssuedDate = x.IssuedDate,
+                    PdfUrl = x.PdfUrl,
+                    TraineeName = x.Enrollment.Trainee.IdNavigation.Fullname,
+                    CourseName = x.CourseCertificate.Course.Name
+                }).ToListAsync();
+        }
+
         public async Task<TraineeCertificateResponseDto> CreateCertificateAsync(CreateTraineeCertificateDto dto)
         {
             var enrollment = await _context.Enrollments
