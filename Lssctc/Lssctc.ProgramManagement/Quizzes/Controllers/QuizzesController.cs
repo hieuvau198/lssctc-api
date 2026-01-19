@@ -209,8 +209,13 @@ namespace Lssctc.ProgramManagement.Quizzes.Controllers
                 if (!ModelState.IsValid) 
                     return BadRequest(new { status = 400, message = "Invalid model state", type = "ValidationException", errors = ModelState });
                 
-                // Extract instructor ID from JWT claims
-                var instructorId = GetInstructorIdFromClaims();
+                // Logic updated: Check role before getting ID.
+                // If Admin, instructorId remains 0, and Service will skip QuizAuthor creation.
+                int instructorId = 0;
+                if (User.IsInRole("Instructor"))
+                {
+                    instructorId = GetInstructorIdFromClaims();
+                }
                 
                 var quizId = await _service.CreateQuizWithQuestions(dto, instructorId);
                 return Ok(new { status = 200, message = "Create quiz successfully", data = new { quizId } });
@@ -222,6 +227,11 @@ namespace Lssctc.ProgramManagement.Quizzes.Controllers
             catch (ValidationException ex)
             {
                 return BadRequest(new { status = 400, message = ex.Message, type = "ValidationException" });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                // Auth errors from GetInstructorIdFromClaims
+                return Unauthorized(new { status = 401, message = ex.Message, type = "Unauthorized" });
             }
             catch (Exception ex)
             {
