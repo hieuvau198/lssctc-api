@@ -194,11 +194,20 @@ namespace Lssctc.ProgramManagement.ClassManage.PracticeAttempts.Services
             }
             await _uow.SaveChangesAsync();
 
+            // Update Activity Record
             await _progressHelper.UpdateActivityRecordProgressAsync(traineeId, activityRecord.Id);
+
             var fullRecord = await _uow.ActivityRecordRepository.GetByIdAsync(activityRecord.Id);
             if (fullRecord != null)
             {
-                await _progressHelper.UpdateSectionRecordProgressAsync(traineeId, fullRecord.SectionRecordId);
+                // Update Section Record and capture the result
+                var updatedSection = await _progressHelper.UpdateSectionRecordProgressAsync(traineeId, fullRecord.SectionRecordId);
+
+                // Update Learning Progress using the LearningProgressId from the updated section
+                if (updatedSection != null)
+                {
+                    await _progressHelper.UpdateLearningProgressProgressAsync(traineeId, updatedSection.LearningProgressId);
+                }
             }
 
             return (await GetPracticeAttemptById(attempt.Id))!;

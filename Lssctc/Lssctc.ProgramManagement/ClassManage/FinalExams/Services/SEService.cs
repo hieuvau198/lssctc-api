@@ -190,7 +190,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
 
         public async Task<FinalExamPartialDto> SubmitSeFinalAsync(int partialId, int userId, SubmitSeFinalDto dto)
         {
-            // This method ALREADY loads FeSimulations and SeTasks
+            // loads FeSimulations and SeTasks
             var partial = await GetPartialWithSecurityCheckAsync(partialId, userId);
 
             // Validation: Check Final Exam Status
@@ -202,7 +202,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
 
             if (partial.Type != 2) throw new ArgumentException("This ID is not a Simulation Exam (SE).");
 
-            // [FIX] Use the tasks ALREADY loaded in the partial graph. Do not fetch a new list.
+            // Use the tasks ALREADY loaded in the partial graph.
             var existingTasks = partial.FeSimulations.SelectMany(s => s.SeTasks).ToList();
 
             // 1. Update individual Task statuses
@@ -220,7 +220,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                         // Updating properties on the graph object directly
                         taskEntity.IsPass = taskDto.IsPass;
                         taskEntity.DurationSecond = taskDto.DurationSecond;
-                        taskEntity.Status = 1; // Mark as attempted
+                        taskEntity.Status = 1;
 
                         var taskCompletionTime = dto.CompleteTime;
                         taskEntity.CompleteTime = taskCompletionTime != null ? taskCompletionTime.Value.AddHours(7) : DateTime.UtcNow.AddHours(7);
@@ -229,9 +229,6 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
                             taskEntity.AttemptTime = taskCompletionTime.Value.AddSeconds(-taskDto.DurationSecond.Value);
                         else
                             taskEntity.AttemptTime = taskCompletionTime;
-
-                        // Note: We do NOT need to call _uow.SeTaskRepository.UpdateAsync(taskEntity) here.
-                        // The UpdateAsync(partial) call at the end will handle the whole graph.
                     }
                 }
             }
@@ -274,7 +271,7 @@ namespace Lssctc.ProgramManagement.ClassManage.FinalExams.Services
             partial.CompleteTime = dto.CompleteTime != null ? dto.CompleteTime.Value.AddHours(7) : DateTime.UtcNow.AddHours(7);
             partial.Status = (int)FinalExamPartialStatus.Submitted;
 
-            // [FIX] This Single Update call saves the partial AND the modified SeTasks in its graph
+            // Saves the partial and the modified SeTasks in its graph
             await _uow.FinalExamPartialRepository.UpdateAsync(partial);
             await _uow.SaveChangesAsync();
 
