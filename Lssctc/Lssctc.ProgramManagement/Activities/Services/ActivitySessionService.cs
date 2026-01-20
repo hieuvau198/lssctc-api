@@ -430,10 +430,6 @@ namespace Lssctc.ProgramManagement.Activities.Services
             font-size: 24px; 
             font-weight: 600; 
         }}
-        .email-header .icon {{ 
-            font-size: 48px; 
-            margin-bottom: 10px; 
-        }}
         .email-body {{ 
             padding: 30px; 
         }}
