@@ -125,7 +125,7 @@ namespace Lssctc.ProgramManagement.Activities.Services
             }
 
             // 2. Check Time Window
-            var now = DateTime.UtcNow.AddHours(7);
+            var now = DateTime.UtcNow.AddHours(-7);
 
             if (session.StartTime.HasValue && now < session.StartTime.Value.ToUniversalTime())
             {
