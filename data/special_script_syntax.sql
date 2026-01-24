@@ -4,8 +4,8 @@
 DROP TABLE [dbo].[simulation_component_types];
 
 
-ALTER TABLE [final_exam_partials]
-ADD [exam_code] NVARCHAR(20) DEFAULT 'UNASSIGNED'
+ALTER TABLE [sim_settings]
+ADD [source_url] NVARCHAR(1000) null
 
 UPDATE dbo.final_exam_partials
 SET exam_code = UPPER(LEFT(REPLACE(CONVERT(NVARCHAR(36), NEWID()), '-', ''), 8));

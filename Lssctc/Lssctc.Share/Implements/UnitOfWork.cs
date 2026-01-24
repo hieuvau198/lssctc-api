@@ -67,6 +67,7 @@ namespace Lssctc.Share.Implements
         private IGenericRepository<User>? _userRepository;
         private IGenericRepository<FinalExamTemplate>? _finalExamTemplateRepository;
         private IGenericRepository<FinalExamPartialsTemplate>? _finalExamPartialsTemplateRepository;
+        private IGenericRepository<SimSetting>? _simSettingRepository;
 
         public UnitOfWork(LssctcDbContext context)
         {
@@ -198,6 +199,9 @@ namespace Lssctc.Share.Implements
 
         public IGenericRepository<SimulationManager> SimulationManagerRepository =>
             _simulationManagerRepository ??= new GenericRepository<SimulationManager>(_context);
+
+        public IGenericRepository<SimSetting> SimSettingRepository =>
+            _simSettingRepository ??= new GenericRepository<SimSetting>(_context);
 
         public IGenericRepository<Trainee> TraineeRepository =>
             _traineeRepository ??= new GenericRepository<Trainee>(_context);

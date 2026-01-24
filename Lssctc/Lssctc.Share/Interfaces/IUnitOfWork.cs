@@ -47,6 +47,7 @@ namespace Lssctc.Share.Interfaces
         IGenericRepository<SimTask> SimTaskRepository { get; }
         IGenericRepository<SimulationComponent> SimulationComponentRepository { get; }
         IGenericRepository<SimulationManager> SimulationManagerRepository { get; }
+        IGenericRepository<SimSetting> SimSettingRepository { get; }
         IGenericRepository<Trainee> TraineeRepository { get; }
         IGenericRepository<TraineeCertificate> TraineeCertificateRepository { get; }
         IGenericRepository<TraineeProfile> TraineeProfileRepository { get; }

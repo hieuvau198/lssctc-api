@@ -206,6 +206,8 @@ builder.Services.AddScoped<IFETemplateService, FETemplateService>();
 builder.Services.AddScoped<IClassCustomizeService, ClassCustomizeService>();
 builder.Services.AddScoped<IClassCompleteService, ClassCompleteService>();
 
+builder.Services.AddScoped<ISimSettingsService, SimSettingsService>();
+
 builder.Services.AddScoped<AccountHelper>();
 builder.Services.AddScoped<ProgressHelper>();
 builder.Services.AddScoped<EnrollmentResetHelper>();
