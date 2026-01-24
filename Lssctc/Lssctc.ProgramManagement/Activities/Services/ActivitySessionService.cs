@@ -125,7 +125,13 @@ namespace Lssctc.ProgramManagement.Activities.Services
             }
 
             // 2. Check Time Window
-            var now = DateTime.UtcNow.AddHours(-7);
+            DateTime utcNow = DateTime.UtcNow;
+
+            TimeZoneInfo vietnamTimeZone =
+                TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+
+            DateTime now =
+                TimeZoneInfo.ConvertTimeFromUtc(utcNow, vietnamTimeZone);
 
             if (session.StartTime.HasValue && now < session.StartTime.Value.ToUniversalTime())
             {
