@@ -56,7 +56,6 @@ namespace Lssctc.ProgramManagement.Practices.Controllers
                 if (!ModelState.IsValid)
                     return BadRequest(ModelState);
 
-                // We ignore the ID in the DTO because we always update ID 1
                 var updated = await _simSettingsService.UpdateSimSettingAsync(dto);
                 return SuccessResponse(updated, "Sim setting updated successfully");
             }
@@ -67,6 +66,54 @@ namespace Lssctc.ProgramManagement.Practices.Controllers
             catch (Exception ex)
             {
                 return ErrorResponse("UPDATE_ERROR", "Failed to update sim settings", 500, new { exceptionMessage = ex.Message });
+            }
+        }
+
+        [HttpPost("upload-source")]
+        public async Task<IActionResult> UploadSource(IFormFile file)
+        {
+            try
+            {
+                if (file == null || file.Length == 0)
+                    return BadRequest(new { success = false, message = "No file uploaded." });
+
+                using var stream = file.OpenReadStream();
+                var updatedSetting = await _simSettingsService.UploadSimulationSourceAsync(stream, file.FileName, file.ContentType);
+
+                return SuccessResponse(updatedSetting, "Simulation source uploaded successfully");
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return ErrorResponse("NOT_FOUND", ex.Message, 404);
+            }
+            catch (Exception ex)
+            {
+                return ErrorResponse("UPLOAD_ERROR", "Failed to upload simulation source", 500, new { exceptionMessage = ex.Message });
+            }
+        }
+
+        [HttpGet("download-source")]
+        public async Task<IActionResult> DownloadSource()
+        {
+            try
+            {
+                var setting = await _simSettingsService.GetSimSettingAsync();
+
+                if (string.IsNullOrEmpty(setting.SourceUrl))
+                {
+                    return ErrorResponse("NO_SOURCE", "No simulation source file is currently uploaded.", 404);
+                }
+
+                // Redirect to the Firebase URL to allow direct download
+                return Redirect(setting.SourceUrl);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return ErrorResponse("NOT_FOUND", ex.Message, 404);
+            }
+            catch (Exception ex)
+            {
+                return ErrorResponse("DOWNLOAD_ERROR", "Failed to retrieve download link", 500, new { exceptionMessage = ex.Message });
             }
         }
     }
