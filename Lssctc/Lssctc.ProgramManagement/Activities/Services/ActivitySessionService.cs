@@ -127,12 +127,12 @@ namespace Lssctc.ProgramManagement.Activities.Services
             // 2. Check Time Window
             var now = DateTime.UtcNow.AddHours(7);
 
-            if (session.StartTime.HasValue && now < session.StartTime.Value.ToUniversalTime())
+            if (session.StartTime.HasValue && now < session.StartTime)
             {
                 throw new UnauthorizedAccessException($"Access to Activity '{session.Activity.ActivityTitle}' will be available from {session.StartTime.Value:yyyy-MM-dd HH:mm:ss}.");
             }
 
-            if (session.EndTime.HasValue && now > session.EndTime.Value.ToUniversalTime())
+            if (session.EndTime.HasValue && now > session.EndTime)
             {
                 throw new UnauthorizedAccessException($"Access to Activity '{session.Activity.ActivityTitle}' expired on {session.EndTime.Value:yyyy-MM-dd HH:mm:ss}.");
             }
