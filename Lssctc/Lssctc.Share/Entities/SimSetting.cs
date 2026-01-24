@@ -20,4 +20,6 @@ public partial class SimSetting
     public bool? IsDeleted { get; set; }
 
     public string? SettingCode { get; set; }
+
+    public string? SourceUrl { get; set; }
 }

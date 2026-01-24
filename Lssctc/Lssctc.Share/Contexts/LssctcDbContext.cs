@@ -1568,6 +1568,9 @@ public partial class LssctcDbContext : DbContext
                 .IsUnicode(false)
                 .HasDefaultValue("SETTING_UNKNOWN")
                 .HasColumnName("setting_code");
+            entity.Property(e => e.SourceUrl)
+                .HasMaxLength(1000)
+                .HasColumnName("source_url");
         });
 
         modelBuilder.Entity<SimTask>(entity =>
