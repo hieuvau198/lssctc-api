@@ -252,6 +252,8 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
             return aq == null ? null : await GetQuizDetailForTrainee(aq.QuizId, ct);
         }
 
+        // Inside QuizService.cs
+
         public async Task<TraineeQuizResponseDto> GetQuizForTraineeByRecordIdAsync(int activityRecordId, CancellationToken ct = default)
         {
             // 1. Lấy thông tin ActivityRecord để tìm ClassId và ActivityId
@@ -269,7 +271,6 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
             var classId = record.SectionRecord.LearningProgress.Enrollment.ClassId;
 
             // 2. Tìm Session của Activity trong Class này
-            // FIX: Bỏ điều kiện IsActive == true để lấy được session ngay cả khi nó bị disable
             var session = await _uow.ActivitySessionRepository.GetAllAsQueryable()
                 .AsNoTracking()
                 .FirstOrDefaultAsync(s => s.ClassId == classId && s.ActivityId == activityId, ct);
@@ -285,10 +286,11 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
             {
                 status.StartTime = session.StartTime;
                 status.EndTime = session.EndTime;
-                var now = DateTime.Now;
 
-                // FIX: Kiểm tra IsActive trước. Nếu False thì đóng session.
-                // Lưu ý: IsActive có thể là bool? nên cần check IsActive != true hoặc (session.IsActive ?? false) == false
+                // FIX: Use UTC + 7 for Vietnam Time instead of Server Time (DateTime.Now)
+                var now = DateTime.UtcNow.AddHours(7);
+
+                // FIX: Kiểm tra IsActive trước.
                 if (session.IsActive != true)
                 {
                     status.IsOpen = false;
@@ -306,7 +308,7 @@ namespace Lssctc.ProgramManagement.Quizzes.Services
                 }
             }
 
-            // 4. Lấy chi tiết Quiz (Giữ nguyên logic cũ)
+            // 4. Lấy chi tiết Quiz
             var quizDetail = await GetQuizDetailForTraineeByActivityIdAsync(activityId, null, ct);
 
             if (quizDetail == null)
